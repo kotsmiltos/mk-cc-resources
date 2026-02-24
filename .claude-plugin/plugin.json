@@ -1,0 +1,19 @@
+{
+  "name": "mk-cc-resources",
+  "description": "Custom Claude Code skills and tools — data exploration, schema analysis, and productivity workflows",
+  "version": "1.0.0",
+  "author": {
+    "name": "kotsmiltos"
+  },
+  "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+  "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "schema",
+    "data-exploration",
+    "xlsx",
+    "csv",
+    "json"
+  ]
+}

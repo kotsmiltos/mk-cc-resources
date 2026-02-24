@@ -1,0 +1,19 @@
+{
+  "name": "mk-cc-resources",
+  "owner": {
+    "name": "kotsmiltos"
+  },
+  "metadata": {
+    "description": "Custom Claude Code skills and tools for data exploration and productivity",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "mk-cc-resources",
+      "source": "./",
+      "description": "Skills and tools for schema analysis, data exploration, and productivity workflows",
+      "version": "1.0.0",
+      "strict": true
+    }
+  ]
+}
