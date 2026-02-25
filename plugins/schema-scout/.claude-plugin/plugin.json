@@ -1,0 +1,7 @@
+{
+  "name": "schema-scout",
+  "description": "CLI tool for exploring the schema and values of any data file (XLSX, CSV, JSON). Auto-detects JSON in cells, repairs double-encoded UTF-8, prunes overflow artifacts.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

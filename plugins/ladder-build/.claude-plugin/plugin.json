@@ -1,0 +1,7 @@
+{
+  "name": "ladder-build",
+  "description": "Incremental build pipeline — decomposes projects into small verifiable milestones. Build, test, verify each rung before climbing to the next.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

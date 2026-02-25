@@ -1,7 +1,7 @@
 {
   "name": "mk-cc-resources",
-  "description": "Custom Claude Code skills and tools — data exploration, schema analysis, and productivity workflows",
-  "version": "1.0.0",
+  "description": "Custom Claude Code skills — data exploration, multi-dimensional research, and incremental build pipelines",
+  "version": "1.1.0",
   "author": {
     "name": "kotsmiltos"
   },
@@ -12,8 +12,8 @@
     "skills",
     "schema",
     "data-exploration",
-    "xlsx",
-    "csv",
-    "json"
+    "research",
+    "build-pipeline",
+    "milestones"
   ]
 }

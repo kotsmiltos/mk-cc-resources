@@ -4,16 +4,33 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code skills and tools for data exploration and productivity",
-    "version": "1.0.0"
+    "description": "Custom Claude Code skills — data exploration, multi-dimensional research, and incremental build pipelines",
+    "version": "1.1.0"
   },
   "plugins": [
     {
-      "name": "mk-cc-resources",
+      "name": "schema-scout",
+      "source": "./plugins/schema-scout",
+      "description": "CLI tool for exploring the schema and values of any data file (XLSX, CSV, JSON). Auto-detects JSON in cells, repairs double-encoded UTF-8, prunes overflow artifacts.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "miltiaze",
+      "source": "./plugins/miltiaze",
+      "description": "Multi-dimensional idea exploration — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "ladder-build",
+      "source": "./plugins/ladder-build",
+      "description": "Incremental build pipeline — decomposes projects into small verifiable milestones. Build, test, verify each rung before climbing to the next.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "mk-cc-all",
       "source": "./",
-      "description": "Skills and tools for schema analysis, data exploration, and productivity workflows",
-      "version": "1.0.0",
-      "strict": true
+      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, and Ladder Build.",
+      "version": "1.1.0"
     }
   ]
 }
