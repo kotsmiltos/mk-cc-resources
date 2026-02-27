@@ -1,7 +1,7 @@
 {
   "name": "mk-cc-resources",
-  "description": "Custom Claude Code skills — data exploration, multi-dimensional research, and incremental build pipelines",
-  "version": "1.1.0",
+  "description": "Custom Claude Code skills — data exploration, multi-dimensional research, incremental build pipelines, and repo audit with cross-cutting amendment protocol",
+  "version": "1.2.0",
   "author": {
     "name": "kotsmiltos"
   },
@@ -14,6 +14,8 @@
     "data-exploration",
     "research",
     "build-pipeline",
-    "milestones"
+    "milestones",
+    "audit",
+    "amendment-protocol"
   ]
 }

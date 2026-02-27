@@ -1,6 +1,9 @@
 # Schema Scout index files
 *.scout-index.json
 
+# Claude Code local settings
+.claude/
+
 # macOS
 .DS_Store
 

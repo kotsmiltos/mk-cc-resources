@@ -27,10 +27,16 @@
       "version": "1.0.0"
     },
     {
+      "name": "repo-audit",
+      "source": "./plugins/repo-audit",
+      "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow with snapshot and pattern lookup consultation.",
+      "version": "1.0.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, and Ladder Build.",
-      "version": "1.1.0"
+      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, and Repo Audit.",
+      "version": "1.2.0"
     }
   ]
 }
