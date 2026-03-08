@@ -7,17 +7,19 @@ Features:
   - Plays a distinct built-in tone per event (no dependencies)
   - Plays a custom sound file if configured in config.json
   - Shows a desktop notification with event-specific message
-  - Flashes the taskbar (Windows) to grab attention
+  - Flashes the taskbar (Windows/macOS) to grab attention
   - Writes event state to a file for the status line to pick up
 
 Config: edit config.json next to this script. Per-event toggles:
   - "beep": true/false to enable built-in tones (default: true)
   - "sound": path to mp3/wav/ogg/aiff file, or null for built-in tones
   - "notify": true/false to enable desktop notifications (default: true)
+  - "flash": true/false to flash taskbar button (default: true)
   - "statusline": true/false to enable status line color indicator (default: true)
 """
 
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -85,6 +87,7 @@ def get_event_config(config: dict, event: str) -> dict:
         "beep": True,
         "sound": None,
         "notify": True,
+        "flash": True,
         "statusline": True,
     }
     entry = config.get(event, {})
@@ -257,6 +260,157 @@ def notify(event: str) -> None:
         _notify_linux(title, body)
 
 
+# ---------------------------------------------------------------------------
+# Taskbar flash — makes the taskbar button blink to grab attention
+# ---------------------------------------------------------------------------
+def _flash_taskbar_windows() -> None:
+    """Flash the Windows Terminal taskbar button using FlashWindowEx.
+
+    Walks the process tree from the current PID upward to find
+    WindowsTerminal.exe, then locates its top-level window and flashes it.
+    Falls back to GetConsoleWindow() for cmd.exe / conhost.
+    """
+    import ctypes
+    import ctypes.wintypes
+
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
+    ntdll = ctypes.windll.ntdll
+
+    # --- FLASHWINFO for FlashWindowEx ---
+    class FLASHWINFO(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", ctypes.wintypes.UINT),
+            ("hwnd", ctypes.wintypes.HWND),
+            ("dwFlags", ctypes.wintypes.DWORD),
+            ("uCount", ctypes.wintypes.UINT),
+            ("dwTimeout", ctypes.wintypes.DWORD),
+        ]
+
+    FLASHW_ALL = 0x03  # flash both caption bar and taskbar button
+    FLASHW_TIMERNOFG = 0x0C  # keep flashing until window is foregrounded
+
+    # --- Process tree walk to find WindowsTerminal.exe ---
+    class PROCESS_BASIC_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ("Reserved1", ctypes.c_void_p),
+            ("PebBaseAddress", ctypes.c_void_p),
+            ("Reserved2_0", ctypes.c_void_p),
+            ("Reserved2_1", ctypes.c_void_p),
+            ("UniqueProcessId", ctypes.c_void_p),
+            ("InheritedFromUniqueProcessId", ctypes.c_void_p),
+        ]
+
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    MAX_TREE_DEPTH = 32
+
+    def _get_parent_pid(pid: int) -> int:
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return -1
+        try:
+            pbi = PROCESS_BASIC_INFORMATION()
+            ret_len = ctypes.c_ulong()
+            status = ntdll.NtQueryInformationProcess(
+                handle, 0, ctypes.byref(pbi),
+                ctypes.sizeof(pbi), ctypes.byref(ret_len),
+            )
+            if status == 0 and pbi.InheritedFromUniqueProcessId:
+                return int(pbi.InheritedFromUniqueProcessId)
+            return -1
+        except (OSError, ValueError):
+            return -1
+        finally:
+            kernel32.CloseHandle(handle)
+
+    def _get_process_name(pid: int) -> str:
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return ""
+        try:
+            buf = ctypes.create_unicode_buffer(260)
+            size = ctypes.wintypes.DWORD(260)
+            if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+                return buf.value.rsplit("\\", 1)[-1].lower()
+            return ""
+        except OSError:
+            return ""
+        finally:
+            kernel32.CloseHandle(handle)
+
+    def _find_window_for_pid(pid: int) -> int:
+        """Use EnumWindows to find the first visible top-level window for a PID."""
+        WNDENUMPROC = ctypes.WINFUNCTYPE(
+            ctypes.wintypes.BOOL, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM,
+        )
+        found = [None]
+
+        def callback(hwnd, _lparam):
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            w_pid = ctypes.wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(w_pid))
+            if w_pid.value == pid:
+                found[0] = hwnd
+                return False  # stop enumerating
+            return True
+
+        user32.EnumWindows(WNDENUMPROC(callback), 0)
+        return found[0]
+
+    # Walk up from our PID to find WindowsTerminal.exe
+    hwnd = None
+    pid = os.getpid()
+    for _ in range(MAX_TREE_DEPTH):
+        name = _get_process_name(pid)
+        if name == "windowsterminal.exe":
+            hwnd = _find_window_for_pid(pid)
+            break
+        parent = _get_parent_pid(pid)
+        if parent <= 0 or parent == pid:
+            break
+        pid = parent
+
+    # Fallback: use the console window (works for cmd.exe / conhost)
+    if not hwnd:
+        hwnd = kernel32.GetConsoleWindow()
+    if not hwnd:
+        return
+
+    fi = FLASHWINFO()
+    fi.cbSize = ctypes.sizeof(FLASHWINFO)
+    fi.hwnd = hwnd
+    fi.dwFlags = FLASHW_ALL | FLASHW_TIMERNOFG
+    fi.uCount = 0  # flash until the user focuses the window
+    fi.dwTimeout = 0
+    user32.FlashWindowEx(ctypes.byref(fi))
+
+
+def _flash_taskbar_macos() -> None:
+    """Bounce the Terminal/iTerm2 dock icon on macOS."""
+    # AppleScript 'activate' on the current terminal app bounces its dock icon
+    subprocess.Popen(
+        [
+            "osascript", "-e",
+            'tell application "System Events" to set frontmost of '
+            'first application process whose frontmost is true to true',
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def flash_taskbar() -> None:
+    """Flash the taskbar/dock to grab attention (platform-dispatched)."""
+    try:
+        if SYSTEM == "Windows":
+            _flash_taskbar_windows()
+        elif SYSTEM == "Darwin":
+            _flash_taskbar_macos()
+        # Linux: no reliable cross-desktop taskbar flash mechanism
+    except Exception:
+        pass  # best-effort — never let flash failure break the hook
+
 
 # ---------------------------------------------------------------------------
 # State file — bridge between hooks and the status line script
@@ -317,6 +471,10 @@ def main() -> None:
     # Desktop notification
     if ecfg["notify"]:
         notify(event)
+
+    # Taskbar flash — blinks until user focuses the terminal
+    if ecfg["flash"]:
+        flash_taskbar()
 
 
 

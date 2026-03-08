@@ -3,18 +3,21 @@
     "beep": true,
     "sound": null,
     "notify": false,
+    "flash": true,
     "statusline": true
   },
   "permission": {
     "beep": true,
     "sound": null,
     "notify": true,
+    "flash": true,
     "statusline": true
   },
   "idle": {
     "beep": true,
     "sound": null,
     "notify": true,
+    "flash": true,
     "statusline": true
   }
 }
