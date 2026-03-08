@@ -1,0 +1,20 @@
+{
+  "stop": {
+    "beep": true,
+    "sound": null,
+    "notify": false,
+    "statusline": true
+  },
+  "permission": {
+    "beep": true,
+    "sound": null,
+    "notify": true,
+    "statusline": true
+  },
+  "idle": {
+    "beep": true,
+    "sound": null,
+    "notify": true,
+    "statusline": true
+  }
+}
