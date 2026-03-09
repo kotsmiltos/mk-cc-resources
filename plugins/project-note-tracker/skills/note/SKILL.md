@@ -72,7 +72,7 @@ For the default case (research-question), the **entire input is the question**. 
 When the user runs `/note` or `/note help`, print this:
 
 ```
-Project Note Tracker — available commands:
+Project Note Tracker v1.5.0 — available commands:
 
   /note <question>                          Ask a question (handler auto-detected)
   /note <handler> <question>                Ask with explicit handler
