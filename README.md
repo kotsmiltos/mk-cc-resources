@@ -1,15 +1,18 @@
 # mk-cc-resources
 
-Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, and cross-platform alerts.
+Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, and repo auditing.
 
 ## Quick Start
 
 ```bash
+# Add the marketplace (one time)
 claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
-claude plugin install mk-cc-all    # everything in one go
+
+# Install all skills
+claude plugin install mk-cc-all
 ```
 
-### Install individually
+### Install skills individually
 
 ```bash
 claude plugin install schema-scout
@@ -17,10 +20,49 @@ claude plugin install miltiaze
 claude plugin install ladder-build
 claude plugin install project-structure
 claude plugin install repo-audit
+```
+
+## Alert Sounds (separate install)
+
+Audio and visual alerts for Claude Code events. **Not included in `mk-cc-all`** — this is a hook-based plugin that must be installed on its own.
+
+```bash
 claude plugin install alert-sounds
 ```
 
-## What's Included
+That's it — hooks are registered automatically on install. No extra configuration needed.
+
+### Platform support
+
+- **Windows**: `[Console]::Beep` tones, balloon notifications with terminal focus, taskbar flash
+- **WSL2**: Automatically detected — routes all audio/notifications through `powershell.exe` on the Windows host
+- **macOS**: System sounds via `afplay`, Notification Center via `osascript`, dock icon bounce
+- **Linux**: `paplay` / `ffplay` / `aplay` fallback chain, `notify-send` desktop notifications
+- All platforms fall back to terminal bell (`\a`) if no audio tool is available
+
+### Events
+
+| Event | When | Sound |
+|---|---|---|
+| `stop` | Task finished | Rising three-tone chime |
+| `permission` | Tool needs approval | Double-tap + high tone |
+| `idle` | Waiting for input | Low double-pulse + rise |
+
+### Configuration
+
+Edit `config.json` in the plugin directory to toggle features per event:
+
+```json
+{
+  "stop":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
+  "permission": { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
+  "idle":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true }
+}
+```
+
+Set `"sound"` to a file path (mp3/wav/ogg/aiff) to use a custom sound instead of built-in tones. Set `"beep": false` to disable sounds for an event entirely.
+
+## Skills Reference
 
 ### Schema Scout
 
@@ -81,27 +123,6 @@ Use the `/project-structure` command to generate or refresh the structure.
 ### Repo Audit
 
 Read-only codebase analysis with a cross-cutting amendment protocol — enforced change workflow with snapshot and pattern lookup consultation.
-
-### Alert Sounds
-
-Cross-platform audio and visual alerts for Claude Code lifecycle events (task done, permission needed, idle).
-
-- **Windows**: `[Console]::Beep` tones, balloon notifications with terminal focus, taskbar flash
-- **WSL2**: Automatically detected — routes all audio/notifications through `powershell.exe` on the Windows host
-- **macOS**: System sounds via `afplay`, Notification Center via `osascript`, dock icon bounce
-- **Linux**: `paplay` / `ffplay` / `aplay` fallback chain, `notify-send` desktop notifications
-
-All features are configurable per event in `config.json`:
-
-```json
-{
-  "stop":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
-  "permission": { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
-  "idle":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true }
-}
-```
-
-Set `"sound"` to a file path (mp3/wav/ogg/aiff) to use a custom sound instead of built-in tones.
 
 ## Credits
 
