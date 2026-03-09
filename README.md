@@ -1,19 +1,12 @@
 # mk-cc-resources
 
-Custom Claude Code skills — data exploration, multi-dimensional research, and incremental build pipelines.
+Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, and cross-platform alerts.
 
-## Installation
-
-Add the marketplace, then install individual plugins or the full bundle:
+## Quick Start
 
 ```bash
 claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
-```
-
-### Install everything
-
-```bash
-claude plugin install mk-cc-all
+claude plugin install mk-cc-all    # everything in one go
 ```
 
 ### Install individually
@@ -23,6 +16,8 @@ claude plugin install schema-scout
 claude plugin install miltiaze
 claude plugin install ladder-build
 claude plugin install project-structure
+claude plugin install repo-audit
+claude plugin install alert-sounds
 ```
 
 ## What's Included
@@ -82,6 +77,31 @@ Generates and maintains a live annotated project structure map inside the projec
 - Uses `<!-- STRUCTURE:START -->` / `<!-- STRUCTURE:END -->` markers for targeted updates
 
 Use the `/project-structure` command to generate or refresh the structure.
+
+### Repo Audit
+
+Read-only codebase analysis with a cross-cutting amendment protocol — enforced change workflow with snapshot and pattern lookup consultation.
+
+### Alert Sounds
+
+Cross-platform audio and visual alerts for Claude Code lifecycle events (task done, permission needed, idle).
+
+- **Windows**: `[Console]::Beep` tones, balloon notifications with terminal focus, taskbar flash
+- **WSL2**: Automatically detected — routes all audio/notifications through `powershell.exe` on the Windows host
+- **macOS**: System sounds via `afplay`, Notification Center via `osascript`, dock icon bounce
+- **Linux**: `paplay` / `ffplay` / `aplay` fallback chain, `notify-send` desktop notifications
+
+All features are configurable per event in `config.json`:
+
+```json
+{
+  "stop":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
+  "permission": { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
+  "idle":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true }
+}
+```
+
+Set `"sound"` to a file path (mp3/wav/ogg/aiff) to use a custom sound instead of built-in tones.
 
 ## Credits
 
