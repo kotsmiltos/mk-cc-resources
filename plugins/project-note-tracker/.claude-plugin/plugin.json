@@ -1,6 +1,6 @@
 {
   "name": "project-note-tracker",
-  "description": "Track questions per handler/department across projects. Research answers from project context, log to Excel, generate meeting agendas.",
+  "description": "Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself.",
   "author": {
     "name": "kotsmiltos"
   }

@@ -1,6 +1,6 @@
 # Project Note Tracker
 
-Track questions per handler/department across projects. Claude researches answers from your project files, logs everything to an Excel tracker, and generates meeting agendas from unanswered questions.
+Track questions per handler/department across projects. Claude auto-detects which handler should answer, researches from your project files, logs everything to an Excel tracker, and generates meeting agendas from unanswered questions.
 
 ## Install
 
@@ -19,7 +19,7 @@ claude plugin install project-note-tracker
 /note init
 ```
 
-You'll be asked for handler names (departments, teams, stakeholders) and optional project context. This creates:
+You'll be asked for handler names (departments, teams, stakeholders) and optional project context. If you're in a git repo, `project-notes/` is automatically added to `.gitignore`. This creates:
 
 ```
 project-notes/
@@ -51,14 +51,20 @@ Edit each handler's `research.md` to tell Claude what to look for:
 ### 3. Ask a question
 
 ```
-/note operations What is the expected timeline for card reversal processing?
+/note What is the expected timeline for card reversal processing?
 ```
 
-Claude researches **in the background** — you can keep working. When done, it appends a row to `tracker.xlsx`:
+Claude **auto-detects the handler** based on the question and each handler's research.md focus areas, then researches **in the background** — you can keep working. When done, it appends a row to `tracker.xlsx`:
 
 | Handler | Question | Internal Review | Handler Answer | Status |
 |---|---|---|---|---|
 | Operations | What is the expected timeline for card reversal processing? | Based on Card_Reversal_Process_Comparison.xlsx, domestic reversals have a 24h window. Code at src/config/timeouts.ts:23 shows REVERSAL_TIMEOUT_MS=30000. These conflict — docs say 24h but code has 30s timeout for the API call, not the full process. | | Pending |
+
+You can also specify the handler explicitly if you prefer:
+
+```
+/note operations What is the expected timeline for card reversal processing?
+```
 
 ### 4. Generate a meeting agenda
 
@@ -67,6 +73,12 @@ Claude researches **in the background** — you can keep working. When done, it 
 ```
 
 Produces a prioritized agenda grouped by handler, with "Pending" items (no answer) before "Answered Internally" items (need confirmation).
+
+Filter to a specific handler:
+
+```
+/note agenda operations
+```
 
 ### 5. After the meeting — resolve questions
 
@@ -82,21 +94,31 @@ Updates the row's Handler Answer and sets status to **Completed**.
 /note add Risk
 ```
 
+### 7. Remove all traces from a project
+
+```
+/note dump
+```
+
+Deletes the entire `project-notes/` directory (asks for confirmation first).
+
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `/note init` | Create project-notes directory, tracker.xlsx, handler folders |
-| `/note <handler> <question>` | Research question in background, append to Excel |
+| `/note <question>` | Auto-detect handler, research in background, append to Excel |
+| `/note <handler> <question>` | Explicitly assign handler, research in background, append to Excel |
 | `/note add <handler>` | Add a new handler with research.md template |
-| `/note agenda` | Generate meeting agenda from pending questions |
+| `/note agenda [handler]` | Generate meeting agenda (all or filtered by handler) |
 | `/note resolve <handler> "<question>" <answer>` | Mark question as completed with the confirmed answer |
+| `/note dump` | Remove all project-notes from the current project |
 
 ## Excel Columns
 
 | Column | Who fills it | When |
 |---|---|---|
-| **Handler** | Auto | When question is logged |
+| **Handler** | Auto (detected or explicit) | When question is logged |
 | **Question** | You (via `/note`) | When question is logged |
 | **Internal Review** | Claude | During background research |
 | **Handler Answer** | You (via `/note resolve` or manually) | After meeting/call |
@@ -113,7 +135,8 @@ Updates the row's Handler Answer and sets status to **Completed**.
 
 ## Tips
 
-- **Be specific in research.md** — the more you tell Claude about where to look and what terminology to use, the better the Internal Review will be
+- **Be specific in research.md** — the more you tell Claude about where to look and what terminology to use, the better the auto-detection and Internal Review will be
 - **Use scout indexes** — if you've indexed Excel/CSV files with Schema Scout, mention the `.scout-index.json` files in research.md so Claude can reference them
 - **Batch questions** — run multiple `/note` commands back to back; they each research in the background
 - **Review before meetings** — run `/note agenda` to get a clean list of what to ask
+- **Handler auto-detection** — works best when each handler's research.md clearly describes their focus areas and terminology

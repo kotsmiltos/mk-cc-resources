@@ -127,13 +127,15 @@ Read-only codebase analysis with a cross-cutting amendment protocol — enforced
 
 ### Project Note Tracker
 
-Track questions per handler/department across projects. Research answers from project context, log to an Excel tracker, generate meeting agendas.
+Track questions per handler/department across projects. Claude auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, and generates meeting agendas. Requires `uv` on PATH.
 
-- `/note init` — set up `project-notes/` with handlers and tracker.xlsx
-- `/note <handler> <question>` — research the question in the background using project files, append findings to Excel
+- `/note init` — set up `project-notes/` with handlers and tracker.xlsx (auto-gitignored)
+- `/note <question>` — auto-detect handler, research in background, append to Excel
+- `/note <handler> <question>` — explicitly assign handler (optional)
 - `/note add <handler>` — add a new handler/department
-- `/note agenda` — generate a meeting agenda from all pending questions
+- `/note agenda [handler]` — generate a meeting agenda (all or filtered by handler)
 - `/note resolve <handler> "<question>" <answer>` — mark a question as completed
+- `/note dump` — remove all project-notes from the current project
 
 **Excel columns:** Handler | Question | Internal Review | Handler Answer | Status
 
@@ -142,7 +144,7 @@ Track questions per handler/department across projects. Research answers from pr
 - **Pending** — needs to be asked in a call
 - **Completed** — confirmed by the handler
 
-Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
+Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. The better your research.md files are, the better the auto-detection and research quality. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
 
 ## Credits
 

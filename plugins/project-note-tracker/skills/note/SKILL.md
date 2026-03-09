@@ -1,6 +1,6 @@
 ---
 name: note
-description: Track questions per handler/department. Research answers from project context, log to Excel, generate meeting agendas. Use /note to ask a question, /note init to set up, /note agenda to prepare for meetings.
+description: Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself. Use /note to ask a question, /note init to set up, /note agenda to prepare for meetings.
 ---
 
 <essential_principles>
@@ -32,11 +32,12 @@ Parse the user's input after `/note`. The first word determines the subcommand:
 |---|---|---|
 | `init` | workflows/init.md | `/note init` |
 | `add` | workflows/add-handler.md | `/note add Risk` |
-| `agenda` | workflows/agenda.md | `/note agenda` |
+| `agenda` | workflows/agenda.md | `/note agenda` or `/note agenda operations` |
 | `resolve` | workflows/resolve.md | `/note resolve operations "reversal timeout" The answer is 24h` |
-| anything else | workflows/research-question.md | `/note operations What is the reversal timeout?` |
+| `dump` | workflows/dump.md | `/note dump` |
+| anything else | workflows/research-question.md | `/note What is the reversal timeout?` |
 
-For the default case (research-question), the first word is the handler name and everything after is the question.
+For the default case (research-question), the **entire input is the question**. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
 
 </intake>
 
@@ -46,9 +47,10 @@ For the default case (research-question), the first word is the handler name and
 |---|---|---|
 | Input starts with "init" | Initialize project-notes | workflows/init.md |
 | Input starts with "add" | Add a new handler | workflows/add-handler.md |
-| Input starts with "agenda" | Generate meeting agenda | workflows/agenda.md |
+| Input starts with "agenda" | Generate meeting agenda (optionally filtered by handler) | workflows/agenda.md |
 | Input starts with "resolve" | Mark question as resolved | workflows/resolve.md |
-| Default (handler + question) | Research and log question | workflows/research-question.md |
+| Input starts with "dump" | Remove all project-notes from the project | workflows/dump.md |
+| Default (question) | Auto-detect handler, research, and log question | workflows/research-question.md |
 
 </routing>
 

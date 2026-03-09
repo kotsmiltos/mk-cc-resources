@@ -4,12 +4,25 @@
 
 This workflow MUST run in the background using the Agent tool so the user can keep working.
 
-### Step 1: Parse input
-The input format is: `<handler> <question>`
-- First word = handler name
-- Everything after = the question
+### Step 1: Parse input and detect handler
 
-Verify the handler directory exists at `project-notes/<handler>/`. If not, suggest running `/note add <handler>` first.
+The entire input is the question. The handler is auto-detected.
+
+**Explicit handler override:** If the first word (case-insensitive) matches a known handler directory in `project-notes/`, treat it as an explicit handler and the rest as the question. Example: `/note operations What is the reversal timeout?` → handler=operations, question="What is the reversal timeout?"
+
+**Auto-detection (default):** If the first word does NOT match a known handler:
+1. List handler directories in `project-notes/`
+2. Read each handler's `research.md` to understand their focus areas
+3. Pick the handler whose focus areas best match the question's topic
+4. If unclear, pick the closest match and note it in the Internal Review
+
+To list handlers:
+```bash
+TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+uvx --with openpyxl python3 "$TRACKER_PY" list-handlers project-notes
+```
+
+Normalize the handler name to **lowercase** (e.g., "Operations" → "operations").
 
 ### Step 2: Launch background research agent
 Use the Agent tool with `run_in_background: true` and pass it these instructions:
@@ -42,6 +55,7 @@ Use the Agent tool with `run_in_background: true` and pass it these instructions
 
 6. **Format the Internal Review:**
    Include:
+   - Which handler was auto-assigned and why (if auto-detected)
    - Source file paths with line numbers where applicable
    - Key quotes or data points
    - Your synthesized answer or partial findings
@@ -58,12 +72,15 @@ Use the Agent tool with `run_in_background: true` and pass it these instructions
 ---
 
 ### Step 3: Confirm to user
-Tell the user: "Researching in the background — I'll notify you when done."
+Tell the user: "Researching in the background (auto-assigned to **<handler>**) — I'll notify you when done."
+
+If the handler was explicitly provided, just say: "Researching in the background — I'll notify you when done."
 
 </process>
 
 <success_criteria>
 Research is complete when:
+- [ ] Handler was identified (auto-detected or explicit)
 - [ ] Research instructions were read
 - [ ] Project files were scanned based on those instructions
 - [ ] A row was appended to tracker.xlsx
