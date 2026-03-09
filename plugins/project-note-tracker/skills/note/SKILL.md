@@ -15,7 +15,7 @@ A project-level question tracker. You log questions for different handlers (depa
 2. **Each handler has a `research.md`** in `project-notes/<handler>/research.md` — read it BEFORE researching
 3. **Research uses project files only** — scan docs, code, scout indexes, configs in the current project
 4. **Research is context-gathering, NOT answering** — the Internal Review documents what the codebase currently says about the topic (existing implementations, configs, relevant code paths). It does NOT try to answer the question. The question remains open for the handler to answer in a meeting.
-5. **Status reflects whether context was found** — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files.
+5. **Status reflects whether context was found** — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files. "Decided" means a decision was made with rationale. "Completed" means confirmed by the handler.
 6. **Background execution** — research questions using the Agent tool with `run_in_background: true` so the user can keep working
 7. **Excel I/O uses tracker.py** — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
 8. **Find tracker.py** by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
@@ -40,6 +40,8 @@ Parse the user's input after `/note`. The first word determines the subcommand:
 | `dump` | workflows/dump.md | `/note dump` |
 | `review` | workflows/review.md | `/note review` or `/note review 3` |
 | `quick` | workflows/quick.md | `/note quick What is the SLA?` |
+| `meeting` | workflows/meeting.md | `/note meeting` |
+| `decide` | workflows/resolve.md (with Decided status) | `/note decide operations "reversal" We go with 24h window` |
 | anything else | workflows/research-question.md | `/note What is the reversal timeout?` |
 
 For the default case (research-question), the **entire input is the question**. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
@@ -59,6 +61,8 @@ For the default case (research-question), the **entire input is the question**. 
 | Input starts with "dump" | Remove all project-notes from the project | workflows/dump.md |
 | Input starts with "review" | Re-review existing questions with fresh context | workflows/review.md |
 | Input starts with "quick" | Quick-add question without research | workflows/quick.md |
+| Input starts with "meeting" | Interactive meeting capture with auto-linking | workflows/meeting.md |
+| Input starts with "decide" | Mark question as decided with rationale | workflows/resolve.md (use `decide` command in tracker.py) |
 | Default (question) | Auto-detect handler, research, and log question | workflows/research-question.md |
 
 </routing>
@@ -76,7 +80,9 @@ Project Note Tracker — available commands:
   /note add <handler>                       Add a new handler
   /note agenda [handler]                    Generate meeting agenda (all or filtered)
   /note quick <question>                     Log question without research (Pending)
+  /note meeting                              Start interactive meeting capture
   /note resolve <handler> "question" answer Mark question as completed
+  /note decide <handler> "question" decision Mark question as decided with rationale
   /note dump                                Remove all project-notes from project
   /note review [row]                         Re-review questions with fresh context
   /note doctor                              Upgrade tracker.xlsx to latest formatting
@@ -86,6 +92,7 @@ Status values in tracker.xlsx:
   Answered Internally  — relevant context found in codebase (question still open)
   Pending              — little or no context found (needs discussion)
   Completed            — confirmed by handler after meeting
+  Decided              — decision made with rationale recorded
 ```
 
 </help>
@@ -115,6 +122,7 @@ uvx --with openpyxl python3 "$TRACKER_PY" <command> <args>
 | `add <dir> <handler> <question> <review> <status>` | Append a question row |
 | `pending <dir> [--handler <name>]` | List pending questions as JSON |
 | `resolve <dir> <row> <answer>` | Mark row as Completed with answer |
+| `decide <dir> <row> <decision+rationale>` | Mark row as Decided with rationale |
 | `add-handler <dir> <handler>` | Create new handler directory |
 | `list-handlers <dir>` | List all handler directories |
 | `update-review <dir> <row> <review> <status>` | Update Internal Review and Status on existing row |

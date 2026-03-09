@@ -36,7 +36,8 @@ COLUMNS = ["Handler", "Question", "Internal Review", "Handler Answer", "Status",
 STATUS_ANSWERED = "Answered Internally"
 STATUS_PENDING = "Pending"
 STATUS_COMPLETED = "Completed"
-STATUS_LIST = f'"{STATUS_ANSWERED},{STATUS_PENDING},{STATUS_COMPLETED}"'
+STATUS_DECIDED = "Decided"
+STATUS_LIST = f'"{STATUS_ANSWERED},{STATUS_PENDING},{STATUS_COMPLETED},{STATUS_DECIDED}"'
 STATUS_COL_INDEX = 5  # column E
 STATUS_COL_RANGE = "E2:E1000"
 
@@ -58,6 +59,10 @@ CF_RULES = [
     (STATUS_COMPLETED, DifferentialStyle(
         font=Font(color="2F5496", bold=True),
         fill=PatternFill(bgColor="D9E2F3"),
+    )),
+    (STATUS_DECIDED, DifferentialStyle(
+        font=Font(color="7030A0", bold=True),
+        fill=PatternFill(bgColor="E8D5F5"),
     )),
 ]
 
@@ -201,7 +206,7 @@ def cmd_pending(directory: str, handler_filter: str | None = None) -> None:
         if len(values) < 5:
             continue
         handler, question, review, answer, status = values[0], values[1], values[2], values[3], values[4]
-        if status and status.strip() == STATUS_COMPLETED:
+        if status and status.strip() in (STATUS_COMPLETED, STATUS_DECIDED):
             continue
         if handler_filter and handler and handler.lower() != handler_filter.lower():
             continue
@@ -240,6 +245,29 @@ def cmd_resolve(directory: str, row_num: int, answer: str) -> None:
 
     question = ws.cell(row=row_num, column=2).value
     print(json.dumps({"status": "ok", "row": row_num, "question": question, "marked": STATUS_COMPLETED}))
+
+
+def cmd_decide(directory: str, row_num: int, decision: str) -> None:
+    """Set a row's Handler Answer to the decision + rationale and mark as Decided."""
+    tracker = _tracker_path(directory)
+    if not tracker.exists():
+        print("tracker.xlsx not found.", file=sys.stderr)
+        sys.exit(1)
+
+    wb = load_workbook(tracker)
+    ws = wb.active
+    if row_num < 2 or row_num > ws.max_row:
+        print(f"Row {row_num} out of range (2-{ws.max_row}).", file=sys.stderr)
+        sys.exit(1)
+
+    ws.cell(row=row_num, column=4, value=decision).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=STATUS_COL_INDEX, value=STATUS_DECIDED).alignment = Alignment(
+        horizontal="center", vertical="top"
+    )
+    wb.save(tracker)
+
+    question = ws.cell(row=row_num, column=2).value
+    print(json.dumps({"status": "ok", "row": row_num, "question": question, "marked": STATUS_DECIDED}))
 
 
 def cmd_update_review(directory: str, row_num: int, internal_review: str, status: str) -> None:
@@ -366,6 +394,12 @@ def main() -> None:
             print("Usage: tracker.py resolve <dir> <row_number> <answer>", file=sys.stderr)
             sys.exit(1)
         cmd_resolve(sys.argv[2], int(sys.argv[3]), sys.argv[4])
+
+    elif cmd == "decide":
+        if len(sys.argv) < 5:
+            print("Usage: tracker.py decide <dir> <row_number> <decision+rationale>", file=sys.stderr)
+            sys.exit(1)
+        cmd_decide(sys.argv[2], int(sys.argv[3]), sys.argv[4])
 
     elif cmd == "add-handler":
         if len(sys.argv) < 4:

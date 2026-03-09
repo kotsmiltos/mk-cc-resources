@@ -135,7 +135,9 @@ Track questions per handler/department across projects. Claude auto-detects whic
 - `/note quick <question>` — log question without research (Pending, review later)
 - `/note add <handler>` — add a new handler/department
 - `/note agenda [handler]` — generate a meeting agenda (all or filtered by handler)
+- `/note meeting` — interactive meeting capture with auto-linking to open questions
 - `/note resolve <handler> "<question>" <answer>` — mark a question as completed
+- `/note decide <handler> "<question>" <decision>` — mark as decided with rationale
 - `/note dump` — remove all project-notes from the current project
 - `/note review [row]` — re-review questions with fresh context
 - `/note doctor` — upgrade tracker.xlsx to latest formatting
@@ -147,6 +149,7 @@ Track questions per handler/department across projects. Claude auto-detects whic
 - **Answered Internally** — relevant context found in codebase (question still open)
 - **Pending** — little or no context found, needs discussion
 - **Completed** — confirmed by the handler
+- **Decided** — decision made with rationale
 
 Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. The better your research.md files are, the better the auto-detection and research quality. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
 

@@ -112,7 +112,9 @@ Deletes the entire `project-notes/` directory (asks for confirmation first).
 | `/note quick <question>` | Log question immediately without research (auto-detects handler, status: Pending) |
 | `/note add <handler>` | Add a new handler with research.md template |
 | `/note agenda [handler]` | Generate meeting agenda (all or filtered by handler) |
+| `/note meeting` | Interactive meeting capture — links discussion to open questions |
 | `/note resolve <handler> "<question>" <answer>` | Mark question as completed with the confirmed answer |
+| `/note decide <handler> "<question>" <decision>` | Mark question as decided with rationale |
 | `/note dump` | Remove all project-notes from the current project |
 | `/note review [row]` | Re-review questions with fresh context from current codebase |
 | `/note doctor` | Upgrade tracker.xlsx to latest formatting (colors, dropdowns) |
@@ -136,8 +138,9 @@ Deletes the entire `project-notes/` directory (asks for confirmation first).
 | **Answered Internally** | Relevant context found in codebase (question still open) |
 | **Pending** | Little or no context found — needs discussion |
 | **Completed** | Confirmed by the handler |
+| **Decided** | Decision made with rationale recorded |
 
-Status cells are **color-coded** (green/orange/blue) and have a **dropdown** for easy editing in Excel.
+Status cells are **color-coded** (green/orange/blue/purple) with **conditional formatting** and a **dropdown** — colors update automatically when you change the status in Excel.
 
 ## Tips
 
