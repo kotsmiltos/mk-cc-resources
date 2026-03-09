@@ -1,6 +1,6 @@
 {
-  "name": "mk-cc-resources",
-  "description": "Custom Claude Code skills — data exploration, multi-dimensional research, incremental build pipelines, and repo audit with cross-cutting amendment protocol",
+  "name": "mk-cc-all",
+  "description": "All mk-cc-resources plugins in one install: Schema Scout, Miltiaze, Ladder Build, Repo Audit, and Alert Sounds.",
   "version": "1.2.0",
   "author": {
     "name": "kotsmiltos"
