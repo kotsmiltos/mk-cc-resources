@@ -1,0 +1,7 @@
+{
+  "name": "project-note-tracker",
+  "description": "Track questions per handler/department across projects. Research answers from project context, log to Excel, generate meeting agendas.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

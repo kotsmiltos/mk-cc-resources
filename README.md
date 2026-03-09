@@ -1,6 +1,6 @@
 # mk-cc-resources
 
-Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, and repo auditing.
+Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
 
 ## Quick Start
 
@@ -20,6 +20,7 @@ claude plugin install miltiaze
 claude plugin install ladder-build
 claude plugin install project-structure
 claude plugin install repo-audit
+claude plugin install project-note-tracker
 ```
 
 ## Alert Sounds (separate install)
@@ -123,6 +124,25 @@ Use the `/project-structure` command to generate or refresh the structure.
 ### Repo Audit
 
 Read-only codebase analysis with a cross-cutting amendment protocol — enforced change workflow with snapshot and pattern lookup consultation.
+
+### Project Note Tracker
+
+Track questions per handler/department across projects. Research answers from project context, log to an Excel tracker, generate meeting agendas.
+
+- `/note init` — set up `project-notes/` with handlers and tracker.xlsx
+- `/note <handler> <question>` — research the question in the background using project files, append findings to Excel
+- `/note add <handler>` — add a new handler/department
+- `/note agenda` — generate a meeting agenda from all pending questions
+- `/note resolve <handler> "<question>" <answer>` — mark a question as completed
+
+**Excel columns:** Handler | Question | Internal Review | Handler Answer | Status
+
+**Status values:**
+- **Answered Internally** — strong evidence found in project files
+- **Pending** — needs to be asked in a call
+- **Completed** — confirmed by the handler
+
+Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
 
 ## Credits
 
