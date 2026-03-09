@@ -113,6 +113,9 @@ Deletes the entire `project-notes/` directory (asks for confirmation first).
 | `/note agenda [handler]` | Generate meeting agenda (all or filtered by handler) |
 | `/note resolve <handler> "<question>" <answer>` | Mark question as completed with the confirmed answer |
 | `/note dump` | Remove all project-notes from the current project |
+| `/note review [row]` | Re-review questions with fresh context from current codebase |
+| `/note doctor` | Upgrade tracker.xlsx to latest formatting (colors, dropdowns) |
+| `/note help` | Show available commands |
 
 ## Excel Columns
 
@@ -129,9 +132,11 @@ Deletes the entire `project-notes/` directory (asks for confirmation first).
 
 | Status | Meaning |
 |---|---|
-| **Answered Internally** | Claude found strong evidence in project files |
-| **Pending** | Partial or no evidence — needs to be asked |
+| **Answered Internally** | Relevant context found in codebase (question still open) |
+| **Pending** | Little or no context found — needs discussion |
 | **Completed** | Confirmed by the handler |
+
+Status cells are **color-coded** (green/orange/blue) and have a **dropdown** for easy editing in Excel.
 
 ## Tips
 

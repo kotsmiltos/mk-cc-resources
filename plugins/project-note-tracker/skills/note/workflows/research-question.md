@@ -1,8 +1,8 @@
 <process>
 
-## Research a question and log it
+## Gather context for a question and log it
 
-This workflow MUST run in the background using the Agent tool so the user can keep working.
+Research runs in the background. The agent gathers context only (Read, Glob, Grep) — it does NOT try to answer the question. It documents what the codebase currently says about the topic. The **main conversation** writes to Excel after the agent completes — this avoids Bash access issues in background agents.
 
 ### Step 1: Parse input and detect handler
 
@@ -11,16 +11,10 @@ The entire input is the question. The handler is auto-detected.
 **Explicit handler override:** If the first word (case-insensitive) matches a known handler directory in `project-notes/`, treat it as an explicit handler and the rest as the question. Example: `/note operations What is the reversal timeout?` → handler=operations, question="What is the reversal timeout?"
 
 **Auto-detection (default):** If the first word does NOT match a known handler:
-1. List handler directories in `project-notes/`
+1. List handler directories in `project-notes/` (just read the directory — no Bash needed)
 2. Read each handler's `research.md` to understand their focus areas
 3. Pick the handler whose focus areas best match the question's topic
 4. If unclear, pick the closest match and note it in the Internal Review
-
-To list handlers:
-```bash
-TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
-uvx --with openpyxl python3 "$TRACKER_PY" list-handlers project-notes
-```
 
 Normalize the handler name to **lowercase** (e.g., "Operations" → "operations").
 
@@ -31,43 +25,47 @@ Use the Agent tool with `run_in_background: true` and pass it these instructions
 
 **Agent instructions:**
 
-1. **Find tracker.py:**
-   ```bash
-   TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
-   ```
+You are gathering context for a question in the project-note-tracker. Do NOT write to Excel or run Bash commands. Do NOT try to answer the question — your job is to document what the codebase currently says about this topic.
 
-2. **Read research instructions:**
+**Handler:** <handler>
+**Question:** <question>
+
+1. **Read research instructions:**
    Read `project-notes/<handler>/research.md` to understand WHERE to look and WHAT matters for this handler.
 
-3. **Read project context (if exists):**
-   Read `project-notes/config.md` for project-wide context.
+2. **Read project context (if exists):**
+   Read `project-notes/config.md` for project-wide context, including output language preferences.
 
-4. **Research the question:**
+3. **Gather context about the topic:**
    Based on the research instructions:
    - Use Glob to find relevant files (docs, configs, code, scout indexes)
    - Use Grep to search for keywords from the question
    - Read the most relevant files (limit to 5-8 files max)
-   - Synthesize findings with specific source references
+   - Document what currently exists: implementations, configurations, code paths, behaviors
 
-5. **Determine status:**
-   - If you found strong, clear evidence that answers the question → `"Answered Internally"`
-   - If evidence is partial, conflicting, or uncertain → `"Pending"`
+4. **Determine status:**
+   - `"Answered Internally"` = the codebase has clear, relevant context about this topic (existing code, docs, configs that relate directly to the question)
+   - `"Pending"` = little or no relevant context found in project files
 
-6. **Format the Internal Review:**
-   Include:
-   - Which handler was auto-assigned and why (if auto-detected)
-   - Source file paths with line numbers where applicable
-   - Key quotes or data points
-   - Your synthesized answer or partial findings
-   - Any conflicts or gaps in the evidence
+5. **Format the Internal Review:**
+   Frame as **"here's what exists in the codebase"**, NOT as an answer to the question. The question remains open for the handler.
+   - Document current implementations with file paths and line numbers
+   - Include relevant code snippets or quotes from docs
+   - Note what IS implemented vs what IS NOT
+   - Flag any gaps, conflicts, or missing pieces
+   - If auto-detected, note which handler was assigned and why
 
-7. **Append to tracker:**
-   ```bash
-   uvx --with openpyxl python3 "$TRACKER_PY" add project-notes "<handler>" "<question>" "<internal_review>" "<status>"
-   ```
-   IMPORTANT: Quote all arguments properly. The internal review may contain special characters — use a heredoc or temp file if needed.
+6. **Return your findings in this exact format:**
 
-8. **Report back:** Summarize what you found and what status you assigned.
+```
+HANDLER: <handler>
+QUESTION: <question>
+STATUS: <Answered Internally or Pending>
+INTERNAL_REVIEW:
+<your context documentation here>
+```
+
+That's it — do NOT run Bash, do NOT write to Excel, do NOT write files. Just gather context and return findings.
 
 ---
 
@@ -76,6 +74,18 @@ Tell the user: "Researching in the background (auto-assigned to **<handler>**) �
 
 If the handler was explicitly provided, just say: "Researching in the background — I'll notify you when done."
 
+### Step 4: When the agent completes — write to Excel
+When the background agent returns, parse its findings and write to Excel:
+
+```bash
+TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+uvx --with openpyxl python3 "$TRACKER_PY" add project-notes "<handler>" "<question>" "<internal_review>" "<status>"
+```
+
+IMPORTANT: Quote all arguments properly. The internal review may contain special characters — use a heredoc or temp file if needed.
+
+Then briefly tell the user: logged to tracker.xlsx as **<status>** under **<handler>**.
+
 </process>
 
 <success_criteria>
@@ -83,7 +93,8 @@ Research is complete when:
 - [ ] Handler was identified (auto-detected or explicit)
 - [ ] Research instructions were read
 - [ ] Project files were scanned based on those instructions
-- [ ] A row was appended to tracker.xlsx
-- [ ] Status accurately reflects confidence level
-- [ ] Internal Review includes source paths and evidence
+- [ ] Agent returned structured findings (no Bash used by agent)
+- [ ] Main conversation wrote the row to tracker.xlsx
+- [ ] Status reflects whether relevant context was found (not whether the question is "answered")
+- [ ] Internal Review documents existing state, not an answer
 </success_criteria>

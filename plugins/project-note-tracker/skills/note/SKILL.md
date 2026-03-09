@@ -7,20 +7,21 @@ description: Track questions per handler/department. Auto-detects which handler 
 
 ## Purpose
 
-A project-level question tracker. You log questions for different handlers (departments, teams, stakeholders), Claude researches answers from project files, and everything goes into an Excel tracker. Before meetings, generate an agenda from unanswered questions.
+A project-level question tracker. You log questions for different handlers (departments, teams, stakeholders), Claude gathers context from project files, and everything goes into an Excel tracker. Before meetings, generate an agenda from open questions.
 
 ### Core Rules
 
 1. **All questions go to `project-notes/tracker.xlsx`** — one file per project, never split
 2. **Each handler has a `research.md`** in `project-notes/<handler>/research.md` — read it BEFORE researching
 3. **Research uses project files only** — scan docs, code, scout indexes, configs in the current project
-4. **Status is honest** — "Answered Internally" only when evidence is strong; "Pending" when uncertain
-5. **Background execution** — research questions using the Agent tool with `run_in_background: true` so the user can keep working
-6. **Excel I/O uses tracker.py** — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
-7. **Find tracker.py** by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
-8. **Internal Review column is detailed** — include source file paths, line numbers, relevant quotes
-9. **Handler Answer column stays empty** — the user fills this after meetings
-10. **Dates are automatic** — tracker.py adds them
+4. **Research is context-gathering, NOT answering** — the Internal Review documents what the codebase currently says about the topic (existing implementations, configs, relevant code paths). It does NOT try to answer the question. The question remains open for the handler to answer in a meeting.
+5. **Status reflects whether context was found** — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files.
+6. **Background execution** — research questions using the Agent tool with `run_in_background: true` so the user can keep working
+7. **Excel I/O uses tracker.py** — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
+8. **Find tracker.py** by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
+9. **Internal Review column documents existing state** — include source file paths, line numbers, relevant quotes, current behavior. Frame as "here's what exists" not "here's the answer"
+10. **Handler Answer column stays empty** — the user fills this after meetings
+11. **Dates are automatic** — tracker.py adds them
 
 </essential_principles>
 
@@ -30,11 +31,14 @@ Parse the user's input after `/note`. The first word determines the subcommand:
 
 | First word | Route to | Example |
 |---|---|---|
+| `help` | Show available commands | `/note help` |
 | `init` | workflows/init.md | `/note init` |
+| `doctor` | workflows/doctor.md | `/note doctor` |
 | `add` | workflows/add-handler.md | `/note add Risk` |
 | `agenda` | workflows/agenda.md | `/note agenda` or `/note agenda operations` |
 | `resolve` | workflows/resolve.md | `/note resolve operations "reversal timeout" The answer is 24h` |
 | `dump` | workflows/dump.md | `/note dump` |
+| `review` | workflows/review.md | `/note review` or `/note review 3` |
 | anything else | workflows/research-question.md | `/note What is the reversal timeout?` |
 
 For the default case (research-question), the **entire input is the question**. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
@@ -45,14 +49,43 @@ For the default case (research-question), the **entire input is the question**. 
 
 | Signal | Workflow | File |
 |---|---|---|
+| Input is empty or "help" | Show available commands | (inline — print the help table below) |
 | Input starts with "init" | Initialize project-notes | workflows/init.md |
+| Input starts with "doctor" | Upgrade tracker.xlsx to latest format | workflows/doctor.md |
 | Input starts with "add" | Add a new handler | workflows/add-handler.md |
 | Input starts with "agenda" | Generate meeting agenda (optionally filtered by handler) | workflows/agenda.md |
 | Input starts with "resolve" | Mark question as resolved | workflows/resolve.md |
 | Input starts with "dump" | Remove all project-notes from the project | workflows/dump.md |
+| Input starts with "review" | Re-review existing questions with fresh context | workflows/review.md |
 | Default (question) | Auto-detect handler, research, and log question | workflows/research-question.md |
 
 </routing>
+
+<help>
+
+When the user runs `/note` or `/note help`, print this:
+
+```
+Project Note Tracker — available commands:
+
+  /note <question>                          Ask a question (handler auto-detected)
+  /note <handler> <question>                Ask with explicit handler
+  /note init                                Set up project-notes/ with handlers
+  /note add <handler>                       Add a new handler
+  /note agenda [handler]                    Generate meeting agenda (all or filtered)
+  /note resolve <handler> "question" answer Mark question as completed
+  /note dump                                Remove all project-notes from project
+  /note review [row]                         Re-review questions with fresh context
+  /note doctor                              Upgrade tracker.xlsx to latest formatting
+  /note help                                Show this help
+
+Status values in tracker.xlsx:
+  Answered Internally  — relevant context found in codebase (question still open)
+  Pending              — little or no context found (needs discussion)
+  Completed            — confirmed by handler after meeting
+```
+
+</help>
 
 <scripts_index>
 
@@ -81,5 +114,7 @@ uvx --with openpyxl python3 "$TRACKER_PY" <command> <args>
 | `resolve <dir> <row> <answer>` | Mark row as Completed with answer |
 | `add-handler <dir> <handler>` | Create new handler directory |
 | `list-handlers <dir>` | List all handler directories |
+| `update-review <dir> <row> <review> <status>` | Update Internal Review and Status on existing row |
+| `doctor <dir>` | Upgrade tracker.xlsx to latest formatting (colors, dropdowns, widths) |
 
 </scripts_index>

@@ -136,12 +136,15 @@ Track questions per handler/department across projects. Claude auto-detects whic
 - `/note agenda [handler]` — generate a meeting agenda (all or filtered by handler)
 - `/note resolve <handler> "<question>" <answer>` — mark a question as completed
 - `/note dump` — remove all project-notes from the current project
+- `/note review [row]` — re-review questions with fresh context
+- `/note doctor` — upgrade tracker.xlsx to latest formatting
+- `/note help` — show available commands
 
-**Excel columns:** Handler | Question | Internal Review | Handler Answer | Status
+**Excel columns:** Handler | Question | Internal Review | Handler Answer | Status (color-coded dropdown)
 
 **Status values:**
-- **Answered Internally** — strong evidence found in project files
-- **Pending** — needs to be asked in a call
+- **Answered Internally** — relevant context found in codebase (question still open)
+- **Pending** — little or no context found, needs discussion
 - **Completed** — confirmed by the handler
 
 Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. The better your research.md files are, the better the auto-detection and research quality. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
