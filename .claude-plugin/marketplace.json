@@ -42,7 +42,7 @@
       "name": "project-note-tracker",
       "source": "./plugins/project-note-tracker",
       "description": "Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself.",
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     {
       "name": "alert-sounds",
@@ -54,7 +54,7 @@
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, Repo Audit, and Project Note Tracker. Alert Sounds must be installed separately.",
-      "version": "1.5.0"
+      "version": "1.6.0"
     }
   ]
 }
