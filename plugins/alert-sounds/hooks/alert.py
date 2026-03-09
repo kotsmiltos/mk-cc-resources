@@ -31,6 +31,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = SCRIPT_DIR / "config.json"
 EVENTS = ("stop", "permission", "idle")
 
+# Detect WSL2 — reports as Linux but should route audio/notifications to Windows
+IS_WSL = False
+if SYSTEM == "Linux":
+    try:
+        IS_WSL = "microsoft" in Path("/proc/version").read_text().lower()
+    except OSError:
+        pass
+
 # ---------------------------------------------------------------------------
 # Built-in tone definitions: list of (frequency_hz, duration_ms) pairs
 # freq=0 means silence (a pause between tones)
@@ -117,11 +125,14 @@ def _play_file_windows(path: str) -> None:
 
 def _play_file_macos(path: str) -> None:
     """Play audio file on macOS via afplay."""
-    subprocess.Popen(
-        ["afplay", path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.Popen(
+            ["afplay", path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        print("\a", end="", flush=True)
 
 
 def _play_file_linux(path: str) -> None:
@@ -142,6 +153,34 @@ def _play_file_linux(path: str) -> None:
     print("\a", end="", flush=True)
 
 
+def _play_file_wsl(path: str) -> None:
+    """Play audio file from WSL2 via powershell.exe on the Windows host."""
+    try:
+        win_path = subprocess.check_output(
+            ["wslpath", "-w", path], text=True
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        print(f"alert: wslpath conversion failed for: {path}", file=sys.stderr)
+        return
+    abs_path = win_path.replace("'", "''")
+    cmd = (
+        "Add-Type -AssemblyName PresentationCore; "
+        "$p = New-Object System.Windows.Media.MediaPlayer; "
+        f"$p.Open([Uri]'{abs_path}'); "
+        "$p.Play(); "
+        "Start-Sleep -Milliseconds 3000; "
+        "$p.Close()"
+    )
+    try:
+        subprocess.Popen(
+            ["powershell.exe", "-NoProfile", "-Command", cmd],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        print("alert: powershell.exe not found in WSL PATH", file=sys.stderr)
+
+
 def play_file(path: str) -> None:
     """Play a sound file using platform-native tools."""
     if not Path(path).is_file():
@@ -152,7 +191,9 @@ def play_file(path: str) -> None:
             print(f"alert: sound file not found: {path}", file=sys.stderr)
             return
 
-    if SYSTEM == "Windows":
+    if IS_WSL:
+        _play_file_wsl(path)
+    elif SYSTEM == "Windows":
         _play_file_windows(path)
     elif SYSTEM == "Darwin":
         _play_file_macos(path)
@@ -179,24 +220,55 @@ def _builtin_windows(tones: list[tuple[int, int]]) -> None:
 
 def _builtin_macos(event: str) -> None:
     sound = MACOS_SOUNDS.get(event, MACOS_SOUNDS["stop"])
-    subprocess.Popen(
-        ["afplay", sound], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-
-
-def _builtin_linux(event: str) -> None:
-    sound = LINUX_SOUNDS.get(event, LINUX_SOUNDS["stop"])
     try:
         subprocess.Popen(
-            ["paplay", sound], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ["afplay", sound], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
     except FileNotFoundError:
         print("\a", end="", flush=True)
 
 
+def _builtin_linux(event: str) -> None:
+    sound = LINUX_SOUNDS.get(event, LINUX_SOUNDS["stop"])
+    players = [
+        ["paplay", sound],
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", sound],
+        ["aplay", sound],
+    ]
+    for cmd in players:
+        try:
+            subprocess.Popen(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            return
+        except FileNotFoundError:
+            continue
+    print("\a", end="", flush=True)  # fallback terminal bell
+
+
+def _builtin_wsl(tones: list[tuple[int, int]]) -> None:
+    """Play built-in tones from WSL2 via powershell.exe on the Windows host."""
+    parts = []
+    for freq, dur in tones:
+        if freq == 0:
+            parts.append(f"Start-Sleep -Milliseconds {dur}")
+        else:
+            parts.append(f"[Console]::Beep({freq},{dur})")
+    try:
+        subprocess.Popen(
+            ["powershell.exe", "-NoProfile", "-Command", "; ".join(parts)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        print("\a", end="", flush=True)  # fallback terminal bell
+
+
 def play_builtin(event: str) -> None:
     """Play built-in tone pattern for the event."""
-    if SYSTEM == "Windows":
+    if IS_WSL:
+        _builtin_wsl(BUILTIN_TONES.get(event, BUILTIN_TONES["stop"]))
+    elif SYSTEM == "Windows":
         _builtin_windows(BUILTIN_TONES.get(event, BUILTIN_TONES["stop"]))
     elif SYSTEM == "Darwin":
         _builtin_macos(event)
@@ -227,12 +299,18 @@ def _notify_windows(title: str, body: str) -> None:
 
 def _notify_macos(title: str, body: str) -> None:
     """Show a Notification Center notification via osascript."""
-    script = f'display notification "{body}" with title "{title}"'
-    subprocess.Popen(
-        ["osascript", "-e", script],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    # Escape backslashes and double quotes to prevent AppleScript injection
+    safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
+    safe_body = body.replace("\\", "\\\\").replace('"', '\\"')
+    script = f'display notification "{safe_body}" with title "{safe_title}"'
+    try:
+        subprocess.Popen(
+            ["osascript", "-e", script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        pass  # osascript not available
 
 
 def _notify_linux(title: str, body: str) -> None:
@@ -247,12 +325,40 @@ def _notify_linux(title: str, body: str) -> None:
         pass  # notify-send not installed — skip silently
 
 
+def _notify_wsl(title: str, body: str) -> None:
+    """Show a Windows notification from WSL2 via powershell.exe."""
+    script = SCRIPT_DIR / "notify_windows.ps1"
+    try:
+        win_script = subprocess.check_output(
+            ["wslpath", "-w", str(script)], text=True
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return
+    try:
+        subprocess.Popen(
+            [
+                "powershell.exe",
+                "-ExecutionPolicy", "Bypass",
+                "-WindowStyle", "Hidden",
+                "-File", win_script,
+                "-Title", title,
+                "-Body", body,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        pass  # powershell.exe not in WSL PATH
+
+
 def notify(event: str) -> None:
     """Show a desktop notification for the event."""
     title = NOTIFICATION_TITLES.get(event, "Claude Code")
     body = NOTIFICATION_BODIES.get(event, "")
 
-    if SYSTEM == "Windows":
+    if IS_WSL:
+        _notify_wsl(title, body)
+    elif SYSTEM == "Windows":
         _notify_windows(title, body)
     elif SYSTEM == "Darwin":
         _notify_macos(title, body)
@@ -388,22 +494,55 @@ def _flash_taskbar_windows() -> None:
 
 def _flash_taskbar_macos() -> None:
     """Bounce the Terminal/iTerm2 dock icon on macOS."""
-    # AppleScript 'activate' on the current terminal app bounces its dock icon
-    subprocess.Popen(
-        [
-            "osascript", "-e",
-            'tell application "System Events" to set frontmost of '
-            'first application process whose frontmost is true to true',
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    try:
+        subprocess.Popen(
+            [
+                "osascript", "-e",
+                'tell application "System Events" to set frontmost of '
+                'first application process whose frontmost is true to true',
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        pass  # osascript not available
+
+
+def _flash_taskbar_wsl() -> None:
+    """Flash the Windows Terminal taskbar button from WSL2 via PowerShell."""
+    # Uses FlashWindow via Add-Type since we can't use ctypes from WSL
+    ps_cmd = (
+        "Add-Type -TypeDefinition '"
+        "using System; using System.Runtime.InteropServices;"
+        "public class WFlash {"
+        "  [DllImport(\"user32.dll\")] public static extern bool FlashWindow(IntPtr hwnd, bool invert);"
+        "  [DllImport(\"kernel32.dll\")] public static extern IntPtr GetConsoleWindow();"
+        "}"
+        "'; "
+        "$h = [WFlash]::GetConsoleWindow(); "
+        "if ($h -ne [IntPtr]::Zero) { "
+        "  for ($i=0; $i -lt 6; $i++) { "
+        "    [WFlash]::FlashWindow($h, $true); "
+        "    Start-Sleep -Milliseconds 400 "
+        "  } "
+        "}"
     )
+    try:
+        subprocess.Popen(
+            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        pass  # powershell.exe not in WSL PATH
 
 
 def flash_taskbar() -> None:
     """Flash the taskbar/dock to grab attention (platform-dispatched)."""
     try:
-        if SYSTEM == "Windows":
+        if IS_WSL:
+            _flash_taskbar_wsl()
+        elif SYSTEM == "Windows":
             _flash_taskbar_windows()
         elif SYSTEM == "Darwin":
             _flash_taskbar_macos()
