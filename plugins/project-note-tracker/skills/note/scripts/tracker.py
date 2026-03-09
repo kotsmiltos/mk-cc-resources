@@ -11,6 +11,8 @@ Usage:
   tracker.py resolve <dir> <row> <answer>
   tracker.py add-handler <dir> <handler>
   tracker.py list-handlers <dir>
+  tracker.py update-review <dir> <row> <internal_review> <status>
+  tracker.py doctor <dir>
 
 Requires: openpyxl (run via uvx --with openpyxl)
 """
@@ -22,7 +24,9 @@ from pathlib import Path
 
 try:
     from openpyxl import Workbook, load_workbook
+    from openpyxl.formatting.rule import CellIsRule
     from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles.differential import DifferentialStyle
     from openpyxl.worksheet.datavalidation import DataValidation
 except ImportError:
     print("openpyxl not available. Run via: uvx --with openpyxl python3 tracker.py ...", file=sys.stderr)
@@ -33,39 +37,51 @@ STATUS_ANSWERED = "Answered Internally"
 STATUS_PENDING = "Pending"
 STATUS_COMPLETED = "Completed"
 STATUS_LIST = f'"{STATUS_ANSWERED},{STATUS_PENDING},{STATUS_COMPLETED}"'
+STATUS_COL_INDEX = 5  # column E
+STATUS_COL_RANGE = "E2:E1000"
 
-HEADER_FONT = Font(bold=True, size=11)
 HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
 HEADER_FONT_WHITE = Font(bold=True, size=11, color="FFFFFF")
 WRAP_ALIGNMENT = Alignment(wrap_text=True, vertical="top")
 COL_WIDTHS = {"A": 18, "B": 40, "C": 50, "D": 50, "E": 22, "F": 14}
 
-# Status colors
-STATUS_COLORS = {
-    STATUS_ANSWERED: PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid"),  # light green
-    STATUS_PENDING: PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid"),  # light orange
-    STATUS_COMPLETED: PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"),  # light blue
-}
-STATUS_FONTS = {
-    STATUS_ANSWERED: Font(color="375623", bold=True),  # dark green
-    STATUS_PENDING: Font(color="BF8F00", bold=True),  # dark orange
-    STATUS_COMPLETED: Font(color="2F5496", bold=True),  # dark blue
-}
-
-
-STATUS_COL_INDEX = 5  # column E
+# Conditional formatting — uses DifferentialStyle so Excel evaluates live
+CF_RULES = [
+    (STATUS_ANSWERED, DifferentialStyle(
+        font=Font(color="375623", bold=True),
+        fill=PatternFill(bgColor="E2EFDA"),
+    )),
+    (STATUS_PENDING, DifferentialStyle(
+        font=Font(color="BF8F00", bold=True),
+        fill=PatternFill(bgColor="FCE4D6"),
+    )),
+    (STATUS_COMPLETED, DifferentialStyle(
+        font=Font(color="2F5496", bold=True),
+        fill=PatternFill(bgColor="D9E2F3"),
+    )),
+]
 
 
 def _tracker_path(directory: str) -> Path:
     return Path(directory) / "tracker.xlsx"
 
 
-def _style_status_cell(cell, status: str) -> None:
-    """Apply color formatting to a status cell."""
-    if status in STATUS_COLORS:
-        cell.fill = STATUS_COLORS[status]
-        cell.font = STATUS_FONTS[status]
-    cell.alignment = Alignment(horizontal="center", vertical="top")
+def _apply_conditional_formatting(ws) -> None:
+    """Set up conditional formatting rules on the Status column.
+
+    These are real Excel conditional formatting rules — colors update
+    automatically when the user changes the dropdown value in Excel.
+    """
+    from collections import OrderedDict
+
+    from openpyxl.formatting.rule import Rule
+
+    # Clear ALL existing conditional formatting to avoid duplicates on doctor re-runs
+    ws.conditional_formatting._cf_rules = OrderedDict()
+
+    for status_value, dxf in CF_RULES:
+        rule = Rule(type="cellIs", operator="equal", dxf=dxf, formula=[f'"{status_value}"'])
+        ws.conditional_formatting.add(STATUS_COL_RANGE, rule)
 
 
 def _add_status_dropdown(ws, row: int) -> None:
@@ -75,8 +91,24 @@ def _add_status_dropdown(ws, row: int) -> None:
     dv.errorTitle = "Invalid Status"
     dv.prompt = "Select status"
     dv.promptTitle = "Status"
-    cell_ref = f"E{row}"
-    dv.add(cell_ref)
+    dv.add(f"E{row}")
+    ws.add_data_validation(dv)
+
+
+def _add_status_dropdown_range(ws) -> None:
+    """Add a single data validation dropdown covering the entire status column."""
+    # Clear existing validations on column E
+    ws.data_validations.dataValidation = [
+        dv for dv in ws.data_validations.dataValidation
+        if not any("E" in str(s) for s in (dv.sqref.ranges if hasattr(dv.sqref, 'ranges') else [dv.sqref]))
+    ]
+
+    dv = DataValidation(type="list", formula1=STATUS_LIST, allow_blank=False)
+    dv.error = "Pick a valid status"
+    dv.errorTitle = "Invalid Status"
+    dv.prompt = "Select status"
+    dv.promptTitle = "Status"
+    dv.add(STATUS_COL_RANGE)
     ws.add_data_validation(dv)
 
 
@@ -88,6 +120,15 @@ def _style_headers(ws) -> None:
         cell.alignment = Alignment(horizontal="center", vertical="center")
     for col_letter, width in COL_WIDTHS.items():
         ws.column_dimensions[col_letter].width = width
+
+
+def _setup_sheet(ws) -> None:
+    """Apply all sheet-level formatting: headers, conditional formatting, dropdown, filter, freeze."""
+    _style_headers(ws)
+    _apply_conditional_formatting(ws)
+    _add_status_dropdown_range(ws)
+    ws.auto_filter.ref = "A1:F1"
+    ws.freeze_panes = "A2"
 
 
 def cmd_init(directory: str, handlers: list[str]) -> None:
@@ -103,9 +144,7 @@ def cmd_init(directory: str, handlers: list[str]) -> None:
     wb = Workbook()
     ws = wb.active
     ws.title = "Questions"
-    _style_headers(ws)
-    ws.auto_filter.ref = f"A1:F1"
-    ws.freeze_panes = "A2"
+    _setup_sheet(ws)
     wb.save(tracker)
 
     for handler in handlers:
@@ -141,12 +180,7 @@ def cmd_add(directory: str, handler: str, question: str, internal_review: str, s
     row_num = ws.max_row
     for col_idx in range(1, len(COLUMNS) + 1):
         ws.cell(row=row_num, column=col_idx).alignment = WRAP_ALIGNMENT
-
-    # Style and validate the status cell
-    status_cell = ws.cell(row=row_num, column=STATUS_COL_INDEX)
-    _style_status_cell(status_cell, status)
-    _add_status_dropdown(ws, row_num)
-
+    ws.cell(row=row_num, column=STATUS_COL_INDEX).alignment = Alignment(horizontal="center", vertical="top")
     wb.save(tracker)
 
     print(json.dumps({"status": "ok", "row": row_num, "handler": handler, "question": question}))
@@ -199,8 +233,9 @@ def cmd_resolve(directory: str, row_num: int, answer: str) -> None:
         sys.exit(1)
 
     ws.cell(row=row_num, column=4, value=answer).alignment = WRAP_ALIGNMENT
-    status_cell = ws.cell(row=row_num, column=STATUS_COL_INDEX, value=STATUS_COMPLETED)
-    _style_status_cell(status_cell, STATUS_COMPLETED)
+    ws.cell(row=row_num, column=STATUS_COL_INDEX, value=STATUS_COMPLETED).alignment = Alignment(
+        horizontal="center", vertical="top"
+    )
     wb.save(tracker)
 
     question = ws.cell(row=row_num, column=2).value
@@ -221,8 +256,9 @@ def cmd_update_review(directory: str, row_num: int, internal_review: str, status
         sys.exit(1)
 
     ws.cell(row=row_num, column=3, value=internal_review).alignment = WRAP_ALIGNMENT
-    status_cell = ws.cell(row=row_num, column=STATUS_COL_INDEX, value=status)
-    _style_status_cell(status_cell, status)
+    ws.cell(row=row_num, column=STATUS_COL_INDEX, value=status).alignment = Alignment(
+        horizontal="center", vertical="top"
+    )
     wb.save(tracker)
 
     question = ws.cell(row=row_num, column=2).value
@@ -230,7 +266,7 @@ def cmd_update_review(directory: str, row_num: int, internal_review: str, status
 
 
 def cmd_doctor(directory: str) -> None:
-    """Upgrade existing tracker.xlsx to latest formatting: dropdowns, colors, widths, headers."""
+    """Upgrade existing tracker.xlsx to latest formatting."""
     tracker = _tracker_path(directory)
     if not tracker.exists():
         print("tracker.xlsx not found.", file=sys.stderr)
@@ -239,36 +275,22 @@ def cmd_doctor(directory: str) -> None:
     wb = load_workbook(tracker)
     ws = wb.active
 
-    # Re-apply header styling
-    _style_headers(ws)
-
-    # Re-apply column widths
-    for col_letter, width in COL_WIDTHS.items():
-        ws.column_dimensions[col_letter].width = width
-
-    # Re-apply auto-filter and freeze
-    ws.auto_filter.ref = f"A1:F1"
-    ws.freeze_panes = "A2"
-
-    # Clear existing data validations (rebuild them)
-    ws.data_validations.dataValidation.clear()
+    # Apply all sheet-level formatting (headers, conditional formatting, dropdown, filter, freeze)
+    _setup_sheet(ws)
 
     fixes = 0
     for row in range(2, ws.max_row + 1):
         status_cell = ws.cell(row=row, column=STATUS_COL_INDEX)
-        status = status_cell.value
-        if not status:
+        if not status_cell.value:
             continue
 
-        # Apply color and font
-        _style_status_cell(status_cell, status.strip())
-
-        # Add dropdown
-        _add_status_dropdown(ws, row)
+        # Center-align the status cell
+        status_cell.alignment = Alignment(horizontal="center", vertical="top")
 
         # Apply wrap alignment to all cells in the row
         for col_idx in range(1, len(COLUMNS) + 1):
-            ws.cell(row=row, column=col_idx).alignment = WRAP_ALIGNMENT
+            if col_idx != STATUS_COL_INDEX:
+                ws.cell(row=row, column=col_idx).alignment = WRAP_ALIGNMENT
 
         fixes += 1
 
