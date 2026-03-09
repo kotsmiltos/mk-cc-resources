@@ -1,5 +1,7 @@
 {
   "name": "repo-audit",
   "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow requiring snapshot and pattern lookup consultation before any code change.",
-  "version": "1.0.0"
+  "author": {
+    "name": "kotsmiltos"
+  }
 }

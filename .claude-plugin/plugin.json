@@ -1,6 +1,6 @@
 {
   "name": "mk-cc-all",
-  "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, and Repo Audit. Alert Sounds must be installed separately.",
+  "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, and Repo Audit. Alert Sounds must be installed separately.",
   "version": "1.3.0",
   "author": {
     "name": "kotsmiltos"

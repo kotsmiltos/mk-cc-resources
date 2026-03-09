@@ -27,6 +27,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "project-structure",
+      "source": "./plugins/project-structure",
+      "description": "Generate and maintain a live annotated project structure map in CLAUDE.md with purpose annotations and quick-lookup tables.",
+      "version": "1.0.0"
+    },
+    {
       "name": "repo-audit",
       "source": "./plugins/repo-audit",
       "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow with snapshot and pattern lookup consultation.",
@@ -41,7 +47,7 @@
     {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, and Repo Audit. Alert Sounds must be installed separately.",
+      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, and Repo Audit. Alert Sounds must be installed separately.",
       "version": "1.3.0"
     }
   ]

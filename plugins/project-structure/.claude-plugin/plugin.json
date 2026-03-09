@@ -1,0 +1,7 @@
+{
+  "name": "project-structure",
+  "description": "Generate and maintain a live annotated project structure map in CLAUDE.md with purpose annotations and quick-lookup tables.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}
