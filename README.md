@@ -132,6 +132,7 @@ Track questions per handler/department across projects. Claude auto-detects whic
 - `/note init` — set up `project-notes/` with handlers and tracker.xlsx (auto-gitignored)
 - `/note <question>` — auto-detect handler, research in background, append to Excel
 - `/note <handler> <question>` — explicitly assign handler (optional)
+- `/note quick <question>` — log question without research (Pending, review later)
 - `/note add <handler>` — add a new handler/department
 - `/note agenda [handler]` — generate a meeting agenda (all or filtered by handler)
 - `/note resolve <handler> "<question>" <answer>` — mark a question as completed

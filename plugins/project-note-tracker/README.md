@@ -109,6 +109,7 @@ Deletes the entire `project-notes/` directory (asks for confirmation first).
 | `/note init` | Create project-notes directory, tracker.xlsx, handler folders |
 | `/note <question>` | Auto-detect handler, research in background, append to Excel |
 | `/note <handler> <question>` | Explicitly assign handler, research in background, append to Excel |
+| `/note quick <question>` | Log question immediately without research (auto-detects handler, status: Pending) |
 | `/note add <handler>` | Add a new handler with research.md template |
 | `/note agenda [handler]` | Generate meeting agenda (all or filtered by handler) |
 | `/note resolve <handler> "<question>" <answer>` | Mark question as completed with the confirmed answer |

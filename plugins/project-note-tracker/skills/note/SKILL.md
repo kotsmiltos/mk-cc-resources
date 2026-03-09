@@ -39,6 +39,7 @@ Parse the user's input after `/note`. The first word determines the subcommand:
 | `resolve` | workflows/resolve.md | `/note resolve operations "reversal timeout" The answer is 24h` |
 | `dump` | workflows/dump.md | `/note dump` |
 | `review` | workflows/review.md | `/note review` or `/note review 3` |
+| `quick` | workflows/quick.md | `/note quick What is the SLA?` |
 | anything else | workflows/research-question.md | `/note What is the reversal timeout?` |
 
 For the default case (research-question), the **entire input is the question**. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
@@ -57,6 +58,7 @@ For the default case (research-question), the **entire input is the question**. 
 | Input starts with "resolve" | Mark question as resolved | workflows/resolve.md |
 | Input starts with "dump" | Remove all project-notes from the project | workflows/dump.md |
 | Input starts with "review" | Re-review existing questions with fresh context | workflows/review.md |
+| Input starts with "quick" | Quick-add question without research | workflows/quick.md |
 | Default (question) | Auto-detect handler, research, and log question | workflows/research-question.md |
 
 </routing>
@@ -73,6 +75,7 @@ Project Note Tracker — available commands:
   /note init                                Set up project-notes/ with handlers
   /note add <handler>                       Add a new handler
   /note agenda [handler]                    Generate meeting agenda (all or filtered)
+  /note quick <question>                     Log question without research (Pending)
   /note resolve <handler> "question" answer Mark question as completed
   /note dump                                Remove all project-notes from project
   /note review [row]                         Re-review questions with fresh context
