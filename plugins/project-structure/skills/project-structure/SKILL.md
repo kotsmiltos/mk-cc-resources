@@ -1,18 +1,21 @@
 ---
 name: project-structure
-description: Generate and maintain a live project structure map in the project's CLAUDE.md. Scans the codebase, builds an annotated file tree with key export/purpose annotations, and adds maintenance instructions so the structure stays current across sessions.
+description: Generates and maintains a live project structure map in the project's CLAUDE.md. Scans the codebase, builds an annotated file tree with key export/purpose annotations, and adds maintenance instructions so the structure stays current across sessions.
 ---
 
 <objective>
 Scan the current project, generate a comprehensive annotated file tree, and write it into the project's CLAUDE.md file. The structure includes annotations for what each file does, a "Frequently Used Locations" table for quick lookup, and maintenance instructions that tell Claude to keep the structure updated after every edit.
-
-This skill ensures Claude always knows where things are before making changes — preventing missed dependencies, forgotten files, and stale mental models.
 </objective>
+
+<quick_start>
+1. Check for an existing CLAUDE.md at the project root
+2. If it exists, look for `<!-- STRUCTURE:START -->` / `<!-- STRUCTURE:END -->` markers
+3. Scan the project filesystem, then generate or update the structure section
+</quick_start>
 
 <workflow>
 
-## Step 1: Discover project files
-
+<step_1_discover>
 Scan the project for all relevant source files. Exclude common noise directories.
 
 ```bash
@@ -23,27 +26,27 @@ find . -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.md" -
   ! -path "*/*.egg-info/*" ! -path "*/coverage/*" \
   | sort
 ```
+</step_1_discover>
 
-## Step 2: Analyze key files
-
+<step_2_analyze>
 For each important source file, read it briefly to understand:
 - What it exports or provides
 - Its role in the project architecture
 - What depends on it / what it depends on
 
 Focus on files that are edited frequently or imported by many others. These go into the "Frequently Used Locations" table.
+</step_2_analyze>
 
-## Step 3: Check for existing CLAUDE.md
-
+<step_3_check_existing>
 Look for a `CLAUDE.md` at the project root.
 
 - If it exists, look for the `<!-- STRUCTURE:START -->` / `<!-- STRUCTURE:END -->` markers.
   - If markers exist: replace only the content between them.
-  - If no markers: add the structure section at an appropriate location in the file.
+  - If no markers: append the structure section at the end of the file.
 - If no CLAUDE.md exists: create one with the structure section and a minimal project header.
+</step_3_check_existing>
 
-## Step 4: Generate the structure
-
+<step_4_generate_tree>
 Build the annotated tree using this format:
 
 ```
@@ -61,9 +64,9 @@ Rules for the tree:
 - For directories with many similar files, show the pattern rather than every file
 - Annotate directories too when their purpose isn't obvious
 - Skip generated files, lock files, and build artifacts
+</step_4_generate_tree>
 
-## Step 5: Generate the Frequently Used Locations table
-
+<step_5_locations_table>
 Create a markdown table mapping common tasks to file locations:
 
 ```markdown
@@ -81,9 +84,9 @@ Include entries for:
 - Key business logic entry points
 - Test locations
 - API / route definitions
+</step_5_locations_table>
 
-## Step 6: Add maintenance instructions
-
+<step_6_maintenance>
 After the structure, add this section (if not already present):
 
 ```markdown
@@ -95,10 +98,11 @@ After the structure, add this section (if not already present):
 2. Update the "Frequently Used Locations" table if the change affects key locations.
 3. Before making edits to existing files, reference this structure to understand where things live and what depends on what.
 ```
+</step_6_maintenance>
 
-## Step 7: Write the result
-
+<step_7_write>
 Use the Edit tool to update the CLAUDE.md between the structure markers, or Write if creating from scratch.
+</step_7_write>
 
 </workflow>
 
@@ -112,3 +116,13 @@ Use the Edit tool to update the CLAUDE.md between the structure markers, or Writ
 - If the user provides arguments (like specific directories to focus on), scope the scan accordingly.
 - The structure should be useful for both humans reading CLAUDE.md and Claude Code referencing it before edits.
 </behavior>
+
+<success_criteria>
+Structure generation is successful when:
+- [ ] `<!-- STRUCTURE:START -->` and `<!-- STRUCTURE:END -->` markers are correctly placed
+- [ ] Tree uses box-drawing characters with concise annotations
+- [ ] Frequently Used Locations table has 5-15 entries
+- [ ] Maintenance instructions are present
+- [ ] Existing CLAUDE.md content outside the markers was not overwritten
+- [ ] The structure reflects the actual filesystem, not assumptions
+</success_criteria>

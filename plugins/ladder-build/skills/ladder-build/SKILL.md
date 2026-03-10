@@ -1,41 +1,51 @@
 ---
 name: ladder-build
-description: Incremental build pipeline that decomposes projects into small, verifiable milestones. Each rung of the ladder is built, tested, and verified before climbing to the next. The end goal stays visible; the path there evolves as the picture becomes clearer. Use after miltiaze exploration or when starting any build project.
+description: Incremental build pipeline that decomposes projects into small, verifiable milestones. Enforces a verify-before-continuing contract — each rung is built, tested, and confirmed before climbing to the next. The end goal stays visible; the path evolves as the picture becomes clearer. Use after miltiaze exploration or when starting any build project.
 ---
+
+<objective>
+Decompose any project into small, verifiable milestones and build them one at a time. Each milestone is built, tested, and confirmed before the next begins. The build plan is a living document that adapts as the picture becomes clearer, but the end goal stays fixed.
+</objective>
+
+<quick_start>
+Check for existing build plans in `[cwd]/artifacts/builds/`. If one exists for this project, route to workflows/continue.md. If this is a new project, route to workflows/kickoff.md. If a milestone is already in progress, route to workflows/build-milestone.md.
+</quick_start>
 
 <essential_principles>
 
-## Philosophy
-
+<philosophy>
 Building is climbing. Each milestone is a rung — small enough to step on, solid enough to hold weight, and always leading upward toward the end goal. You can see the top from any rung. The ladder might grow new rungs or lose some as you climb, but the destination stays fixed.
+</philosophy>
 
-### Core Rules
+<core_rules>
 
-1. **The end goal is the North Star.** Defined at kickoff. Stays visible in every plan update. Milestones shift, but the destination doesn't — unless the user explicitly changes it.
+<rule id="1">The end goal is the North Star. Defined at kickoff. Stays visible in every plan update. Milestones shift, but the destination doesn't — unless the user explicitly changes it.</rule>
 
-2. **Small, verifiable milestones.** Each one is small enough to build and verify in one sitting. If you can't test it, it's too abstract. If you can't finish it, it's too big. Split it.
+<rule id="2">Small, verifiable milestones. Each one is small enough to build and verify in one sitting. If you can't test it, it's too abstract. If you can't finish it, it's too big. Split it.</rule>
 
-3. **Build, test, verify, next.** No stacking unverified work. Every milestone produces something the user can see, run, or confirm before moving on.
+<rule id="3">Build, test, verify, next. No stacking unverified work. Every milestone produces something the user can see, run, or confirm before moving on.</rule>
 
-4. **The plan is alive.** Milestones can split, merge, appear, or disappear as you learn. The plan reflects reality, not the original guess. Update it after every milestone.
+<rule id="4">The plan is alive. Milestones can split, merge, appear, or disappear as you learn. The plan reflects reality, not the original guess. Update it after every milestone.</rule>
 
-5. **Sample data is not optional.** If a feature needs data to test, create it. Mock APIs, seed databases, generate fixtures. A feature you can't exercise is a feature you can't verify.
+<rule id="5">Sample data is not optional. If a feature needs data to test, create it. Mock APIs, seed databases, generate fixtures. A feature you can't exercise is a feature you can't verify.</rule>
 
-6. **Bugs die where they're born.** Found during a milestone? Fix it now. Don't defer. Stacking bugs is how projects rot.
+<rule id="6">Bugs die where they're born. Found during a milestone? Fix it now. Don't defer. Stacking bugs is how projects rot.</rule>
 
-7. **Artifacts survive sessions.** Build plan and milestone reports live on disk. Any session picks up where the last left off. Context never lives only in memory.
+<rule id="7">Artifacts survive sessions. Build plan and milestone reports live on disk. Any session picks up where the last left off. Context never lives only in memory.</rule>
 
-8. **Handoffs are explicit.** Receiving from miltiaze? Read the exploration. Completing a session? Save the state. The chain never breaks.
+<rule id="8">Handoffs are explicit. Receiving from miltiaze? Read the exploration. Completing a session? Save the state. The chain never breaks.</rule>
 
-9. **Build first, polish later.** Core functionality before refinement. Tooltips, chart aids, cleaner UI — these are milestones too, but after the thing works.
+<rule id="9">Build first, polish later. Core functionality before refinement. Tooltips, chart aids, cleaner UI — these are milestones too, but after the thing works.</rule>
 
-10. **Every milestone adds visible progress.** The user should see/feel the difference. Invisible milestones need to be combined with something user-facing.
+<rule id="10">Every milestone adds visible progress. The user should see/feel the difference. Invisible milestones need to be combined with something user-facing.</rule>
 
-11. **Adapt, don't abandon.** When the picture changes — and it will — update the milestones. Don't restart. The work done is still valuable; the path forward just got clearer.
+<rule id="11">Adapt, don't abandon. When the picture changes — and it will — update the milestones. Don't restart. The work done is still valuable; the path forward just got clearer.</rule>
 
-12. **Use the right tools — high-confidence sources only.** Look up documentation with Context7. Use WebSearch for current information. Test with real commands. Write real code. This is building, not theorizing. **When researching, only use high-confidence sources:** official documentation, official GitHub repositories, well-established technical publications, and recognized industry blogs. Never rely on random Medium articles, SEO-farm blogs, content aggregators, or any source where authorship or accuracy is questionable. If the only source is low-confidence, flag it explicitly.
+<rule id="12">Use the right tools — high-confidence sources only. Look up documentation with Context7. Use WebSearch for current information. Test with real commands. Write real code. This is building, not theorizing. When researching, only use high-confidence sources: official documentation, official GitHub repositories, well-established technical publications, and recognized industry blogs. Never rely on random Medium articles, SEO-farm blogs, content aggregators, or any source where authorship or accuracy is questionable. If the only source is low-confidence, flag it explicitly.</rule>
 
-13. **Build for sharing.** Everything we build should be straightforward for someone else to pick up and run. If setup requires installations, keys, or configuration — provide exact steps, direct links, and known gotchas inline. The user should never have to leave the project to find answers. If a dependency has common failure modes, document them with fixes. If there's a setup script, it should tell you what's happening and what to do if something fails.
+<rule id="13">Build for sharing. Everything we build should be straightforward for someone else to pick up and run. If setup requires installations, keys, or configuration — provide exact steps, direct links, and known gotchas inline. The user should never have to leave the project to find answers. If a dependency has common failure modes, document them with fixes. If there's a setup script, it should tell you what's happening and what to do if something fails.</rule>
+
+</core_rules>
 
 </essential_principles>
 
@@ -60,7 +70,7 @@ Then proceed to routing.
 | "continue", "next", "pick up", references existing build plan | Continue | workflows/continue.md |
 | Already in a build session, milestone completed or in progress | Build milestone | workflows/build-milestone.md |
 
-**Default:** If there's an existing build plan for this project, route to continue. Otherwise, kickoff.
+Default: If there's an existing build plan for this project, route to continue. Otherwise, kickoff.
 
 </routing>
 
@@ -97,3 +107,13 @@ All in `templates/`:
 | milestone-report.md | Per-milestone completion record |
 
 </templates_index>
+
+<success_criteria>
+The ladder-build skill succeeds when:
+- The end goal is defined and confirmed
+- The project is decomposed into verifiable milestones
+- Each milestone is built, tested, and verified before the next begins
+- The build plan is kept current on disk after every milestone
+- All milestone reports are saved to disk
+- The user confirms each milestone before moving on
+</success_criteria>

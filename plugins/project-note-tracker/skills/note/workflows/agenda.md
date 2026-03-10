@@ -1,13 +1,12 @@
 <process>
 
-## Generate a meeting agenda
-
-### Step 1: Parse optional handler filter
+<step_1_parse_filter>
 The input format is: `agenda [handler]`
 - If a handler name is provided after "agenda", only show questions for that handler
 - If no handler is given, show all questions grouped by handler
+</step_1_parse_filter>
 
-### Step 2: Find tracker.py and get pending questions
+<step_2_get_pending>
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
 ```
@@ -23,13 +22,15 @@ uvx --with openpyxl python3 "$TRACKER_PY" pending project-notes
 ```
 
 This returns JSON with all non-completed questions.
+</step_2_get_pending>
 
-### Step 3: Group and prioritize
+<step_3_group_and_prioritize>
 Group the questions by handler. Within each handler, sort by:
 1. "Pending" items first (no internal answer — most urgent)
 2. "Answered Internally" items second (need confirmation)
+</step_3_group_and_prioritize>
 
-### Step 4: Generate the agenda
+<step_4_generate>
 Output a clean markdown agenda:
 
 ```markdown
@@ -52,9 +53,11 @@ Output a clean markdown agenda:
 1. <handler> — <question> — <why this is urgent>
 2. ...
 ```
+</step_4_generate>
 
-### Step 5: Offer to save
+<step_5_offer_save>
 Ask the user if they want to save the agenda to a file (e.g. `project-notes/agenda-YYYY-MM-DD.md`).
+</step_5_offer_save>
 
 </process>
 

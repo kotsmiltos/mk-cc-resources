@@ -1,32 +1,32 @@
 <process>
 
-## Quick-add a question without research
-
 Logs a question immediately with no background research. Auto-detects the handler and adds the row with an empty Internal Review and "Pending" status.
 
-### Step 1: Parse input and detect handler
-
+<step_1_parse_and_detect>
 The input after "quick" is the question. Handler detection works the same as research-question:
 
-**Explicit handler override:** If the first word after "quick" (case-insensitive) matches a known handler directory in `project-notes/`, treat it as the handler and the rest as the question.
+Explicit handler override: If the first word after "quick" (case-insensitive) matches a known handler directory in `project-notes/`, treat it as the handler and the rest as the question.
 
-**Auto-detection (default):** If no handler match:
+Auto-detection (default): If no handler match:
 1. List handler directories in `project-notes/` (just read the directory)
 2. Read each handler's `research.md` briefly to understand their focus areas
 3. Pick the best match based on the question's topic
 
-Normalize handler name to **lowercase**.
+Normalize handler name to lowercase.
+</step_1_parse_and_detect>
 
-### Step 2: Add to tracker immediately
+<step_2_add>
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
 uvx --with openpyxl python3 "$TRACKER_PY" add project-notes "<handler>" "<question>" "" "Pending"
 ```
 
 The Internal Review is empty — this is intentional. The user can run `/note review <row>` later to gather context.
+</step_2_add>
 
-### Step 3: Confirm
+<step_3_confirm>
 Tell the user: "Added to **<handler>** as Pending (no research). Use `/note review <row>` to gather context later."
+</step_3_confirm>
 
 </process>
 

@@ -1,27 +1,29 @@
 <process>
 
-## Initialize project-notes
-
-### Step 1: Check if already initialized
+<step_1_check_existing>
 Look for `project-notes/tracker.xlsx` in the project root. If it exists, tell the user and offer to add new handlers instead.
+</step_1_check_existing>
 
-### Step 2: Ask the user for handlers
+<step_2_ask_handlers>
 Ask: "What handlers/departments/teams do you want to track? (e.g. Operations, IT, Compliance)"
 
 Wait for the user's response. Parse the handler names.
+</step_2_ask_handlers>
 
-### Step 3: Ask for project context (optional)
+<step_3_ask_context>
 Ask: "Any project-wide context I should know? (e.g. 'Card processing automation for NBG') — or press Enter to skip"
+</step_3_ask_context>
 
-### Step 4: Find tracker.py and run init
+<step_4_run_init>
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
 uvx --with openpyxl python3 "$TRACKER_PY" init project-notes handler1 handler2 ...
 ```
 
-**IMPORTANT:** `tracker.py init` already creates the handler directories (lowercased) with `research.md` templates inside them. Do NOT create handler directories or research.md files manually — that would produce duplicates.
+IMPORTANT: `tracker.py init` already creates the handler directories (lowercased) with `research.md` templates inside them. Do NOT create handler directories or research.md files manually — that would produce duplicates.
+</step_4_run_init>
 
-### Step 5: Add to .gitignore if in a git repo
+<step_5_gitignore>
 Check if the current directory is inside a git repository:
 ```bash
 git rev-parse --show-toplevel 2>/dev/null
@@ -37,9 +39,10 @@ if [ -n "$GIT_ROOT" ]; then
   fi
 fi
 ```
+</step_5_gitignore>
 
-### Step 6: Create config.md if the user provided project context
-Write the context to `project-notes/config.md`:
+<step_6_config>
+If the user provided project context, write it to `project-notes/config.md`:
 ```markdown
 ## Project Context
 
@@ -51,9 +54,11 @@ Write the context to `project-notes/config.md`:
 - handler2
 - ...
 ```
+</step_6_config>
 
-### Step 7: Remind the user
-Tell the user to edit each handler's `research.md` file with instructions for how to research that handler's questions. Show the paths using the **lowercase** handler names (as created by tracker.py).
+<step_7_remind>
+Tell the user to edit each handler's `research.md` file with instructions for how to research that handler's questions. Show the paths using the lowercase handler names (as created by tracker.py).
+</step_7_remind>
 
 </process>
 

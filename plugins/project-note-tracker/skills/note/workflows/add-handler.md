@@ -1,21 +1,30 @@
 <process>
 
-## Add a new handler
-
-### Step 1: Parse input
+<step_1_parse>
 The input format is: `add <handler_name>`
 Extract the handler name (everything after "add").
+</step_1_parse>
 
-### Step 2: Find tracker.py and create the handler
+<step_2_create>
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
 uvx --with openpyxl python3 "$TRACKER_PY" add-handler project-notes "<handler_name>"
 ```
+</step_2_create>
 
-### Step 3: Update config.md
+<step_3_update_config>
 If `project-notes/config.md` exists, append the new handler to the Handlers list.
+</step_3_update_config>
 
-### Step 4: Remind the user
+<step_4_remind>
 Tell them to edit `project-notes/<handler>/research.md` with instructions for how to research this handler's questions.
+</step_4_remind>
 
 </process>
+
+<success_criteria>
+Add-handler is complete when:
+- [ ] Handler directory created with `research.md` template
+- [ ] `config.md` updated if it exists
+- [ ] User notified to fill in research.md
+</success_criteria>

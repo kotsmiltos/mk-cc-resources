@@ -1,29 +1,31 @@
 ---
 name: note
-description: Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself. Use /note to ask a question, /note init to set up, /note agenda to prepare for meetings.
+description: Tracks questions per handler/department across a project. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, and generates meeting agendas. Auto-gitignores itself. Use /note to ask a question, /note init to set up, /note agenda to prepare for meetings.
 ---
 
-<essential_principles>
+<objective>
+A project-level question tracker. Log questions for different handlers (departments, teams, stakeholders), Claude gathers context from project files, and everything goes into an Excel tracker. Before meetings, generate an agenda from open questions.
+</objective>
 
-## Purpose
+<quick_start>
+1. Run `/note init` to set up `project-notes/` with handlers
+2. Run `/note <question>` to ask a question (handler auto-detected)
+3. Run `/note agenda` before meetings to generate an agenda from open questions
+</quick_start>
 
-A project-level question tracker. You log questions for different handlers (departments, teams, stakeholders), Claude gathers context from project files, and everything goes into an Excel tracker. Before meetings, generate an agenda from open questions.
-
-### Core Rules
-
-1. **All questions go to `project-notes/tracker.xlsx`** — one file per project, never split
-2. **Each handler has a `research.md`** in `project-notes/<handler>/research.md` — read it BEFORE researching
-3. **Research uses project files only** — scan docs, code, scout indexes, configs in the current project
-4. **Research is context-gathering, NOT answering** — the Internal Review documents what the codebase currently says about the topic (existing implementations, configs, relevant code paths). It does NOT try to answer the question. The question remains open for the handler to answer in a meeting.
-5. **Status reflects whether context was found** — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files. "Decided" means a decision was made with rationale. "Completed" means confirmed by the handler.
-6. **Background execution** — research questions using the Agent tool with `run_in_background: true` so the user can keep working
-7. **Excel I/O uses tracker.py** — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
-8. **Find tracker.py** by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
-9. **Internal Review column documents existing state** — include source file paths, line numbers, relevant quotes, current behavior. Frame as "here's what exists" not "here's the answer"
-10. **Handler Answer column stays empty** — the user fills this after meetings
-11. **Dates are automatic** — tracker.py adds them
-
-</essential_principles>
+<rules>
+1. All questions go to `project-notes/tracker.xlsx` — one file per project, never split
+2. Each handler has a `research.md` in `project-notes/<handler>/research.md` — read it BEFORE researching
+3. Research uses project files only — scan docs, code, scout indexes, configs in the current project
+4. Research is context-gathering, NOT answering — the Internal Review documents what the codebase currently says about the topic (existing implementations, configs, relevant code paths). It does NOT try to answer the question. The question remains open for the handler to answer in a meeting.
+5. Status reflects whether context was found — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files. "Decided" means a decision was made with rationale. "Completed" means confirmed by the handler.
+6. Background execution — research questions using the Agent tool with `run_in_background: true` so the user can keep working
+7. Excel I/O uses tracker.py — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
+8. Find tracker.py by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
+9. Internal Review column documents existing state — include source file paths, line numbers, relevant quotes, current behavior. Frame as "here's what exists" not "here's the answer"
+10. Handler Answer column stays empty — the user fills this after meetings
+11. Dates are automatic — tracker.py adds them
+</rules>
 
 <intake>
 
@@ -44,7 +46,7 @@ Parse the user's input after `/note`. The first word determines the subcommand:
 | `decide` | workflows/resolve.md (with Decided status) | `/note decide operations "reversal" We go with 24h window` |
 | anything else | workflows/research-question.md | `/note What is the reversal timeout?` |
 
-For the default case (research-question), the **entire input is the question**. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
+For the default case (research-question), the entire input is the question. The handler is auto-detected by matching the question against each handler's `research.md` focus areas. If the first word matches an existing handler directory name (case-insensitive), it MAY be an explicit handler override — but only treat it as such if it matches a known handler AND is followed by more text.
 
 </intake>
 
@@ -62,7 +64,7 @@ For the default case (research-question), the **entire input is the question**. 
 | Input starts with "review" | Re-review existing questions with fresh context | workflows/review.md |
 | Input starts with "quick" | Quick-add question without research | workflows/quick.md |
 | Input starts with "meeting" | Interactive meeting capture with auto-linking | workflows/meeting.md |
-| Input starts with "decide" | Mark question as decided with rationale | workflows/resolve.md (use `decide` command in tracker.py) |
+| Input starts with "decide" | Mark question as decided with rationale | workflows/resolve.md |
 | Default (question) | Auto-detect handler, research, and log question | workflows/research-question.md |
 
 </routing>
@@ -103,7 +105,7 @@ Status values in tracker.xlsx:
 |---|---|---|
 | scripts/tracker.py | Excel I/O for tracker.xlsx | `uvx --with openpyxl python3 <path> <command> <args>` |
 
-### Finding the script
+Finding the script:
 
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
@@ -114,7 +116,7 @@ Then invoke with:
 uvx --with openpyxl python3 "$TRACKER_PY" <command> <args>
 ```
 
-### Script commands
+Script commands:
 
 | Command | Usage |
 |---|---|
@@ -129,3 +131,11 @@ uvx --with openpyxl python3 "$TRACKER_PY" <command> <args>
 | `doctor <dir>` | Upgrade tracker.xlsx to latest formatting (colors, dropdowns, widths) |
 
 </scripts_index>
+
+<success_criteria>
+The note skill succeeds when:
+- Questions are logged to `project-notes/tracker.xlsx` with correct handler, status, and internal review
+- Background research gathers context without trying to answer the question
+- Meeting agendas accurately reflect open questions grouped and prioritized by handler
+- All Excel I/O goes through tracker.py, never direct file editing
+</success_criteria>

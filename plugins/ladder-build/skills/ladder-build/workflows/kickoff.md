@@ -1,5 +1,5 @@
 <required_reading>
-**Read these reference files NOW:**
+Read these reference files NOW:
 1. references/milestone-design.md
 2. references/verification-standards.md
 3. templates/build-plan.md
@@ -8,42 +8,41 @@
 
 <process>
 
-## Step 1: Gather Context
-
+<step_1_gather_context>
 Check for existing artifacts:
 - Look in `[cwd]/artifacts/explorations/` for a miltiaze exploration report related to the project
 - Look in `[cwd]/artifacts/builds/` for an existing build plan (if one exists, route to workflows/continue.md instead)
 
-**If a miltiaze exploration exists**, read it and extract:
-- **Recommended solution** from the Solutions section
-- **Key components** and their dependencies
-- **Next Steps** (these become the seed for milestones)
-- **Risks and mitigations** (these inform verification criteria)
-- **Technical decisions** already made
+If a miltiaze exploration exists, read it and extract:
+- Recommended solution from the Solutions section
+- Key components and their dependencies
+- Next Steps (these become the seed for milestones)
+- Risks and mitigations (these inform verification criteria)
+- Technical decisions already made
 
-**If no exploration exists**, analyze the user's description:
+If no exploration exists, analyze the user's description:
 - What is the project?
 - What technologies/constraints are mentioned?
 - What does "done" look like?
+</step_1_gather_context>
 
-## Step 2: Define the End Goal
-
+<step_2_define_end_goal>
 Write a clear, concise end goal (2-4 sentences). This is the North Star — what the finished product looks like, who uses it, and what it does.
 
-This goes at the top of the build plan and **never changes** unless the user explicitly redefines it.
+This goes at the top of the build plan and never changes unless the user explicitly redefines it.
 
 Present the end goal to the user for confirmation before proceeding.
+</step_2_define_end_goal>
 
-## Step 3: Decompose into Milestones
-
+<step_3_decompose_into_milestones>
 Using the references/milestone-design.md framework, break the project into 4-8 initial milestones. For each:
-- **Name:** Short, descriptive (e.g., "Core trade UI", "Active trade monitoring")
-- **Goal:** One sentence — what this milestone delivers
-- **Done when:** Testable criteria — what you can run/see/confirm
-- **Size:** S/M/L (relative to the project scope)
-- **Dependencies:** Which milestones must come first (if any)
+- Name: Short, descriptive (e.g., "Core trade UI", "Active trade monitoring")
+- Goal: One sentence — what this milestone delivers
+- Done when: Testable criteria — what you can run/see/confirm
+- Size: S/M/L (relative to the project scope)
+- Dependencies: Which milestones must come first (if any)
 
-**Ordering principles:**
+Ordering principles:
 1. Foundation first — data models, core logic, basic infrastructure
 2. Then core features — the things that make this useful
 3. Then supporting features — monitoring, logging, history
@@ -53,22 +52,22 @@ Using the references/milestone-design.md framework, break the project into 4-8 i
 Present the milestones to the user:
 
 "Here's how I'd break this build into milestones:
-1. **[Name]** (S) — [Goal]. Done when: [criteria].
-2. **[Name]** (M) — [Goal]. Done when: [criteria].
+1. [Name] (S) — [Goal]. Done when: [criteria].
+2. [Name] (M) — [Goal]. Done when: [criteria].
 ...
 These will evolve as we build. Want to adjust before we start?"
 
 Use AskUserQuestion:
-- **Go ahead** — Start building
-- **Adjust milestones** — I want to change something
-- **Redefine the goal** — The end goal needs work
+- Go ahead — Start building
+- Adjust milestones — I want to change something
+- Redefine the goal — The end goal needs work
 
-If "Go ahead" → proceed to Step 4.
+If "Go ahead" → proceed to step 4.
 If "Adjust milestones" → receive input, update, ask again.
-If "Redefine the goal" → receive input, return to Step 2.
+If "Redefine the goal" → receive input, return to step 2.
+</step_3_decompose_into_milestones>
 
-## Step 4: Save the Build Plan
-
+<step_4_save_build_plan>
 Create directory: `[cwd]/artifacts/builds/[project-slug]/`
 Create milestones directory: `[cwd]/artifacts/builds/[project-slug]/milestones/`
 
@@ -77,12 +76,13 @@ Save the build plan using the templates/build-plan.md structure.
 If there's a miltiaze exploration, link to it in the Source field.
 
 Tell the user where it's saved.
+</step_4_save_build_plan>
 
-## Step 5: Start Milestone 1
-
+<step_5_start_milestone_1>
 Transition to workflows/build-milestone.md for the first milestone.
 
-**Don't ask if the user wants to start. Start.**
+Don't ask if the user wants to start. Start.
+</step_5_start_milestone_1>
 
 </process>
 

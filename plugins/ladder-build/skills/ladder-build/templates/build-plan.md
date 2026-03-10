@@ -1,8 +1,6 @@
 <template>
 
-## Build Plan Template
-
-Use this structure. The build plan is a **living document** — updated after every milestone.
+Use this structure. The build plan is a living document — updated after every milestone.
 
 ```markdown
 # Build Plan: [Project Name]
@@ -65,12 +63,12 @@ _(Key decisions made during the build and why — so future sessions have contex
 | [YYYY-MM-DD] | [What was decided] | [Why — context, tradeoffs considered] |
 ```
 
-### Conventions
-
-- **Status markers:** Use `completed`, `in progress`, `pending`, or `blocked` with a reason.
-- **Milestone sizing:** S = single component/feature, M = a few connected components, L = a subsystem.
-- **Discovered work:** Items here are unplanned. They either become milestones (if big enough) or get handled within the next relevant milestone (if small).
-- **Refinement queue:** These are "make it better" items, not "make it work" items. They wait until the core is solid.
-- **Decisions log:** Captures the WHY behind choices. When a future session picks up the build, this log prevents re-debating settled decisions.
-
 </template>
+
+<conventions>
+- Status markers: Use `completed`, `in progress`, `pending`, or `blocked` with a reason.
+- Milestone sizing: S = single component/feature, M = a few connected components, L = a subsystem.
+- Discovered work: Items here are unplanned. They either become milestones (if big enough) or get handled within the next relevant milestone (if small).
+- Refinement queue: These are "make it better" items, not "make it work" items. They wait until the core is solid.
+- Decisions log: Captures the WHY behind choices. When a future session picks up the build, this log prevents re-debating settled decisions.
+</conventions>

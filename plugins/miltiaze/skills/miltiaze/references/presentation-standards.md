@@ -1,15 +1,15 @@
 <presentation_standards>
 
-## Output Quality Standards
-
+<audience>
 The output must work for three types of readers:
-1. **First-timer:** Seeing this topic for the first time. Needs jargon explained, context provided, the "why" before the "how."
-2. **Returner:** Read this months ago, coming back to refresh. Needs the TL;DR and quick navigation to the section they care about.
-3. **Expert skimmer:** Knows the domain, wants to see if you found anything they missed. Needs dense, well-organized information they can scan fast.
+1. First-timer — seeing this topic for the first time. Needs jargon explained, context provided, the "why" before the "how."
+2. Returner — read this months ago, coming back to refresh. Needs the TL;DR and quick navigation to the section they care about.
+3. Expert skimmer — knows the domain, wants to see if you found anything they missed. Needs dense, well-organized information they can scan fast.
+</audience>
 
-### Formatting Rules
+<formatting_rules>
 
-**Structure hierarchy:**
+Structure hierarchy:
 - TL;DR at the very top (2-4 sentences max)
 - Key Terms glossary immediately after (only if the topic has jargon)
 - Dimension sections with clear headers
@@ -17,8 +17,7 @@ The output must work for three types of readers:
 - Next Steps at the bottom
 - Sources at the very end
 
-**Key Terms glossary:**
-When a topic involves terminology that a non-specialist wouldn't know, include a short glossary right after the TL;DR. Format:
+Key Terms glossary — when a topic involves terminology that a non-specialist wouldn't know, include a short glossary right after the TL;DR. Format:
 
 ```
 ### Key Terms
@@ -32,35 +31,39 @@ Rules for the glossary:
 - Include common synonyms/aliases in the definition
 - Skip terms that are self-explanatory from context
 
-**Within each dimension section:**
+Within each dimension section:
 - Start with a 1-2 sentence summary of the finding for that dimension
 - Bold key takeaways
 - Use tables for comparisons (don't describe in prose what a table shows better)
 - Use bullet lists for discrete items, paragraphs for narratives
 - Include a "Bottom line" callout at the end of complex sections
 
-**Comparison tables:**
-Use these whenever comparing 3+ options. Always include:
+Comparison tables — use whenever comparing 3+ options. Always include:
 - A clear header row
 - Consistent rating/evaluation format across rows
 - A "Best when..." row at the bottom
 
-**Things to NEVER do:**
-- Don't pad sections to make them look more thorough
-- Don't include a dimension section that just says "not applicable" — omit it
-- Don't use vague qualifiers ("somewhat," "relatively," "fairly") without a reference point
-- Don't list 10 options when 3-4 cover the meaningful space
-- Don't repeat information across sections — reference back instead
-- Don't include sources you didn't actually use in the research
+</formatting_rules>
 
-**Verification markers:**
-When stating a fact, use these markers in the source-heavy parts:
+<anti_patterns>
+NEVER do these:
+- Pad sections to make them look more thorough
+- Include a dimension section that just says "not applicable" — omit it instead
+- Use vague qualifiers ("somewhat," "relatively," "fairly") without a reference point
+- List 10 options when 3-4 cover the meaningful space
+- Repeat information across sections — reference back instead
+- Include sources you didn't actually use in the research
+</anti_patterns>
+
+<verification_markers>
+When stating a fact, use these markers in source-heavy parts:
 - Verified claims need no marker (they have sources at the bottom)
 - Unverified reasoning: prefix with "Based on general understanding:" or "Reasoning from first principles:"
 - Uncertain claims: prefix with "Unverified:" and flag for follow-up
+</verification_markers>
 
-**Next Steps section:**
-Every exploration must end with 2-5 concrete, actionable next steps aimed at a **full production-quality solution** — not a throwaway prototype. Format:
+<next_steps_format>
+Every exploration MUST end with concrete, actionable next steps aimed at a full production-quality solution — not a throwaway prototype. Format:
 
 ```
 ### Next Steps — Toward the Full Solution
@@ -75,5 +78,6 @@ Bad: "Try prototyping this to see if it works."
 Good: "Build the audio capture module with VAD-based silence detection using Silero VAD — this becomes the input layer for the full voice interface. Starting with a clean, tested module that slots into the final architecture."
 
 The mindset: research leads to building. Don't stop at findings and ask "what now?" — propose the path to the real thing and start moving.
+</next_steps_format>
 
 </presentation_standards>

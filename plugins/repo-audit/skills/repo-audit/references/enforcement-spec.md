@@ -1,7 +1,6 @@
-# Enforcement Specification
+<enforcement_spec>
 
-## Pre-commit hook
-
+<pre_commit_hook>
 `.pre-commit-config.yaml` wires `scripts/enforce_amendment_protocol.py` to run on every commit. It:
 
 1. Identifies staged code-like files (by extension)
@@ -16,23 +15,26 @@
    - `updated_files` (list covering all changed code files)
 4. Checks that every changed code file appears in at least one amendment's `updated_files`
 5. Exits non-zero if any check fails — blocking the commit
+</pre_commit_hook>
 
-## CI check
-
+<ci_check>
 `.github/workflows/enforce-amendment.yml` runs the same validator on PRs to the default branch, using `git diff` against the auto-detected default branch to find all changed files.
+</ci_check>
 
-## Excluded from enforcement
-
+<exclusions>
 - Files under `_code_audit/` (audit outputs)
 - Files under `.github/` (CI workflows)
 - `CLAUDE.md`, `.gitignore`, `LICENSE`
 - Markdown files outside `_code_audit/`
 - Pure file deletions
+</exclusions>
 
-## Code-like file extensions
+<code_like_extensions>
+Source: `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.bash`, `.zsh`, `.ps1`
 
-**Source:** `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.sh`, `.bash`, `.zsh`, `.ps1`
-
-**Config:** `.toml`, `.yaml`, `.yml`, `.json`
+Config: `.toml`, `.yaml`, `.yml`, `.json`
 
 Any file with these extensions that is NOT excluded triggers amendment enforcement.
+</code_like_extensions>
+
+</enforcement_spec>

@@ -1,5 +1,5 @@
 <required_reading>
-**Read these reference files NOW:**
+Read these reference files before proceeding:
 1. references/research-dimensions.md
 2. references/presentation-standards.md
 3. templates/exploration-report.md
@@ -7,19 +7,18 @@
 
 <process>
 
-## Step 1: Analyze the Idea
-
+<step_analyze>
 Parse what the user said. Extract:
 - **Core idea:** What is the thing they want to explore?
 - **Hinted dimensions:** Did they mention feasibility, UX, implementation, specific tools, etc.?
 - **Implicit constraints:** Platform, language, existing system, skill level, etc.
 - **Apparent goal:** Are they exploring to build? To decide? To learn? To evaluate?
 
-Do NOT ask clarifying questions unless there is genuine ambiguity about what the idea IS. If the user gave a rich description (like a paragraph with multiple angles), you have enough — proceed.
+Do NOT ask clarifying questions unless there is genuine ambiguity about what the idea IS. If the user gave a rich description, you have enough — proceed.
+</step_analyze>
 
-## Step 2: Select Dimensions
-
-Using the research-dimensions.md framework, select the 3-6 dimensions most relevant to THIS idea. Consider:
+<step_select_dimensions>
+Using the research-dimensions.md framework, select every dimension that is relevant to THIS idea. There is no fixed count — some ideas need 3 angles, some need 8 or more. Let the idea dictate the scope. Consider:
 - What dimensions did the user's own prompt touch on? Those are important to them.
 - What dimensions are objectively important for this type of idea?
 - What dimensions would a thoughtful person want explored even if they didn't think to ask?
@@ -42,23 +41,23 @@ Options:
 3. **Remove an angle** — Some of these aren't relevant
 4. **Let me reframe** — I want to adjust the scope of the exploration
 
-If "Go ahead" → proceed to Step 3.
-If "Add an angle" → receive input, add to dimension list, ask again.
-If "Remove an angle" → receive input, remove, ask again.
-If "Let me reframe" → receive input, re-analyze from Step 1.
+If "Go ahead" -> proceed to research.
+If "Add an angle" -> receive input, add to dimension list, ask again.
+If "Remove an angle" -> receive input, remove, ask again.
+If "Let me reframe" -> receive input, re-analyze from step_analyze.
+</step_select_dimensions>
 
-## Step 3: Research in Parallel
-
+<step_research>
 For each selected dimension, determine the right research approach from the research-dimensions.md table.
 
-**Launch parallel research using Task subagents** for dimensions that are independent of each other. Each subagent should:
+Launch parallel research using Task subagents for dimensions that are independent of each other. Each subagent should:
 - Focus on ONE dimension
 - Use the tools specified in the research-dimensions.md table for that dimension
-- Use Context7 (resolve-library-id → query-docs) for any specific library or framework mentioned
+- Use Context7 (resolve-library-id -> query-docs) for any specific library or framework mentioned
 - Use WebSearch for current information, trends, or state-of-the-art
 - Return structured findings with source URLs
 
-**Example subagent prompt pattern:**
+Example subagent prompt pattern:
 ```
 Research the [DIMENSION NAME] dimension of this idea: "[IDEA SUMMARY]"
 
@@ -82,55 +81,55 @@ Return your findings in this structure:
 **Sources used:** [list with URLs]
 ```
 
-**Sequential research** for dimensions that depend on earlier findings (e.g., Implementation Approaches may depend on Technical Landscape results).
+Use sequential research for dimensions that depend on earlier findings (e.g., Implementation Approaches may depend on Technical Landscape results).
+</step_research>
 
-## Step 4: Formulate Solutions
-
-After all dimension research returns, synthesize into **at least 2 distinct solutions.** This is not optional — there is always more than one way.
+<step_formulate_solutions>
+After all dimension research returns, synthesize into at least 2 distinct solutions. This is not optional — there is always more than one way.
 
 For each solution:
 - Combine findings across dimensions into a coherent approach
 - Mix and match components from different tools/libraries/patterns when it makes sense
-- For each solution, explicitly document: what it is, why it works, dependencies, pitfalls, hard limits, and effort estimate (S/M/L/XL)
-- Don't straw-man any option — every solution presented must be a genuine contender
+- Explicitly document: what it is, why it works, dependencies, pitfalls, hard limits, and effort estimate (S/M/L/XL)
+- NEVER straw-man any option — every solution presented MUST be a genuine contender
 
 Consider hybrid approaches: Solution A's backend with Solution B's UX pattern. The best answer is often a mix.
 
 Build a comparison table across all solutions covering: effort, dependencies, performance, maintainability, biggest risk, and "best when."
 
 Recommend one (or a hybrid) with clear reasoning tied to the specific context.
+</step_formulate_solutions>
 
-## Step 5: Assemble the Report
+<step_assemble_report>
+1. Cross-reference findings. Do dimensions contradict each other? (e.g., best UX approach requires a library that's poorly maintained) Flag these tensions explicitly.
 
-1. **Cross-reference findings.** Do dimensions contradict each other? (e.g., best UX approach requires a library that's poorly maintained) Flag these tensions explicitly.
+2. Write the TL;DR. Synthesize everything into 2-4 sentences that answer: What is this? Does it work? What's the recommended solution?
 
-2. **Write the TL;DR.** Synthesize everything into 2-4 sentences that answer: What is this? Does it work? What's the recommended solution?
+3. Build the Key Terms glossary. Scan all dimension findings for jargon. If there are 3+ non-obvious terms, include the glossary.
 
-3. **Build the Key Terms glossary.** Scan all dimension findings for jargon. If there are 3+ non-obvious terms, include the glossary.
+4. Assemble the report using the templates/exploration-report.md structure. Dimensions first, then Solutions section, then Next Steps.
 
-4. **Assemble the report** using the templates/exploration-report.md structure. Dimensions first, then Solutions section, then Next Steps.
+5. Write Next Steps. Based on the recommended solution, what are the concrete steps toward the full production implementation? Be specific and actionable — no fixed count, include as many as are genuinely needed.
 
-5. **Write Next Steps.** Based on the recommended solution, what are the 2-5 steps toward the full production implementation? Be specific and actionable.
+6. Compile sources. Merge all sources from all dimensions. Remove duplicates. Ensure every source was actually used.
+</step_assemble_report>
 
-6. **Compile sources.** Merge all sources from all dimensions. Remove duplicates. Ensure every source was actually used.
-
-## Step 6: Verify
-
+<step_verify>
 Before presenting, check:
-- [ ] Every factual claim has a source or is explicitly marked as reasoning/unverified
-- [ ] No fabricated library names, APIs, or tools
-- [ ] No empty or filler sections
-- [ ] Key Terms glossary included if jargon is present (omitted if not needed)
-- [ ] TL;DR actually summarizes the key findings
-- [ ] At least 2 genuine solutions presented (no straw-men)
-- [ ] Each solution has: dependencies, pitfalls, hard limits, effort estimate
-- [ ] Solutions comparison table included
-- [ ] Next Steps are specific and actionable (not "consider your options")
-- [ ] All sources list URLs and access dates
-- [ ] No dimension section just restates what another said
+- Every factual claim has a source or is explicitly marked as reasoning/unverified
+- No fabricated library names, APIs, or tools
+- No empty or filler sections
+- Key Terms glossary included if jargon is present (omitted if not needed)
+- TL;DR actually summarizes the key findings
+- At least 2 genuine solutions presented (no straw-men)
+- Each solution has: dependencies, pitfalls, hard limits, effort estimate
+- Solutions comparison table included
+- Next Steps are specific and actionable (not "consider your options")
+- All sources list URLs and access dates
+- No dimension section just restates what another said
+</step_verify>
 
-## Step 7: Present and Save
-
+<step_present_and_save>
 1. Present the full exploration report to the user in the conversation.
 
 2. Save to file:
@@ -138,29 +137,28 @@ Before presenting, check:
    - Filename: `YYYY-MM-DD-[topic-slug]-exploration.md`
    - Tell the user where it's saved.
 
-3. **Propose the handoff to ladder-build.** The exploration is done — building is ladder-build's job. The exploration report is the handoff artifact. Frame it:
+3. Propose the handoff to ladder-build. The exploration is done — building is ladder-build's job. The exploration report is the handoff artifact. Frame it:
    - "Based on this exploration, the recommended next step is to start building with `/ladder-build`. The exploration report at [path] has everything needed for the kickoff."
    - If a key decision is needed first: Present the decision with your recommendation, ask for the call, then reference ladder-build.
-   - The exploration report contains the recommended solution, components, risks, and next steps — ladder-build will read it and decompose the build into verifiable milestones.
 
-   Never stop at "here are some options, let me know." Always have a recommended path and momentum toward the real thing.
+   NEVER stop at "here are some options, let me know." Always have a recommended path and momentum toward the real thing.
+</step_present_and_save>
 
 </process>
 
 <success_criteria>
-Exploration is complete when:
-- [ ] Idea was decomposed into the right dimensions (not too many, not too few)
-- [ ] Each dimension was researched with appropriate tools (not just reasoning)
-- [ ] All factual claims are sourced or explicitly qualified
-- [ ] Zero fabricated information
-- [ ] At least 2 genuine solutions presented — each with dependencies, pitfalls, limits, and effort estimate
-- [ ] No straw-man options — every solution is a real contender
-- [ ] Solutions comparison table included
-- [ ] Output follows the exploration-report template
-- [ ] TL;DR would make sense to someone who reads nothing else
-- [ ] Key Terms glossary included when needed
-- [ ] Next Steps target a full production solution, not a throwaway prototype
-- [ ] The recommended next step is proposed with clear intent to proceed
-- [ ] Report saved to artifacts/explorations/
-- [ ] No filler, no padding, every section earns its place
+- Idea was decomposed into every relevant dimension — no artificial limits
+- Each dimension was researched with appropriate tools (not just reasoning)
+- All factual claims are sourced or explicitly qualified
+- Zero fabricated information
+- At least 2 genuine solutions presented — each with dependencies, pitfalls, limits, and effort estimate
+- No straw-man options — every solution is a real contender
+- Solutions comparison table included
+- Output follows the exploration-report template
+- TL;DR would make sense to someone who reads nothing else
+- Key Terms glossary included when needed
+- Next Steps target a full production solution, not a throwaway prototype
+- The recommended next step is proposed with clear intent to proceed
+- Report saved to artifacts/explorations/
+- No filler, no padding, every section earns its place
 </success_criteria>

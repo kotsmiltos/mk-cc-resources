@@ -1,11 +1,10 @@
 <process>
 
-## Upgrade tracker.xlsx to latest formatting
-
-### Step 1: Check tracker exists
+<step_1_check>
 Verify `project-notes/tracker.xlsx` exists. If not, suggest running `/note init` first.
+</step_1_check>
 
-### Step 2: Run doctor
+<step_2_run_doctor>
 ```bash
 TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
 uvx --with openpyxl python3 "$TRACKER_PY" doctor project-notes
@@ -18,9 +17,11 @@ This upgrades the existing tracker to the latest format:
 - Applies color coding to status cells (green/orange/blue)
 - Re-applies wrap alignment and auto-filter
 - Freezes the header row
+</step_2_run_doctor>
 
-### Step 3: Confirm
+<step_3_confirm>
 Tell the user how many rows were updated and that tracker.xlsx is now up to date.
+</step_3_confirm>
 
 </process>
 

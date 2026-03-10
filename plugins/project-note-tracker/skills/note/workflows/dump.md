@@ -1,20 +1,21 @@
 <process>
 
-## Remove all project-notes traces from the current project
-
-### Step 1: Confirm with the user
+<step_1_confirm>
 This is destructive. Ask the user to confirm:
 "This will delete the entire `project-notes/` directory including tracker.xlsx and all research files. Are you sure?"
 
 Do NOT proceed without explicit confirmation.
+</step_1_confirm>
 
-### Step 2: Delete the directory
+<step_2_delete>
 ```bash
 rm -rf project-notes
 ```
+</step_2_delete>
 
-### Step 3: Confirm
+<step_3_notify>
 Tell the user: "Removed `project-notes/` — all tracker data, handler directories, and research files have been deleted."
+</step_3_notify>
 
 </process>
 

@@ -1,7 +1,5 @@
 <template>
 
-## Milestone Report Template
-
 Save one of these after each completed milestone. Omit sections that don't apply.
 
 ```markdown
@@ -43,11 +41,11 @@ _(Omit if none. Things learned during this milestone that affect the plan.)_
 [What's recommended next and why. This bridges to the next milestone.]
 ```
 
-### Notes
-
-- **Be concrete.** "Built the trade execution module" is better than "Worked on trading stuff."
-- **Files changed matters.** A future session resuming this build needs to know what exists and where.
-- **Verification is proof.** Don't just say "tested it" — say what you tested and what happened.
-- **Discoveries are gold.** They're the reason the plan adapts. If building milestone 2 revealed that milestone 4 needs to be split, say so here.
-
 </template>
+
+<notes>
+- Be concrete. "Built the trade execution module" is better than "Worked on trading stuff."
+- Files changed matters. A future session resuming this build needs to know what exists and where.
+- Verification is proof. Don't just say "tested it" — say what you tested and what happened.
+- Discoveries are gold. They're the reason the plan adapts. If building milestone 2 revealed that milestone 4 needs to be split, say so here.
+</notes>

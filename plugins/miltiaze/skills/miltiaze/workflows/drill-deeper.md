@@ -1,13 +1,12 @@
 <required_reading>
-**Read these reference files NOW:**
+Read these reference files before proceeding:
 1. references/research-dimensions.md
 2. references/presentation-standards.md
 </required_reading>
 
 <process>
 
-## Step 1: Identify What to Drill Into
-
+<step_identify>
 The user wants to go deeper on a specific aspect from a previous exploration. Determine:
 - **Which dimension?** (from the original exploration, or a new angle)
 - **What specifically?** (a tool, an approach, a comparison, a concern)
@@ -24,9 +23,9 @@ Options:
 2. **Compare specific options** — Side-by-side comparison of 2-3 approaches
 3. **Feasibility of a specific approach** — Can we actually do X?
 4. **Implementation details** — How would we build the [specific part]?
+</step_identify>
 
-## Step 2: Focused Research
-
+<step_research>
 This is narrower than full exploration. Research one thing thoroughly:
 
 - Use Context7 for library/framework documentation
@@ -34,10 +33,10 @@ This is narrower than full exploration. Research one thing thoroughly:
 - Look for code examples, tutorials, migration guides
 - Find community opinions (GitHub issues, Stack Overflow, blog posts)
 
-**Verification is paramount here.** Since the user is making a deeper commitment, every claim needs a source. If a library claims to support X, find the actual documentation page or release notes — don't infer from the name.
+Verification is paramount here. Since the user is making a deeper commitment, every claim needs a source. If a library claims to support X, find the actual documentation page or release notes — don't infer from the name.
+</step_research>
 
-## Step 3: Present Findings
-
+<step_present>
 Format as an addendum to the original exploration:
 
 ```markdown
@@ -64,20 +63,20 @@ Format as an addendum to the original exploration:
 
 - [Source] — [URL] — accessed [YYYY-MM-DD]
 ```
+</step_present>
 
-## Step 4: Save
-
+<step_save>
 - Save to the same `artifacts/explorations/` directory
 - Filename: `YYYY-MM-DD-[topic-slug]-drill-[aspect-slug].md`
 - Tell the user where it's saved and how it relates to the original exploration
+</step_save>
 
 </process>
 
 <success_criteria>
-Drill-down is complete when:
-- [ ] The specific aspect was researched thoroughly (not just more of the same)
-- [ ] All claims are sourced
-- [ ] Findings are connected back to the original exploration
-- [ ] Updated next steps reflect the deeper understanding
-- [ ] Saved to artifacts/explorations/
+- The specific aspect was researched thoroughly (not just more of the same)
+- All claims are sourced
+- Findings are connected back to the original exploration
+- Updated next steps reflect the deeper understanding
+- Saved to artifacts/explorations/
 </success_criteria>

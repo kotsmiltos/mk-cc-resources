@@ -1,8 +1,6 @@
-<template>
+<output_template>
 
-## Exploration Report Template
-
-Use this structure. Omit sections that don't apply — never include empty sections.
+Use this structure. Omit sections that don't apply — NEVER include empty sections.
 
 ```markdown
 # Exploration: [Idea Title]
@@ -35,7 +33,7 @@ _(Include only if the topic has non-obvious terminology. Omit entirely if all te
 
 ---
 
-_(Repeat for each relevant dimension)_
+_(Repeat for each relevant dimension — as many as the idea requires)_
 
 ---
 
@@ -112,4 +110,4 @@ _(Repeat for each relevant dimension)_
 _(Every source listed here must have been actually used in the research above. No padding.)_
 ```
 
-</template>
+</output_template>

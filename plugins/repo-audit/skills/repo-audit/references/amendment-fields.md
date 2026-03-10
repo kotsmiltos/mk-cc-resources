@@ -1,6 +1,6 @@
-# Amendment Record Fields
+<amendment_fields>
 
-## Required fields (enforced by validator)
+<required_fields>
 
 | Field | Requirement |
 |-------|-------------|
@@ -15,7 +15,9 @@
 | `related_files_considered` | List (may be empty `[]`) |
 | `updated_files` | List — must include every changed code file |
 
-## Recommended fields (warnings if missing, not blocking)
+</required_fields>
+
+<recommended_fields>
 
 | Field | Purpose |
 |-------|---------|
@@ -23,3 +25,7 @@
 | `patterns` | Pattern IDs involved (e.g., P1, P3) |
 | `tests_updated` | Test files changed |
 | `docs_updated` | Documentation files changed |
+
+</recommended_fields>
+
+</amendment_fields>
