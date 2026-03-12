@@ -6,11 +6,16 @@ Usage: python3 alert.py <stop|permission|idle|clear>
 Features:
   - Plays a distinct built-in tone per event (no dependencies)
   - Plays a custom sound file if configured in config.json
+  - Adjustable volume (0-100) with mute/unmute support
   - Shows a desktop notification with event-specific message
   - Flashes the taskbar (Windows/macOS) to grab attention
   - Writes event state to a file for the status line to pick up
 
-Config: edit config.json next to this script. Per-event toggles:
+Config: edit config.json next to this script.
+  Global settings:
+  - "volume": 0-100 to control sound level (default: 100)
+  - "muted": true/false to suppress all sounds (default: false)
+  Per-event toggles (stop, permission, idle):
   - "beep": true/false to enable built-in tones (default: true)
   - "sound": path to mp3/wav/ogg/aiff file, or null for built-in tones
   - "notify": true/false to enable desktop notifications (default: true)
@@ -102,16 +107,32 @@ def get_event_config(config: dict, event: str) -> dict:
     return {**defaults, **entry}
 
 
+def get_volume(config: dict) -> float:
+    """Return normalized volume (0.0-1.0) from config. Default: 1.0."""
+    raw = config.get("volume", 100)
+    try:
+        clamped = max(0, min(100, int(raw)))
+    except (TypeError, ValueError):
+        clamped = 100
+    return clamped / 100.0
+
+
+def is_muted(config: dict) -> bool:
+    """Return True if sounds are globally muted."""
+    return bool(config.get("muted", False))
+
+
 # ---------------------------------------------------------------------------
 # Sound: custom file playback
 # ---------------------------------------------------------------------------
-def _play_file_windows(path: str) -> None:
+def _play_file_windows(path: str, volume: float = 1.0) -> None:
     """Play audio file on Windows via PowerShell MediaPlayer."""
     abs_path = str(Path(path).resolve()).replace("'", "''")
     cmd = (
         "Add-Type -AssemblyName PresentationCore; "
         "$p = New-Object System.Windows.Media.MediaPlayer; "
         f"$p.Open([Uri]'{abs_path}'); "
+        f"$p.Volume = {volume}; "
         "$p.Play(); "
         "Start-Sleep -Milliseconds 3000; "
         "$p.Close()"
@@ -123,11 +144,11 @@ def _play_file_windows(path: str) -> None:
     )
 
 
-def _play_file_macos(path: str) -> None:
+def _play_file_macos(path: str, volume: float = 1.0) -> None:
     """Play audio file on macOS via afplay."""
     try:
         subprocess.Popen(
-            ["afplay", path],
+            ["afplay", "-v", str(volume), path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -135,12 +156,14 @@ def _play_file_macos(path: str) -> None:
         print("\a", end="", flush=True)
 
 
-def _play_file_linux(path: str) -> None:
+def _play_file_linux(path: str, volume: float = 1.0) -> None:
     """Play audio file on Linux — try paplay, ffplay, aplay in order."""
+    pa_vol = str(int(volume * 65536))
+    ff_vol = str(int(volume * 100))
     players = [
-        ["paplay", path],
-        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path],
-        ["aplay", path],
+        ["paplay", f"--volume={pa_vol}", path],
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", ff_vol, path],
+        ["aplay", path],  # aplay has no volume flag — uses system volume
     ]
     for cmd in players:
         try:
@@ -153,7 +176,7 @@ def _play_file_linux(path: str) -> None:
     print("\a", end="", flush=True)
 
 
-def _play_file_wsl(path: str) -> None:
+def _play_file_wsl(path: str, volume: float = 1.0) -> None:
     """Play audio file from WSL2 via powershell.exe on the Windows host."""
     try:
         win_path = subprocess.check_output(
@@ -167,6 +190,7 @@ def _play_file_wsl(path: str) -> None:
         "Add-Type -AssemblyName PresentationCore; "
         "$p = New-Object System.Windows.Media.MediaPlayer; "
         f"$p.Open([Uri]'{abs_path}'); "
+        f"$p.Volume = {volume}; "
         "$p.Play(); "
         "Start-Sleep -Milliseconds 3000; "
         "$p.Close()"
@@ -181,7 +205,7 @@ def _play_file_wsl(path: str) -> None:
         print("alert: powershell.exe not found in WSL PATH", file=sys.stderr)
 
 
-def play_file(path: str) -> None:
+def play_file(path: str, volume: float = 1.0) -> None:
     """Play a sound file using platform-native tools."""
     if not Path(path).is_file():
         resolved = SCRIPT_DIR / path
@@ -192,19 +216,20 @@ def play_file(path: str) -> None:
             return
 
     if IS_WSL:
-        _play_file_wsl(path)
+        _play_file_wsl(path, volume)
     elif SYSTEM == "Windows":
-        _play_file_windows(path)
+        _play_file_windows(path, volume)
     elif SYSTEM == "Darwin":
-        _play_file_macos(path)
+        _play_file_macos(path, volume)
     else:
-        _play_file_linux(path)
+        _play_file_linux(path, volume)
 
 
 # ---------------------------------------------------------------------------
 # Sound: built-in tones (no external files needed)
 # ---------------------------------------------------------------------------
 def _builtin_windows(tones: list[tuple[int, int]]) -> None:
+    """Play built-in tones on Windows. Console::Beep has no volume control."""
     parts = []
     for freq, dur in tones:
         if freq == 0:
@@ -218,21 +243,27 @@ def _builtin_windows(tones: list[tuple[int, int]]) -> None:
     )
 
 
-def _builtin_macos(event: str) -> None:
+def _builtin_macos(event: str, volume: float = 1.0) -> None:
+    """Play built-in macOS system sound with volume control."""
     sound = MACOS_SOUNDS.get(event, MACOS_SOUNDS["stop"])
     try:
         subprocess.Popen(
-            ["afplay", sound], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ["afplay", "-v", str(volume), sound],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     except FileNotFoundError:
         print("\a", end="", flush=True)
 
 
-def _builtin_linux(event: str) -> None:
+def _builtin_linux(event: str, volume: float = 1.0) -> None:
+    """Play built-in Linux freedesktop sound with volume control."""
     sound = LINUX_SOUNDS.get(event, LINUX_SOUNDS["stop"])
+    pa_vol = str(int(volume * 65536))
+    ff_vol = str(int(volume * 100))
     players = [
-        ["paplay", sound],
-        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", sound],
+        ["paplay", f"--volume={pa_vol}", sound],
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", ff_vol, sound],
         ["aplay", sound],
     ]
     for cmd in players:
@@ -247,7 +278,7 @@ def _builtin_linux(event: str) -> None:
 
 
 def _builtin_wsl(tones: list[tuple[int, int]]) -> None:
-    """Play built-in tones from WSL2 via powershell.exe on the Windows host."""
+    """Play built-in tones from WSL2 via powershell.exe. No volume control."""
     parts = []
     for freq, dur in tones:
         if freq == 0:
@@ -264,16 +295,20 @@ def _builtin_wsl(tones: list[tuple[int, int]]) -> None:
         print("\a", end="", flush=True)  # fallback terminal bell
 
 
-def play_builtin(event: str) -> None:
-    """Play built-in tone pattern for the event."""
+def play_builtin(event: str, volume: float = 1.0) -> None:
+    """Play built-in tone pattern for the event.
+
+    Volume is supported on macOS (afplay) and Linux (paplay/ffplay).
+    Windows/WSL Console::Beep uses system volume — volume param is ignored.
+    """
     if IS_WSL:
         _builtin_wsl(BUILTIN_TONES.get(event, BUILTIN_TONES["stop"]))
     elif SYSTEM == "Windows":
         _builtin_windows(BUILTIN_TONES.get(event, BUILTIN_TONES["stop"]))
     elif SYSTEM == "Darwin":
-        _builtin_macos(event)
+        _builtin_macos(event, volume)
     else:
-        _builtin_linux(event)
+        _builtin_linux(event, volume)
 
 
 # ---------------------------------------------------------------------------
@@ -596,18 +631,21 @@ def main() -> None:
 
     config = load_config()
     ecfg = get_event_config(config, event)
+    volume = get_volume(config)
+    muted = is_muted(config)
 
     # Write state for the status line to pick up
     if ecfg["statusline"]:
         write_state(event)
 
-    # Play sound — custom file takes priority, then built-in tones
-    if ecfg["sound"]:
-        play_file(ecfg["sound"])
-    elif ecfg["beep"]:
-        play_builtin(event)
+    # Play sound — skip entirely when muted
+    if not muted:
+        if ecfg["sound"]:
+            play_file(ecfg["sound"], volume)
+        elif ecfg["beep"]:
+            play_builtin(event, volume)
 
-    # Desktop notification
+    # Desktop notification (not affected by mute — mute is audio only)
     if ecfg["notify"]:
         notify(event)
 

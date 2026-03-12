@@ -1,4 +1,6 @@
 {
+  "volume": 100,
+  "muted": false,
   "stop": {
     "beep": true,
     "sound": null,

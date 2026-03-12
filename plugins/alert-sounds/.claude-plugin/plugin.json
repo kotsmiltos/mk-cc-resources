@@ -1,6 +1,6 @@
 {
   "name": "alert-sounds",
-  "description": "Cross-platform alerts for Claude Code events — sound, desktop notifications, and status line colors. Fully configurable per event.",
+  "description": "Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, volume control, and mute/unmute. Fully configurable per event.",
   "author": {
     "name": "kotsmiltos"
   }

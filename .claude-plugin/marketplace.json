@@ -51,10 +51,16 @@
       "version": "1.0.0"
     },
     {
+      "name": "safe-commit",
+      "source": "./plugins/safe-commit",
+      "description": "Commit safety layer — secret scanning, identity verification, and commit hygiene enforcement. Blocks commits containing secrets, sensitive files, hardcoded paths, or merge conflict markers.",
+      "version": "1.0.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, Repo Audit, and Project Note Tracker. Alert Sounds must be installed separately.",
-      "version": "1.11.0"
+      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. Alert Sounds must be installed separately.",
+      "version": "1.12.0"
     }
   ]
 }
