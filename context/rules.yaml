@@ -7,12 +7,12 @@
 rules:
   verify-before-reporting:
     what: |
-      When reporting project status or milestone progress, verify against the ACTUAL codebase — not just plan files or git log. For each "pending" item, check:
-      1. Git log (committed work)
-      2. Untracked/uncommitted files (work done but not committed — use git status and search for deliverable filenames)
-      3. File existence (search for the classes, scripts, or assets the plan says should be created)
-      Only report something as "pending" if you confirmed the deliverables do NOT exist anywhere in the codebase.
-    why: "Checking only git log misses implemented but uncommitted work. 07-04 was fully built with tests but reported as pending because the files were untracked."
+      Run drift-check before presenting status: bash plugins/mk-flow/skills/state/scripts/drift-check.sh
+      This tool verifies BUILD-PLAN.md milestone statuses against actual filesystem evidence (file existence, git status).
+      Its output IS your verified status — do not read STATE.md or BUILD-PLAN.md status fields directly.
+      If drift-check wasn't run, your status report is not trustworthy.
+      If drift-check reports DRIFT, fix the state files to match reality before presenting.
+    why: "Text instructions to 'verify state' get skipped — Claude reads STATE.md, sees 'pending', reports it without checking. drift-check forces verification by being the only data source."
     when: "Any status query, project summary, plan review, or milestone progress report"
 
   never-drop-scope:

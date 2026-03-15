@@ -128,14 +128,11 @@ Multi-step build project (user wants to build something with multiple components
 Simple single tasks: just execute directly. No skill routing needed.
 
 For status_query intent:
-1. Verify state claims against the actual codebase before reporting. Check whether "pending" milestones' deliverables already exist.
-2. If drift is found (stale status fields, completed work marked pending, unchecked roadmap items), FIX the state files immediately:
-   - Update STATE.md to match reality
-   - Update ROADMAP.md checkboxes/status markers
-   - Update BUILD-PLAN.md milestone statuses
-   - Commit the fixes with a clear message (e.g., "fix: update stale state — milestones X,Y were already complete")
-3. Tell the user what you fixed: "Found drift: [description]. Updated [files]. Committed."
-4. Then report the corrected status.
+1. Run drift-check FIRST: bash plugins/mk-flow/skills/state/scripts/drift-check.sh
+   This tool verifies milestone statuses against actual filesystem evidence. Its output is your source of truth.
+2. Do NOT read STATE.md or BUILD-PLAN.md status fields directly — drift-check reads them and cross-references with reality.
+3. If drift-check reports DRIFT (exit code 1), fix the state files to match reality, then report.
+4. Present status from the drift-check output. If drift-check wasn't run, your status report is not trustworthy.
 
 If the user asks to add, modify, or remove an intent (e.g., "add an intent for X", "add X to Y intent signals"):
 1. Update .claude/mk-flow/intents.yaml — add/modify the intent following the existing format
