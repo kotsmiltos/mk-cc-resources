@@ -147,7 +147,16 @@ corrections: []
 **3. `context/vocabulary.yaml`** (if not exists)
 Use the template from `skills/state/templates/vocabulary.yaml`. This maps user terms to domain-specific concepts — populated automatically when the user clarifies ambiguous terms during conversation.
 
-**4. `context/STATE.md`** (if not exists)
+**4. `context/cross-references.yaml`** (if not exists)
+Bootstrap from the context scan in step 2. For each structural pattern discovered (e.g., multiple files following the same convention, config files that must stay in sync), create a cross-reference rule. Examples of what to detect:
+- Files that follow the same format/convention (e.g., all plugin.json files)
+- Registry files that must list all instances of something (e.g., marketplace.json listing all plugins)
+- Alias/pointer files that must exist for each source (e.g., skill alias files for each plugin skill)
+- Config files that reference each other
+
+Each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
+
+**5. `context/STATE.md`** (if not exists)
 **If context was found in step 2:** Populate STATE.md from the scan results. Synthesize across all sources:
 
 - **Current Focus** — from GSD STATE.md current position, or ladder-build's current milestone, or the most recent git activity
@@ -162,10 +171,10 @@ Keep it under 50 lines. Prioritize what's actionable NOW over historical complet
 
 **If no context was found:** Use the template from `skills/state/templates/state.md`. Replace `[project-name]` with the actual project directory name. Set "Last updated" to today's date. Leave sections empty.
 
-**5. `context/notes/`** (create directory if not exists)
+**6. `context/notes/`** (create directory if not exists)
 Empty directory for auto-saved analysis and forward-notes.
 
-**6. `.gitignore` additions**
+**7. `.gitignore` additions**
 Append to existing .gitignore (or create if not exists):
 ```
 # mk-flow local preferences (not shared)
@@ -194,6 +203,7 @@ Created:
   .claude/mk-flow/intents.yaml — [N] intents active
   context/STATE.md              — [bootstrapped from N sources | empty template]
   context/vocabulary.yaml       — term disambiguation (auto-populated)
+  context/cross-references.yaml — change X, also check Y (auto-populated)
   context/notes/                — for captured thoughts
 
 Architecture engagement: [level]

@@ -1,0 +1,16 @@
+# Cross-References — "change X, also check Y"
+# Updated automatically when Claude misses a related file and the user corrects it.
+#
+# These trigger CHECKS, not automatic changes. "Check" means verify
+# consistency — only modify if actually broken by the original change.
+#
+# Format:
+#   rule-name:
+#     when: "what kind of change triggers this check"
+#     check: "file pattern or list of files to verify"
+#     why: "what could break if you don't check"
+#
+# Be specific about WHEN — "changing the format" is different from
+# "bumping a version number." Vague triggers cause unnecessary cascading.
+
+rules: {}
