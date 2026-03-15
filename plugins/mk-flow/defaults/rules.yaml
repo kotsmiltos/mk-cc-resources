@@ -1,0 +1,21 @@
+# Default Rules — shipped with mk-flow, copied to context/rules.yaml during init
+# These are hard rules, not suggestions. Violations erode trust.
+#
+# Add project-specific rules when the user corrects behavior that should never repeat.
+# Each rule has: what, why, and when it applies.
+
+rules:
+  verify-before-reporting:
+    what: "Never trust status fields in BUILD-PLAN.md or STATE.md. Always verify 'pending' milestones by checking if deliverables actually exist in the codebase."
+    why: "Stale status fields can drift from reality, leading to wasted time re-doing completed work."
+    when: "Any status query, project summary, or plan review"
+
+  never-drop-scope:
+    what: "NEVER drop, defer, or de-scope milestones or features without explicit user approval. Present it as a question, never as a decision."
+    why: "Scope decisions belong to the user. Removing planned work without asking violates trust."
+    when: "Updating plans, consolidating milestones, or suggesting changes to project scope"
+
+  never-assume-always-confirm:
+    what: "Every claim in generated outputs must be verified against actual evidence. Never infer, synthesize, or speculate."
+    why: "Fabricated or inferred content in STATE.md or reports is worse than empty sections."
+    when: "Writing STATE.md, milestone reports, status summaries, or any output that claims facts about the project"

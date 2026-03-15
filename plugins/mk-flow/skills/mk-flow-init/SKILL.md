@@ -158,14 +158,7 @@ Bootstrap from the context scan in step 2. For each structural pattern discovere
 Each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
 
 **5. `context/rules.yaml`** (if not exists)
-Behavioral corrections that the hook injects every message. Start with empty rules — populated when the user corrects Claude's behavior during work. These are hard rules, not suggestions.
-```yaml
-# Project Rules — behavioral corrections injected every message via mk-flow hook
-# These are hard rules, not suggestions. Violations erode trust.
-# Add rules when the user corrects behavior that should never repeat.
-
-rules: {}
-```
+Behavioral corrections that the hook injects every message. Use the defaults from the plugin's `defaults/rules.yaml` as the starting template. The user can add project-specific rules during work — when they correct Claude's behavior, add the correction as a new rule here.
 
 **6. `context/STATE.md`** (if not exists)
 **If context was found in step 2:** Populate STATE.md using the verification protocol below. Every item must have a verified source — never infer, synthesize, or speculate.
