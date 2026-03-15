@@ -62,6 +62,21 @@ A milestone is a single rung on the ladder. It must be:
 5. Edge cases and error handling
 </tool_cli_projects>
 
+<declarative_config_projects>
+Projects where deliverables are declarative files (SKILL.md, YAML configs, markdown workflows, templates) rather than executable code. These files are all-or-nothing — you write them complete or they don't work. There's no "stub" version of a workflow document.
+
+**Key principle:** Don't create separate milestones for "create the file" and "verify it works" when the file is naturally written complete. Group creation + integration into single milestones organized around verifiable behaviors, not file creation.
+
+1. Scaffold + core definitions (all declarative files for one complete capability)
+2. Hook/integration layer (the code that connects declarative files to the system)
+3. Cross-feature wiring (connecting multiple capabilities to each other)
+4. Real-world validation (testing with actual usage, not file existence checks)
+
+**Anti-pattern to avoid:** Decomposing by individual file type (M1: templates, M2: workflows, M3: references) when all those files serve one feature. Instead decompose by feature: M1 does everything for Feature A, M2 does everything for Feature B.
+
+**Anti-pattern to avoid:** Creating milestones for "extensibility" or "integration" as separate work when the declarative files naturally include those behaviors. If writing a workflow means including the integration point, that's not a separate milestone — it's part of the feature milestone.
+</declarative_config_projects>
+
 </decomposition_patterns>
 
 <ordering_rules>
