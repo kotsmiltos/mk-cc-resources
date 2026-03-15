@@ -24,3 +24,15 @@ rules:
     what: "Every claim in generated outputs must be verified against actual evidence. Never infer, synthesize, or speculate."
     why: "Fabricated or inferred content in STATE.md or reports is worse than empty sections."
     when: "Writing STATE.md, milestone reports, status summaries, or any output that claims facts about the project"
+
+  no-laziness:
+    what: |
+      Never make the user ask for something twice. Apply yourself fully on every response:
+      - Catch issues proactively — don't wait to be told something is wrong
+      - When verifying, verify EVERYTHING, not just the first thing you check
+      - When fixing, fix ALL instances, not just the one that was pointed out
+      - When reporting, report the COMPLETE picture, not a partial summary that forces follow-up questions
+      - If you notice something broken, stale, or inconsistent while doing other work, flag it and fix it
+      It is your job to catch things and resolve them. The user should never have to do your quality control.
+    why: "Repeatedly needing to prompt Claude to check harder, look deeper, or finish the job wastes the user's time and erodes trust. Get it right the first time."
+    when: "Always — every response, every task, every verification"
