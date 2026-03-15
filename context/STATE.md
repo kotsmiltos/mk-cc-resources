@@ -2,7 +2,7 @@
 > Last updated: 2026-03-15
 
 ## Current Focus
-mk-flow build complete (6/6 milestones). All core features implemented: intent hook, intake, state, extensibility, skill integrations.
+mk-flow build — 6/7 milestones complete. Milestone 7 (tooltips + commands + context handoff) pending.
 
 ## Done (Recent)
 - [x] mk-flow plugin scaffold — 17 files, 3 skills, templates, defaults (M1)
@@ -17,8 +17,7 @@ mk-flow build complete (6/6 milestones). All core features implemented: intent h
 ## Blocked / Open Questions
 
 ## Next Up
-- [ ] Real-world usage testing across multiple projects
-- [ ] Refinement based on usage patterns
+- [ ] Milestone 7: Tooltips + commands + context handoff — per BUILD-PLAN.md
 
 ## Decisions Made
 See artifacts/builds/mk-flow/BUILD-PLAN.md Decisions Log (9 entries).
@@ -28,6 +27,6 @@ See artifacts/builds/mk-flow/BUILD-PLAN.md Decisions Log (9 entries).
 |----|--------|-------------|--------|-------|
 
 ## Context for Future Me
-Build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (6 milestones, all complete).
+Build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, 6 complete).
 Architecture: artifacts/explorations/2026-03-15-mk-flow-final-exploration.md.
 UX examples: artifacts/explorations/2026-03-15-mk-flow-ux-reference.md.

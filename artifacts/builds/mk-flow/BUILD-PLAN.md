@@ -8,8 +8,8 @@
 
 ## Status
 
-- **Current milestone:** Complete
-- **Completed:** 6 of 6 milestones
+- **Current milestone:** 7 — Tooltips + commands + context handoff
+- **Completed:** 6 of 7 milestones
 - **Last updated:** 2026-03-15
 
 ---
@@ -85,6 +85,18 @@
 - End-to-end flow: miltiaze → Build Plans → ladder-build kickoff → builds with state → note-tracker receives bugs
 **Status:** completed | 2026-03-15 — All integrations were built into the skill scaffolds during M1-M4. Verified against actual file contents.
 
+### Milestone 7: Tooltips + commands + context handoff (S)
+**Goal:** Contextual tooltip system, explicit commands, architecture engagement, and proactive context handoff.
+**Done when:**
+- Tooltip specs defined in intake and state skill references (moment, text, fade-after count)
+- config.yaml tracks tooltips_seen counters
+- Explicit commands documented in SKILL.md routing tables (what can I do?, show amendments, show notes, remember X, pause, set engagement)
+- Context handoff generates copy-paste resume command with: skill, what's done, what's next, files to read
+- Architecture engagement level (high/medium/low) in config.yaml, referenced in CLAUDE.md conventions
+- "show tips again" resets counters
+**Status:** pending
+**Depends on:** Milestones 3, 4
+
 ---
 
 ## Discovered Work
@@ -110,5 +122,4 @@ _(Polish items for after core milestones.)_
 | 2026-03-15 | Inline classification instead of Haiku API call | Original plan called Haiku via Python. Bash context injection is simpler — no API key dependency, no latency, no cost, and the main Claude has full context for better classification |
 | 2026-03-15 | Architecture engagement as init question | User wants control over how much architecture discussion happens |
 | 2026-03-15 | Context handoff with copy-paste commands | From GSD — proactive fresh-start suggestion with exact resume command |
-| 2026-03-15 | Dropped tooltip system (was original M6) | Adds complexity for marginal UX benefit — users learn the system quickly without guided tooltips |
 | 2026-03-15 | State verification before status reporting | Build plan status fields can drift from codebase reality. Status workflow now verifies deliverables exist before reporting |
