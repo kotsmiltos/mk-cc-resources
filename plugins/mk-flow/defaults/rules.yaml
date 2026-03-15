@@ -7,14 +7,12 @@
 rules:
   verify-before-reporting:
     what: |
-      When reporting project status, plan progress, or milestone state, you MUST first show a verification block:
-        Verified:
-          Checked: [list files/patterns you actually read or searched]
-          Found: [what exists in the codebase]
-          Drift: [mismatches between plan/state files and reality, or "none"]
-      Then report status based on what you verified, not what plan/state files claim.
-      If you cannot produce this block, do not report status — say you need to verify first.
-    why: "Prevents reporting stale status from plan files without checking if deliverables actually exist."
+      When reporting project status or milestone progress, verify against the ACTUAL codebase — not just plan files or git log. For each "pending" item, check:
+      1. Git log (committed work)
+      2. Untracked/uncommitted files (work done but not committed — use git status and search for deliverable filenames)
+      3. File existence (search for the classes, scripts, or assets the plan says should be created)
+      Only report something as "pending" if you confirmed the deliverables do NOT exist anywhere in the codebase.
+    why: "Checking only git log misses implemented but uncommitted work. 07-04 was fully built with tests but reported as pending because the files were untracked."
     when: "Any status query, project summary, plan review, or milestone progress report"
 
   never-drop-scope:
