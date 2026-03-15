@@ -127,7 +127,15 @@ Multi-step build project (user wants to build something with multiple components
 
 Simple single tasks: just execute directly. No skill routing needed.
 
-For status_query intent: verify state claims against the actual codebase before reporting. Check whether "pending" milestones' deliverables already exist. Update state/plan if drift is found.
+For status_query intent:
+1. Verify state claims against the actual codebase before reporting. Check whether "pending" milestones' deliverables already exist.
+2. If drift is found (stale status fields, completed work marked pending, unchecked roadmap items), FIX the state files immediately:
+   - Update STATE.md to match reality
+   - Update ROADMAP.md checkboxes/status markers
+   - Update BUILD-PLAN.md milestone statuses
+   - Commit the fixes with a clear message (e.g., "fix: update stale state — milestones X,Y were already complete")
+3. Tell the user what you fixed: "Found drift: [description]. Updated [files]. Committed."
+4. Then report the corrected status.
 
 If the user asks to add, modify, or remove an intent (e.g., "add an intent for X", "add X to Y intent signals"):
 1. Update .claude/mk-flow/intents.yaml — add/modify the intent following the existing format
