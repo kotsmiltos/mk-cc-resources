@@ -58,3 +58,8 @@ rules:
     when: "Changing a SKILL.md, workflow, reference, or template in plugins/*/skills/*/"
     check: "The matching directory in skills/ (the mk-cc-all copy)"
     why: "skills/ contains copies of plugin skills for mk-cc-all. Both locations must stay in sync."
+
+  plugin-version-bump:
+    when: "Changing any file inside a plugin (hooks, skills, defaults, scripts)"
+    check: "The plugin's .claude-plugin/plugin.json version field"
+    why: "Plugin system compares version numbers to detect updates. Without a bump, users get 'already at latest version' and never receive the changes."
