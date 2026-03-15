@@ -19,6 +19,7 @@ If the user says "/mk-flow init" or "set up mk-flow" or "initialize mk-flow", ru
 4. Use the global intent library to show what the user has used in other projects.
 5. Never overwrite existing STATE.md — it may contain active project state.
 6. Create context/ directory for state and notes. Git-track state, gitignore local preferences.
+7. **NEVER ASSUME, ALWAYS CONFIRM.** Every item written to STATE.md must cite the exact source file and evidence. If you cannot point to a specific file, line, or explicit user statement that supports a claim, do not include it. No inferences, no speculation, no "probably." See the verification protocol in step 5.
 </core_rules>
 </essential_principles>
 
@@ -157,17 +158,27 @@ Bootstrap from the context scan in step 2. For each structural pattern discovere
 Each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
 
 **5. `context/STATE.md`** (if not exists)
-**If context was found in step 2:** Populate STATE.md from the scan results. Synthesize across all sources:
+**If context was found in step 2:** Populate STATE.md using the verification protocol below. Every item must have a verified source — never infer, synthesize, or speculate.
 
-- **Current Focus** — from GSD STATE.md current position, or ladder-build's current milestone, or the most recent git activity
-- **Done (Recent)** — from GSD completed phases/summaries, ladder-build completed milestones, recent git history
-- **Blocked / Open Questions** — from GSD blockers, note-tracker open bugs/questions, deferred items
-- **Next Up** — from GSD roadmap next phase, ladder-build next milestone, or exploration recommendations
-- **Decisions Made** — from GSD PROJECT.md key decisions, ladder-build decisions log, CLAUDE.md conventions
-- **Amendments** — leave empty (no amendments yet in mk-flow)
-- **Context for Future Me** — architecture constraints from CLAUDE.md, gotchas from GSD research/verification, rejected approaches from explorations
+**Verification protocol — apply to EVERY item before adding it to STATE.md:**
 
-Keep it under 50 lines. Prioritize what's actionable NOW over historical completeness. Link to source files for details rather than duplicating content.
+| Section | What qualifies as evidence | What does NOT qualify |
+|---------|---------------------------|---------------------|
+| **Current Focus** | Explicit status field in a BUILD-PLAN.md or ROADMAP.md showing "current" or "in progress" | Inferring from git recency or plan ordering |
+| **Done (Recent)** | Milestone report file exists, OR plan status explicitly says "completed" with a date, OR git commit directly relates to the current focus | Unrelated git commits that happen to be recent |
+| **Blocked / Open Questions** | Explicit "blocked" status in a source file, OR user stated it in conversation | Inferring that something MIGHT be blocked based on what the next task requires |
+| **Next Up** | Plan file explicitly lists upcoming work with "pending" or equivalent status | Guessing what logically comes next |
+| **Decisions Made** | Link to the source file's decisions section — do NOT duplicate. Only add project-level decisions not already tracked in a build plan or exploration | Copying decisions from another file into STATE.md |
+| **Context for Future Me** | Direct file references with brief description of what's there | Summarizing or paraphrasing source material |
+
+**For each item you add, you must be able to answer:** "Which file, at what line or section, explicitly states this?" If you cannot answer that, do not add the item.
+
+**Git history rules:**
+- Git log is for CORROBORATION only — it confirms items found in structured sources
+- A git commit alone (without matching structured source) is NOT sufficient for a "Done" item unless the commit directly relates to the current focus area
+- Never use git log as a flat list to bulk-populate "Done (Recent)"
+
+Keep it under 50 lines. Link to source files for details rather than duplicating content. Leave sections empty rather than filling them with unverified content.
 
 **If no context was found:** Use the template from `skills/state/templates/state.md`. Replace `[project-name]` with the actual project directory name. Set "Last updated" to today's date. Leave sections empty.
 
@@ -225,6 +236,9 @@ context. Say 'what can I do?' anytime for options.
 - Architecture engagement level selected and saved
 - Intents selected (with history from global library shown, note-tracker auto-enables bug_report)
 - STATE.md bootstrapped from scan results (not empty when context exists)
+- Every item in STATE.md cites a verified source — no inferred or fabricated content
+- Sections left empty rather than filled with unverified content
+- Decisions linked to source files, not duplicated
 - All files created without overwriting existing state
 - Global intent library updated
 - User sees confirmation with context import summary

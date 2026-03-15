@@ -1,0 +1,55 @@
+# Cross-References — "change X, also check Y"
+# Updated automatically when Claude misses a related file and the user corrects it.
+#
+# These trigger CHECKS, not automatic changes. "Check" means verify
+# consistency — only modify if actually broken by the original change.
+#
+# Format:
+#   rule-name:
+#     when: "what kind of change triggers this check"
+#     check: "file pattern or list of files to verify"
+#     why: "what could break if you don't check"
+#
+# Be specific about WHEN — "changing the format" is different from
+# "bumping a version number." Vague triggers cause unnecessary cascading.
+
+rules:
+  plugin-json-format:
+    when: "Changing the FORMAT or STRUCTURE of any plugin.json (adding/removing fields)"
+    check: "All plugins/*/.claude-plugin/plugin.json"
+    why: "All plugins must use the same metadata format"
+
+  skill-md-convention:
+    when: "Changing SKILL.md section structure (adding/removing XML tags, changing frontmatter fields)"
+    check: "All plugins/*/skills/*/SKILL.md"
+    why: "Shared convention across all skills"
+
+  marketplace-registry:
+    when: "Adding, removing, or renaming a plugin in plugins/"
+    check: ".claude-plugin/marketplace.json"
+    why: "Registry must list every plugin"
+
+  skill-aliases:
+    when: "Adding or removing a skill from any plugin"
+    check: "skills/ directory"
+    why: "Alias file must exist for each plugin skill"
+
+  workflow-routing:
+    when: "Adding a workflow .md file to a skill"
+    check: "The skill's SKILL.md <routing> section"
+    why: "Routing table must reference the new workflow"
+
+  mk-flow-hook-context:
+    when: "Adding a new context file type that mk-flow should read (like vocabulary.yaml)"
+    check: "plugins/mk-flow/hooks/hooks.json"
+    why: "Hook prompt must reference new file type"
+
+  mk-flow-init-context:
+    when: "Adding a new context file type that mk-flow should create during init"
+    check: "plugins/mk-flow/skills/mk-flow-init/SKILL.md"
+    why: "Init must know to create the new file"
+
+  build-plan-milestones:
+    when: "Completing a milestone or changing milestone status"
+    check: "artifacts/builds/mk-flow/BUILD-PLAN.md, context/STATE.md"
+    why: "Build plan status and project state must stay in sync"

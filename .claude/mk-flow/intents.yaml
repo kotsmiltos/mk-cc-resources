@@ -1,0 +1,86 @@
+intents:
+  action:
+    description: "User wants something built, fixed, or implemented"
+    signals:
+      - "fix"
+      - "build"
+      - "implement"
+      - "add"
+      - "create"
+      - "make"
+      - "set up"
+      - "do"
+    route: "execution"
+    enabled: true
+
+  question:
+    description: "User asking for explanation — answer without changing state or task direction"
+    signals:
+      - "what is"
+      - "what's"
+      - "how does"
+      - "how do"
+      - "explain"
+      - "why"
+      - "what does"
+      - "can you explain"
+      - "tell me about"
+    route: "explain_no_state_change"
+    enabled: true
+
+  context_addition:
+    description: "User adding new requirements, constraints, or context"
+    signals:
+      - "it should"
+      - "remember that"
+      - "also"
+      - "I want this to"
+      - "make sure"
+      - "don't forget"
+      - "actually"
+      - "oh and"
+    route: "classify_temporal_and_capture"
+    enabled: true
+
+  thought_capture:
+    description: "User dropping a mid-conversation idea or observation — capture without interrupting"
+    signals:
+      - "oh and"
+      - "idea:"
+      - "thought:"
+      - "we should probably"
+      - "it would be nice"
+      - "maybe we could"
+      - "at some point"
+      - "for the future"
+    route: "background_capture"
+    enabled: true
+
+  frustration_signal:
+    description: "User expressing repeated frustration about a recurring issue — ask to clarify then scope"
+    signals:
+      - "this again"
+      - "we talked about"
+      - "still broken"
+      - "not again"
+      - "keeps happening"
+      - "I keep having to"
+      - "why does this still"
+      - "how many times"
+    route: "ask_clarify_then_scope"
+    enabled: true
+
+  status_query:
+    description: "User asking about current project state"
+    signals:
+      - "where am I"
+      - "where are we"
+      - "what's next"
+      - "what did we do"
+      - "what's the status"
+      - "show status"
+      - "what's going on"
+    route: "read_state_show_summary"
+    enabled: true
+
+corrections: []

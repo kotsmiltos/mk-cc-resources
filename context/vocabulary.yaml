@@ -1,0 +1,41 @@
+# Project Vocabulary — maps user terms to domain-specific concepts
+# Updated automatically when terms are clarified during conversation.
+#
+# When the user says "board", which board? When they say "grid", which grid?
+# This file resolves ambiguity so Claude doesn't have to ask twice.
+#
+# Format:
+#   Single meaning:
+#     term:
+#       means: "what it refers to"
+#       files: "where to find it in the codebase"
+#
+#   Multiple meanings (disambiguated by context):
+#     term:
+#       - context: "keywords that suggest this meaning"
+#         means: "what it refers to in this context"
+#         files: "relevant file paths"
+#       - context: "keywords that suggest the other meaning"
+#         means: "what it refers to in this other context"
+#         files: "relevant file paths"
+
+terms:
+  plugin:
+    means: "A distributable package in plugins/ containing .claude-plugin/plugin.json, skills, and optional hooks/scripts"
+    files: "plugins/*/"
+  skill:
+    - context: "creating, editing, authoring"
+      means: "A SKILL.md file defining Claude Code behavior with YAML frontmatter + XML sections"
+      files: "plugins/*/skills/*/SKILL.md"
+    - context: "installing, using, invoking"
+      means: "A slash command users invoke (e.g., /intake, /state)"
+      files: "skills/ (alias layer)"
+  alias:
+    means: "A text file in skills/ that points to the real skill directory inside a plugin"
+    files: "skills/*"
+  intent:
+    means: "A classified user message type (action, question, context_addition, etc.) used for routing"
+    files: ".claude/mk-flow/intents.yaml, plugins/mk-flow/intent-library/defaults.yaml"
+  hook:
+    means: "A UserPromptSubmit hook that runs on every message for intent classification"
+    files: "plugins/mk-flow/hooks/"

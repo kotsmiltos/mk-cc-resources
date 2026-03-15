@@ -2,7 +2,10 @@
 *.scout-index.json
 
 # Claude Code local settings
-.claude/
+.claude/*
+!.claude/mk-flow/
+.claude/mk-flow/*
+!.claude/mk-flow/intents.yaml
 
 # macOS
 .DS_Store
