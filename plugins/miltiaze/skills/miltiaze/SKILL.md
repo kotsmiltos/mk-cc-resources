@@ -42,7 +42,7 @@ No half measures. When we explore something, we do it right — thoroughly, with
 
 10. **Actionable output.** Every exploration ends with concrete next steps the user can take, not just knowledge dumps.
 
-11. **Always present multiple solutions.** NEVER present just one path. Research and present at least 2 distinct solutions — mix and match approaches when it makes sense. For each solution, lay out: what it is, why it works, its dependencies, pitfalls, hard limits, and an honest effort estimation (complexity-based: S/M/L/XL, not time). Use comparison tables. Recommend one, but give the user real options with real tradeoffs — not a fake choice where one option is obviously straw-manned.
+11. **Always present multiple solutions.** NEVER present just one path. Research and present as many distinct solutions as genuinely exist — mix and match approaches when it makes sense. Sometimes there's one clear path, sometimes there are five viable options. Present what's real, don't pad. For each solution, lay out: what it is, why it works, its dependencies, pitfalls, hard limits, and an honest effort estimation (complexity-based: S/M/L/XL, not time). Use comparison tables. Recommend one, but give the user real options with real tradeoffs — not a fake choice where one option is obviously straw-manned.
 
 12. **Follow through — aim for the full solution.** Research is not the deliverable, it's the foundation. After presenting findings, propose the next step and GO. The goal is a complete, production-quality solution: optimized, performant, reliable, robust, clean, and maintainable. Prototypes are stepping stones, not endpoints.
 
@@ -127,8 +127,8 @@ All in `templates/`:
 - Each dimension was researched with appropriate tools (not just reasoning)
 - All factual claims are sourced or explicitly qualified
 - Zero fabricated information
-- At least 2 genuine solutions presented with dependencies, pitfalls, limits, and effort estimates
-- No straw-man options — every solution is a real contender
+- Solutions presented match reality — as many as genuinely exist, each with dependencies, pitfalls, limits, and effort estimates
+- No straw-man options or padding — every solution presented is a real contender
 - Solutions comparison table included
 - Output follows the exploration-report template
 - TL;DR would make sense to someone who reads nothing else

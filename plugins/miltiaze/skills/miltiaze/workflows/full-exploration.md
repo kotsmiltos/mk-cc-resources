@@ -14,6 +14,10 @@ Parse what the user said. Extract:
 - **Implicit constraints:** Platform, language, existing system, skill level, etc.
 - **Apparent goal:** Are they exploring to build? To decide? To learn? To evaluate?
 
+**Context check before exploring:**
+- Check `artifacts/explorations/` — has this topic been explored before? If so, read the previous exploration and offer: "You explored [similar topic] on [date]. Want to build on that or start fresh?"
+- Check `context/STATE.md` (if it exists) — is there active work related to this topic? Surface it.
+
 Do NOT ask clarifying questions unless there is genuine ambiguity about what the idea IS. If the user gave a rich description, you have enough — proceed.
 </step_analyze>
 
@@ -85,13 +89,13 @@ Use sequential research for dimensions that depend on earlier findings (e.g., Im
 </step_research>
 
 <step_formulate_solutions>
-After all dimension research returns, synthesize into at least 2 distinct solutions. This is not optional — there is always more than one way.
+After all dimension research returns, synthesize into as many distinct solutions as genuinely exist. Sometimes there's one clear winner, sometimes there are several viable paths. Present what's real — don't force a second option when one approach is clearly right, but don't collapse to one when multiple genuinely compete.
 
 For each solution:
 - Combine findings across dimensions into a coherent approach
 - Mix and match components from different tools/libraries/patterns when it makes sense
 - Explicitly document: what it is, why it works, dependencies, pitfalls, hard limits, and effort estimate (S/M/L/XL)
-- NEVER straw-man any option — every solution presented MUST be a genuine contender
+- NEVER straw-man or pad — every solution presented MUST be a genuine contender. If only one approach makes sense, present one. If five compete, present five
 
 Consider hybrid approaches: Solution A's backend with Solution B's UX pattern. The best answer is often a mix.
 
@@ -110,6 +114,8 @@ Recommend one (or a hybrid) with clear reasoning tied to the specific context.
 4. Assemble the report using the templates/exploration-report.md structure. Dimensions first, then Solutions section, then Next Steps.
 
 5. Write Next Steps. Based on the recommended solution, what are the concrete steps toward the full production implementation? Be specific and actionable — no fixed count, include as many as are genuinely needed.
+
+   **If the exploration leads to building:** Add a "Build Plans" subsection with a structured table (Plan | Goal | Milestones | Effort | Depends On). This table feeds directly into ladder-build's kickoff — it accepts these plans as milestones without re-decomposing. Include recommended build order. See the exploration-report template for the format.
 
 6. Compile sources. Merge all sources from all dimensions. Remove duplicates. Ensure every source was actually used.
 </step_assemble_report>
@@ -151,8 +157,8 @@ Before presenting, check:
 - Each dimension was researched with appropriate tools (not just reasoning)
 - All factual claims are sourced or explicitly qualified
 - Zero fabricated information
-- At least 2 genuine solutions presented — each with dependencies, pitfalls, limits, and effort estimate
-- No straw-man options — every solution is a real contender
+- Solutions match reality — as many as genuinely exist, each with dependencies, pitfalls, limits, and effort estimate
+- No straw-man options or padding — every solution is a real contender
 - Solutions comparison table included
 - Output follows the exploration-report template
 - TL;DR would make sense to someone who reads nothing else

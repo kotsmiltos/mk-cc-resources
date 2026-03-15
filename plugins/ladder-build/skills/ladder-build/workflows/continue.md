@@ -20,6 +20,11 @@ Read the BUILD-PLAN.md. Identify:
 - Refinement queue — polish items waiting
 
 Read the most recent milestone report for context on where things left off.
+
+If mk-flow is initialized (check for `context/STATE.md`):
+- Read `context/STATE.md` — check for amendments, blocked items, decisions that affect the build
+- Read `context/.continue-here.md` if it exists — this is a richer snapshot from an explicit pause, with session-specific context and a suggested resume action
+- Pull any pending amendments that may be relevant to upcoming milestones
 </step_2_read_current_state>
 
 <step_3_present_state>
@@ -34,6 +39,7 @@ Next up: Milestone [N]: [Name] — [goal]
 
 [If discovered work exists: '[N] items in the discovered work queue.']
 [If refinement items exist and core is nearly done: '[N] refinement items ready to become milestones.']
+[If amendments exist: '[N] pending amendments — will check during relevant milestones.']
 
 Continuing with milestone [N]."
 </step_3_present_state>

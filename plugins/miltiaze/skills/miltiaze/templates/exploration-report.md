@@ -39,7 +39,7 @@ _(Repeat for each relevant dimension — as many as the idea requires)_
 
 ## Solutions
 
-> Always present at least 2 genuine solutions. Mix and match approaches when it makes sense. No straw-man options.
+> Present as many genuine solutions as exist. Mix and match approaches when it makes sense. One is fine when one is clearly right. Five is fine when five genuinely compete. No straw-man options.
 
 ### Solution A: [Name]
 
@@ -99,6 +99,15 @@ _(Repeat for each relevant dimension — as many as the idea requires)_
 3. **[Action verb] [specific thing]** — [Context for this step]
 
 **Recommended path:** [1-2 sentence summary of the overall implementation trajectory — what the finished product looks like and how we get there.]
+
+### Build Plans
+_(Include when the exploration leads to building. This table feeds directly into ladder-build kickoff — it uses these plans as milestones instead of decomposing from scratch. Omit if the exploration is purely informational.)_
+
+| Plan | Goal | Milestones | Effort | Depends On |
+|------|------|------------|--------|------------|
+| [Plan name] | [What it delivers — one sentence] | [Count] | S/M/L | [Other plan name, or "None"] |
+
+**Recommended order:** [Plan A] → [Plan B] → [Plan C]
 
 ---
 
