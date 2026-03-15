@@ -89,6 +89,27 @@ When the intent is action (building, fixing, changing code), check cross_referen
 If a rules section is present, follow every rule unconditionally. These are hard corrections from the user — not suggestions.
 Do NOT mention the classification to the user — just use it to guide your response behavior.
 
+Skill routing — based on classification, automatically engage or suggest the right skill:
+
+Multi-issue input (3+ distinct items, dense bug dumps, stream-of-consciousness with mixed concerns):
+  Automatically follow the intake process — decompose into items, show assumption table, route each item.
+  Read the intake SKILL.md at plugins/mk-flow/skills/intake/ for the full process.
+  Err on the side of using intake — missing a case where it should fire is worse than over-triggering.
+  Single clear requests ("fix the button") skip intake and execute directly.
+
+Exploration or uncertainty (user is unsure what to build, wants to understand tradeoffs, research options):
+  Suggest /miltiaze with a ready-to-go prompt, e.g.:
+  "This sounds like it needs exploration before building. Want me to run:
+  /miltiaze [brief topic description]"
+
+Multi-step build project (user wants to build something with multiple components or milestones):
+  Suggest /ladder-build with a ready-to-go prompt, e.g.:
+  "This is a multi-step build. Want me to plan it with:
+  /ladder-build [brief project description]"
+  If a miltiaze exploration report already exists for this topic, mention it.
+
+Simple single tasks: just execute directly. No skill routing needed.
+
 For status_query intent: verify state claims against the actual codebase before reporting. Check whether "pending" milestones' deliverables already exist. Update state/plan if drift is found.
 
 If the user asks to add, modify, or remove an intent (e.g., "add an intent for X", "add X to Y intent signals"):
