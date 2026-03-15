@@ -13,7 +13,7 @@ plugins/
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
     skills/schema-scout/
-      SKILL.md              # Skill definition
+      SKILL.md
       tool/                 # Standalone Python CLI package
         pyproject.toml
         schema_scout/
@@ -40,10 +40,15 @@ plugins/
       templates/            # build-plan.md, milestone-report.md
       workflows/            # kickoff.md, build-milestone.md, continue.md
 
-  mk-flow/                  # Unified workflow system
+  mk-flow/                  # Unified workflow system — intent detection, state, intake
     .claude-plugin/plugin.json
-    hooks/hooks.json        # UserPromptSubmit hook — intent classification
-    intent-library/         # defaults.yaml — default intents shipped with mk-flow
+    hooks/
+      hooks.json            # UserPromptSubmit hook config
+      intent-inject.sh      # Reads stdin JSON, injects context (intents, state, vocab, xrefs, rules)
+    defaults/
+      rules.yaml            # Default behavioral rules shipped with plugin
+    intent-library/
+      defaults.yaml         # Default intents shipped with mk-flow
     skills/
       intake/               # Dense input decomposition + assumption tables
         SKILL.md
@@ -56,7 +61,34 @@ plugins/
       mk-flow-init/         # Project setup with context scanning
         SKILL.md
 
-  project-structure/        # Project structure mapping (no plugin.json — anomaly)
+  alert-sounds/             # Cross-platform audio + visual alerts for Claude Code events
+    .claude-plugin/plugin.json
+    hooks/
+      hooks.json            # Stop, Permission, UserPromptSubmit (clear state) hooks
+      alert.py              # Main hook script — beeps, notifications, taskbar flash
+      config.json           # User config — volume, mute, per-event toggles
+      statusline.sh         # Status line integration
+      notify_windows.ps1    # Windows notification helper
+    skills/alert-sounds/
+      SKILL.md              # /alert-sounds config skill
+
+  safe-commit/              # Secret scanning + identity verification before commits
+    .claude-plugin/plugin.json
+    skills/safe-commit/
+      SKILL.md
+      references/           # commit-checks.md, secret-patterns.md
+      scripts/              # scan-secrets.sh
+
+  project-note-tracker/     # Question + bug tracker with Excel backend
+    .claude-plugin/plugin.json
+    skills/note/
+      SKILL.md
+      workflows/            # init, research-question, bug, bugs, investigate, agenda,
+                            # meeting, review, resolve, quick, add-handler, dump, doctor
+      scripts/              # tracker.py — Excel I/O via uvx --with openpyxl
+
+  project-structure/        # Project structure mapping
+    .claude-plugin/plugin.json
     skills/project-structure/
       SKILL.md
 
@@ -77,9 +109,31 @@ skills/                     # Alias layer — text files pointing to plugin skil
   intake                    # -> ../plugins/mk-flow/skills/intake
   state                     # -> ../plugins/mk-flow/skills/state
   mk-flow-init              # -> ../plugins/mk-flow/skills/mk-flow-init
+  note                      # -> ../plugins/project-note-tracker/skills/note
   project-structure/        # Direct directory (not an alias file)
     SKILL.md
+
+context/                    # Per-project mk-flow context (created by /mk-flow-init)
+  STATE.md                  # Living project state — current focus, done, blocked, next
+  rules.yaml                # Behavioral corrections — injected every message by hook
+  vocabulary.yaml           # Term disambiguation — auto-populated from corrections
+  cross-references.yaml     # "Change X, also check Y" — grows from corrections
+  notes/                    # Auto-saved analysis and forward-notes
 ```
+
+## mk-flow Context Injection
+
+The mk-flow hook (`intent-inject.sh`) runs on every UserPromptSubmit and injects 5 context files into the conversation as a system-reminder:
+
+| File | Tag | Purpose |
+|------|-----|---------|
+| `.claude/mk-flow/intents.yaml` | `<intents_config>` | Intent definitions + corrections for classification |
+| `context/STATE.md` | `<project_state>` | Current project state |
+| `context/vocabulary.yaml` | `<vocabulary>` | Term disambiguation |
+| `context/cross-references.yaml` | `<cross_references>` | Change consistency rules |
+| `context/rules.yaml` | `<rules>` | Hard behavioral rules — unconditional |
+
+The hook reads the prompt from stdin JSON, skips short messages (<10 chars) and slash commands. Classification is done inline by the main Claude, not by a separate API call.
 
 ## Cross-Reference Patterns
 
@@ -92,7 +146,7 @@ When changing files that follow these patterns, CHECK the related files for cons
 | Marketplace registry | Adding, removing, or renaming a plugin | `.claude-plugin/marketplace.json` | Must list every plugin in `plugins/` |
 | Skill aliases | Adding or removing a skill from any plugin | `skills/` directory | Alias file must exist for each plugin skill |
 | Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference the new workflow |
-| mk-flow hook | Adding a new context file type (like vocabulary.yaml) | `plugins/mk-flow/hooks/hooks.json` | Hook prompt must reference new file |
+| mk-flow hook | Adding a new context file type (like rules.yaml) | `plugins/mk-flow/hooks/intent-inject.sh` | Hook script must read and inject the new file |
 | mk-flow init | Adding a new context file type | `plugins/mk-flow/skills/mk-flow-init/SKILL.md` | Init must create the new file |
 
 Per-project cross-references live in `context/cross-references.yaml` (created by mk-flow init, grows from corrections).
@@ -103,6 +157,10 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 |-----------|-------------|
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
 | miltiaze, ladder-build, project-structure, mk-flow | None (pure SKILL.md + markdown workflows) |
+| mk-flow hook | bash, one of: jq / python3 / python (for JSON parsing) |
+| alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
+| project-note-tracker | Python >= 3.10, openpyxl (via uvx) |
+| safe-commit | bash |
 | repo-audit (enforcement scripts) | Python >= 3.10, stdlib only |
 | Build system | hatchling (schema-scout packaging) |
 
@@ -112,3 +170,4 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 - **Python source** (schema-scout) requires Python >= 3.10, uses openpyxl + typer + rich
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
+- **Behavioral corrections** go in `context/rules.yaml` (hook-injected), not auto-memory files
