@@ -23,8 +23,8 @@ extract_prompt() {
 USER_PROMPT=$(extract_prompt "$HOOK_INPUT" 2>/dev/null)
 PROMPT_LENGTH=${#USER_PROMPT}
 
-# Skip classification for short messages (<10 chars) or slash commands
-if [ "$PROMPT_LENGTH" -lt 10 ]; then
+# Skip classification for very short messages (<2 chars) or slash commands
+if [ "$PROMPT_LENGTH" -lt 2 ]; then
   exit 0
 fi
 case "$USER_PROMPT" in
@@ -66,11 +66,28 @@ $(cat "$XREF_FILE")
 </cross_references>"
 fi
 
-RULES_FILE="context/rules.yaml"
-if [ -f "$RULES_FILE" ]; then
+# Rules: merge plugin defaults with project-specific rules
+# Plugin defaults always apply; project rules can override or add to them
+PLUGIN_RULES="${CLAUDE_PLUGIN_ROOT}/defaults/rules.yaml"
+PROJECT_RULES="context/rules.yaml"
+RULES_CONTENT=""
+if [ -f "$PLUGIN_RULES" ]; then
+  RULES_CONTENT="$(cat "$PLUGIN_RULES")"
+fi
+if [ -f "$PROJECT_RULES" ]; then
+  if [ -n "$RULES_CONTENT" ]; then
+    RULES_CONTENT="${RULES_CONTENT}
+
+# --- Project-specific rules (override/extend defaults) ---
+$(cat "$PROJECT_RULES")"
+  else
+    RULES_CONTENT="$(cat "$PROJECT_RULES")"
+  fi
+fi
+if [ -n "$RULES_CONTENT" ]; then
   CONTEXT="${CONTEXT}
 <rules>
-$(cat "$RULES_FILE")
+${RULES_CONTENT}
 </rules>"
 fi
 
