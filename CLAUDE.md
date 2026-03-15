@@ -60,6 +60,8 @@ plugins/
         templates/          # state.md, continue-here.md, vocabulary.yaml, cross-references.yaml
       mk-flow-init/         # Project setup with context scanning
         SKILL.md
+      mk-flow-update-rules/ # Merge latest plugin default rules into project rules
+        SKILL.md
 
   alert-sounds/             # Cross-platform audio + visual alerts for Claude Code events
     .claude-plugin/plugin.json
