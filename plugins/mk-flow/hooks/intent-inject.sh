@@ -1,15 +1,33 @@
 #!/usr/bin/env bash
 # mk-flow intent classification hook
 # Reads context files and outputs classification instructions for the main Claude.
-# Runs as a UserPromptSubmit command hook — stdout is injected into conversation.
+# Runs as a UserPromptSubmit command hook — stdin receives JSON, stdout is injected into conversation.
 
-PROMPT_LENGTH=${#CLAUDE_USER_PROMPT}
+# Read hook input from stdin (JSON with .prompt field)
+HOOK_INPUT=$(cat)
+
+# Extract .prompt using whatever JSON tool is available (jq, python3, python)
+extract_prompt() {
+  if command -v jq >/dev/null 2>&1; then
+    echo "$1" | jq -r '.prompt // empty'
+  elif command -v python3 >/dev/null 2>&1; then
+    echo "$1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))"
+  elif command -v python >/dev/null 2>&1; then
+    echo "$1" | python -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))"
+  else
+    # No JSON parser available — cannot extract prompt
+    echo ""
+  fi
+}
+
+USER_PROMPT=$(extract_prompt "$HOOK_INPUT" 2>/dev/null)
+PROMPT_LENGTH=${#USER_PROMPT}
 
 # Skip classification for short messages (<10 chars) or slash commands
-if [ "$PROMPT_LENGTH" -lt 10 ] 2>/dev/null; then
+if [ "$PROMPT_LENGTH" -lt 10 ]; then
   exit 0
 fi
-case "$CLAUDE_USER_PROMPT" in
+case "$USER_PROMPT" in
   /*) exit 0 ;;
 esac
 
