@@ -66,6 +66,14 @@ $(cat "$XREF_FILE")
 </cross_references>"
 fi
 
+RULES_FILE="context/rules.yaml"
+if [ -f "$RULES_FILE" ]; then
+  CONTEXT="${CONTEXT}
+<rules>
+$(cat "$RULES_FILE")
+</rules>"
+fi
+
 # If no context files exist, nothing to inject
 if [ -z "$CONTEXT" ]; then
   exit 0
@@ -78,6 +86,7 @@ Classify as one of the enabled intents from the intents config.
 For context_addition intent, also determine the temporal target (current_work, past_work, future_work, decision_override, or general).
 If the vocabulary section is present and the message contains ambiguous terms, use it to disambiguate. If the user clarifies what a term means, add the mapping to context/vocabulary.yaml.
 When the intent is action (building, fixing, changing code), check cross_references for related files that should be verified for consistency. If the user points out you missed updating a related file, add that relationship to context/cross-references.yaml.
+If a rules section is present, follow every rule unconditionally. These are hard corrections from the user — not suggestions.
 Do NOT mention the classification to the user — just use it to guide your response behavior.
 
 For status_query intent: verify state claims against the actual codebase before reporting. Check whether "pending" milestones' deliverables already exist. Update state/plan if drift is found.

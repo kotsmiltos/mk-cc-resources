@@ -157,7 +157,17 @@ Bootstrap from the context scan in step 2. For each structural pattern discovere
 
 Each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
 
-**5. `context/STATE.md`** (if not exists)
+**5. `context/rules.yaml`** (if not exists)
+Behavioral corrections that the hook injects every message. Start with empty rules — populated when the user corrects Claude's behavior during work. These are hard rules, not suggestions.
+```yaml
+# Project Rules — behavioral corrections injected every message via mk-flow hook
+# These are hard rules, not suggestions. Violations erode trust.
+# Add rules when the user corrects behavior that should never repeat.
+
+rules: {}
+```
+
+**6. `context/STATE.md`** (if not exists)
 **If context was found in step 2:** Populate STATE.md using the verification protocol below. Every item must have a verified source — never infer, synthesize, or speculate.
 
 **Verification protocol — apply to EVERY item before adding it to STATE.md:**
@@ -182,10 +192,10 @@ Keep it under 50 lines. Link to source files for details rather than duplicating
 
 **If no context was found:** Use the template from `skills/state/templates/state.md`. Replace `[project-name]` with the actual project directory name. Set "Last updated" to today's date. Leave sections empty.
 
-**6. `context/notes/`** (create directory if not exists)
+**7. `context/notes/`** (create directory if not exists)
 Empty directory for auto-saved analysis and forward-notes.
 
-**7. `.gitignore` additions**
+**8. `.gitignore` additions**
 Append to existing .gitignore (or create if not exists):
 ```
 # mk-flow local preferences (not shared)

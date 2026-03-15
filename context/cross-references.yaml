@@ -40,9 +40,9 @@ rules:
     why: "Routing table must reference the new workflow"
 
   mk-flow-hook-context:
-    when: "Adding a new context file type that mk-flow should read (like vocabulary.yaml)"
-    check: "plugins/mk-flow/hooks/hooks.json"
-    why: "Hook prompt must reference new file type"
+    when: "Adding a new context file type that mk-flow should read (like vocabulary.yaml, rules.yaml)"
+    check: "plugins/mk-flow/hooks/intent-inject.sh"
+    why: "Hook script must read and inject the new file type"
 
   mk-flow-init-context:
     when: "Adding a new context file type that mk-flow should create during init"

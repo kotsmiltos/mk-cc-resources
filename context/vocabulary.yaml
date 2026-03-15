@@ -39,3 +39,6 @@ terms:
   hook:
     means: "A UserPromptSubmit hook that runs on every message for intent classification"
     files: "plugins/mk-flow/hooks/"
+  rules:
+    means: "Behavioral corrections in context/rules.yaml — injected every message by the hook, hard rules not suggestions"
+    files: "context/rules.yaml"
