@@ -6,9 +6,16 @@
 
 rules:
   verify-before-reporting:
-    what: "Never trust status fields in BUILD-PLAN.md or STATE.md. Always verify 'pending' milestones by checking if deliverables actually exist in the codebase."
-    why: "Stale status fields led to reporting milestones as pending when they were already complete, wasting time and eroding trust."
-    when: "Any status query, project summary, or plan review"
+    what: |
+      When reporting project status, plan progress, or milestone state, you MUST first show a verification block:
+        Verified:
+          Checked: [list files/patterns you actually read or searched]
+          Found: [what exists in the codebase]
+          Drift: [mismatches between plan/state files and reality, or "none"]
+      Then report status based on what you verified, not what plan/state files claim.
+      If you cannot produce this block, do not report status — say you need to verify first.
+    why: "Claude repeatedly reported stale status from plan files without checking if deliverables existed. This rule makes skipping verification structurally visible."
+    when: "Any status query, project summary, plan review, or milestone progress report"
 
   never-drop-scope:
     what: "NEVER drop, defer, or de-scope milestones or features without explicit user approval. Present it as a question, never as a decision."
