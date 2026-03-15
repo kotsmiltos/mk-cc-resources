@@ -1,6 +1,6 @@
 # mk-cc-resources
 
-Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
+Custom Claude Code plugins — workflow orchestration, data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
 
 ## Quick Start
 
@@ -15,13 +15,56 @@ claude plugin install mk-cc-all
 ### Install skills individually
 
 ```bash
+claude plugin install mk-flow
 claude plugin install schema-scout
 claude plugin install miltiaze
 claude plugin install ladder-build
+claude plugin install safe-commit
 claude plugin install project-structure
 claude plugin install repo-audit
 claude plugin install project-note-tracker
 ```
+
+## mk-flow — Unified Workflow System
+
+Automatic intent detection, project state tracking, and structured input decomposition. Makes Claude Code consistent across sessions by injecting project context into every message.
+
+```bash
+claude plugin install mk-flow
+```
+
+Then in any project:
+
+```
+/mk-flow-init
+```
+
+### What it does
+
+A UserPromptSubmit hook runs on every message and injects 5 context files:
+
+| File | Purpose |
+|------|---------|
+| `intents.yaml` | Intent definitions — Claude classifies your message (action, question, context addition, frustration, etc.) |
+| `STATE.md` | Current project state — focus, done, blocked, next up |
+| `vocabulary.yaml` | Term disambiguation — auto-populated when you clarify what terms mean |
+| `cross-references.yaml` | "Change X, also check Y" — grows from corrections when Claude misses related files |
+| `rules.yaml` | Hard behavioral rules — corrections that apply unconditionally every message |
+
+### Skills
+
+- `/intake` — Decompose dense multi-issue input into structured items with an assumption table, temporal routing, and amendment tracking
+- `/state` — Status, pause, and resume workflows. Generates copy-paste handoff commands for fresh sessions
+- `/mk-flow-init` — One-time project setup. Scans existing context (GSD, ladder-build, miltiaze, note-tracker, git), bootstraps state from what it finds
+
+### Key features
+
+- **Intent detection** — Classifies messages as action, question, context addition, thought, frustration, or status query. Routes behavior accordingly
+- **State verification** — Before reporting status, verifies that plan milestones match actual codebase deliverables
+- **Corrections persist** — When you correct a misclassification, it's recorded and injected as context for future accuracy
+- **Rules survive sessions** — Behavioral corrections go in `rules.yaml` and are enforced every message, not forgotten between sessions
+- **Extensible intents** — Add project-specific intents mid-conversation ("add an intent for deployment notifications")
+- **Global intent library** — Intents you create are shared across projects via `~/.claude/mk-flow/intent-library.yaml`
 
 ## Alert Sounds (separate install)
 
@@ -120,6 +163,12 @@ Generates and maintains a live annotated project structure map inside the projec
 - Uses `<!-- STRUCTURE:START -->` / `<!-- STRUCTURE:END -->` markers for targeted updates
 
 Use the `/project-structure` command to generate or refresh the structure.
+
+### Safe Commit
+
+Secret scanning and identity verification before committing. Scans staged changes for API keys, tokens, credentials, and other secrets using pattern matching. Verifies git author identity matches expected config.
+
+Use the `/safe-commit` command instead of regular git commit.
 
 ### Repo Audit
 
