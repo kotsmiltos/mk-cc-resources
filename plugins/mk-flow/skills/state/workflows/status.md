@@ -21,7 +21,25 @@ Check for active build plans:
 - If found, extract: current milestone, completed count, total count
 </step_3_read_build_plan>
 
-<step_4_present_summary>
+<step_4_verify_state>
+**CRITICAL: Never trust status fields blindly.** Before presenting status, verify that "pending" milestones are actually pending and "completed" milestones are actually complete.
+
+For each milestone marked "pending" in the build plan:
+- Check if the milestone's deliverables (files, code, configs listed in "Done when") actually exist
+- If deliverables exist, the milestone is done — note this as a drift correction
+
+For each milestone marked "completed":
+- Spot-check that the key deliverables still exist and weren't reverted
+
+If drift is found:
+1. Update BUILD-PLAN.md status fields to match reality
+2. Update STATE.md to match
+3. Tell the user: "Found drift between plan and reality — [N] milestones were already complete but marked pending. Updated."
+
+This step prevents stale status fields from misleading the user or wasting time re-doing completed work.
+</step_4_verify_state>
+
+<step_5_present_summary>
 Present a concise summary:
 
 ```
@@ -31,11 +49,11 @@ Current focus:
   [current focus from STATE.md]
 
 Done recently:
-  - ✅ [completed items]
+  - [completed items]
 
 Open issues:
-  - 🔴 [P0/critical items from note-tracker or STATE.md blocked]
-  - 🟡 [amendments needing attention]
+  - [P0/critical items from note-tracker or STATE.md blocked]
+  - [amendments needing attention]
 
 Next up:
   - [next milestone/task]
@@ -49,8 +67,6 @@ Say "show amendments" to review.
 
 Ready to continue, or something else?
 ```
-
-Use emoji sparingly and only for status indicators (✅ 🔴 🟡) to make scanning fast.
-</step_4_present_summary>
+</step_5_present_summary>
 
 </process>
