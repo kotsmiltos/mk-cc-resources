@@ -8,21 +8,26 @@ Custom Claude Code plugins — workflow orchestration, data exploration, multi-d
 # Add the marketplace (one time)
 claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
 
-# Install all skills
+# Install all skills (miltiaze, ladder-build, schema-scout, etc.)
 claude plugin install mk-cc-all
+
+# Install hook-based plugins separately (they need their own plugin root)
+claude plugin install mk-flow
+claude plugin install alert-sounds
 ```
 
 ### Install skills individually
 
 ```bash
-claude plugin install mk-flow
-claude plugin install schema-scout
 claude plugin install miltiaze
 claude plugin install ladder-build
+claude plugin install schema-scout
 claude plugin install safe-commit
 claude plugin install project-structure
 claude plugin install repo-audit
 claude plugin install project-note-tracker
+claude plugin install mk-flow          # has hooks — must be installed separately
+claude plugin install alert-sounds     # has hooks — must be installed separately
 ```
 
 ## mk-flow — Unified Workflow System

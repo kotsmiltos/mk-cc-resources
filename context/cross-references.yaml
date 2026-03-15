@@ -53,3 +53,8 @@ rules:
     when: "Completing a milestone or changing milestone status"
     check: "artifacts/builds/mk-flow/BUILD-PLAN.md, context/STATE.md"
     why: "Build plan status and project state must stay in sync"
+
+  skill-copies:
+    when: "Changing a SKILL.md, workflow, reference, or template in plugins/*/skills/*/"
+    check: "The matching directory in skills/ (the mk-cc-all copy)"
+    why: "skills/ contains copies of plugin skills for mk-cc-all. Both locations must stay in sync."

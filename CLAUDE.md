@@ -101,17 +101,15 @@ plugins/
       templates/            # amendment-record.md
       scripts/              # Portable enforcement files (copied to target repos)
 
-skills/                     # Alias layer — text files pointing to plugin skill dirs
-  ladder-build              # -> ../plugins/ladder-build/skills/ladder-build
-  miltiaze                  # -> ../plugins/miltiaze/skills/miltiaze
-  schema-scout              # -> ../plugins/schema-scout/skills/schema-scout
-  repo-audit                # -> ../plugins/repo-audit/skills/repo-audit
-  intake                    # -> ../plugins/mk-flow/skills/intake
-  state                     # -> ../plugins/mk-flow/skills/state
-  mk-flow-init              # -> ../plugins/mk-flow/skills/mk-flow-init
-  note                      # -> ../plugins/project-note-tracker/skills/note
-  project-structure/        # Direct directory (not an alias file)
-    SKILL.md
+skills/                     # mk-cc-all skill directories (copies from plugins/)
+  ladder-build/             # Copied from plugins/ladder-build/skills/ladder-build
+  miltiaze/                 # Copied from plugins/miltiaze/skills/miltiaze
+  schema-scout/             # Copied from plugins/schema-scout/skills/schema-scout
+  repo-audit/               # Copied from plugins/repo-audit/skills/repo-audit
+  note/                     # Copied from plugins/project-note-tracker/skills/note
+  safe-commit/              # Copied from plugins/safe-commit/skills/safe-commit
+  project-structure/        # Copied from plugins/project-structure/skills/project-structure
+  # mk-flow skills NOT here — mk-flow must be installed separately (has hooks)
 
 context/                    # Per-project mk-flow context (created by /mk-flow-init)
   STATE.md                  # Living project state — current focus, done, blocked, next
