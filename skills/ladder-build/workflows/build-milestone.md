@@ -1,7 +1,8 @@
 <required_reading>
 Read these reference files NOW:
 1. references/verification-standards.md
-2. templates/milestone-report.md
+2. references/impact-analysis.md
+3. templates/milestone-report.md
 </required_reading>
 
 <process>
@@ -21,6 +22,18 @@ Before writing code, think through:
 - What sample data or test fixtures are needed?
 - What's the verification approach?
 - Are there technical decisions to make?
+
+**Impact trace** (see references/impact-analysis.md):
+1. Read the BUILD-PLAN.md Architecture Impact Summary (the full file manifest)
+2. For THIS milestone's scope, identify every file to touch
+3. For each file, check CLAUDE.md Change Impact Map and/or context/cross-references.yaml for coupled files
+4. Confirm all MUST UPDATE coupled files are included in THIS milestone (or already handled by a previous milestone)
+5. Write the impact trace into the milestone's section of BUILD-PLAN.md
+
+If the impact trace reveals files not originally planned:
+- Add them to this milestone if the addition is small (deviation level 2)
+- Split into a new milestone if large (deviation level 4 — ask the user)
+- NEVER silently skip them
 
 If the milestone is M or L sized, use plan mode to design the approach before implementing.
 
@@ -49,6 +62,28 @@ Levels 1-3: fix it, keep building, document in milestone report.
 Level 4+: stop immediately, explain the deviation, let the user decide.
 </step_3_build>
 
+<step_3b_context_health_check>
+Before proceeding to verification, honestly assess your own context health.
+
+ASK YOURSELF:
+- Have I been working for a very long time in this session?
+- Am I starting to skip things, skim files, or make assumptions instead of reading?
+- Am I confident I can verify THOROUGHLY, or am I feeling fatigued?
+- Have I been cutting corners or simplifying things without telling the user?
+
+IF CONTEXT IS GETTING STALE — do NOT proceed to verification in a degraded state:
+1. Save your current progress to the milestone report (even if partial)
+2. Write a `.continue-here.md` in the build directory with:
+   - What was completed in this session
+   - What still needs verification (specific files, tests, criteria)
+   - The impact trace for this milestone (so the next session can verify against it)
+   - Any decisions made or edge cases discovered
+3. Update BUILD-PLAN.md milestone status to "needs verification — session handoff"
+4. Tell the user: "I've been working for a while and want to ensure quality. I've saved progress — please continue in a fresh session to verify and complete this milestone."
+
+This is NOT a failure. This is quality control. Degraded verification is worse than no verification — it creates false confidence that things work when they might not. A clean handoff preserves the work; pushing through with stale context risks undoing it.
+</step_3b_context_health_check>
+
 <step_4_verify>
 Follow the references/verification-standards.md checklist:
 - Run the code / feature
@@ -58,6 +93,18 @@ Follow the references/verification-standards.md checklist:
 - Check that previous milestones still work (basic regression)
 
 **Goal-backward verification:** Don't just check if steps were completed — verify the milestone *actually works* for its intended purpose. Ask: "Can a user do the thing this milestone promised?" If the answer is no, it's not done regardless of what steps were completed.
+
+**Impact verification** (see references/impact-analysis.md):
+- [ ] Re-read the impact trace from step_2
+- [ ] Every MUST UPDATE file was actually updated (read each one, confirm the change is there)
+- [ ] Every SHOULD CHECK file was reviewed (document why no change was needed, if applicable)
+- [ ] Run tests for ALL coupled files, not just the ones you directly changed
+- [ ] No new cross-file dependencies were introduced without documenting them
+
+**Architecture maintenance:**
+- [ ] If files were added/removed, update project structure in CLAUDE.md (if applicable)
+- [ ] If new cross-file dependencies were introduced, add to CLAUDE.md Change Impact Map
+- [ ] If mk-flow is initialized, update context/cross-references.yaml with new coupling rules
 
 If verification fails: Fix the issue. Return to step 3 for the failing part. Do NOT move on with broken milestones.
 
@@ -132,6 +179,9 @@ A milestone is complete when:
 - [ ] Bugs found during building were fixed (not deferred)
 - [ ] Deviations handled per deviation rules (levels 1-3 auto-fixed, level 4 asked user)
 - [ ] Previous milestones still work (no regressions)
+- [ ] Impact trace verified — all MUST UPDATE files updated, all SHOULD CHECK files reviewed
+- [ ] Architecture docs updated if new cross-file dependencies were introduced
+- [ ] Context health check passed (or clean handoff performed)
 - [ ] Milestone report is saved to disk
 - [ ] Build plan is updated with current state
 - [ ] STATE.md updated (if mk-flow initialized)

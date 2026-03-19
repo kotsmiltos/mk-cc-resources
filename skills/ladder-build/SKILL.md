@@ -80,8 +80,9 @@ All in `references/`:
 
 | Reference | Purpose |
 |-----------|---------|
-| milestone-design.md | How to decompose projects into good milestones |
+| milestone-design.md | How to decompose projects into good milestones (includes context-aware sizing) |
 | verification-standards.md | How to test and verify each milestone |
+| impact-analysis.md | How to trace cross-file impact before and after building |
 
 </reference_index>
 

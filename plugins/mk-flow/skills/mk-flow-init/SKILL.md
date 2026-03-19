@@ -149,13 +149,49 @@ corrections: []
 Use the template from `skills/state/templates/vocabulary.yaml`. This maps user terms to domain-specific concepts — populated automatically when the user clarifies ambiguous terms during conversation.
 
 **4. `context/cross-references.yaml`** (if not exists)
-Bootstrap from the context scan in step 2. For each structural pattern discovered (e.g., multiple files following the same convention, config files that must stay in sync), create a cross-reference rule. Examples of what to detect:
+Bootstrap from TWO sources:
+
+**Source A: Structural patterns** from the context scan in step 2. For each structural pattern discovered (e.g., multiple files following the same convention, config files that must stay in sync), create a cross-reference rule. Examples of what to detect:
 - Files that follow the same format/convention (e.g., all plugin.json files)
 - Registry files that must list all instances of something (e.g., marketplace.json listing all plugins)
 - Alias/pointer files that must exist for each source (e.g., skill alias files for each plugin skill)
 - Config files that reference each other
 
-Each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
+**Source B: CLAUDE.md Change Impact Map** (if present). Scan CLAUDE.md for Change Impact Map tables. These follow the pattern:
+
+```
+## Change Impact Map (or ## Mandatory: Change Impact Map)
+
+### <Concern Name>
+| Touch | Also update |
+|---|---|
+| `file/path.py` — description | `other/file.py` (reason), `another/file.py` (reason) |
+```
+
+To parse these tables:
+1. Find `## Change Impact Map` or `## Mandatory: Change Impact Map` heading in CLAUDE.md
+2. Find all `### <Name>` sub-headings under it
+3. For each sub-heading, find the markdown table
+4. Parse "Touch" and "Also update" columns
+5. Extract file paths (backtick-wrapped) and descriptions/reasons
+
+Convert each concern into a cross-reference rule:
+```yaml
+rules:
+  <concern-slug>:
+    when: "<description derived from the Touch column — what kind of change triggers this>"
+    check:
+      - "<file path> — <reason from Also update column>"
+    source: "CLAUDE.md Change Impact Map"
+```
+
+Group related rows under the same concern (e.g., all "Strategy Parameters" rows become one rule with multiple check entries).
+
+This parsing is best-effort — the format varies across projects. If the table format doesn't match, skip it and note "Change Impact Map found but format not recognized — cross-references will grow from corrections."
+
+If CLAUDE.md has no Change Impact Map tables, skip Source B and note "No Change Impact Map found — cross-references will grow from corrections."
+
+**For both sources:** each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
 
 **5. `context/rules.yaml`** (if not exists)
 Behavioral corrections that the hook injects every message. Use the defaults from the plugin's `defaults/rules.yaml` as the starting template. The user can add project-specific rules during work — when they correct Claude's behavior, add the correction as a new rule here.

@@ -2,8 +2,9 @@
 Read these reference files NOW:
 1. references/milestone-design.md
 2. references/verification-standards.md
-3. templates/build-plan.md
-4. templates/milestone-report.md
+3. references/impact-analysis.md
+4. templates/build-plan.md
+5. templates/milestone-report.md
 </required_reading>
 
 <process>
@@ -27,6 +28,35 @@ If no exploration exists, analyze the user's description:
 - What technologies/constraints are mentioned?
 - What does "done" look like?
 </step_1_gather_context>
+
+<step_1b_architecture_impact_analysis>
+Before decomposing into milestones, understand the project's architecture so that coupled files are never split across milestones or forgotten.
+
+Read references/impact-analysis.md for the full procedure. In summary:
+
+1. **Find architecture documentation:**
+   - Read CLAUDE.md for a Change Impact Map section (tables with "Touch" / "Also update" columns)
+   - Read context/cross-references.yaml if it exists (mk-flow rules)
+   - If neither exists, note this — manual discovery will be needed per-milestone
+
+2. **Trace impact for the feature being built:**
+   - Identify which architectural concern areas this feature touches
+   - For each concern, list ALL files that will need changes (direct + coupled from the impact map)
+   - Categorize: MUST UPDATE, SHOULD CHECK, INFORM ONLY
+
+3. **Build the file manifest:**
+   Write the full list of files into the BUILD-PLAN.md "Architecture Impact Summary" section:
+   - Group by concern area
+   - Include every coupled file the impact map identifies
+   - Include files discovered via import/consumer analysis if no impact map exists
+
+4. **Use the manifest to shape milestones:**
+   - Every file in the manifest must appear in at least one milestone
+   - Keep coupled files (MUST UPDATE pairs) in the same milestone
+   - After all milestones are listed, verify the manifest has full coverage — no orphan files
+
+If the project has no architecture documentation (no Change Impact Map, no cross-references), note it in the BUILD-PLAN.md Context Notes and perform manual import analysis when planning each milestone.
+</step_1b_architecture_impact_analysis>
 
 <step_2_define_end_goal>
 Write a clear, concise end goal (2-4 sentences). This is the North Star — what the finished product looks like, who uses it, and what it does.
@@ -95,6 +125,10 @@ Don't ask if the user wants to start. Start.
 Kickoff is complete when:
 - [ ] End goal is defined and confirmed by user
 - [ ] Milestones are decomposed (as many as the project naturally needs)
+- [ ] Architecture impact analysis performed (CLAUDE.md impact map / cross-references consulted)
+- [ ] Full file manifest written to BUILD-PLAN.md Architecture Impact Summary
+- [ ] Every file in the manifest appears in at least one milestone
+- [ ] Coupled files (MUST UPDATE pairs) are in the same milestone
 - [ ] Each milestone has: name, goal, "done when" criteria, size estimate
 - [ ] Milestones are ordered by dependency and value
 - [ ] Build plan is saved to `[cwd]/artifacts/builds/[project-slug]/BUILD-PLAN.md`

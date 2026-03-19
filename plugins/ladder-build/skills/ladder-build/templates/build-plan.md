@@ -41,6 +41,22 @@ _(continue for all milestones)_
 
 ---
 
+## Architecture Impact Summary
+_(Filled during kickoff after reading CLAUDE.md Change Impact Map and/or context/cross-references.yaml. If the project has no architecture documentation, this section is populated via manual import/consumer analysis.)_
+
+### Concerns touched:
+<!-- List each architectural concern area this project affects -->
+<!-- e.g., "Strategy Parameters: model.py, config.py, ui.py, cache.py" -->
+
+### Full file manifest:
+<!-- Every file that needs changes across ALL milestones -->
+<!-- Each file gets a checkbox, checked when the milestone that handles it completes -->
+<!-- This is the ground truth — every file must appear in at least one milestone -->
+<!-- After all milestones complete, every checkbox must be checked -->
+- [ ] `path/file.py` — what changes (Milestone N)
+
+---
+
 ## Discovered Work
 _(Items found during building that weren't in the original plan. Promote to milestones or resolve as they come.)_
 
@@ -61,6 +77,13 @@ _(Key decisions made during the build and why — so future sessions have contex
 | Date | Decision | Reasoning |
 |------|----------|-----------|
 | [YYYY-MM-DD] | [What was decided] | [Why — context, tradeoffs considered] |
+
+---
+
+## Context Notes
+_(Institutional memory that survives /clear. Decisions, rejected approaches, edge cases discovered during planning and building. A future session resuming this build should read this section to avoid re-debating settled questions or repeating failed approaches.)_
+
+- [Date]: [What was learned/decided/rejected and why]
 ```
 
 </template>

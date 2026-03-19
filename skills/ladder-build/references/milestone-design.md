@@ -87,6 +87,37 @@ Projects where deliverables are declarative files (SKILL.md, YAML configs, markd
 5. User-visible before invisible. Bundle internal work with something the user can see.
 </ordering_rules>
 
+<context_aware_sizing>
+A milestone must be completable within a HEALTHY context window. This means planning + building + testing + verification must all fit without context degradation.
+
+**Size limits (rules of thumb):**
+- If a milestone requires reading 10+ files just to understand the scope, it's too big
+- If building requires modifying 8+ files, consider splitting by concern area
+- If you can't describe what a milestone does in 2-3 sentences, it's too vague or too large
+- Leave room for unexpected discoveries, debugging, and the impact trace verification
+
+**Keep together (same milestone):**
+- A file and all its coupled files from the Change Impact Map (MUST UPDATE pairs)
+- A feature and its test
+- A backend change and the UI that directly exposes it
+- A data model change and its display/formatting helpers
+
+**Split apart (separate milestones):**
+- Independent concern areas (e.g., "strategy parameters" vs. "UI layout")
+- Files that can be built and tested independently
+- Changes that require different research or domain knowledge
+- Large concern areas where coupled files exceed the size limit above
+
+**Context fatigue warning signs:**
+- You start skimming files instead of reading them fully
+- You assume a function does something without checking
+- You skip test runs because "it should be fine"
+- You forget to update a file you noted in the impact trace
+- You simplify error handling or skip edge cases without telling the user
+
+When these signs appear, the milestone is too big for the remaining context. Either finish what you have and hand off, or split the remaining work into a new milestone.
+</context_aware_sizing>
+
 <when_to_split>
 Split if:
 - You realize mid-build it's doing two distinct things
