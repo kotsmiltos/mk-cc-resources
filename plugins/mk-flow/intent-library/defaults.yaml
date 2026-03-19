@@ -2,6 +2,9 @@
 ## These intents ship with mk-flow and are offered during /mk-flow init.
 ## Each intent has: description, signals (patterns that trigger it), route (what happens), default_enabled (on by default?)
 
+_meta:
+  defaults_version: "0.5.0"
+
 intents:
   action:
     description: "User wants something built, fixed, or implemented"

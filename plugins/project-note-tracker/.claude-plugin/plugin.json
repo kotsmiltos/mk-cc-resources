@@ -1,5 +1,6 @@
 {
   "name": "project-note-tracker",
+  "version": "1.6.0",
   "description": "Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself.",
   "author": {
     "name": "kotsmiltos"

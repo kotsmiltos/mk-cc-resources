@@ -60,13 +60,13 @@
       "name": "mk-flow",
       "source": "./plugins/mk-flow",
       "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, and seamless mode switching. Extensible intents, classifier learning, contextual tooltips, and copy-paste handoffs.",
-      "version": "0.1.0"
+      "version": "0.5.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. Alert Sounds must be installed separately.",
-      "version": "1.12.0"
+      "version": "1.13.0"
     }
   ]
 }

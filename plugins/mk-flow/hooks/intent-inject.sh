@@ -96,6 +96,36 @@ if [ -z "$CONTEXT" ]; then
   exit 0
 fi
 
+# Stale defaults detection — nudge user once per session if context files are behind
+STALE_NUDGE=""
+if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
+  # Extract installed mk-flow version from the cache directory path
+  # Path format: .../cache/marketplace/mk-flow/<version>/
+  INSTALLED_VERSION=$(echo "$CLAUDE_PLUGIN_ROOT" | grep -oP 'mk-flow/\K[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null)
+  if [ -z "$INSTALLED_VERSION" ]; then
+    # Fallback: try reading plugin.json
+    PLUGIN_JSON="${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
+    if [ -f "$PLUGIN_JSON" ]; then
+      INSTALLED_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$PLUGIN_JSON" 2>/dev/null)
+    fi
+  fi
+
+  # Extract defaults_version from project rules.yaml
+  PROJECT_VERSION=$(grep -oP 'defaults_version:\s*"\K[^"]+' "$PROJECT_RULES" 2>/dev/null)
+
+  if [ -n "$INSTALLED_VERSION" ] && [ -n "$PROJECT_VERSION" ] && [ "$INSTALLED_VERSION" != "$PROJECT_VERSION" ]; then
+    # Check flag file to avoid repeating the nudge every message
+    PROJECT_HASH=$(echo "$PWD" | md5sum 2>/dev/null | cut -d' ' -f1 || echo "default")
+    FLAG_DIR="${TMPDIR:-/tmp}/mk-flow-nudge"
+    FLAG_FILE="${FLAG_DIR}/${PROJECT_HASH}-${INSTALLED_VERSION}"
+    if [ ! -f "$FLAG_FILE" ]; then
+      mkdir -p "$FLAG_DIR" 2>/dev/null
+      echo "$(date +%s)" > "$FLAG_FILE" 2>/dev/null
+      STALE_NUDGE="[mk-flow] Defaults updated (${PROJECT_VERSION} -> ${INSTALLED_VERSION}). Run /mk-flow-update to sync your project context files."
+    fi
+  fi
+fi
+
 # Output classification instructions with embedded context
 cat <<INSTRUCTION
 Before responding, silently classify this message's intent using the context below.
@@ -138,6 +168,16 @@ If the user asks to add, modify, or remove an intent (e.g., "add an intent for X
 1. Update .claude/mk-flow/intents.yaml — add/modify the intent following the existing format
 2. Update the global library at ${HOME}/.claude/mk-flow/intent-library.yaml — same change, plus update used_in with project name
 3. Confirm briefly what changed
+
+If a mk_flow_nudge tag is present below, mention it briefly to the user at the END of your response (not the beginning — don't lead with it). Keep it to one line.
 INSTRUCTION
 
 echo "$CONTEXT"
+
+# Append stale nudge if detected (appears after context, before Claude processes)
+if [ -n "$STALE_NUDGE" ]; then
+  echo ""
+  echo "<mk_flow_nudge>"
+  echo "$STALE_NUDGE"
+  echo "</mk_flow_nudge>"
+fi

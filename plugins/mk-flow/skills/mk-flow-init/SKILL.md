@@ -137,19 +137,31 @@ tooltips_seen: {}
 ```
 
 **2. `.claude/mk-flow/intents.yaml`**
-Selected intents from step 4, using the format from `intent-library/defaults.yaml`. Include empty corrections section:
+Selected intents from step 4, using the format from `intent-library/defaults.yaml`. Include `_meta` section and empty corrections section:
 ```yaml
+_meta:
+  defaults_version: "[mk-flow version from plugin.json]"
+  last_synced: "[today's date YYYY-MM-DD]"
+
 intents:
   [selected intents with descriptions, signals, routes]
 
 corrections: []
 ```
+Read the mk-flow plugin's version from its `.claude-plugin/plugin.json` (find it in the plugin cache or marketplace directory) and use it as `defaults_version`.
 
 **3. `context/vocabulary.yaml`** (if not exists)
 Use the template from `skills/state/templates/vocabulary.yaml`. This maps user terms to domain-specific concepts — populated automatically when the user clarifies ambiguous terms during conversation.
 
 **4. `context/cross-references.yaml`** (if not exists)
-Bootstrap from TWO sources:
+Include a `_meta` section at the top:
+```yaml
+_meta:
+  defaults_version: "[mk-flow version from plugin.json]"
+  last_synced: "[today's date YYYY-MM-DD]"
+```
+
+Bootstrap rules from TWO sources:
 
 **Source A: Structural patterns** from the context scan in step 2. For each structural pattern discovered (e.g., multiple files following the same convention, config files that must stay in sync), create a cross-reference rule. Examples of what to detect:
 - Files that follow the same format/convention (e.g., all plugin.json files)
@@ -194,7 +206,7 @@ If CLAUDE.md has no Change Impact Map tables, skip Source B and note "No Change 
 **For both sources:** each rule should be specific about WHEN it triggers — "changing the format" not "touching the file." Vague triggers cause unnecessary cascading. These rules are checked during work and grow from corrections when Claude misses related files.
 
 **5. `context/rules.yaml`** (if not exists)
-Behavioral corrections that the hook injects every message. Use the defaults from the plugin's `defaults/rules.yaml` as the starting template. The user can add project-specific rules during work — when they correct Claude's behavior, add the correction as a new rule here.
+Behavioral corrections that the hook injects every message. Use the defaults from the plugin's `defaults/rules.yaml` as the starting template. The `_meta` section from the defaults file must be included — update `last_synced` to today's date. The user can add project-specific rules during work — when they correct Claude's behavior, add the correction as a new rule here.
 
 **6. `context/STATE.md`** (if not exists)
 **If context was found in step 2:** Populate STATE.md using the verification protocol below. Every item must have a verified source — never infer, synthesize, or speculate.

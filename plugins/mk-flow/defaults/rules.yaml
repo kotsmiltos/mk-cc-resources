@@ -4,6 +4,9 @@
 # Add project-specific rules when the user corrects behavior that should never repeat.
 # Each rule has: what, why, and when it applies.
 
+_meta:
+  defaults_version: "0.5.0"
+
 rules:
   verify-before-reporting:
     what: |

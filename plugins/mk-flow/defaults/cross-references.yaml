@@ -1,0 +1,17 @@
+# Default Cross-References — shipped with mk-flow
+# These are common patterns that apply to projects using mk-flow.
+# Project-specific rules (without source field) are added during work
+# and are never overwritten by updates.
+
+_meta:
+  defaults_version: "0.5.0"
+
+rules:
+  mk-flow-context-files:
+    when: "Adding a new mk-flow context file type (like rules.yaml, vocabulary.yaml)"
+    check:
+      - "plugins/mk-flow/hooks/intent-inject.sh — hook must read and inject the new file"
+      - "plugins/mk-flow/skills/mk-flow-init/SKILL.md — init must create the new file"
+      - "plugins/mk-flow/skills/mk-flow-update/SKILL.md — update must sync the new file"
+    source: "plugin-default"
+    why: "All three must be aware of any new context file type"
