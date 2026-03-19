@@ -36,7 +36,7 @@ plugins/
     .claude-plugin/plugin.json
     skills/ladder-build/
       SKILL.md
-      references/           # milestone-design.md, verification-standards.md
+      references/           # milestone-design.md, verification-standards.md, impact-analysis.md
       templates/            # build-plan.md, milestone-report.md
       workflows/            # kickoff.md, build-milestone.md, continue.md
 
@@ -171,3 +171,59 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
 - **Behavioral corrections** go in `context/rules.yaml` (hook-injected), not auto-memory files
+
+## Adopting Architecture-Aware Builds in Your Projects
+
+ladder-build now traces cross-file dependencies and protects against context degradation. mk-flow-init can bootstrap cross-references from your CLAUDE.md. Here's how to get these working.
+
+### New project (mk-flow not yet initialized)
+
+Just run `/mk-flow-init`. It will:
+1. Scan your CLAUDE.md for a **Change Impact Map** section (tables with "Touch" / "Also update" columns)
+2. Convert those tables into `context/cross-references.yaml` rules automatically
+3. Set up STATE.md, vocabulary, rules — the full mk-flow context
+
+Then use `/ladder-build` to start building. The kickoff workflow will read your impact map and cross-references, build a file manifest, and shape milestones around coupled files.
+
+### Existing project (mk-flow already initialized)
+
+If you already ran `/mk-flow-init` before this update, your `context/cross-references.yaml` exists but doesn't have rules from your CLAUDE.md Change Impact Map. Two options:
+
+**Option A — Re-init (recommended if cross-references.yaml has few manual rules):**
+Delete `context/cross-references.yaml` and run `/mk-flow-init` again. It's idempotent — it won't overwrite your STATE.md, intents, or other context files. It will only recreate missing files, and cross-references.yaml will now include rules parsed from your CLAUDE.md.
+
+**Option B — Manual merge (if cross-references.yaml has valuable manual rules you want to keep):**
+The init won't overwrite existing cross-references.yaml. To get the impact map rules added:
+1. Open your CLAUDE.md and find the Change Impact Map section
+2. For each concern table, add a rule to `context/cross-references.yaml` following this format:
+   ```yaml
+   rules:
+     concern-slug:
+       when: "description of what triggers this rule"
+       check:
+         - "file/path.py — reason"
+       source: "CLAUDE.md Change Impact Map"
+   ```
+
+### Project with no Change Impact Map in CLAUDE.md
+
+Everything still works — the impact analysis falls back to manual import/consumer discovery per-milestone. To get the full benefit, add a Change Impact Map to your CLAUDE.md:
+
+```markdown
+## Change Impact Map
+
+### Concern Name
+| Touch | Also update |
+|---|---|
+| `path/file.py` — what it does | `path/coupled.py` (reason), `path/other.py` (reason) |
+```
+
+Then re-run `/mk-flow-init` (delete cross-references.yaml first) to bootstrap the rules.
+
+### What changes in ladder-build behavior
+
+After this update, `/ladder-build` automatically:
+- **Kickoff**: Reads your impact map, builds a full file manifest, ensures coupled files stay in the same milestone
+- **Each milestone**: Traces impact before building, checks context health before verifying, verifies all coupled files were updated
+- **Completion**: Reassembly verification — checks every file in the manifest, re-verifies original intent, detects silent scope reduction
+- **Context fatigue**: If the session is getting stale, saves progress and hands off cleanly instead of producing degraded work
