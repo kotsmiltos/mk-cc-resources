@@ -1,6 +1,6 @@
 # mk-cc-resources
 
-Custom Claude Code plugins — workflow orchestration, data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
+Custom Claude Code plugins — multi-agent architecture, workflow orchestration, data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Custom Claude Code plugins — workflow orchestration, data exploration, multi-d
 # Add the marketplace (one time)
 claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
 
-# Install all skills (miltiaze, ladder-build, schema-scout, etc.)
+# Install all skills (miltiaze, ladder-build, architect, schema-scout, etc.)
 claude plugin install mk-cc-all
 
 # Install hook-based plugins separately (they need their own plugin root)
@@ -21,6 +21,7 @@ claude plugin install alert-sounds
 ```bash
 claude plugin install miltiaze
 claude plugin install ladder-build
+claude plugin install architect
 claude plugin install schema-scout
 claude plugin install safe-commit
 claude plugin install project-structure
@@ -70,6 +71,27 @@ A UserPromptSubmit hook runs on every message and injects 5 context files:
 - **Rules survive sessions** — Behavioral corrections go in `rules.yaml` and are enforced every message, not forgotten between sessions
 - **Extensible intents** — Add project-specific intents mid-conversation ("add an intent for deployment notifications")
 - **Global intent library** — Intents you create are shared across projects via `~/.claude/mk-flow/intent-library.yaml`
+
+## The Dev Team Pipeline
+
+When all three core skills are installed (miltiaze + architect + ladder-build), they form an automated development pipeline:
+
+```
+NEW PROJECT:      /miltiaze → /architect → /ladder-build → /architect review → loop
+EXISTING PROJECT: /architect audit → /architect → /ladder-build → /architect review → loop
+```
+
+| Stage | Command | What happens |
+|-------|---------|-------------|
+| Research | `/miltiaze` (requirements mode) | Perspective agents research the idea, produce REQUIREMENTS.md |
+| Audit | `/architect audit` | 6 assessment agents analyze existing codebase, produce AUDIT-REPORT.md |
+| Design | `/architect` | 4 perspective agents design architecture, produce PLAN.md + sprint task specs |
+| Execute | `/ladder-build` (executor mode) | Reads task specs, parallelizes independent tasks, reports completion |
+| Review | `/architect` (review) | 4 adversarial QA agents verify, produce QA-REPORT.md, plan next sprint |
+
+With mk-flow installed, pipeline position is tracked in STATE.md and the hook automatically suggests the next skill based on where you are.
+
+Each skill also works standalone — miltiaze for pure research, ladder-build for self-planned builds, architect for one-off audits.
 
 ## Alert Sounds (separate install)
 
@@ -138,25 +160,37 @@ uv tool install <plugin-path>/plugins/schema-scout/skills/schema-scout/tool/ --f
 
 ### Miltiaze
 
-Multi-dimensional idea exploration — decomposes any concept into research dimensions, investigates each angle thoroughly with verified sources, and presents multiple solutions with honest tradeoffs.
+Multi-dimensional idea exploration and requirements generation — decomposes any concept into research dimensions, investigates each angle thoroughly with verified sources, and presents multiple solutions with honest tradeoffs.
 
-- Decomposes ideas into 3-6 research dimensions
+- Decomposes ideas into research dimensions (exploration) or professional perspectives (requirements)
 - Researches each dimension in parallel using subagents
 - Synthesizes findings into 2+ genuine solutions (no straw-men)
-- Produces a structured exploration report with sources
+- **Exploration mode:** Produces a structured exploration report with sources
+- **Requirements mode:** Produces REQUIREMENTS.md with acceptance criteria, user stories, and cross-perspective disagreements for the architect
 
-Use the `/miltiaze` command to start an exploration.
+Use `/miltiaze` to start. Routes automatically — build intent gets requirements mode, research intent gets exploration mode.
+
+### Architect
+
+Multi-agent technical leadership — the tech lead between research and execution.
+
+- **Plan workflow:** Spawns 4 perspective agents (infrastructure, interface, testing, security) to design architecture, produce PLAN.md with sprint task specs containing pseudocode and acceptance criteria
+- **Review workflow:** Spawns 4 adversarial QA agents post-sprint to verify against specs and requirements, produces QA-REPORT.md, plans next sprint
+- **Ask workflow:** Escalates unclear decisions to the user with options and recommendations
+- **Audit workflow:** Spawns 6 assessment agents (implementation quality, risk/vulnerability, architecture coherence, future-proofing, practice compliance, goal alignment) on existing codebases
+
+Use `/architect` after miltiaze produces requirements, or `/architect audit` to assess an existing codebase.
 
 ### Ladder Build
 
-Incremental build pipeline — decomposes projects into small, verifiable milestones.
+Incremental build pipeline — decomposes projects into small, verifiable milestones, or executes architect-planned sprints.
 
-- Takes exploration outputs (from Miltiaze or freeform) and decomposes into 4-8 milestones
-- Each milestone is built, tested, and verified before moving to the next
+- **Standalone mode:** Takes exploration outputs and decomposes into milestones. Each is built, tested, and verified before the next
+- **Executor mode:** Reads architect's task specs, parallelizes independent tasks via subagents, reports per-task completion back to the architect
 - Living build plan evolves as discoveries emerge, but the end goal stays fixed
 - Produces milestone reports tracking what was built, verified, and discovered
 
-Use the `/ladder-build` command to start a build.
+Use `/ladder-build` to start. Automatically detects architect task specs and routes to executor mode.
 
 ### Project Structure
 
