@@ -47,6 +47,10 @@ STATUS_PENDING = "Pending"
 STATUS_COMPLETED = "Completed"
 STATUS_DECIDED = "Decided"
 STATUS_LIST = f'"{STATUS_ANSWERED},{STATUS_PENDING},{STATUS_COMPLETED},{STATUS_DECIDED}"'
+Q_HANDLER_COL = 1     # Column A: Handler
+Q_QUESTION_COL = 2    # Column B: Question
+Q_REVIEW_COL = 3      # Column C: Internal Review
+Q_ANSWER_COL = 4      # Column D: Handler Answer
 STATUS_COL_INDEX = 5  # column E
 STATUS_COL_RANGE = "E2:E1000"
 
@@ -86,8 +90,11 @@ BUG_STATUS_FIXED = "Fixed"
 BUG_STATUS_CLOSED = "Closed"
 BUG_STATUS_LIST = '"Open,Investigating,Reproduced,Fixed,Closed"'
 BUG_SEVERITY_LIST = '"Critical,High,Medium,Low"'
-BUG_STATUS_COL_INDEX = 5  # column E
+BUG_SUMMARY_COL = 1        # Column A: Bug Summary
 BUG_SEVERITY_COL_INDEX = 2  # column B
+BUG_DESCRIPTION_COL = 3    # Column C: Description
+BUG_INVESTIGATION_COL = 4  # Column D: Investigation
+BUG_STATUS_COL_INDEX = 5   # column E
 BUG_STATUS_COL_RANGE = "E2:E1000"
 BUG_SEVERITY_COL_RANGE = "B2:B1000"
 
@@ -390,13 +397,13 @@ def cmd_resolve(directory: str, row_num: int, answer: str) -> None:
         print(f"Row {row_num} out of range (2-{ws.max_row}).", file=sys.stderr)
         sys.exit(1)
 
-    ws.cell(row=row_num, column=4, value=answer).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=Q_ANSWER_COL, value=answer).alignment = WRAP_ALIGNMENT
     ws.cell(row=row_num, column=STATUS_COL_INDEX, value=STATUS_COMPLETED).alignment = Alignment(
         horizontal="center", vertical="top"
     )
     wb.save(tracker)
 
-    question = ws.cell(row=row_num, column=2).value
+    question = ws.cell(row=row_num, column=Q_QUESTION_COL).value
     print(json.dumps({"status": "ok", "row": row_num, "question": question, "marked": STATUS_COMPLETED}))
 
 
@@ -413,13 +420,13 @@ def cmd_decide(directory: str, row_num: int, decision: str) -> None:
         print(f"Row {row_num} out of range (2-{ws.max_row}).", file=sys.stderr)
         sys.exit(1)
 
-    ws.cell(row=row_num, column=4, value=decision).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=Q_ANSWER_COL, value=decision).alignment = WRAP_ALIGNMENT
     ws.cell(row=row_num, column=STATUS_COL_INDEX, value=STATUS_DECIDED).alignment = Alignment(
         horizontal="center", vertical="top"
     )
     wb.save(tracker)
 
-    question = ws.cell(row=row_num, column=2).value
+    question = ws.cell(row=row_num, column=Q_QUESTION_COL).value
     print(json.dumps({"status": "ok", "row": row_num, "question": question, "marked": STATUS_DECIDED}))
 
 
@@ -436,13 +443,13 @@ def cmd_update_review(directory: str, row_num: int, internal_review: str, status
         print(f"Row {row_num} out of range (2-{ws.max_row}).", file=sys.stderr)
         sys.exit(1)
 
-    ws.cell(row=row_num, column=3, value=internal_review).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=Q_REVIEW_COL, value=internal_review).alignment = WRAP_ALIGNMENT
     ws.cell(row=row_num, column=STATUS_COL_INDEX, value=status).alignment = Alignment(
         horizontal="center", vertical="top"
     )
     wb.save(tracker)
 
-    question = ws.cell(row=row_num, column=2).value
+    question = ws.cell(row=row_num, column=Q_QUESTION_COL).value
     print(json.dumps({"status": "ok", "row": row_num, "question": question, "new_status": status}))
 
 
@@ -629,13 +636,13 @@ def cmd_update_bug(directory: str, row_num: int, investigation: str, status: str
         print(f"Row {row_num} out of range (2-{ws.max_row}).", file=sys.stderr)
         sys.exit(1)
 
-    ws.cell(row=row_num, column=4, value=investigation).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=BUG_INVESTIGATION_COL, value=investigation).alignment = WRAP_ALIGNMENT
     ws.cell(row=row_num, column=BUG_STATUS_COL_INDEX, value=status).alignment = Alignment(
         horizontal="center", vertical="top"
     )
     wb.save(tracker)
 
-    summary = ws.cell(row=row_num, column=1).value
+    summary = ws.cell(row=row_num, column=BUG_SUMMARY_COL).value
     print(json.dumps({"status": "ok", "row": row_num, "summary": summary, "new_status": status}))
 
 
@@ -657,15 +664,15 @@ def cmd_resolve_bug(directory: str, row_num: int, resolution: str) -> None:
         sys.exit(1)
 
     # Append resolution to existing investigation
-    existing = ws.cell(row=row_num, column=4).value or ""
+    existing = ws.cell(row=row_num, column=BUG_INVESTIGATION_COL).value or ""
     separator = "\n\n---\n**Resolution:** " if existing else "**Resolution:** "
-    ws.cell(row=row_num, column=4, value=existing + separator + resolution).alignment = WRAP_ALIGNMENT
+    ws.cell(row=row_num, column=BUG_INVESTIGATION_COL, value=existing + separator + resolution).alignment = WRAP_ALIGNMENT
     ws.cell(row=row_num, column=BUG_STATUS_COL_INDEX, value=BUG_STATUS_FIXED).alignment = Alignment(
         horizontal="center", vertical="top"
     )
     wb.save(tracker)
 
-    summary = ws.cell(row=row_num, column=1).value
+    summary = ws.cell(row=row_num, column=BUG_SUMMARY_COL).value
     print(json.dumps({"status": "ok", "row": row_num, "summary": summary, "marked": BUG_STATUS_FIXED}))
 
 

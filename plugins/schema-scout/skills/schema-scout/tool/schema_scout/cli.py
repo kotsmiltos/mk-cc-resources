@@ -21,7 +21,7 @@ from rich.markup import escape
 from rich.table import Table
 from rich.tree import Tree
 
-from schema_scout.analyzer import MAX_UNIQUE_VALUES, analyze_file
+from schema_scout.analyzer import DEFAULT_MAX_ROWS, MAX_UNIQUE_VALUES, analyze_file
 from schema_scout.index_io import get_index_path, index_exists, load_index, save_index
 from schema_scout.models import SchemaNode
 
@@ -79,8 +79,7 @@ def _ensure_index(
     if not quiet:
         console.print(f"[green]Index saved: {saved_path.name} ({rows} rows analyzed)[/green]")
     metadata = {
-        "source_file": str(file.resolve()),
-        "source_file_name": file.name,
+        "source_file": file.name,
         "rows_analyzed": rows,
         "max_rows_setting": max_rows,
     }
@@ -273,7 +272,7 @@ def _plain_node_label(node: SchemaNode) -> str:
 @app.command()
 def index(
     file: Path = typer.Argument(..., help="File to analyze (XLSX, CSV, or JSON)"),
-    max_rows: int = typer.Option(10_000, "--max-rows", "-n", help="Maximum rows to scan (default: 10000)"),
+    max_rows: int = typer.Option(DEFAULT_MAX_ROWS, "--max-rows", "-n", help="Maximum rows to scan (default: 10000)"),
     sheet: Optional[str] = typer.Option(None, "--sheet", "-s", help="Sheet name for XLSX files"),
     force: bool = typer.Option(False, "--force", "-f", help="Re-index even if index exists"),
     fmt: OutputFormat = typer.Option(OutputFormat.rich, "--format", "-F", help="Output format: rich, json, plain"),
@@ -299,7 +298,7 @@ def index(
 @app.command()
 def schema(
     file: Path = typer.Argument(..., help="File or index to show schema for"),
-    max_rows: int = typer.Option(10_000, "--max-rows", "-n", help="Maximum rows to scan"),
+    max_rows: int = typer.Option(DEFAULT_MAX_ROWS, "--max-rows", "-n", help="Maximum rows to scan"),
     sheet: Optional[str] = typer.Option(None, "--sheet", "-s", help="Sheet name for XLSX files"),
     fmt: OutputFormat = typer.Option(OutputFormat.rich, "--format", "-F", help="Output format: rich, json, plain"),
 ) -> None:
@@ -325,7 +324,7 @@ def schema(
 def query(
     file: Path = typer.Argument(..., help="File or index to query"),
     path: str = typer.Option(..., "--path", "-p", help="Dot-separated field path to query"),
-    max_rows: int = typer.Option(10_000, "--max-rows", "-n", help="Maximum rows to scan"),
+    max_rows: int = typer.Option(DEFAULT_MAX_ROWS, "--max-rows", "-n", help="Maximum rows to scan"),
     sheet: Optional[str] = typer.Option(None, "--sheet", "-s", help="Sheet name for XLSX files"),
     fmt: OutputFormat = typer.Option(OutputFormat.rich, "--format", "-F", help="Output format: rich, json, plain"),
 ) -> None:
@@ -360,7 +359,7 @@ def query(
 @app.command(name="list-paths")
 def list_paths(
     file: Path = typer.Argument(..., help="File or index to list paths for"),
-    max_rows: int = typer.Option(10_000, "--max-rows", "-n", help="Maximum rows to scan"),
+    max_rows: int = typer.Option(DEFAULT_MAX_ROWS, "--max-rows", "-n", help="Maximum rows to scan"),
     sheet: Optional[str] = typer.Option(None, "--sheet", "-s", help="Sheet name for XLSX files"),
     fmt: OutputFormat = typer.Option(OutputFormat.rich, "--format", "-F", help="Output format: rich, json, plain"),
 ) -> None:

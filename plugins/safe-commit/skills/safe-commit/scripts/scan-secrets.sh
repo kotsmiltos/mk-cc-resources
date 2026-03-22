@@ -255,8 +255,7 @@ done
 
 ALLOWLIST_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.safe-commit-allow"
 if [ -f "$ALLOWLIST_FILE" ] && [ "$finding_count" -gt 0 ]; then
-    filtered_findings=""
-    filtered_count=0
+    allow_entries=()
 
     # Read findings line by line (each finding is multi-line, separated by blank lines)
     # Re-process: check each finding against allowlist

@@ -2,7 +2,14 @@
 > Last updated: 2026-03-22
 
 ## Current Focus
-Full dev team pipeline complete. Architect plugin + pipeline integration done. mk-flow M7 (tooltips + commands + context handoff) still paused.
+Audit remediation completing — Sprints 1-3 done (QA passed). Sprint 4 in progress: stage canonicalization (Task 1) + registry & version hygiene (Task 2). mk-flow M7 still paused.
+
+## Pipeline Position
+stage: sprint-4-complete
+audit: artifacts/audits/2026-03-22-cc-marketplace-audit-report.md
+plan: artifacts/designs/audit-remediation/PLAN.md
+current_sprint: 4
+note: All 4 sprints executed. Awaiting final QA review.
 
 ## Done (Recent)
 - [x] Pipeline integration — miltiaze requirements mode, ladder-build executor mode, mk-flow pipeline routing, cross-tool packaging (4/4 milestones)
@@ -37,4 +44,4 @@ Plugin update build plan: artifacts/builds/plugin-update-workflow/BUILD-PLAN.md 
 Architecture: artifacts/explorations/2026-03-15-mk-flow-final-exploration.md.
 UX examples: artifacts/explorations/2026-03-15-mk-flow-ux-reference.md.
 Pipeline docs: CLAUDE.md "Pipeline: miltiaze → architect → ladder-build" section.
-Plugin versions after pipeline: miltiaze 1.2.0, ladder-build 1.2.0, mk-flow 0.6.0, architect 0.1.0.
+Plugin versions after audit remediation Sprint 4: miltiaze 1.2.0, ladder-build 1.2.0, mk-flow 0.8.0, architect 0.2.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.16.0.

@@ -26,6 +26,7 @@ MAX_UNIQUE_VALUES = 50  # Keep all values if unique count <= this
 SAMPLE_SIZE = 10  # Number of samples to keep when above threshold
 JSON_DETECTION_THRESHOLD = 0.3  # Mark column as JSON if >30% of non-empty values parse
 SPARSE_COLUMN_THRESHOLD = 0.05  # Prune unnamed columns with <5% non-null values
+DEFAULT_MAX_ROWS = 10_000  # Default row scan limit for all commands
 
 
 class _FieldCollector:
@@ -264,7 +265,7 @@ def _walk_value(
 
 def analyze_rows(
     rows: Iterator[dict[str, Any]],
-    max_rows: int = 10_000,
+    max_rows: int = DEFAULT_MAX_ROWS,
     show_progress: bool = True,
 ) -> tuple[SchemaNode, int]:
     """Analyze rows and build a schema tree with value statistics.
@@ -420,7 +421,7 @@ def _split_path(path: str) -> list[str]:
 
 def analyze_file(
     path: Path,
-    max_rows: int = 10_000,
+    max_rows: int = DEFAULT_MAX_ROWS,
     sheet_name: str | None = None,
     show_progress: bool = True,
 ) -> tuple[SchemaNode, int]:

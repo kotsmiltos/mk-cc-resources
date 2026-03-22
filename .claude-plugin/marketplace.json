@@ -5,19 +5,19 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.",
-    "version": "1.3.0"
+    "version": "1.16.0"
   },
   "plugins": [
     {
       "name": "schema-scout",
       "source": "./plugins/schema-scout",
       "description": "CLI tool for exploring the schema and values of any data file (XLSX, CSV, JSON). Auto-detects JSON in cells, repairs double-encoded UTF-8, prunes overflow artifacts.",
-      "version": "1.1.0"
+      "version": "1.2.1"
     },
     {
       "name": "miltiaze",
       "source": "./plugins/miltiaze",
-      "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents.",
+      "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents with acceptance criteria.",
       "version": "1.2.0"
     },
     {
@@ -35,32 +35,32 @@
     {
       "name": "repo-audit",
       "source": "./plugins/repo-audit",
-      "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow with snapshot and pattern lookup consultation.",
-      "version": "1.1.0"
+      "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow requiring snapshot and pattern lookup consultation before any code change.",
+      "version": "1.2.0"
     },
     {
       "name": "project-note-tracker",
       "source": "./plugins/project-note-tracker",
       "description": "Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself.",
-      "version": "1.6.0"
+      "version": "1.8.0"
     },
     {
       "name": "alert-sounds",
       "source": "./plugins/alert-sounds",
-      "description": "Cross-platform alerts for Claude Code events — sound, desktop notifications, and status line colors. Fully configurable per event. WSL2 supported.",
-      "version": "1.0.0"
+      "description": "Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, volume control, and mute/unmute. Fully configurable per event.",
+      "version": "1.1.0"
     },
     {
       "name": "safe-commit",
       "source": "./plugins/safe-commit",
       "description": "Commit safety layer — secret scanning, identity verification, and commit hygiene enforcement. Blocks commits containing secrets, sensitive files, hardcoded paths, or merge conflict markers.",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "name": "mk-flow",
       "source": "./plugins/mk-flow",
-      "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, pipeline-aware routing, session continuity, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
-      "version": "0.6.0"
+      "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, pipeline-aware routing, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
+      "version": "0.8.0"
     },
     {
       "name": "architect",
@@ -72,7 +72,7 @@
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",
-      "version": "1.14.0"
+      "version": "1.16.0"
     }
   ]
 }

@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# drift-check.sh — Verify BUILD-PLAN.md milestone statuses against filesystem evidence.
-# Compares claimed status (completed/pending) with actual deliverable existence.
-# Exit 0 = no drift, Exit 1 = drift found, Exit 2 = error.
+# drift-check.sh — Verify plan statuses against filesystem evidence.
+# Handles two plan formats:
+#   - BUILD-PLAN.md (artifacts/builds/*/BUILD-PLAN.md): milestone-based
+#   - PLAN.md       (artifacts/designs/*/PLAN.md): sprint-based
 #
-# Usage: drift-check.sh [path/to/BUILD-PLAN.md]
-#   If omitted, auto-discovers artifacts/builds/*/BUILD-PLAN.md
+# Exit 0 = no drift, Exit 1 = drift found, Exit 2 = no plans found.
+#
+# Usage:
+#   drift-check.sh                      # auto-discover both plan types
+#   drift-check.sh path/to/BUILD-PLAN.md
+#   drift-check.sh path/to/PLAN.md
 
 set -euo pipefail
 
@@ -23,41 +28,12 @@ else
   GREEN='' RED='' YELLOW='' BOLD='' RESET=''
 fi
 
-# --- Find BUILD-PLAN.md ---
-if [ $# -ge 1 ]; then
-  PLAN_FILE="$1"
-  if [ ! -f "$PLAN_FILE" ]; then
-    echo "ERROR: File not found: $PLAN_FILE" >&2
-    exit 2
-  fi
-else
-  # Auto-discover
-  PLAN_FILES=()
-  for f in artifacts/builds/*/BUILD-PLAN.md; do
-    [ -f "$f" ] && PLAN_FILES+=("$f")
-  done
-
-  if [ "${#PLAN_FILES[@]}" -eq 0 ]; then
-    echo "ERROR: No BUILD-PLAN.md found in artifacts/builds/*/" >&2
-    echo "Usage: drift-check.sh [path/to/BUILD-PLAN.md]" >&2
-    exit 2
-  fi
-
-  if [ "${#PLAN_FILES[@]}" -gt 1 ]; then
-    echo "Multiple build plans found:" >&2
-    printf "  %s\n" "${PLAN_FILES[@]}" >&2
-    echo "Specify one: drift-check.sh <path>" >&2
-    exit 2
-  fi
-
-  PLAN_FILE="${PLAN_FILES[0]}"
-fi
-
-PLAN_NAME=$(basename "$(dirname "$PLAN_FILE")")
+# ---------------------------------------------------------------------------
+# BUILD-PLAN.md support
+# ---------------------------------------------------------------------------
 
 # --- Parse milestones from BUILD-PLAN.md ---
 # Extracts: milestone number, name, status, and "Done when:" deliverable lines
-
 parse_milestones() {
   local file="$1"
   local in_milestone=false
@@ -214,7 +190,7 @@ check_path() {
 
   # Try matching just the filename portion anywhere in the repo
   local basename
-  basename=$(basename "$expanded_path")
+  basename=$(basename -- "$expanded_path")
   found=$(find . -name "$basename" -print -quit 2>/dev/null) || true
   if [ -n "$found" ]; then
     return 0
@@ -223,168 +199,435 @@ check_path() {
   return 1
 }
 
-# --- Main ---
+# --- Process a single BUILD-PLAN.md ---
+# Prints results to stdout, returns drift count via PLAN_DRIFT_COUNT global.
+PLAN_DRIFT_COUNT=0
+PLAN_TOTAL_COUNT=0
 
-drift_count=0
-total_milestones=0
-results=""
+process_build_plan() {
+  local plan_file="$1"
+  local plan_name
+  plan_name=$(basename "$(dirname "$plan_file")")
 
-while IFS='|' read -r tag num name status deliverable_text; do
-  [ "$tag" != "MILESTONE" ] && continue
-  ((total_milestones++)) || true
+  local drift_count=0
+  local total_milestones=0
+  local results=""
 
-  # Parse deliverable lines (separated by ;;)
-  IFS=';;' read -ra deliverable_items <<< "$deliverable_text"
+  while IFS='|' read -r tag num name status deliverable_text; do
+    [ "$tag" != "MILESTONE" ] && continue
+    ((total_milestones++)) || true
 
-  # Extract all file paths from all deliverable descriptions
-  all_paths=""
-  for item in "${deliverable_items[@]}"; do
-    [ -z "$item" ] && continue
-    paths=$(extract_paths "$item" 2>/dev/null) || true
-    if [ -n "$paths" ]; then
-      if [ -n "$all_paths" ]; then
-        all_paths="${all_paths}"$'\n'"${paths}"
-      else
-        all_paths="${paths}"
+    # Parse deliverable lines (separated by ;;)
+    IFS=';;' read -ra deliverable_items <<< "$deliverable_text"
+
+    # Extract all file paths from all deliverable descriptions
+    local all_paths=""
+    for item in "${deliverable_items[@]}"; do
+      [ -z "$item" ] && continue
+      local paths
+      paths=$(extract_paths "$item" 2>/dev/null) || true
+      if [ -n "$paths" ]; then
+        if [ -n "$all_paths" ]; then
+          all_paths="${all_paths}"$'\n'"${paths}"
+        else
+          all_paths="${paths}"
+        fi
       fi
+    done
+
+    # Deduplicate paths
+    if [ -n "$all_paths" ]; then
+      all_paths=$(echo "$all_paths" | sort -u)
     fi
-  done
 
-  # Deduplicate paths
-  if [ -n "$all_paths" ]; then
-    all_paths=$(echo "$all_paths" | sort -u)
-  fi
+    local total_paths=0
+    local found_paths=0
+    local missing_list=""
+    local found_list=""
+    # For pending milestones: track "specific" paths (with directory components)
+    # separately from bare filenames. Bare filenames like SKILL.md or config.yaml
+    # are too ambiguous — they exist for other milestones, not necessarily this one.
+    local specific_found=0
+    local specific_total=0
 
-  total_paths=0
-  found_paths=0
-  missing_list=""
-  found_list=""
-  # For pending milestones: track "specific" paths (with directory components)
-  # separately from bare filenames. Bare filenames like SKILL.md or config.yaml
-  # are too ambiguous — they exist for other milestones, not necessarily this one.
-  specific_found=0
-  specific_total=0
+    if [ -n "$all_paths" ]; then
+      while IFS= read -r p; do
+        [ -z "$p" ] && continue
+        local is_specific=false
+        # A path is "specific" if it contains a / (has directory component)
+        [[ "$p" == */* ]] && is_specific=true
 
-  if [ -n "$all_paths" ]; then
-    while IFS= read -r p; do
-      [ -z "$p" ] && continue
-      is_specific=false
-      # A path is "specific" if it contains a / (has directory component)
-      [[ "$p" == */* ]] && is_specific=true
-
-      rc=0
-      check_path "$p" || rc=$?
-      if [ "$rc" -eq 0 ]; then
-        ((found_paths++)) || true
-        found_list="${found_list:+${found_list}, }${p}"
-        ((total_paths++)) || true
-        if [ "$is_specific" = true ]; then
-          ((specific_found++)) || true
-          ((specific_total++)) || true
+        local rc=0
+        check_path "$p" || rc=$?
+        if [ "$rc" -eq 0 ]; then
+          ((found_paths++)) || true
+          found_list="${found_list:+${found_list}, }${p}"
+          ((total_paths++)) || true
+          if [ "$is_specific" = true ]; then
+            ((specific_found++)) || true
+            ((specific_total++)) || true
+          fi
+        elif [ "$rc" -eq 1 ]; then
+          missing_list="${missing_list:+${missing_list}, }${p}"
+          ((total_paths++)) || true
+          if [ "$is_specific" = true ]; then
+            ((specific_total++)) || true
+          fi
         fi
-      elif [ "$rc" -eq 1 ]; then
-        missing_list="${missing_list:+${missing_list}, }${p}"
-        ((total_paths++)) || true
-        if [ "$is_specific" = true ]; then
-          ((specific_total++)) || true
+        # rc == 2 means skipped (wildcard) — don't count toward total
+      done <<< "$all_paths"
+    fi
+
+    # Determine verdict
+    local verdict=""
+    local verdict_color=""
+
+    if [ "$status" = "pending" ]; then
+      if [ "$total_paths" -eq 0 ]; then
+        verdict="CONFIRMED PENDING (no deliverable paths to check)"
+        verdict_color="$YELLOW"
+      elif [ "$specific_total" -gt 0 ]; then
+        if [ "$specific_found" -eq 0 ]; then
+          verdict="CONFIRMED PENDING (0/${specific_total} specific deliverables found)"
+          verdict_color="$GREEN"
+        else
+          local pct=$(( specific_found * 100 / specific_total ))
+          if [ "$pct" -ge "$THRESHOLD_DRIFT" ]; then
+            verdict="DRIFT — likely complete (${specific_found}/${specific_total} deliverables found)"
+            verdict_color="$RED"
+            ((drift_count++)) || true
+          elif [ "$pct" -ge "$THRESHOLD_PARTIAL" ]; then
+            verdict="PARTIAL (${specific_found}/${specific_total} deliverables found — needs manual check)"
+            verdict_color="$YELLOW"
+          fi
         fi
-      fi
-      # rc == 2 means skipped (wildcard) — don't count toward total
-    done <<< "$all_paths"
-  fi
-
-  # Determine verdict
-  verdict=""
-  verdict_color=""
-
-  if [ "$status" = "pending" ]; then
-    # For pending milestones: use specific paths (with directory components) for drift detection.
-    # Bare filenames (SKILL.md, config.yaml) are too ambiguous — they exist for other milestones.
-    # If no specific paths exist, bare filename matches alone can't trigger drift.
-    if [ "$total_paths" -eq 0 ]; then
-      verdict="CONFIRMED PENDING (no deliverable paths to check)"
-      verdict_color="$YELLOW"
-    elif [ "$specific_total" -gt 0 ]; then
-      # Have specific paths — use them for the verdict
-      if [ "$specific_found" -eq 0 ]; then
-        verdict="CONFIRMED PENDING (0/${specific_total} specific deliverables found)"
-        verdict_color="$GREEN"
       else
-        pct=$(( specific_found * 100 / specific_total ))
+        verdict="CONFIRMED PENDING (only bare filenames matched — needs manual check)"
+        verdict_color="$YELLOW"
+      fi
+    elif [ "$status" = "completed" ]; then
+      if [ "$total_paths" -eq 0 ]; then
+        verdict="CONFIRMED (no deliverable paths to check)"
+        verdict_color="$GREEN"
+      elif [ "$found_paths" -eq 0 ]; then
+        verdict="DRIFT — deliverables missing (0/${total_paths} found — may have been reverted)"
+        verdict_color="$RED"
+        ((drift_count++)) || true
+      else
+        local pct=$(( found_paths * 100 / total_paths ))
         if [ "$pct" -ge "$THRESHOLD_DRIFT" ]; then
-          verdict="DRIFT — likely complete (${specific_found}/${specific_total} deliverables found)"
+          verdict="CONFIRMED (${found_paths}/${total_paths} deliverables found)"
+          verdict_color="$GREEN"
+        else
+          verdict="DRIFT — partial revert? (${found_paths}/${total_paths} deliverables found)"
           verdict_color="$RED"
           ((drift_count++)) || true
-        elif [ "$pct" -ge "$THRESHOLD_PARTIAL" ]; then
-          verdict="PARTIAL (${specific_found}/${specific_total} deliverables found — needs manual check)"
-          verdict_color="$YELLOW"
         fi
       fi
     else
-      # Only bare filenames — not specific enough for drift detection
-      verdict="CONFIRMED PENDING (only bare filenames matched — needs manual check)"
+      verdict="UNKNOWN STATUS: ${status}"
       verdict_color="$YELLOW"
     fi
-  elif [ "$status" = "completed" ]; then
-    if [ "$total_paths" -eq 0 ]; then
-      verdict="CONFIRMED (no deliverable paths to check)"
-      verdict_color="$GREEN"
-    elif [ "$found_paths" -eq 0 ]; then
-      verdict="DRIFT — deliverables missing (0/${total_paths} found — may have been reverted)"
-      verdict_color="$RED"
-      ((drift_count++)) || true
-    else
-      pct=$(( found_paths * 100 / total_paths ))
-      if [ "$pct" -ge "$THRESHOLD_DRIFT" ]; then
-        verdict="CONFIRMED (${found_paths}/${total_paths} deliverables found)"
+
+    # Format result line
+    local label="M${num}: ${name}"
+    if [ ${#label} -gt 40 ]; then
+      label="${label:0:37}..."
+    fi
+
+    results="${results}$(printf "  %-40s | %-9s | ${verdict_color}%s${RESET}" "$label" "$status" "$verdict")\n"
+
+    # Add detail lines for drift cases
+    if [[ "$verdict" == DRIFT* ]] || [[ "$verdict" == PARTIAL* ]]; then
+      if [ -n "$found_list" ]; then
+        results="${results}$(printf "    %-38s   Found: %s" "" "$found_list")\n"
+      fi
+      if [ -n "$missing_list" ]; then
+        results="${results}$(printf "    %-38s   Missing: %s" "" "$missing_list")\n"
+      fi
+    fi
+
+  done < <(parse_milestones "$plan_file")
+
+  echo ""
+  echo -e "${BOLD}DRIFT-CHECK (build): ${plan_name}${RESET}"
+  echo "═══════════════════════════════════════════════════════════════════════"
+  echo -e "$results"
+  echo "═══════════════════════════════════════════════════════════════════════"
+
+  if [ "$drift_count" -eq 0 ]; then
+    echo -e "${GREEN}Result: NO DRIFT — all ${total_milestones} milestones match reality${RESET}"
+  else
+    echo -e "${RED}Result: DRIFT DETECTED — ${drift_count} milestone(s) need correction${RESET}"
+  fi
+
+  PLAN_DRIFT_COUNT=$drift_count
+  PLAN_TOTAL_COUNT=$total_milestones
+}
+
+# ---------------------------------------------------------------------------
+# PLAN.md (design plan) support
+# ---------------------------------------------------------------------------
+
+# --- Discover all artifacts/designs/*/PLAN.md files ---
+discover_design_plans() {
+  for f in artifacts/designs/*/PLAN.md; do
+    [ -f "$f" ] && echo "$f"
+  done
+}
+
+# --- Parse Sprint Tracking table from PLAN.md ---
+# Emits lines: SPRINT|<num>|<status>|<tasks>|<completed>
+# Table format:
+#   | Sprint | Status | Tasks | Completed | QA Result | Key Changes |
+#   | 1      | DONE   | 3     | 3/3       | ...       | ...         |
+parse_design_sprints() {
+  local file="$1"
+  local in_tracking=false
+  local past_header=false
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Detect "## Sprint Tracking" heading (any level 2 heading containing Sprint Tracking)
+    if [[ "$line" =~ ^##[[:space:]]+Sprint[[:space:]]+Tracking ]]; then
+      in_tracking=true
+      past_header=false
+      continue
+    fi
+
+    # Stop at next level-2 heading
+    if [ "$in_tracking" = true ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+      break
+    fi
+
+    if [ "$in_tracking" = false ]; then
+      continue
+    fi
+
+    # Skip the header row (contains "Sprint" and "Status" as column titles)
+    if [[ "$line" =~ \|[[:space:]]*Sprint[[:space:]]*\| ]]; then
+      past_header=true
+      continue
+    fi
+
+    # Skip the separator row (contains only |, -, and spaces)
+    if [[ "$line" =~ ^\|[-|[:space:]]+\|$ ]]; then
+      continue
+    fi
+
+    # Skip blank lines and non-table lines
+    if [[ ! "$line" =~ ^\| ]]; then
+      continue
+    fi
+
+    # Only parse data rows after we've seen the header
+    if [ "$past_header" = false ]; then
+      continue
+    fi
+
+    # Parse table row: | sprint | status | tasks | completed | ... |
+    # Use a temp variable to strip leading/trailing pipe and split on |
+    local row="${line#|}"     # strip leading |
+    row="${row%|}"            # strip trailing |
+
+    # Read pipe-delimited fields
+    IFS='|' read -r col_sprint col_status col_tasks col_completed _rest <<< "$row"
+
+    # Trim whitespace from each field
+    col_sprint="${col_sprint#"${col_sprint%%[! ]*}"}"
+    col_sprint="${col_sprint%"${col_sprint##*[! ]}"}"
+    col_status="${col_status#"${col_status%%[! ]*}"}"
+    col_status="${col_status%"${col_status##*[! ]}"}"
+    col_tasks="${col_tasks#"${col_tasks%%[! ]*}"}"
+    col_tasks="${col_tasks%"${col_tasks##*[! ]}"}"
+    col_completed="${col_completed#"${col_completed%%[! ]*}"}"
+    col_completed="${col_completed%"${col_completed##*[! ]}"}"
+
+    # Validate: sprint must be a number
+    if [[ ! "$col_sprint" =~ ^[0-9]+$ ]]; then
+      continue
+    fi
+
+    echo "SPRINT|${col_sprint}|${col_status}|${col_tasks}|${col_completed}"
+
+  done < "$file"
+}
+
+# --- Verify a design plan's sprints against filesystem ---
+# For DONE sprints: verify sprint dir + COMPLETION.md exist.
+# For PLANNED sprints with a task count: verify task-*.md files exist.
+verify_design_plan() {
+  local plan_file="$1"
+  local plan_dir
+  plan_dir=$(dirname "$plan_file")
+  local plan_name
+  plan_name=$(basename "$plan_dir")
+
+  local drift_count=0
+  local total_sprints=0
+  local results=""
+
+  while IFS='|' read -r tag num status tasks completed; do
+    [ "$tag" != "SPRINT" ] && continue
+    ((total_sprints++)) || true
+
+    local sprint_dir="${plan_dir}/sprints/sprint-${num}"
+    local completion_file="${sprint_dir}/COMPLETION.md"
+    local verdict=""
+    local verdict_color=""
+
+    if [ "$status" = "DONE" ]; then
+      # DONE sprints must have: sprint dir AND COMPLETION.md
+      if [ -d "$sprint_dir" ] && [ -f "$completion_file" ]; then
+        verdict="CONFIRMED (sprint dir + COMPLETION.md exist)"
         verdict_color="$GREEN"
+      elif [ -d "$sprint_dir" ]; then
+        verdict="DRIFT — COMPLETION.md missing in ${sprint_dir}"
+        verdict_color="$RED"
+        ((drift_count++)) || true
       else
-        verdict="DRIFT — partial revert? (${found_paths}/${total_paths} deliverables found)"
+        verdict="DRIFT — sprint directory missing: ${sprint_dir}"
         verdict_color="$RED"
         ((drift_count++)) || true
       fi
+
+    elif [ "$status" = "PLANNED" ]; then
+      # PLANNED sprints: if a task count is specified (numeric), verify task files exist
+      if [[ "$tasks" =~ ^[0-9]+$ ]] && [ "$tasks" -gt 0 ]; then
+        if [ -d "$sprint_dir" ]; then
+          # Count task-*.md files in the sprint directory
+          local task_files=()
+          for tf in "${sprint_dir}"/task-*.md; do
+            [ -f "$tf" ] && task_files+=("$tf")
+          done
+          local found_count="${#task_files[@]}"
+
+          if [ "$found_count" -ge "$tasks" ]; then
+            verdict="CONFIRMED PLANNED (${found_count}/${tasks} task files present)"
+            verdict_color="$GREEN"
+          elif [ "$found_count" -gt 0 ]; then
+            verdict="PARTIAL PLANNED (${found_count}/${tasks} task files present)"
+            verdict_color="$YELLOW"
+          else
+            verdict="CONFIRMED PLANNED (sprint dir exists, no task files yet)"
+            verdict_color="$GREEN"
+          fi
+        else
+          # No sprint dir yet for a planned sprint — this is fine (not started)
+          verdict="CONFIRMED PLANNED (sprint not yet started)"
+          verdict_color="$GREEN"
+        fi
+      else
+        # No task count specified (— or non-numeric) — just acknowledge planned
+        verdict="CONFIRMED PLANNED (no task count to verify)"
+        verdict_color="$GREEN"
+      fi
+
+    else
+      verdict="UNKNOWN STATUS: ${status}"
+      verdict_color="$YELLOW"
     fi
+
+    local label="Sprint ${num}"
+    results="${results}$(printf "  %-40s | %-9s | ${verdict_color}%s${RESET}" "$label" "$status" "$verdict")\n"
+
+  done < <(parse_design_sprints "$plan_file")
+
+  echo ""
+  echo -e "${BOLD}DRIFT-CHECK (design): ${plan_name}${RESET}"
+  echo "═══════════════════════════════════════════════════════════════════════"
+  echo -e "$results"
+  echo "═══════════════════════════════════════════════════════════════════════"
+
+  if [ "$drift_count" -eq 0 ]; then
+    echo -e "${GREEN}Result: NO DRIFT — all ${total_sprints} sprints match reality${RESET}"
   else
-    verdict="UNKNOWN STATUS: ${status}"
-    verdict_color="$YELLOW"
+    echo -e "${RED}Result: DRIFT DETECTED — ${drift_count} sprint(s) need correction${RESET}"
   fi
 
-  # Format result line
-  # Pad milestone label to align columns
-  label="M${num}: ${name}"
-  # Truncate long names
-  if [ ${#label} -gt 40 ]; then
-    label="${label:0:37}..."
+  PLAN_DRIFT_COUNT=$drift_count
+  PLAN_TOTAL_COUNT=$total_sprints
+}
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+# Detect if a specific file was passed — route to the right handler.
+if [ $# -ge 1 ]; then
+  TARGET="$1"
+  if [ ! -f "$TARGET" ]; then
+    echo "ERROR: File not found: $TARGET" >&2
+    exit 2
   fi
 
-  results="${results}$(printf "  %-40s | %-9s | ${verdict_color}%s${RESET}" "$label" "$status" "$verdict")\n"
-
-  # Add detail lines for drift cases
-  if [[ "$verdict" == DRIFT* ]] || [[ "$verdict" == PARTIAL* ]]; then
-    if [ -n "$found_list" ]; then
-      results="${results}$(printf "    %-38s   Found: %s" "" "$found_list")\n"
-    fi
-    if [ -n "$missing_list" ]; then
-      results="${results}$(printf "    %-38s   Missing: %s" "" "$missing_list")\n"
-    fi
-  fi
-
-done < <(parse_milestones "$PLAN_FILE")
-
-# --- Output ---
-
-echo ""
-echo -e "${BOLD}DRIFT-CHECK: ${PLAN_NAME}${RESET}"
-echo "═══════════════════════════════════════════════════════════════════════"
-echo -e "$results"
-echo "═══════════════════════════════════════════════════════════════════════"
-
-if [ "$drift_count" -eq 0 ]; then
-  echo -e "${GREEN}Result: NO DRIFT — all ${total_milestones} milestones match reality${RESET}"
-  echo ""
-  exit 0
-else
-  echo -e "${RED}Result: DRIFT DETECTED — ${drift_count} milestone(s) need correction${RESET}"
-  echo ""
-  exit 1
+  case "$(basename "$TARGET")" in
+    BUILD-PLAN.md)
+      process_build_plan "$TARGET"
+      [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
+      ;;
+    PLAN.md)
+      verify_design_plan "$TARGET"
+      [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
+      ;;
+    *)
+      echo "ERROR: Unrecognized plan file: $TARGET" >&2
+      echo "Expected: BUILD-PLAN.md or PLAN.md" >&2
+      exit 2
+      ;;
+  esac
 fi
+
+# --- Auto-discovery mode: find both plan types ---
+build_plans=()
+for f in artifacts/builds/*/BUILD-PLAN.md; do
+  [ -f "$f" ] && build_plans+=("$f")
+done
+
+design_plans=()
+for f in artifacts/designs/*/PLAN.md; do
+  [ -f "$f" ] && design_plans+=("$f")
+done
+
+if [ "${#build_plans[@]}" -eq 0 ] && [ "${#design_plans[@]}" -eq 0 ]; then
+  echo "ERROR: No plans found." >&2
+  echo "  Searched: artifacts/builds/*/BUILD-PLAN.md" >&2
+  echo "            artifacts/designs/*/PLAN.md" >&2
+  echo "Usage: drift-check.sh [path/to/BUILD-PLAN.md|PLAN.md]" >&2
+  exit 2
+fi
+
+# Track totals across all plans
+total_drift=0
+total_plans=0
+
+# Process build plans first
+for plan_file in "${build_plans[@]}"; do
+  PLAN_DRIFT_COUNT=0
+  PLAN_TOTAL_COUNT=0
+  process_build_plan "$plan_file"
+  ((total_drift += PLAN_DRIFT_COUNT)) || true
+  ((total_plans++)) || true
+done
+
+# Process design plans after build plans
+for plan_file in "${design_plans[@]}"; do
+  PLAN_DRIFT_COUNT=0
+  PLAN_TOTAL_COUNT=0
+  verify_design_plan "$plan_file"
+  ((total_drift += PLAN_DRIFT_COUNT)) || true
+  ((total_plans++)) || true
+done
+
+# --- Final summary when multiple plans were processed ---
+if [ "$total_plans" -gt 1 ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════════════"
+  if [ "$total_drift" -eq 0 ]; then
+    echo -e "${GREEN}${BOLD}OVERALL: NO DRIFT across ${total_plans} plan(s)${RESET}"
+  else
+    echo -e "${RED}${BOLD}OVERALL: DRIFT in ${total_drift} item(s) across ${total_plans} plan(s)${RESET}"
+  fi
+  echo ""
+fi
+
+[ "$total_drift" -eq 0 ] && exit 0 || exit 1

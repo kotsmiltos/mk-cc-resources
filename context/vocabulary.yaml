@@ -31,7 +31,7 @@ terms:
       means: "A slash command users invoke (e.g., /intake, /state)"
       files: "skills/ (alias layer)"
   alias:
-    means: "A text file in skills/ that points to the real skill directory inside a plugin"
+    means: "A full copy of a plugin's skill directory, placed in skills/ so mk-cc-all can serve it directly"
     files: "skills/*"
   intent:
     means: "A classified user message type (action, question, context_addition, etc.) used for routing"

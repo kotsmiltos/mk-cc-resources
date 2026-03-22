@@ -99,15 +99,18 @@ fi
 # Stale defaults detection — nudge user once per session if context files are behind
 STALE_NUDGE=""
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
-  # Extract installed mk-flow version from the cache directory path
-  # Path format: .../cache/marketplace/mk-flow/<version>/
-  INSTALLED_VERSION=$(echo "$CLAUDE_PLUGIN_ROOT" | grep -oP 'mk-flow/\K[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null)
+  # FIX 5: Read plugin.json first (authoritative), path regex as fallback.
+  # plugin.json is the canonical version source; the path pattern is unreliable
+  # when plugins are installed via symlinks or non-standard cache layouts.
+  PLUGIN_JSON="${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
+  INSTALLED_VERSION=""
+  if [ -f "$PLUGIN_JSON" ]; then
+    INSTALLED_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$PLUGIN_JSON" 2>/dev/null)
+  fi
   if [ -z "$INSTALLED_VERSION" ]; then
-    # Fallback: try reading plugin.json
-    PLUGIN_JSON="${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
-    if [ -f "$PLUGIN_JSON" ]; then
-      INSTALLED_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$PLUGIN_JSON" 2>/dev/null)
-    fi
+    # Fallback: extract version from cache directory path
+    # Path format: .../cache/marketplace/mk-flow/<version>/
+    INSTALLED_VERSION=$(echo "$CLAUDE_PLUGIN_ROOT" | grep -oP 'mk-flow/\K[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null)
   fi
 
   # Extract defaults_version from project rules.yaml
@@ -126,6 +129,15 @@ if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
   fi
 fi
 
+# FIX 3: Capture expanded plugin paths into shell variables before the heredoc
+# so they expand in the shell rather than being passed as literal text to Claude.
+INTAKE_SKILL_PATH="${CLAUDE_PLUGIN_ROOT}/skills/intake"
+DRIFT_CHECK_SCRIPT="${CLAUDE_PLUGIN_ROOT}/skills/state/scripts/drift-check.sh"
+
+# FIX 4: User-scoped intent library uses ~ (tilde), not $HOME, so no absolute
+# path leaks into the injected instruction text.
+INTENT_LIBRARY_PATH="~/.claude/mk-flow/intent-library.yaml"
+
 # Output classification instructions with embedded context
 cat <<INSTRUCTION
 Before responding, silently classify this message's intent using the context below.
@@ -140,7 +152,7 @@ Skill routing — based on classification, automatically engage or suggest the r
 
 Multi-issue input (3+ distinct items, dense bug dumps, stream-of-consciousness with mixed concerns):
   Automatically follow the intake process — decompose into items, show assumption table, route each item.
-  Read the intake SKILL.md at plugins/mk-flow/skills/intake/ for the full process.
+  Read the intake SKILL.md at ${INTAKE_SKILL_PATH}/ for the full process.
   Err on the side of using intake — missing a case where it should fire is worse than over-triggering.
   Single clear requests ("fix the button") skip intake and execute directly.
 
@@ -164,14 +176,14 @@ Pipeline-aware routing — if STATE.md has a Pipeline Position section, use it t
     Suggest: "/architect to plan improvements from the audit findings."
   If stage contains "sprint-" and ends with "-complete":
     Suggest: "/architect for QA review and next sprint planning."
-  If stage is "design-complete" or a PLAN.md exists with task specs in artifacts/designs/:
+  If a PLAN.md exists with task specs in artifacts/designs/:
     Suggest: "/ladder-build to execute the current sprint's task specs."
   If the user says "assess", "audit", or "where do we stand on the code":
     Suggest: "/architect audit to assess the codebase."
   These are suggestions, not mandates — the user may have a different intent. Only suggest when it naturally fits.
 
 For status_query intent:
-1. Run drift-check FIRST: bash plugins/mk-flow/skills/state/scripts/drift-check.sh
+1. Run drift-check FIRST: bash ${DRIFT_CHECK_SCRIPT}
    This tool verifies milestone statuses against actual filesystem evidence. Its output is your source of truth.
 2. Do NOT read STATE.md or BUILD-PLAN.md status fields directly — drift-check reads them and cross-references with reality.
 3. If drift-check reports DRIFT (exit code 1), fix the state files to match reality, then report.
@@ -179,7 +191,7 @@ For status_query intent:
 
 If the user asks to add, modify, or remove an intent (e.g., "add an intent for X", "add X to Y intent signals"):
 1. Update .claude/mk-flow/intents.yaml — add/modify the intent following the existing format
-2. Update the global library at ${HOME}/.claude/mk-flow/intent-library.yaml — same change, plus update used_in with project name
+2. Update the global library at ${INTENT_LIBRARY_PATH} — same change, plus update used_in with project name
 3. Confirm briefly what changed
 
 If a mk_flow_nudge tag is present below, mention it briefly to the user at the END of your response (not the beginning — don't lead with it). Keep it to one line.

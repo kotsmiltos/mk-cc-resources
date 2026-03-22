@@ -18,6 +18,7 @@ rules:
     when: "Changing the FORMAT or STRUCTURE of any plugin.json (adding/removing fields)"
     check: "All plugins/*/.claude-plugin/plugin.json"
     why: "All plugins must use the same metadata format"
+    note: "The root .claude-plugin/plugin.json (mk-cc-all) has additional fields (homepage, repository, license, keywords) for distribution. Child plugin.json files use only name, version, description, author."
 
   skill-md-convention:
     when: "Changing SKILL.md section structure (adding/removing XML tags, changing frontmatter fields)"
@@ -33,6 +34,7 @@ rules:
     when: "Adding or removing a skill from any plugin"
     check: "skills/ directory"
     why: "Alias file must exist for each plugin skill"
+    note: "Excludes hook-bearing plugins (mk-flow, alert-sounds) — installed separately, not in skills/"
 
   workflow-routing:
     when: "Adding a workflow .md file to a skill"
@@ -90,3 +92,24 @@ rules:
     when: "Changing requirements-report.md template sections"
     check: "plugins/miltiaze/skills/miltiaze/workflows/requirements.md"
     why: "Requirements workflow assembles output matching the template. Section changes must be reflected in the workflow steps."
+
+  stage-names:
+    when: "Adding, removing, or renaming a pipeline stage name"
+    check:
+      - "plugins/mk-flow/hooks/intent-inject.sh — routing conditions"
+      - "plugins/mk-flow/skills/state/templates/state.md — canonical stage enum"
+      - "plugins/architect/skills/architect/SKILL.md — routing guidance"
+      - "plugins/ladder-build/skills/ladder-build/SKILL.md — routing guidance"
+      - "plugins/miltiaze/skills/miltiaze/workflows/requirements.md — sets stage"
+      - "plugins/architect/skills/architect/workflows/plan.md — sets stage"
+      - "plugins/architect/skills/architect/workflows/review.md — sets stage"
+      - "plugins/ladder-build/skills/ladder-build/workflows/execute.md — sets stage"
+    why: "Stage names are a distributed constant — all consumers must agree on exact strings"
+
+  schema-scout-versions:
+    when: "Bumping schema-scout plugin.json or pyproject.toml version"
+    check:
+      - "plugins/schema-scout/.claude-plugin/plugin.json — plugin version"
+      - "plugins/schema-scout/skills/schema-scout/tool/pyproject.toml — Python package version"
+    note: "These versions are intentionally independent. Plugin version tracks the skill. pyproject.toml tracks the Python CLI package."
+    why: "Prevents confusion about which version to bump and whether they should match"

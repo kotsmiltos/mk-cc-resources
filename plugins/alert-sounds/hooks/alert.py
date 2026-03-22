@@ -36,6 +36,17 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = SCRIPT_DIR / "config.json"
 EVENTS = ("stop", "permission", "idle")
 
+# ---------------------------------------------------------------------------
+# Win32 constants — defined at module level to avoid magic numbers inline
+# ---------------------------------------------------------------------------
+# How long to wait (ms) for MediaPlayer to finish before closing
+MEDIA_PLAYER_WAIT_MS = 3000
+# Suppress the console window that would otherwise flash when spawning
+# powershell as a subprocess on Windows
+CREATE_NO_WINDOW = 0x08000000
+# Minimum access right needed to query process info via NtQueryInformationProcess
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
 # Detect WSL2 — reports as Linux but should route audio/notifications to Windows
 IS_WSL = False
 if SYSTEM == "Linux":
@@ -125,23 +136,66 @@ def is_muted(config: dict) -> bool:
 # ---------------------------------------------------------------------------
 # Sound: custom file playback
 # ---------------------------------------------------------------------------
-def _play_file_windows(path: str, volume: float = 1.0) -> None:
-    """Play audio file on Windows via PowerShell MediaPlayer."""
-    abs_path = str(Path(path).resolve()).replace("'", "''")
-    cmd = (
+def _run_powershell_media(path: str, volume: float, is_wsl: bool = False) -> None:
+    """Play an audio file via PowerShell MediaPlayer without interpolating the path.
+
+    Security rationale: sound file paths come from user-editable config.json and
+    must not allow arbitrary PowerShell execution.  The path is embedded inside
+    a PowerShell single-quoted string assignment ($SoundPath = '...'), which is
+    safe because PS single-quoted strings have NO interpolation — no $, no
+    backtick, no $().  The only escape is '' for a literal '.
+
+    Volume is a Python float computed from config (0.0-1.0) — it is not user
+    input and is safe to embed in the script body.
+    """
+    if is_wsl:
+        # WSL: convert Linux path to Windows path first
+        try:
+            win_path = subprocess.check_output(
+                ["wslpath", "-w", path], text=True
+            ).strip()
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            print(f"alert: wslpath conversion failed for: {path} — {exc}", file=sys.stderr)
+            return
+        ps_cmd = "powershell.exe"
+    else:
+        # Native Windows: resolve the absolute path
+        win_path = str(Path(path).resolve())
+        ps_cmd = "powershell"
+
+    # Escape for PowerShell single-quoted string: double any single quotes.
+    # PS single-quoted strings have NO interpolation — $, backtick, $() are
+    # all literal.  The only special char is ' itself, escaped as ''.
+    escaped_path = win_path.replace("'", "''")
+
+    # Build the script with the path as a single-quoted string assignment.
+    # The path is in data space (inside '...'), never in command space.
+    ps_script = (
+        f"$SoundPath = '{escaped_path}'; "
         "Add-Type -AssemblyName PresentationCore; "
         "$p = New-Object System.Windows.Media.MediaPlayer; "
-        f"$p.Open([Uri]'{abs_path}'); "
         f"$p.Volume = {volume}; "
+        "$p.Open([Uri]$SoundPath); "
         "$p.Play(); "
-        "Start-Sleep -Milliseconds 3000; "
+        f"Start-Sleep -Milliseconds {MEDIA_PLAYER_WAIT_MS}; "
+        "$p.Stop(); "
         "$p.Close()"
     )
-    subprocess.Popen(
-        ["powershell", "-NoProfile", "-Command", cmd],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+
+    try:
+        subprocess.Popen(
+            [ps_cmd, "-NoProfile", "-Command", ps_script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=CREATE_NO_WINDOW if not is_wsl else 0,
+        )
+    except (FileNotFoundError, OSError) as exc:
+        print(f"alert: {ps_cmd} invocation failed: {exc}", file=sys.stderr)
+
+
+def _play_file_windows(path: str, volume: float = 1.0) -> None:
+    """Play audio file on Windows via PowerShell MediaPlayer."""
+    _run_powershell_media(path, volume, is_wsl=False)
 
 
 def _play_file_macos(path: str, volume: float = 1.0) -> None:
@@ -178,31 +232,7 @@ def _play_file_linux(path: str, volume: float = 1.0) -> None:
 
 def _play_file_wsl(path: str, volume: float = 1.0) -> None:
     """Play audio file from WSL2 via powershell.exe on the Windows host."""
-    try:
-        win_path = subprocess.check_output(
-            ["wslpath", "-w", path], text=True
-        ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        print(f"alert: wslpath conversion failed for: {path}", file=sys.stderr)
-        return
-    abs_path = win_path.replace("'", "''")
-    cmd = (
-        "Add-Type -AssemblyName PresentationCore; "
-        "$p = New-Object System.Windows.Media.MediaPlayer; "
-        f"$p.Open([Uri]'{abs_path}'); "
-        f"$p.Volume = {volume}; "
-        "$p.Play(); "
-        "Start-Sleep -Milliseconds 3000; "
-        "$p.Close()"
-    )
-    try:
-        subprocess.Popen(
-            ["powershell.exe", "-NoProfile", "-Command", cmd],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except FileNotFoundError:
-        print("alert: powershell.exe not found in WSL PATH", file=sys.stderr)
+    _run_powershell_media(path, volume, is_wsl=True)
 
 
 def play_file(path: str, volume: float = 1.0) -> None:
@@ -328,7 +358,7 @@ def _notify_windows(title: str, body: str) -> None:
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        creationflags=0x08000000,  # CREATE_NO_WINDOW
+        creationflags=CREATE_NO_WINDOW,
     )
 
 
@@ -367,7 +397,8 @@ def _notify_wsl(title: str, body: str) -> None:
         win_script = subprocess.check_output(
             ["wslpath", "-w", str(script)], text=True
         ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print(f"alert: wslpath conversion failed for notify script: {exc}", file=sys.stderr)
         return
     try:
         subprocess.Popen(
@@ -442,7 +473,7 @@ def _flash_taskbar_windows() -> None:
             ("InheritedFromUniqueProcessId", ctypes.c_void_p),
         ]
 
-    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    # PROCESS_QUERY_LIMITED_INFORMATION is defined at module level
     MAX_TREE_DEPTH = 32
 
     def _get_parent_pid(pid: int) -> int:
@@ -582,8 +613,11 @@ def flash_taskbar() -> None:
         elif SYSTEM == "Darwin":
             _flash_taskbar_macos()
         # Linux: no reliable cross-desktop taskbar flash mechanism
-    except Exception:
-        pass  # best-effort — never let flash failure break the hook
+    except Exception as exc:
+        # Best-effort — never let flash failure break the hook.
+        # Log only when the debug env var is set so normal users aren't spammed.
+        if os.environ.get("CLAUDE_ALERT_DEBUG"):
+            print(f"alert: flash_taskbar failed: {exc}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

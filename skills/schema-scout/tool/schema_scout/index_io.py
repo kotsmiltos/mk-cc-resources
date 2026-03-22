@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from schema_scout import __version__
 from schema_scout.models import SchemaNode
 
 
@@ -37,9 +38,8 @@ def save_index(
     index_path = output_path or get_index_path(source_path)
 
     data: dict[str, Any] = {
-        "schema_scout_version": "1.0",
+        "schema_scout_version": __version__,
         "source_file": source_path.name,
-        "source_file_name": source_path.name,
         "rows_analyzed": rows_analyzed,
         "max_rows_setting": max_rows,
         "indexed_at": datetime.now(timezone.utc).isoformat(),
@@ -59,6 +59,11 @@ def load_index(index_path: Path) -> tuple[SchemaNode, dict[str, Any]]:
     """Load a schema analysis from a JSON index file.
 
     Returns (schema_root, metadata_dict).
+
+    Compatibility note: older indexes (pre-1.0.0) may contain a redundant
+    "source_file_name" key (duplicate of "source_file") and/or
+    "schema_scout_version": "1.0" instead of a full semver string. Both
+    are harmless and passed through transparently in the metadata dict.
     """
     with open(index_path, encoding="utf-8") as f:
         data = json.load(f)

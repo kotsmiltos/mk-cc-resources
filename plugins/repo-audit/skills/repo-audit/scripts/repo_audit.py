@@ -16,10 +16,15 @@ All stdlib — no external dependencies.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Allowed characters for amendment slugs: letters, digits, hyphens, underscores.
+# Prevents path traversal (e.g. "../evil") and shell injection via the filename.
+VALID_SLUG_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
 
 # Ensure the scripts directory is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -103,6 +108,22 @@ def cmd_amend(args: argparse.Namespace) -> None:
     updated: list[str] = args.files or []
     patterns: list[str] = args.patterns or []
 
+    # Reject slugs that contain characters outside the allowed set.
+    # This prevents path traversal attacks (e.g. "../evil") and ensures
+    # the slug is safe to embed directly in a filename.
+    if not VALID_SLUG_PATTERN.match(slug):
+        print(
+            f"Error: invalid slug {slug!r}. "
+            "Slugs may only contain letters, digits, hyphens, and underscores.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Sanitize description before embedding it into the YAML frontmatter.
+    # Double-quotes would break the YAML string literal; newlines would
+    # corrupt the multi-line structure.
+    safe_description = description.replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ')
+
     # Normalize all paths to forward slashes (Windows compat)
     primary = [f.replace("\\", "/") for f in primary]
     related = [f.replace("\\", "/") for f in related]
@@ -122,7 +143,7 @@ def cmd_amend(args: argparse.Namespace) -> None:
         mode: amend
         slug: "{slug}"
         date: "{now.isoformat()}"
-        description: "{description}"
+        description: "{safe_description}"
         snapshot_used: {SNAPSHOT_PATH}
         patterns_used: {PATTERNS_PATH}
         patterns:
@@ -158,7 +179,7 @@ def cmd_amend(args: argparse.Namespace) -> None:
 
         ---
 
-        ## {description}
+        ## {safe_description}
 
         TODO — describe what changed and why
 

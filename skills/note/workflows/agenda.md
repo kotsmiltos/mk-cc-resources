@@ -8,7 +8,14 @@ The input format is: `agenda [handler]`
 
 <step_2_get_pending>
 ```bash
-TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+TRACKER_PY="${CLAUDE_PLUGIN_ROOT}/scripts/tracker.py"
+if [ ! -f "$TRACKER_PY" ]; then
+  TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+  if [ -z "$TRACKER_PY" ]; then
+    echo "Error: tracker.py not found" >&2
+    exit 1
+  fi
+fi
 ```
 
 If handler filter provided:

@@ -1,3 +1,6 @@
+_meta:
+  defaults_version: "0.6.0"
+
 # Project Rules — behavioral corrections injected every message via mk-flow hook
 # These are hard rules, not suggestions. Violations erode trust.
 #

@@ -23,7 +23,7 @@ A project-level question and bug tracker. Log questions for different handlers (
 6. Status reflects whether context was found — "Answered Internally" means the codebase has clear, relevant context about this topic (NOT that the question is answered). "Pending" means little or no relevant context was found in project files. "Decided" means a decision was made with rationale. "Completed" means confirmed by the handler.
 7. Background execution — research questions and investigate bugs using the Agent tool with `run_in_background: true` so the user can keep working
 8. Excel I/O uses tracker.py — never edit the xlsx directly; always use the script via `uvx --with openpyxl`
-9. Find tracker.py by running: `find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1`
+9. Find tracker.py via CLAUDE_PLUGIN_ROOT first, fall back to find if needed (see scripts_index section)
 10. Internal Review column documents existing state — include source file paths, line numbers, relevant quotes, current behavior. Frame as "here's what exists" not "here's the answer"
 11. Handler Answer column stays empty — the user fills this after meetings
 12. Dates are automatic — tracker.py adds them
@@ -135,7 +135,14 @@ Bug statuses:
 Finding the script:
 
 ```bash
-TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+TRACKER_PY="${CLAUDE_PLUGIN_ROOT}/scripts/tracker.py"
+if [ ! -f "$TRACKER_PY" ]; then
+  TRACKER_PY=$(find ~/.claude/plugins -path "*/project-note-tracker/scripts/tracker.py" -type f 2>/dev/null | head -1)
+  if [ -z "$TRACKER_PY" ]; then
+    echo "Error: tracker.py not found" >&2
+    exit 1
+  fi
+fi
 ```
 
 Then invoke with:

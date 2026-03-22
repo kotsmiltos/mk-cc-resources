@@ -58,15 +58,18 @@ plugins/
         SKILL.md
         workflows/          # status.md, pause.md, resume.md
         templates/          # state.md, continue-here.md, vocabulary.yaml, cross-references.yaml
+        scripts/            # drift-check.sh — detects state/codebase drift
       mk-flow-init/         # Project setup with context scanning
         SKILL.md
-      mk-flow-update-rules/ # Merge latest plugin default rules into project rules
+      mk-flow-update/       # Sync latest plugin defaults (rules, intents, cross-references) into project
+        SKILL.md
+      mk-flow-update-rules/ # DEPRECATED — superseded by mk-flow-update/
         SKILL.md
 
   alert-sounds/             # Cross-platform audio + visual alerts for Claude Code events
     .claude-plugin/plugin.json
     hooks/
-      hooks.json            # Stop, Permission, UserPromptSubmit (clear state) hooks
+      hooks.json            # Stop, Notification (permission_prompt + idle_prompt matchers), UserPromptSubmit (clear state) hooks
       alert.py              # Main hook script — beeps, notifications, taskbar flash
       config.json           # User config — volume, mute, per-event toggles
       statusline.sh         # Status line integration
@@ -142,7 +145,7 @@ The mk-flow hook (`intent-inject.sh`) runs on every UserPromptSubmit and injects
 | `context/cross-references.yaml` | `<cross_references>` | Change consistency rules |
 | `context/rules.yaml` | `<rules>` | Hard behavioral rules — unconditional |
 
-The hook reads the prompt from stdin JSON, skips short messages (<10 chars) and slash commands. Classification is done inline by the main Claude, not by a separate API call.
+The hook reads the prompt from stdin JSON, skips short messages (<2 chars) and slash commands. Classification is done inline by the main Claude, not by a separate API call.
 
 ## Pipeline: miltiaze → architect → ladder-build
 

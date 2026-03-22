@@ -8,12 +8,20 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Any, Iterator
 
+from schema_scout.analyzer import DEFAULT_MAX_ROWS
+
+# Maximum byte size for a JSON array file before we refuse to load it into
+# memory wholesale. JSON arrays are parsed all at once (not streamed), so a
+# large file would exhaust RAM. Users with large files should use NDJSON.
+MAX_JSON_ARRAY_BYTES = 50 * 1024 * 1024  # 50 MB
+
 
 def read_xlsx(
-    path: Path, max_rows: int = 10_000, sheet_name: str | None = None
+    path: Path, max_rows: int = DEFAULT_MAX_ROWS, sheet_name: str | None = None
 ) -> Iterator[dict[str, Any]]:
     """Read an XLSX file, yielding one dict per row.
 
@@ -59,7 +67,7 @@ CSV_ENCODING_FALLBACKS = ("utf-8-sig", "latin-1")
 
 
 def read_csv(
-    path: Path, max_rows: int = 10_000, encoding: str | None = None,
+    path: Path, max_rows: int = DEFAULT_MAX_ROWS, encoding: str | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Read a CSV file, yielding one dict per row.
 
@@ -91,7 +99,7 @@ def read_csv(
     )
 
 
-def read_json(path: Path, max_rows: int = 10_000) -> Iterator[dict[str, Any]]:
+def read_json(path: Path, max_rows: int = DEFAULT_MAX_ROWS) -> Iterator[dict[str, Any]]:
     """Read a JSON file, yielding one dict per row.
 
     Supports two formats:
@@ -103,7 +111,16 @@ def read_json(path: Path, max_rows: int = 10_000) -> Iterator[dict[str, Any]]:
         f.seek(0)
 
         if first_char == "[":
-            # JSON array
+            # JSON arrays must be fully loaded into memory — guard against
+            # files large enough to exhaust RAM. NDJSON is the streaming
+            # alternative for large datasets.
+            file_size = path.stat().st_size
+            if file_size > MAX_JSON_ARRAY_BYTES:
+                raise ValueError(
+                    f"{path.name} is {file_size / (1024 * 1024):.1f} MB, which exceeds the "
+                    f"{MAX_JSON_ARRAY_BYTES // (1024 * 1024)} MB limit for JSON array files. "
+                    "Convert to NDJSON (one JSON object per line) for large files."
+                )
             data = json.load(f)
             if not isinstance(data, list):
                 data = [data]
@@ -117,6 +134,7 @@ def read_json(path: Path, max_rows: int = 10_000) -> Iterator[dict[str, Any]]:
         else:
             # NDJSON — one JSON object per line
             row_count = 0
+            skipped_lines = 0
             for line in f:
                 line = line.strip()
                 if not line:
@@ -131,7 +149,15 @@ def read_json(path: Path, max_rows: int = 10_000) -> Iterator[dict[str, Any]]:
                         yield {"_value": item}
                     row_count += 1
                 except json.JSONDecodeError:
+                    skipped_lines += 1
                     continue
+
+            if skipped_lines > 0:
+                print(
+                    f"scout: warning: skipped {skipped_lines} malformed NDJSON "
+                    f"line(s) in {path.name}",
+                    file=sys.stderr,
+                )
 
 
 SUPPORTED_EXTENSIONS = {
@@ -144,7 +170,7 @@ SUPPORTED_EXTENSIONS = {
 
 
 def read_file(
-    path: Path, max_rows: int = 10_000, sheet_name: str | None = None
+    path: Path, max_rows: int = DEFAULT_MAX_ROWS, sheet_name: str | None = None
 ) -> Iterator[dict[str, Any]]:
     """Auto-detect file format by extension and read it.
 
