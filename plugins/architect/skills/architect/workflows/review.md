@@ -1,0 +1,343 @@
+<required_reading>
+Read these reference files NOW before proceeding:
+1. references/sprint-management.md (reassessment section)
+2. references/team-culture.md (QA principles)
+3. templates/plan.md (for updating PLAN.md)
+4. templates/task-spec.md (for creating next sprint's specs)
+</required_reading>
+
+<process>
+
+<step_1_gather_sprint_output>
+Identify the completed sprint and read all relevant artifacts:
+
+1. **PLAN.md** — Read from `[cwd]/artifacts/designs/[slug]/PLAN.md`. Identify which sprint just completed by checking the Sprint Tracking table.
+
+2. **Task specs** — Read all task specs for the completed sprint from `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/`.
+
+3. **Built artifacts** — Read the actual files that were created or modified during the sprint. Compare to what the task specs specified.
+
+4. **Original requirements** — Re-read the source requirements/exploration to keep the overall goal in mind (path is in PLAN.md's Source field).
+
+5. **Previous QA reports** — If this isn't sprint 1, check previous sprints' QA reports for recurring patterns or unresolved notes.
+
+Assemble a clear picture of: what was PLANNED (task specs), what was BUILT (actual files), and what was PROMISED (original requirements).
+</step_1_gather_sprint_output>
+
+<step_2_spawn_qa_agents>
+Launch these 4 QA agents in parallel using the Agent tool. Each verifies from a different angle.
+
+Read references/team-culture.md for the team values block. QA agents carry the "test to BREAK it" principle.
+
+**QA Agent 1 — Task Spec Compliance:**
+```
+You are a QA engineer verifying that completed work matches its specification.
+
+SPRINT: [N]
+TASK SPECS: [Paths to all task specs for this sprint]
+BUILT FILES: [Paths to files created/modified during this sprint]
+
+For EACH task spec in this sprint:
+1. Read the task spec's Acceptance Criteria section
+2. Read the actual files that were built
+3. Check every acceptance criterion — does the built code satisfy it?
+4. Check the Pseudocode section — was the specified logic implemented?
+5. Check Files Touched — were all specified files actually created/modified?
+6. Check Edge Cases — are they handled?
+
+For each check, report:
+- PASS: Criterion met
+- FAIL: Criterion not met (describe what's wrong specifically)
+- PARTIAL: Partially met (describe what's missing)
+- SKIPPED: Criterion could not be verified (explain why)
+
+Team values — follow these unconditionally:
+- Test to BREAK it, not just confirm happy paths
+- Be specific. "Doesn't work" is not a finding. "Function X in file Y returns Z when it should return W" IS
+- Check EVERY criterion, not just the obvious ones
+- If something was silently simplified or dropped from the spec, flag it
+
+Return your findings in this structure:
+## Task Spec Compliance
+
+### Task [K]: [Name]
+| Criterion | Result | Details |
+|-----------|--------|---------|
+| [From acceptance criteria] | PASS/FAIL/PARTIAL | [Specific details] |
+
+### Summary
+- Tasks checked: [N]
+- Total criteria: [N]
+- Passed: [N]
+- Failed: [N]
+- Partial: [N]
+- Skipped: [N]
+```
+
+**QA Agent 2 — Requirements Alignment:**
+```
+You are a QA engineer verifying that sprint output serves the original requirements.
+
+SPRINT: [N]
+REQUIREMENTS: [Path to miltiaze requirements/exploration]
+PLAN VISION: [The Vision section from PLAN.md]
+BUILT FILES: [Paths to files created/modified during this sprint]
+
+Check whether the sprint's output moves the project toward the stated goals:
+1. Read the original requirements/exploration
+2. Read the PLAN.md Vision section
+3. Read what was actually built
+4. For each requirement the sprint was supposed to address:
+   - Does the built code serve this requirement?
+   - Is the requirement fully addressed, partially addressed, or not addressed?
+   - Was anything built that WASN'T in the requirements? (scope creep check)
+   - Was anything in scope silently dropped? (scope reduction check)
+
+Team values — follow these unconditionally:
+- Scope reduction is a CRITICAL finding — never let it pass silently
+- Check the spirit of the requirement, not just the letter
+- If the requirement was ambiguous and the implementation chose one interpretation, note which interpretation was chosen
+
+Return your findings in this structure:
+## Requirements Alignment
+
+### Requirements Addressed This Sprint
+| Requirement | Status | Details |
+|------------|--------|---------|
+| [From requirements doc] | Fully/Partially/Not addressed | [Specifics] |
+
+### Scope Check
+- Scope additions (not in requirements): [List or "None"]
+- Scope reductions (silently dropped): [List or "None"]
+
+### Overall Alignment
+[Does this sprint move the project toward the vision? Any drift?]
+```
+
+**QA Agent 3 — Fitness Function Verification:**
+```
+You are a QA engineer verifying architectural properties are preserved.
+
+SPRINT: [N]
+PLAN.MD: [Path to PLAN.md]
+FITNESS FUNCTIONS: [List from PLAN.md Fitness Functions section]
+BUILT FILES: [Paths to files created/modified during this sprint]
+FULL CODEBASE CONTEXT: [Key structural information]
+
+For each fitness function in PLAN.md:
+1. Read the assertion
+2. Check the built code against it
+3. Report PASS or FAIL with evidence
+
+Also check for NEW architectural violations not covered by existing fitness functions:
+- Circular dependencies introduced
+- Module boundary violations
+- Convention deviations
+- Hidden coupling
+- Magic numbers or hardcoded values
+
+If you discover a new architectural property that should be preserved, propose it as a new fitness function.
+
+Team values — follow these unconditionally:
+- Architecture violations are high-severity findings
+- Check the WHOLE module, not just the changed files
+- If a fitness function is poorly written (can't be verified), flag it for rewriting
+
+Return your findings in this structure:
+## Fitness Function Verification
+
+### Existing Functions
+| Function | Result | Evidence |
+|----------|--------|----------|
+| [Assertion] | PASS/FAIL | [Specific evidence] |
+
+### New Violations Discovered
+| Violation | Severity | Files | Recommended Fitness Function |
+|-----------|----------|-------|------------------------------|
+| [What's wrong] | High/Med/Low | [Paths] | [Proposed assertion] |
+
+### Proposed New Fitness Functions
+- [ ] [New assertion to add to PLAN.md]
+```
+
+**QA Agent 4 — Adversarial Edge Case Testing:**
+```
+You are an adversarial QA engineer. Your job is to BREAK things.
+
+SPRINT: [N]
+TASK SPECS: [Paths to all task specs — read the Edge Cases sections]
+BUILT FILES: [Paths to files created/modified during this sprint]
+
+Think like an attacker, a careless user, and a system under stress:
+
+1. INPUT ABUSE: What happens with empty input? Malformed input? Extremely long input? Unicode? Special characters? Path traversal attempts?
+
+2. MISSING DEPENDENCIES: What if a file doesn't exist? A config is missing? A referenced module isn't available?
+
+3. RACE CONDITIONS: What if two processes run this simultaneously? What if the system is interrupted mid-operation?
+
+4. STATE CORRUPTION: What if the persistent state (files on disk) is manually edited, partially written, or deleted?
+
+5. INTEGRATION FAILURES: What if the module this depends on changes its output format? Returns unexpected data?
+
+6. RESOURCE EXHAUSTION: What if there are thousands of items instead of tens? What if disk is full? What if the context window is near its limit?
+
+For each test scenario:
+- Describe the scenario specifically
+- State what SHOULD happen (the correct behavior)
+- State what you THINK will happen based on reading the code
+- Rate severity if it fails: Critical/High/Medium/Low
+
+Team values — follow these unconditionally:
+- Your job is to FIND problems, not confirm things work
+- The harder you try to break it, the better the eventual product
+- Be creative — think of scenarios the developer wouldn't
+- Every finding must be specific and reproducible
+
+Return your findings in this structure:
+## Adversarial Edge Case Testing
+
+### Test Scenarios
+| # | Scenario | Expected Behavior | Likely Actual Behavior | Severity | Verdict |
+|---|----------|-------------------|----------------------|----------|---------|
+| 1 | [Specific scenario] | [What should happen] | [What probably happens] | Crit/High/Med/Low | PASS/RISK/FAIL |
+
+### Critical Risks
+[Any scenario where the system would break badly or lose data]
+
+### Recommendations
+[Specific fixes or defensive patterns to add]
+```
+
+**IMPORTANT:** All 4 QA agents run in parallel. Wait for all to return before proceeding.
+</step_2_spawn_qa_agents>
+
+<step_3_synthesize_qa_results>
+Read all 4 QA agents' findings. Produce a unified assessment:
+
+**3a. Categorize findings by severity:**
+- **Critical** — Must fix before proceeding. Blocks the next sprint.
+- **High** — Should fix soon. Schedule as a task in the next sprint.
+- **Medium** — Note for improvement. Add to Refactor Requests.
+- **Low** — Nice to have. Add to Refinement Queue.
+
+**3b. Check for autonomous corrective action:**
+For findings that meet ALL of these criteria, fix them immediately without asking the user:
+- The fix is obvious and unambiguous
+- The fix is small (< 20 lines of code)
+- The fix doesn't change any interface contract or behavior
+- The fix doesn't require a design decision
+
+Document every autonomous fix in the QA report: what was found, what was fixed, where.
+
+**3c. Check for escalations:**
+For Critical findings or findings that affect scope, escalate to the user via the ask workflow. Frame it clearly:
+- "QA found [issue]. This affects [what]. Options: [A] or [B]. My recommendation: [X] because [Y]."
+
+**3d. Write QA-REPORT.md:**
+Save to `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md`:
+
+```markdown
+# QA Report: Sprint [N]
+
+> **Date:** YYYY-MM-DD
+> **Plan:** [Path to PLAN.md]
+> **Overall Result:** PASS | PASS (N notes) | FAIL (N issues)
+
+## Summary
+- Task spec compliance: [N/N] criteria passed
+- Requirements alignment: [Status]
+- Fitness functions: [N/N] passed
+- Adversarial tests: [N] risks identified
+
+## Critical Issues
+[Issues that block the next sprint]
+
+## High Priority
+[Issues to fix in next sprint]
+
+## Medium Priority
+[Refactor requests]
+
+## Low Priority
+[Refinement items]
+
+## Autonomous Fixes Applied
+[What was fixed automatically during this review]
+
+## Recommendations for Next Sprint
+[What to include, what to change]
+```
+</step_3_synthesize_qa_results>
+
+<step_4_reassess_and_plan_next>
+Following the reassessment framework in references/sprint-management.md:
+
+**4a. Update PLAN.md:**
+- Sprint Tracking: Mark completed sprint as DONE with QA result
+- Change Log: Record what changed and why
+- Risk Register: Update based on QA findings
+- Refactor Requests: Add any from QA
+- Fitness Functions: Add any new ones proposed by QA agents
+
+**4b. Check scope integrity:**
+Compare what was built to what PLAN.md specified for this sprint. If anything was silently dropped or simplified, flag it. Scope reduction requires explicit user acknowledgment.
+
+**4c. Plan next sprint:**
+If more sprints remain:
+- Review the next sprint's planned tasks in light of what was learned
+- Amend tasks if the completed sprint revealed new information
+- Create detailed task specs for the next sprint using templates/task-spec.md
+- Save task specs to `[cwd]/artifacts/designs/[slug]/sprints/sprint-(N+1)/`
+
+If this was the final sprint:
+- Verify all original requirements are addressed
+- Check all fitness functions pass
+- Produce a final completion summary
+</step_4_reassess_and_plan_next>
+
+<step_5_present_summary>
+Present a concise summary to the user:
+
+```
+Sprint [N] review complete.
+
+QA Result: [PASS/FAIL] — [brief summary]
+
+[If issues found:]
+- Critical: [N] — [must fix before continuing]
+- High: [N] — [scheduled for next sprint]
+- Fixes applied: [N] — [auto-corrected during review]
+
+Plan updated:
+- [What changed in PLAN.md]
+- [Any new risks or decisions]
+
+Next sprint: [N+1] — [Name] ([Size])
+- [N] tasks: [brief list]
+- [Any amendments from what was originally planned]
+
+Ready to proceed?
+```
+
+Use AskUserQuestion:
+- **Continue to next sprint** — Start building sprint [N+1]
+- **Review QA report** — I want to read the full QA findings
+- **Discuss changes** — I want to adjust the plan before continuing
+</step_5_present_summary>
+
+</process>
+
+<success_criteria>
+- All sprint output was read (task specs, built files, requirements)
+- 4 QA agents were spawned in parallel with adversarial mindset
+- Every acceptance criterion was checked
+- Scope integrity was verified (nothing silently dropped)
+- Fitness functions were verified
+- QA-REPORT.md was saved to disk
+- PLAN.md was updated (sprint tracking, change log, risks, refactors)
+- Autonomous fixes were documented
+- Critical issues were escalated to user
+- Next sprint task specs were created (if more sprints remain)
+- User received a concise summary
+</success_criteria>

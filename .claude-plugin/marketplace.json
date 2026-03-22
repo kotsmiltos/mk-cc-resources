@@ -17,14 +17,14 @@
     {
       "name": "miltiaze",
       "source": "./plugins/miltiaze",
-      "description": "Multi-dimensional idea exploration — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs.",
-      "version": "1.1.0"
+      "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents.",
+      "version": "1.2.0"
     },
     {
       "name": "ladder-build",
       "source": "./plugins/ladder-build",
-      "description": "Incremental build pipeline — decomposes projects into small verifiable milestones. Build, test, verify each rung before climbing to the next.",
-      "version": "1.1.0"
+      "description": "Incremental build pipeline — decomposes projects into small verifiable milestones, or executes architect-planned sprints with parallel task execution. Build, test, verify each rung before climbing to the next.",
+      "version": "1.2.0"
     },
     {
       "name": "project-structure",
@@ -59,8 +59,14 @@
     {
       "name": "mk-flow",
       "source": "./plugins/mk-flow",
-      "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, and seamless mode switching. Extensible intents, classifier learning, contextual tooltips, and copy-paste handoffs.",
-      "version": "0.5.0"
+      "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, pipeline-aware routing, session continuity, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
+      "version": "0.6.0"
+    },
+    {
+      "name": "architect",
+      "source": "./plugins/architect",
+      "description": "Multi-agent technical leadership — spawns perspective agents to design architecture, produce sprint plans with task specs, run adversarial QA, audit existing codebases, and escalate decisions. The tech lead between research and execution.",
+      "version": "0.1.0"
     },
     {
       "name": "mk-cc-all",
