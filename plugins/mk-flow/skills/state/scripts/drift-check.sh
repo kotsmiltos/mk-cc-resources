@@ -7,9 +7,11 @@
 # Exit 0 = no drift, Exit 1 = drift found, Exit 2 = no plans found.
 #
 # Usage:
-#   drift-check.sh                      # auto-discover both plan types
-#   drift-check.sh path/to/BUILD-PLAN.md
-#   drift-check.sh path/to/PLAN.md
+#   drift-check.sh                          # auto-discover both plan types
+#   drift-check.sh path/to/BUILD-PLAN.md    # check a specific plan
+#   drift-check.sh path/to/PLAN.md          # check a specific plan
+#   drift-check.sh --fix                    # auto-discover + correct STATE.md
+#   drift-check.sh --fix path/to/PLAN.md    # check specific plan + correct STATE.md
 
 set -euo pipefail
 
@@ -44,6 +46,7 @@ parse_milestones() {
   local deliverables=""
 
   while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"  # Strip CRLF for Windows compatibility
     # Detect milestone header: ### Milestone N: Name (Size)
     if [[ "$line" =~ ^###[[:space:]]+Milestone[[:space:]]+([0-9]+):[[:space:]]+(.+) ]]; then
       # Emit previous milestone if exists
@@ -324,6 +327,61 @@ process_build_plan() {
           ((drift_count++)) || true
         fi
       fi
+    elif [ -z "$status" ]; then
+      # Evidence-based inference — new format without **Status:** field
+      # Check for milestone report in artifacts/builds/{plan_name}/milestones/
+      local milestone_report=""
+      for mr in "artifacts/builds/${plan_name}/milestones/milestone-${num}"*.md; do
+        [ -f "$mr" ] && milestone_report="$mr" && break
+      done
+
+      if [ -n "$milestone_report" ]; then
+        # Milestone report exists → infer completed, verify deliverables
+        status="completed"
+        if [ "$total_paths" -eq 0 ]; then
+          verdict="CONFIRMED (evidence: $(basename "$milestone_report"))"
+          verdict_color="$GREEN"
+        elif [ "$found_paths" -eq 0 ]; then
+          verdict="DRIFT — milestone report exists but deliverables missing (0/${total_paths})"
+          verdict_color="$RED"
+          ((drift_count++)) || true
+        else
+          local pct=$(( found_paths * 100 / total_paths ))
+          if [ "$pct" -ge "$THRESHOLD_DRIFT" ]; then
+            verdict="CONFIRMED (evidence: $(basename "$milestone_report"), ${found_paths}/${total_paths} deliverables)"
+            verdict_color="$GREEN"
+          else
+            verdict="DRIFT — milestone report exists but deliverables partial (${found_paths}/${total_paths})"
+            verdict_color="$RED"
+            ((drift_count++)) || true
+          fi
+        fi
+      else
+        # No milestone report → infer pending, verify deliverables
+        status="pending"
+        if [ "$total_paths" -eq 0 ]; then
+          verdict="CONFIRMED PENDING (no deliverable paths to check)"
+          verdict_color="$YELLOW"
+        elif [ "$specific_total" -gt 0 ]; then
+          if [ "$specific_found" -eq 0 ]; then
+            verdict="CONFIRMED PENDING (0/${specific_total} specific deliverables found)"
+            verdict_color="$GREEN"
+          else
+            local pct=$(( specific_found * 100 / specific_total ))
+            if [ "$pct" -ge "$THRESHOLD_DRIFT" ]; then
+              verdict="DRIFT — likely complete (${specific_found}/${specific_total} deliverables found)"
+              verdict_color="$RED"
+              ((drift_count++)) || true
+            elif [ "$pct" -ge "$THRESHOLD_PARTIAL" ]; then
+              verdict="PARTIAL (${specific_found}/${specific_total} deliverables found — needs manual check)"
+              verdict_color="$YELLOW"
+            fi
+          fi
+        else
+          verdict="CONFIRMED PENDING (only bare filenames matched — needs manual check)"
+          verdict_color="$YELLOW"
+        fi
+      fi
     else
       verdict="UNKNOWN STATUS: ${status}"
       verdict_color="$YELLOW"
@@ -378,19 +436,23 @@ discover_design_plans() {
 
 # --- Parse Sprint Tracking table from PLAN.md ---
 # Emits lines: SPRINT|<num>|<status>|<tasks>|<completed>
-# Table format:
-#   | Sprint | Status | Tasks | Completed | QA Result | Key Changes |
-#   | 1      | DONE   | 3     | 3/3       | ...       | ...         |
+# Handles two table formats:
+#   OLD (6+ cols): | Sprint | Status | Tasks | Completed | QA Result | Key Changes |
+#   NEW (5 cols):  | Sprint | Tasks | Completed | QA Result | Key Changes |
+# Format detected from header row column count: 5 = new, 6+ = old.
 parse_design_sprints() {
   local file="$1"
   local in_tracking=false
   local past_header=false
+  local format="unknown"  # "old" or "new", set from header row
 
   while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"  # Strip CRLF for Windows compatibility
     # Detect "## Sprint Tracking" heading (any level 2 heading containing Sprint Tracking)
     if [[ "$line" =~ ^##[[:space:]]+Sprint[[:space:]]+Tracking ]]; then
       in_tracking=true
       past_header=false
+      format="unknown"
       continue
     fi
 
@@ -403,8 +465,19 @@ parse_design_sprints() {
       continue
     fi
 
-    # Skip the header row (contains "Sprint" and "Status" as column titles)
+    # Detect header row and determine format from column count
     if [[ "$line" =~ \|[[:space:]]*Sprint[[:space:]]*\| ]]; then
+      local header_row="${line#|}"
+      header_row="${header_row%|}"
+      IFS='|' read -ra header_fields <<< "$header_row"
+      local col_count=${#header_fields[@]}
+
+      if [ "$col_count" -ge 6 ]; then
+        format="old"
+      else
+        format="new"
+      fi
+
       past_header=true
       continue
     fi
@@ -424,13 +497,20 @@ parse_design_sprints() {
       continue
     fi
 
-    # Parse table row: | sprint | status | tasks | completed | ... |
-    # Use a temp variable to strip leading/trailing pipe and split on |
+    # Parse table row based on detected format
     local row="${line#|}"     # strip leading |
     row="${row%|}"            # strip trailing |
 
-    # Read pipe-delimited fields
-    IFS='|' read -r col_sprint col_status col_tasks col_completed _rest <<< "$row"
+    local col_sprint="" col_status="" col_tasks="" col_completed=""
+
+    if [ "$format" = "old" ]; then
+      # Old: Sprint | Status | Tasks | Completed | ...
+      IFS='|' read -r col_sprint col_status col_tasks col_completed _rest <<< "$row"
+    else
+      # New: Sprint | Tasks | Completed | ...  (no Status column)
+      IFS='|' read -r col_sprint col_tasks col_completed _rest <<< "$row"
+      col_status=""
+    fi
 
     # Trim whitespace from each field
     col_sprint="${col_sprint#"${col_sprint%%[! ]*}"}"
@@ -522,13 +602,58 @@ verify_design_plan() {
         verdict_color="$GREEN"
       fi
 
+    elif [ -z "$status" ]; then
+      # Evidence-based inference — new format plans without Status column
+      if [ -f "$completion_file" ]; then
+        if [ -d "$sprint_dir" ]; then
+          verdict="CONFIRMED DONE (evidence: COMPLETION.md)"
+          verdict_color="$GREEN"
+        else
+          verdict="DRIFT — COMPLETION.md without sprint dir (anomaly)"
+          verdict_color="$RED"
+          ((drift_count++)) || true
+        fi
+      elif [ -d "$sprint_dir" ]; then
+        # Sprint dir exists but no COMPLETION.md
+        local task_files=()
+        for tf in "${sprint_dir}"/task-*.md; do
+          [ -f "$tf" ] && task_files+=("$tf")
+        done
+        local found_count="${#task_files[@]}"
+
+        if [[ "$tasks" =~ ^[0-9]+$ ]] && [ "$found_count" -gt 0 ]; then
+          verdict="CONFIRMED PLANNED (${found_count}/${tasks} task files present)"
+          verdict_color="$GREEN"
+        elif [ "$found_count" -gt 0 ]; then
+          verdict="CONFIRMED PLANNED (${found_count} task files present)"
+          verdict_color="$GREEN"
+        else
+          verdict="CONFIRMED PLANNED (sprint dir exists, no task files yet)"
+          verdict_color="$GREEN"
+        fi
+      else
+        # No sprint dir, no completion file
+        verdict="CONFIRMED PLANNED (sprint not yet started)"
+        verdict_color="$GREEN"
+      fi
+
     else
       verdict="UNKNOWN STATUS: ${status}"
       verdict_color="$YELLOW"
     fi
 
+    # For display: show inferred status when status column is absent
+    local display_status="$status"
+    if [ -z "$status" ]; then
+      if [[ "$verdict" == *"DONE"* ]]; then
+        display_status="(done)"
+      else
+        display_status="(plan)"
+      fi
+    fi
+
     local label="Sprint ${num}"
-    results="${results}$(printf "  %-40s | %-9s | ${verdict_color}%s${RESET}" "$label" "$status" "$verdict")\n"
+    results="${results}$(printf "  %-40s | %-9s | ${verdict_color}%s${RESET}" "$label" "$display_status" "$verdict")\n"
 
   done < <(parse_design_sprints "$plan_file")
 
@@ -549,12 +674,145 @@ verify_design_plan() {
 }
 
 # ---------------------------------------------------------------------------
+# --fix flag: correct STATE.md Pipeline Position from evidence
+# ---------------------------------------------------------------------------
+
+fix_state() {
+  local STATE_FILE="context/STATE.md"
+
+  if [ ! -f "$STATE_FILE" ]; then
+    echo ""
+    echo -e "${YELLOW}WARNING: --fix requested but context/STATE.md not found. Nothing to fix.${RESET}"
+    return
+  fi
+
+  # Read current Pipeline Position values
+  local current_stage current_sprint current_plan
+  current_stage=$(grep -m1 '^stage:' "$STATE_FILE" 2>/dev/null | sed 's/^stage:[[:space:]]*//' | tr -d '\r') || true
+  current_sprint=$(grep -m1 '^current_sprint:' "$STATE_FILE" 2>/dev/null | sed 's/^current_sprint:[[:space:]]*//' | tr -d '\r') || true
+  current_plan=$(grep -m1 '^plan:' "$STATE_FILE" 2>/dev/null | sed 's/^plan:[[:space:]]*//' | tr -d '\r') || true
+
+  local correct_stage="" correct_sprint=""
+
+  # Determine correct stage from evidence based on the plan referenced in STATE.md
+  if [[ "$current_plan" == *BUILD-PLAN.md ]]; then
+    # BUILD-PLAN.md fix not yet supported — milestone-based correction is more complex
+    echo ""
+    echo -e "${YELLOW}--fix: BUILD-PLAN.md plans not yet supported for correction. No changes made.${RESET}"
+    return
+  elif [[ "$current_plan" == *PLAN.md ]] && [ -f "$current_plan" ]; then
+    local plan_dir
+    plan_dir=$(dirname "$current_plan")
+    local highest_done=0
+
+    # Find highest sprint with evidence of completion
+    while IFS='|' read -r tag num status tasks completed; do
+      [ "$tag" != "SPRINT" ] && continue
+      local sprint_dir="${plan_dir}/sprints/sprint-${num}"
+      local completion_file="${sprint_dir}/COMPLETION.md"
+
+      if [ "$status" = "DONE" ] || { [ -z "$status" ] && [ -f "$completion_file" ]; }; then
+        if [ "$num" -gt "$highest_done" ]; then
+          highest_done=$num
+        fi
+      fi
+    done < <(parse_design_sprints "$current_plan")
+
+    if [ "$highest_done" -gt 0 ]; then
+      local next_sprint=$((highest_done + 1))
+      local next_dir="${plan_dir}/sprints/sprint-${next_sprint}"
+
+      if [ -d "$next_dir" ]; then
+        # Next sprint directory exists — stage is that sprint
+        correct_stage="sprint-${next_sprint}"
+        correct_sprint="$next_sprint"
+      else
+        # No next sprint — highest is complete
+        correct_stage="sprint-${highest_done}-complete"
+        correct_sprint="$highest_done"
+      fi
+    else
+      # No completed sprints found — stage is sprint-1
+      correct_stage="sprint-1"
+      correct_sprint="1"
+    fi
+  fi
+
+  if [ -z "$correct_stage" ]; then
+    echo ""
+    echo -e "${YELLOW}--fix: Could not determine correct stage from evidence. No changes made.${RESET}"
+    return
+  fi
+
+  if [ "$correct_stage" = "$current_stage" ] && [ "$correct_sprint" = "$current_sprint" ]; then
+    echo ""
+    echo -e "${GREEN}--fix: Pipeline Position already matches evidence. No changes needed.${RESET}"
+    return
+  fi
+
+  # 1. Create backup (Decision D8: mandatory)
+  cp "$STATE_FILE" "${STATE_FILE}.bak"
+  echo ""
+  echo -e "${BOLD}Backup created: ${STATE_FILE}.bak${RESET}"
+
+  # 2. Update Pipeline Position via temp file + mv for atomic write
+  local tmp_file="${STATE_FILE}.tmp"
+  rm -f "$tmp_file"
+  local in_pipeline=false
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"  # Strip CRLF for Windows compatibility
+    if [[ "$line" =~ ^##[[:space:]]+Pipeline[[:space:]]+Position ]]; then
+      in_pipeline=true
+      echo "$line" >> "$tmp_file"
+      continue
+    fi
+
+    # Next ## heading ends Pipeline Position section
+    if [ "$in_pipeline" = true ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+      in_pipeline=false
+    fi
+
+    if [ "$in_pipeline" = true ]; then
+      if [[ "$line" =~ ^stage: ]]; then
+        echo "stage: ${correct_stage}" >> "$tmp_file"
+      elif [[ "$line" =~ ^current_sprint: ]]; then
+        echo "current_sprint: ${correct_sprint}" >> "$tmp_file"
+      else
+        # Preserve plan:, requirements:, audit:, and other fields unchanged
+        echo "$line" >> "$tmp_file"
+      fi
+    else
+      echo "$line" >> "$tmp_file"
+    fi
+  done < "$STATE_FILE"
+
+  mv "$tmp_file" "$STATE_FILE"
+
+  # 3. Report changes
+  echo -e "${GREEN}FIXED: Pipeline Position updated${RESET}"
+  echo "  stage: ${current_stage} → ${correct_stage}"
+  echo "  current_sprint: ${current_sprint} → ${correct_sprint}"
+}
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
+# --- Argument parsing ---
+FIX_MODE=false
+TARGET=""
+
+for arg in "$@"; do
+  if [ "$arg" = "--fix" ]; then
+    FIX_MODE=true
+  else
+    TARGET="$arg"
+  fi
+done
+
 # Detect if a specific file was passed — route to the right handler.
-if [ $# -ge 1 ]; then
-  TARGET="$1"
+if [ -n "$TARGET" ]; then
   if [ ! -f "$TARGET" ]; then
     echo "ERROR: File not found: $TARGET" >&2
     exit 2
@@ -563,10 +821,16 @@ if [ $# -ge 1 ]; then
   case "$(basename "$TARGET")" in
     BUILD-PLAN.md)
       process_build_plan "$TARGET"
+      if [ "$FIX_MODE" = true ]; then
+        fix_state
+      fi
       [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
       ;;
     PLAN.md)
       verify_design_plan "$TARGET"
+      if [ "$FIX_MODE" = true ]; then
+        fix_state
+      fi
       [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
       ;;
     *)
@@ -628,6 +892,11 @@ if [ "$total_plans" -gt 1 ]; then
     echo -e "${RED}${BOLD}OVERALL: DRIFT in ${total_drift} item(s) across ${total_plans} plan(s)${RESET}"
   fi
   echo ""
+fi
+
+# --- Apply --fix if requested ---
+if [ "$FIX_MODE" = true ]; then
+  fix_state
 fi
 
 [ "$total_drift" -eq 0 ] && exit 0 || exit 1

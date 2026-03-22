@@ -12,19 +12,18 @@ Look for the build plan:
 </step_1_find_build_plan>
 
 <step_2_read_current_state>
-Read the BUILD-PLAN.md. Identify:
-- End goal — remind the user (and yourself) where we're heading
-- Completed milestones — what's done
-- Current/next milestone — where to pick up
-- Discovered work — anything pending that surfaced during previous milestones
-- Refinement queue — polish items waiting
+Read `context/STATE.md` to identify:
+- **Current Focus** — the current or next milestone
+- **Done (Recent)** — which milestones are completed
+- Amendments, blocked items, decisions that affect the build
+
+Read `context/.continue-here.md` if it exists — this is a richer snapshot from an explicit pause, with session-specific context and a suggested resume action.
+
+Then read BUILD-PLAN.md for milestone structure — goals, "done when" criteria, dependencies, discovered work, refinement queue. Do NOT read BUILD-PLAN.md for status; status lives in STATE.md only.
 
 Read the most recent milestone report for context on where things left off.
 
-If mk-flow is initialized (check for `context/STATE.md`):
-- Read `context/STATE.md` — check for amendments, blocked items, decisions that affect the build
-- Read `context/.continue-here.md` if it exists — this is a richer snapshot from an explicit pause, with session-specific context and a suggested resume action
-- Pull any pending amendments that may be relevant to upcoming milestones
+If STATE.md doesn't exist, fall back to BUILD-PLAN.md milestone structure and the most recent milestone report to infer where to pick up.
 </step_2_read_current_state>
 
 <step_3_present_state>

@@ -16,9 +16,13 @@ The architect invokes this after producing task specs via `/architect`. After ex
 <step_1_find_task_specs>
 Locate the architect's task specs:
 
-1. Check `[cwd]/artifacts/designs/` for a PLAN.md. Read it and identify:
-   - Which sprint is current (check Sprint Tracking table)
-   - Where the task specs live: `artifacts/designs/[slug]/sprints/sprint-N/`
+1. Read `context/STATE.md` Pipeline Position `current_sprint` field to identify the current sprint.
+
+If STATE.md doesn't exist: Tell the user — 'No STATE.md found. Run `/mk-flow-init` to set up state tracking, then `/architect` to plan.' Do not proceed without knowing which sprint to execute.
+
+Then read the PLAN.md in `[cwd]/artifacts/designs/` for:
+   - The sprint's task specs: `artifacts/designs/[slug]/sprints/sprint-N/`
+   - Architecture context, interface contracts, and fitness functions
 
 2. Read ALL task specs for the current sprint. For each, note:
    - Task name and goal
@@ -196,9 +200,7 @@ If `context/STATE.md` exists, update the Pipeline Position section with exact va
 ```
 Also update **Current Focus** to: "Sprint N executed for [feature]. Awaiting architect QA review."
 
-Update the PLAN.md Sprint Tracking table:
-- Mark the sprint's task count as completed
-- Note any deviations
+Update PLAN.md Sprint Tracking: fill in the Completed count for this sprint (e.g., 3/3). Do NOT write a Status column — status lives in STATE.md only.
 </step_6_update_state>
 
 <step_7_handoff>
@@ -236,6 +238,7 @@ The executor's job is done. QA and reassessment are the architect's responsibili
 - Deviations were handled per deviation rules (1-3 auto-fixed, 4 flagged)
 - Fitness functions checked after execution
 - Sprint completion report saved to disk
-- PLAN.md and STATE.md updated
+- PLAN.md Sprint Tracking Completed column updated
+- STATE.md Pipeline Position updated to sprint-N-complete
 - Architect handoff suggested for QA review
 </success_criteria>

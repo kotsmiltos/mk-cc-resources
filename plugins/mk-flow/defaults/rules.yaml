@@ -6,14 +6,14 @@
 
 # defaults_version advances only when defaults CONTENT changes, not on every plugin version bump.
 _meta:
-  defaults_version: "0.5.0"
+  defaults_version: "0.6.0"
 
 rules:
   verify-before-reporting:
     what: |
       Run drift-check before presenting status: bash plugins/mk-flow/skills/state/scripts/drift-check.sh
-      This tool verifies BUILD-PLAN.md milestone statuses against actual filesystem evidence (file existence, git status).
-      Its output IS your verified status — do not read STATE.md or BUILD-PLAN.md status fields directly.
+      This tool verifies project status against filesystem evidence (COMPLETION.md, milestone reports, file existence, git status).
+      Its output IS your verified status — do not rely on plan documents for status — STATE.md is the single source of truth, validated by drift-check.
       If drift-check wasn't run, your status report is not trustworthy.
       If drift-check reports DRIFT, fix the state files to match reality before presenting.
     why: "Text instructions to 'verify state' get skipped — Claude reads STATE.md, sees 'pending', reports it without checking. drift-check forces verification by being the only data source."

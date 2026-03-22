@@ -7,7 +7,7 @@ Run the drift-check tool to get verified milestone status:
 bash plugins/mk-flow/skills/state/scripts/drift-check.sh
 ```
 
-Capture the full output. This is your source of truth for build progress — do NOT read STATE.md or BUILD-PLAN.md status fields directly.
+Capture the full output. This is your source of truth for build progress — do NOT rely on plan documents for status — STATE.md is the single source of truth, validated by drift-check against filesystem evidence.
 
 If drift-check exits with code 2 (error — no BUILD-PLAN.md found), fall back to step 1b.
 If drift-check exits with code 0 (no drift) or 1 (drift found), proceed to step 2.
@@ -24,9 +24,8 @@ Skip to step 4 (present summary without build plan context).
 If drift-check reported DRIFT (exit code 1):
 
 1. Read the drift-check output to identify which milestones need correction
-2. Update BUILD-PLAN.md status fields to match the drift-check verdicts
-3. Update STATE.md to reflect the corrected status
-4. Tell the user what was corrected: "Found drift: [description]. Updated [files]."
+2. Update STATE.md Pipeline Position and Current Focus to match drift-check verdicts
+3. Tell the user what was corrected: "Found drift: [description]. Updated STATE.md."
 
 If no drift (exit code 0), proceed directly to step 3.
 </step_2_fix_drift>

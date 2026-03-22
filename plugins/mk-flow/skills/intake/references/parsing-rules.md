@@ -48,7 +48,7 @@ When the intent is context_addition, determine WHERE the context belongs:
 
 To determine temporal target:
 1. Read STATE.md for current focus, done items, and decisions
-2. Read BUILD-PLAN.md (if exists) for milestone names and statuses
+2. Read BUILD-PLAN.md (if exists) for milestone names and structure. Read STATE.md for current status
 3. Match the user's context against known completed/current/future work
 4. If uncertain, state your assumption: "I'm assuming this is about [completed work X]. Is this an amendment to that, or for the current plan?"
 </temporal_routing>

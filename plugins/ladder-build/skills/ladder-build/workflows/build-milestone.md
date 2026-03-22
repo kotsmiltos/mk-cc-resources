@@ -10,6 +10,8 @@ Read these reference files NOW:
 <step_1_read_build_plan>
 Read the BUILD-PLAN.md from `[cwd]/artifacts/builds/[project-slug]/`.
 
+Read STATE.md Current Focus to identify the current milestone number. Then read BUILD-PLAN.md for that milestone's goal, 'done when' criteria, and dependencies.
+
 Identify the current milestone:
 - Its goal and "done when" criteria
 - Dependencies (verify they're met)
@@ -78,7 +80,7 @@ IF CONTEXT IS GETTING STALE — do NOT proceed to verification in a degraded sta
    - What still needs verification (specific files, tests, criteria)
    - The impact trace for this milestone (so the next session can verify against it)
    - Any decisions made or edge cases discovered
-3. Update BUILD-PLAN.md milestone status to "needs verification — session handoff"
+3. Update STATE.md Current Focus to: "Milestone [N] [name]: needs verification — session handoff. See [path to .continue-here.md]."
 4. Tell the user: "I've been working for a while and want to ensure quality. I've saved progress — please continue in a fresh session to verify and complete this milestone."
 
 This is NOT a failure. This is quality control. Degraded verification is worse than no verification — it creates false confidence that things work when they might not. A clean handoff preserves the work; pushing through with stale context risks undoing it.
@@ -139,12 +141,12 @@ If `context/STATE.md` doesn't exist, skip this step.
 </step_6_update_state>
 
 <step_7_reassess_and_adapt>
-Now that the milestone is done, update the build plan:
+Now that the milestone is done, update the build plan with structural changes only (milestone completion is already recorded in STATE.md and the milestone report):
 
-1. Mark the completed milestone as done
-2. Review discovered work — does it create new milestones or modify existing ones?
-3. Look at the next milestone — does it still make sense given what we learned?
-4. If milestones need to split, merge, reorder, or new ones need to appear, update the plan
+1. Review discovered work — does it create new milestones or modify existing ones?
+2. Look at the next milestone — does it still make sense given what we learned?
+3. If milestones need to split, merge, reorder, or new ones need to appear, update the plan
+4. Update "Done when" criteria if discoveries changed what success looks like
 5. Move items from the refinement queue to milestones if the core is nearing completion
 6. Update the "Last updated" date
 7. Save the updated BUILD-PLAN.md
@@ -183,7 +185,7 @@ A milestone is complete when:
 - [ ] Architecture docs updated if new cross-file dependencies were introduced
 - [ ] Context health check passed (or clean handoff performed)
 - [ ] Milestone report is saved to disk
-- [ ] Build plan is updated with current state
+- [ ] Build plan is updated with structural changes (new milestones, reordering, updated criteria). Status tracked in STATE.md only.
 - [ ] STATE.md updated (if mk-flow initialized)
 - [ ] Amendments scanned for items this milestone may have addressed
 - [ ] Any plan changes are communicated to the user

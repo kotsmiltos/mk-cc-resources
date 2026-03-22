@@ -11,31 +11,20 @@ Use this structure. The build plan is a living document — updated after every 
 
 ---
 
-## Status
-
-- **Current milestone:** [N] — [name]
-- **Completed:** [X] of [Y] milestones
-- **Last updated:** [YYYY-MM-DD]
-
----
-
 ## Milestones
 
 ### Milestone 1: [Name] (S/M/L)
 **Goal:** [What this milestone delivers]
 **Done when:** [Testable criteria]
-**Status:** completed | [YYYY-MM-DD] — [brief verification summary]
 
 ### Milestone 2: [Name] (S/M/L) *(current)*
 **Goal:** [What this milestone delivers]
 **Done when:** [Testable criteria]
-**Status:** in progress
 
 ### Milestone 3: [Name] (S/M/L)
 **Goal:** [What this milestone delivers]
 **Done when:** [Testable criteria]
 **Depends on:** [Milestone N, if any]
-**Status:** pending
 
 _(continue for all milestones)_
 
@@ -89,7 +78,6 @@ _(Institutional memory that survives /clear. Decisions, rejected approaches, edg
 </template>
 
 <conventions>
-- Status markers: Use `completed`, `in progress`, `pending`, or `blocked` with a reason.
 - Milestone sizing: S = single component/feature, M = a few connected components, L = a subsystem.
 - Discovered work: Items here are unplanned. They either become milestones (if big enough) or get handled within the next relevant milestone (if small).
 - Refinement queue: These are "make it better" items, not "make it work" items. They wait until the core is solid.

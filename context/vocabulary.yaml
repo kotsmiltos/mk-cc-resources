@@ -29,10 +29,7 @@ terms:
       files: "plugins/*/skills/*/SKILL.md"
     - context: "installing, using, invoking"
       means: "A slash command users invoke (e.g., /intake, /state)"
-      files: "skills/ (alias layer)"
-  alias:
-    means: "A full copy of a plugin's skill directory, placed in skills/ so mk-cc-all can serve it directly"
-    files: "skills/*"
+      files: "plugins/*/skills/*/SKILL.md"
   intent:
     means: "A classified user message type (action, question, context_addition, etc.) used for routing"
     files: ".claude/mk-flow/intents.yaml, plugins/mk-flow/intent-library/defaults.yaml"

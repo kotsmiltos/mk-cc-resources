@@ -31,17 +31,17 @@ graph TD
 
 ## Sprint Tracking
 
-| Sprint | Status | Tasks | Completed | QA Result | Key Changes |
-|--------|--------|-------|-----------|-----------|-------------|
-| 1 | DONE | 3 | 3/3 | PASS (1 note) | [Brief summary] |
-| 2 | IN PROGRESS | 3 | 1/3 | — | [Brief summary] |
-| 3 | PLANNED | TBD | — | — | Scoped after sprint 2 review |
+| Sprint | Tasks | Completed | QA Result | Key Changes |
+|--------|-------|-----------|-----------|-------------|
+| 1 | 3 | 3/3 | PASS (1 note) | [Brief summary] |
+| 2 | 3 | 1/3 | — | [Brief summary] |
+| 3 | TBD | — | — | Scoped after sprint 2 review |
 
 ## Task Index
 
-| Task | Sprint | Status | File | Depends On | Blocked By |
-|------|--------|--------|------|-----------|------------|
-| [Task name] | N | done/in-progress/planned/blocked | [Path to task spec] | [Task IDs] | [Blocker description] |
+| Task | Sprint | File | Depends On | Blocked By |
+|------|--------|------|-----------|------------|
+| [Task name] | N | [Path to task spec] | [Task IDs] | [Blocker description] |
 
 ## Interface Contracts
 [Key interfaces between modules — data that flows between components.]
@@ -85,8 +85,6 @@ graph TD
 </template>
 
 <conventions>
-- **Sprint status markers:** PLANNED, IN PROGRESS, DONE, BLOCKED (with reason).
-- **Task status markers:** planned, in-progress, done, blocked.
 - **QA results:** PASS, PASS (N notes), FAIL (N issues), BLOCKED.
 - **Decisions Log:** Entries are never deleted. The history of decisions IS the architectural context. Include alternatives considered — future sessions need to know what was rejected and why.
 - **Change Log:** Every amendment is tracked. Nothing changes without a record.

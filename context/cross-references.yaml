@@ -30,11 +30,6 @@ rules:
     check: ".claude-plugin/marketplace.json"
     why: "Registry must list every plugin"
 
-  skill-aliases:
-    when: "Adding or removing a skill from any plugin"
-    check: "skills/ directory"
-    why: "Alias file must exist for each plugin skill"
-    note: "Excludes hook-bearing plugins (mk-flow, alert-sounds) — installed separately, not in skills/"
 
   workflow-routing:
     when: "Adding a workflow .md file to a skill"
@@ -53,13 +48,9 @@ rules:
 
   build-plan-milestones:
     when: "Completing a milestone or changing milestone status"
-    check: "artifacts/builds/mk-flow/BUILD-PLAN.md, context/STATE.md"
-    why: "Build plan status and project state must stay in sync"
+    check: "context/STATE.md"
+    why: "Build plan milestone structure and project state must reference the same work items"
 
-  skill-copies:
-    when: "Changing a SKILL.md, workflow, reference, or template in plugins/*/skills/*/"
-    check: "The matching directory in skills/ (the mk-cc-all copy)"
-    why: "skills/ contains copies of plugin skills for mk-cc-all. Both locations must stay in sync."
 
   plugin-version-bump:
     when: "Changing any file inside a plugin (hooks, skills, defaults, scripts)"

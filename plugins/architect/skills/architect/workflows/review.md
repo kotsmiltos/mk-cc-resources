@@ -11,15 +11,19 @@ Read these reference files NOW before proceeding:
 <step_1_gather_sprint_output>
 Identify the completed sprint and read all relevant artifacts:
 
-1. **PLAN.md** — Read from `[cwd]/artifacts/designs/[slug]/PLAN.md`. Identify which sprint just completed by checking the Sprint Tracking table.
+1. **STATE.md** — Read `context/STATE.md` Pipeline Position `current_sprint` field to identify which sprint just completed.
 
-2. **Task specs** — Read all task specs for the completed sprint from `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/`.
+If STATE.md doesn't exist: Tell the user — 'No STATE.md found. Run `/mk-flow-init` to set up state tracking.' Fall back to reading PLAN.md Sprint Tracking to identify the most recent sprint with task specs but no QA-REPORT.md.
 
-3. **Built artifacts** — Read the actual files that were created or modified during the sprint. Compare to what the task specs specified.
+2. **PLAN.md** — Read from `[cwd]/artifacts/designs/[slug]/PLAN.md` for the sprint's task specs and architecture context.
 
-4. **Original requirements** — Re-read the source requirements/exploration to keep the overall goal in mind (path is in PLAN.md's Source field).
+3. **Task specs** — Read all task specs for the completed sprint from `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/`.
 
-5. **Previous QA reports** — If this isn't sprint 1, check previous sprints' QA reports for recurring patterns or unresolved notes.
+4. **Built artifacts** — Read the actual files that were created or modified during the sprint. Compare to what the task specs specified.
+
+5. **Original requirements** — Re-read the source requirements/exploration to keep the overall goal in mind (path is in PLAN.md's Source field).
+
+6. **Previous QA reports** — If this isn't sprint 1, check previous sprints' QA reports for recurring patterns or unresolved notes.
 
 Assemble a clear picture of: what was PLANNED (task specs), what was BUILT (actual files), and what was PROMISED (original requirements).
 </step_1_gather_sprint_output>
@@ -274,7 +278,7 @@ Save to `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md`:
 Following the reassessment framework in references/sprint-management.md:
 
 **4a. Update PLAN.md:**
-- Sprint Tracking: Mark completed sprint as DONE with QA result
+- Sprint Tracking: Update PLAN.md Sprint Tracking for the completed sprint — fill in Completed count (e.g., 3/3), QA Result (e.g., PASS), and Key Changes summary. Do NOT write a Status column — sprint status lives in STATE.md only.
 - Change Log: Record what changed and why
 - Risk Register: Update based on QA findings
 - Refactor Requests: Add any from QA

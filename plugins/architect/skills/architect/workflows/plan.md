@@ -311,8 +311,8 @@ Using templates/plan.md, create the full plan document:
 - Vision (from requirements/exploration)
 - Architecture Overview (Mermaid diagram from synthesis)
 - Module Map
-- Sprint Tracking table
-- Task Index
+- Sprint Tracking table (columns: Sprint, Tasks, Completed, QA Result, Key Changes. Do NOT add a Status column — sprint status is tracked in STATE.md only)
+- Task Index (columns: Task, Sprint, File, Depends On. Do NOT add a Status column)
 - Interface Contracts
 - Decisions Log (populated from synthesis)
 - Fitness Functions (from testing agent)

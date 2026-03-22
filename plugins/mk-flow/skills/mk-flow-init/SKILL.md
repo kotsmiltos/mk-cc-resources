@@ -215,10 +215,10 @@ Behavioral corrections that the hook injects every message. Use the defaults fro
 
 | Section | What qualifies as evidence | What does NOT qualify |
 |---------|---------------------------|---------------------|
-| **Current Focus** | Explicit status field in a BUILD-PLAN.md or ROADMAP.md showing "current" or "in progress" | Inferring from git recency or plan ordering |
-| **Done (Recent)** | Milestone report file exists, OR plan status explicitly says "completed" with a date, OR git commit directly relates to the current focus | Unrelated git commits that happen to be recent |
+| **Current Focus** | Explicit Pipeline Position in STATE.md, OR current milestone/sprint referenced in BUILD-PLAN.md or ROADMAP.md structure | Inferring from git recency or plan ordering |
+| **Done (Recent)** | Milestone report file exists (artifacts/builds/*/milestones/), OR COMPLETION.md exists in sprint directory, OR git commit directly relates to the current focus | Unrelated git commits that happen to be recent |
 | **Blocked / Open Questions** | Explicit "blocked" status in a source file, OR user stated it in conversation | Inferring that something MIGHT be blocked based on what the next task requires |
-| **Next Up** | Plan file explicitly lists upcoming work with "pending" or equivalent status | Guessing what logically comes next |
+| **Next Up** | Plan file explicitly lists upcoming work (next sprint in PLAN.md Sprint Tracking, or next milestone in BUILD-PLAN.md milestone order) | Guessing what logically comes next |
 | **Decisions Made** | Link to the source file's decisions section — do NOT duplicate. Only add project-level decisions not already tracked in a build plan or exploration | Copying decisions from another file into STATE.md |
 | **Context for Future Me** | Direct file references with brief description of what's there | Summarizing or paraphrasing source material |
 

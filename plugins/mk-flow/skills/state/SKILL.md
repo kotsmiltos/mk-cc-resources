@@ -22,7 +22,7 @@ If this is the first interaction of a session, check STATE.md age and offer stal
 4. **Handoff commands are copy-paste ready.** Include: which skill, what's done, what's next, which files to read.
 5. **Note-tracker is optional context.** If present, pull open items for status summaries. If not, STATE.md is sufficient.
 6. **.continue-here.md is for explicit pauses.** Written by the pause workflow, consumed by resume. More detailed than STATE.md.
-7. **drift-check is the verification mechanism.** The status workflow runs `scripts/drift-check.sh` to verify milestone statuses against the filesystem. Never read STATE.md or BUILD-PLAN.md status fields directly for status reports — drift-check is the source of truth.
+7. **drift-check is the verification mechanism.** The status workflow runs `scripts/drift-check.sh` to verify project status against filesystem evidence (COMPLETION.md, milestone reports). STATE.md is the single source of truth, validated by drift-check — do not rely on plan documents for status.
 </core_rules>
 </essential_principles>
 
@@ -41,7 +41,7 @@ All in `scripts/`:
 
 | Script | Purpose |
 |--------|---------|
-| drift-check.sh | Verify BUILD-PLAN.md milestone statuses against filesystem evidence. Exit 0 = no drift, 1 = drift found, 2 = error. |
+| drift-check.sh | Verify project status against filesystem evidence (COMPLETION.md, milestone reports). Exit 0 = no drift, 1 = drift found, 2 = error. |
 </scripts_index>
 
 <templates_index>

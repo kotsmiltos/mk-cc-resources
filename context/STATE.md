@@ -2,21 +2,20 @@
 > Last updated: 2026-03-22
 
 ## Current Focus
-Audit remediation completing — Sprints 1-3 done (QA passed). Sprint 4 in progress: stage canonicalization (Task 1) + registry & version hygiene (Task 2). mk-flow M7 still paused.
+State consolidation pipeline complete. All sprints executed and reviewed. 10/10 fitness functions passing.
 
 ## Pipeline Position
-stage: sprint-4-complete
-audit: artifacts/audits/2026-03-22-cc-marketplace-audit-report.md
-plan: artifacts/designs/audit-remediation/PLAN.md
-current_sprint: 4
-note: All 4 sprints executed. Awaiting final QA review.
+stage: complete
+plan: artifacts/designs/state-consolidation/PLAN.md
+current_sprint: done
 
 ## Done (Recent)
+- [x] State consolidation — 2 sprints: removed status from plans, drift-check evidence-based + --fix flag, 5 QA fixes
+- [x] Audit remediation — 4 sprints, 53 findings resolved, all QA passed
 - [x] Pipeline integration — miltiaze requirements mode, ladder-build executor mode, mk-flow pipeline routing, cross-tool packaging (4/4 milestones)
 - [x] Architect plugin — 12 files, 4 workflows (plan/review/ask/audit), 3 templates, 3 references (6/6 milestones, all complete)
 - [x] Plugin update workflow — version hygiene, release notes, /mk-flow-update skill, stale detection nudge (6 milestones, all complete)
 - [x] mk-flow build — intent hook, intake, state, extensibility, skill integrations (M1-M6 complete)
-- [x] Cross-reference system — replaced amendment protocol (commit 508e2a7)
 
 ## Blocked / Open Questions
 
@@ -36,12 +35,7 @@ See artifacts/builds/architect/BUILD-PLAN.md Decisions Log (4 entries).
 |----|--------|-------------|--------|-------|
 
 ## Context for Future Me
-Pipeline integration build plan: artifacts/builds/pipeline-integration/BUILD-PLAN.md (4 milestones, all complete).
-Architect build plan: artifacts/builds/architect/BUILD-PLAN.md (6 milestones, all complete).
-Architect exploration: artifacts/explorations/2026-03-22-architecture-design-step-exploration.md.
+State consolidation plan: artifacts/designs/state-consolidation/PLAN.md (2 sprints, both complete, QA passed).
+Core problem: STATE.md, PLAN.md Sprint Tracking, and BUILD-PLAN.md Status all tracked status independently, causing drift. Fix: plans become immutable intent, STATE.md is single status authority, drift-check validates against evidence.
 mk-flow build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, M1-M6 complete, M7 paused).
-Plugin update build plan: artifacts/builds/plugin-update-workflow/BUILD-PLAN.md (6 milestones, all complete).
-Architecture: artifacts/explorations/2026-03-15-mk-flow-final-exploration.md.
-UX examples: artifacts/explorations/2026-03-15-mk-flow-ux-reference.md.
-Pipeline docs: CLAUDE.md "Pipeline: miltiaze → architect → ladder-build" section.
-Plugin versions after audit remediation Sprint 4: miltiaze 1.2.0, ladder-build 1.2.0, mk-flow 0.8.0, architect 0.2.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.16.0.
+Plugin versions: miltiaze 1.2.0, ladder-build 1.3.0, mk-flow 0.9.0, architect 0.3.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.18.0.

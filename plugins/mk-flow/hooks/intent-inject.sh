@@ -185,7 +185,7 @@ Pipeline-aware routing — if STATE.md has a Pipeline Position section, use it t
 For status_query intent:
 1. Run drift-check FIRST: bash ${DRIFT_CHECK_SCRIPT}
    This tool verifies milestone statuses against actual filesystem evidence. Its output is your source of truth.
-2. Do NOT read STATE.md or BUILD-PLAN.md status fields directly — drift-check reads them and cross-references with reality.
+2. Do NOT rely on plan documents for status — STATE.md is the single source of truth, validated by drift-check against filesystem evidence.
 3. If drift-check reports DRIFT (exit code 1), fix the state files to match reality, then report.
 4. Present status from the drift-check output. If drift-check wasn't run, your status report is not trustworthy.
 
