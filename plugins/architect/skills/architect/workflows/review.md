@@ -283,16 +283,63 @@ Following the reassessment framework in references/sprint-management.md:
 **4b. Check scope integrity:**
 Compare what was built to what PLAN.md specified for this sprint. If anything was silently dropped or simplified, flag it. Scope reduction requires explicit user acknowledgment.
 
-**4c. Plan next sprint:**
+**4c. Surface QA improvements to the user:**
+If QA found non-blocking improvements (Medium/Low priority — things that PASSED but could be better), present them explicitly to the user before planning the next sprint. Do NOT silently defer or silently include them.
+
+Use AskUserQuestion with the list of improvements:
+```
+QA noted [N] non-blocking improvements:
+1. [Finding ID]: [Brief description] — Effort: [S/M]
+2. [Finding ID]: [Brief description] — Effort: [S/M]
+3. [Finding ID]: [Brief description] — Effort: [S/M]
+
+Add these to the next sprint?
+```
+
+Options:
+- **Yes, add all** — Include every noted improvement as tasks in sprint N+1
+- **Pick which ones** — I'll choose which to include
+- **No, defer** — Skip them for now (they go to the Refinement Queue)
+
+**If the user says yes (all or selected):**
+For each accepted improvement, create a FULL task spec using templates/task-spec.md — not a one-liner, not a note. Each gets:
+- Goal (what the improvement achieves)
+- Context (which QA finding it addresses, the QA agent's specific recommendation)
+- Pseudocode (the exact fix — specific enough to implement mechanically)
+- Files Touched (which files change)
+- Acceptance Criteria (how to verify the improvement is done)
+
+Add these tasks to the next sprint's task index in PLAN.md. Update the sprint's task count. Save the task specs to the sprint directory alongside the other tasks.
+
+**If the user says defer:**
+Deferred items must NOT disappear into context. They stay in the pipeline:
+
+1. Add each improvement to PLAN.md's **Refactor Requests** table (not Refinement Queue — Refactor Requests are tracked and scheduled):
+   | From Sprint | What | Why | Scheduled In | Status |
+   | N | [Description] | QA finding [ID] | TBD | deferred |
+
+2. When planning ANY future sprint, the architect MUST check the Refactor Requests table and either:
+   - Schedule deferred items into this sprint (update "Scheduled In" column)
+   - Explicitly carry them forward (leave as "deferred" with a note in Change Log)
+   - Never silently drop them — every deferred item must eventually be scheduled or explicitly cancelled by the user
+
+3. If this is the FINAL sprint review and deferred items remain:
+   - Surface them to the user: "There are [N] deferred improvements that were never scheduled. Address them now or close them?"
+   - Do NOT mark the pipeline as complete with unaddressed deferred items unless the user explicitly says to close them
+
+**4d. Plan next sprint:**
 If more sprints remain:
 - Review the next sprint's planned tasks in light of what was learned
-- Amend tasks if the completed sprint revealed new information
+- Include any QA improvements the user accepted (with full task specs, as above)
+- Check PLAN.md Refactor Requests for deferred items — ask if any should be picked up this sprint
+- Amend existing tasks if the completed sprint revealed new information
 - Create detailed task specs for the next sprint using templates/task-spec.md
 - Save task specs to `[cwd]/artifacts/designs/[slug]/sprints/sprint-(N+1)/`
 
 If this was the final sprint:
 - Verify all original requirements are addressed
 - Check all fitness functions pass
+- Surface any remaining deferred Refactor Requests to the user
 - Produce a final completion summary
 </step_4_reassess_and_plan_next>
 
