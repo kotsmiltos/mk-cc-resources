@@ -1,7 +1,7 @@
 {
   "name": "miltiaze",
-  "version": "1.1.0",
-  "description": "Multi-dimensional idea exploration — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs.",
+  "version": "1.2.0",
+  "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents with acceptance criteria.",
   "author": {
     "name": "kotsmiltos"
   }

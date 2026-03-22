@@ -63,3 +63,30 @@ rules:
     when: "Changing any file inside a plugin (hooks, skills, defaults, scripts)"
     check: "The plugin's .claude-plugin/plugin.json version field"
     why: "Plugin system compares version numbers to detect updates. Without a bump, users get 'already at latest version' and never receive the changes."
+
+  architect-template-workflow-sync:
+    when: "Changing section structure in an architect template (plan.md, task-spec.md, audit-report.md)"
+    check: "All plugins/architect/skills/architect/workflows/*.md that reference the changed template"
+    why: "Workflows instruct Claude to generate content matching template structure. If the template adds or removes sections, workflows must reference them correctly."
+
+  architect-agent-prompts:
+    when: "Changing team-culture.md operating principles or the agent prompt inclusion block"
+    check: "All plugins/architect/skills/architect/workflows/*.md agent prompt sections"
+    why: "Every agent prompt includes the team values block from team-culture.md. If principles change, all prompts must stay consistent."
+
+  pipeline-handoff-contracts:
+    when: "Changing the output format of miltiaze requirements-report.md or architect task-spec.md template"
+    check:
+      - "plugins/architect/skills/architect/workflows/plan.md — reads miltiaze output"
+      - "plugins/ladder-build/skills/ladder-build/workflows/execute.md — reads architect task specs"
+    why: "Pipeline skills read each other's output. If the output format changes, downstream consumers must be updated."
+
+  pipeline-routing:
+    when: "Adding a new pipeline stage or changing stage names in STATE.md Pipeline Position"
+    check: "plugins/mk-flow/hooks/intent-inject.sh — pipeline-aware routing instructions"
+    why: "Hook routing instructions reference specific stage names. New stages need routing rules."
+
+  miltiaze-requirements-template:
+    when: "Changing requirements-report.md template sections"
+    check: "plugins/miltiaze/skills/miltiaze/workflows/requirements.md"
+    why: "Requirements workflow assembles output matching the template. Section changes must be reflected in the workflow steps."

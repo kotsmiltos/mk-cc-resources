@@ -79,13 +79,17 @@ Analyze user input to determine the workflow:
 | New idea, concept, or question | Full exploration | workflows/full-exploration.md |
 | "drill deeper", "more about X", references a previous exploration | Drill deeper | workflows/drill-deeper.md |
 | Mentions a specific previous exploration file | Drill deeper | workflows/drill-deeper.md |
+| "I want to build X", "requirements for X", "spec out X", build intent | Requirements | workflows/requirements.md |
+| Architect needs input, pipeline handoff to architect | Requirements | workflows/requirements.md |
 
-Default: If unclear, assume full exploration.
+Default: If unclear, assume full exploration. If the user clearly wants to BUILD something (not just understand it), route to requirements.
 
 Intent-based routing (if user provides clear intent without selecting menu):
 - "explore X", "think through X", "research X" -> workflows/full-exploration.md
 - "tell me more about the UX angle", "deeper on feasibility" -> workflows/drill-deeper.md
 - "follow up on [previous topic]" -> workflows/drill-deeper.md
+- "I want to build X", "requirements for X", "spec this out" -> workflows/requirements.md
+- "what do we need to build X" -> workflows/requirements.md
 
 After reading the workflow, follow it exactly.
 </routing>
@@ -109,6 +113,7 @@ All in `workflows/`:
 |----------|---------|
 | full-exploration.md | Complete multi-dimensional exploration of a new idea |
 | drill-deeper.md | Follow-up investigation into a specific dimension |
+| requirements.md | Produce requirements document for the architect — perspective agents, acceptance criteria, build plans |
 
 </workflows_index>
 
@@ -119,6 +124,7 @@ All in `templates/`:
 | Template | Purpose |
 |----------|---------|
 | exploration-report.md | Output structure for the full exploration |
+| requirements-report.md | Output structure for requirements documents — architect-ready format with acceptance criteria |
 
 </templates_index>
 

@@ -69,8 +69,9 @@ Then proceed to routing.
 | New project, references miltiaze, "build X", "start building" | Kickoff | workflows/kickoff.md |
 | "continue", "next", "pick up", references existing build plan | Continue | workflows/continue.md |
 | Already in a build session, milestone completed or in progress | Build milestone | workflows/build-milestone.md |
+| Architect task specs exist in `artifacts/designs/`, "execute sprint", "run sprint" | Execute | workflows/execute.md |
 
-Default: If there's an existing build plan for this project, route to continue. Otherwise, kickoff.
+Default: If architect task specs exist in `artifacts/designs/[slug]/sprints/sprint-N/`, route to execute. If there's an existing build plan, route to continue. Otherwise, kickoff.
 
 </routing>
 
@@ -95,6 +96,7 @@ All in `workflows/`:
 | kickoff.md | Start a new build — decompose, plan, begin milestone 1 |
 | build-milestone.md | Build, test, verify one milestone, then reassess |
 | continue.md | Resume an existing build from where it left off |
+| execute.md | Execute architect-planned sprint — read task specs, parallelize, report completion |
 
 </workflows_index>
 

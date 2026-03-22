@@ -103,6 +103,14 @@ plugins/
       templates/            # amendment-record.md
       scripts/              # Portable enforcement files (copied to target repos)
 
+  architect/                # Multi-agent technical leadership
+    .claude-plugin/plugin.json
+    skills/architect/
+      SKILL.md
+      workflows/            # plan.md, review.md, ask.md, audit.md
+      templates/            # plan.md, task-spec.md, audit-report.md
+      references/           # architecture-patterns.md, sprint-management.md, team-culture.md
+
 skills/                     # mk-cc-all skill directories (copies from plugins/)
   ladder-build/             # Copied from plugins/ladder-build/skills/ladder-build
   miltiaze/                 # Copied from plugins/miltiaze/skills/miltiaze
@@ -111,6 +119,7 @@ skills/                     # mk-cc-all skill directories (copies from plugins/)
   note/                     # Copied from plugins/project-note-tracker/skills/note
   safe-commit/              # Copied from plugins/safe-commit/skills/safe-commit
   project-structure/        # Copied from plugins/project-structure/skills/project-structure
+  architect/              # Copied from plugins/architect/skills/architect
   # mk-flow skills NOT here — mk-flow must be installed separately (has hooks)
 
 context/                    # Per-project mk-flow context (created by /mk-flow-init)
@@ -135,6 +144,26 @@ The mk-flow hook (`intent-inject.sh`) runs on every UserPromptSubmit and injects
 
 The hook reads the prompt from stdin JSON, skips short messages (<10 chars) and slash commands. Classification is done inline by the main Claude, not by a separate API call.
 
+## Pipeline: miltiaze → architect → ladder-build
+
+The full automated dev team pipeline:
+
+```
+NEW PROJECT:      /miltiaze (requirements mode) → /architect (plan) → /ladder-build (execute) → /architect (review) → loop
+EXISTING PROJECT: /architect audit → /architect (plan) → /ladder-build (execute) → /architect (review) → loop
+STANDALONE:       /miltiaze (exploration) → /ladder-build (kickoff) — existing standalone flow, still works
+```
+
+| Stage | Skill | Mode | Output | Next |
+|-------|-------|------|--------|------|
+| Research | miltiaze | `workflows/requirements.md` | `artifacts/explorations/*-requirements.md` | /architect |
+| Audit | architect | `workflows/audit.md` | `artifacts/audits/*-audit-report.md` | /architect |
+| Design | architect | `workflows/plan.md` | `artifacts/designs/[slug]/PLAN.md` + sprint task specs | /ladder-build |
+| Execute | ladder-build | `workflows/execute.md` | `artifacts/designs/[slug]/sprints/sprint-N/COMPLETION.md` | /architect |
+| Review | architect | `workflows/review.md` | `artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md` | /ladder-build (next sprint) |
+
+mk-flow tracks pipeline position in STATE.md and suggests the next skill based on the current stage.
+
 ## Cross-Reference Patterns
 
 When changing files that follow these patterns, CHECK the related files for consistency. Only modify them if actually broken by your change.
@@ -156,7 +185,7 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 | Component | Dependencies |
 |-----------|-------------|
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
-| miltiaze, ladder-build, project-structure, mk-flow | None (pure SKILL.md + markdown workflows) |
+| miltiaze, ladder-build, project-structure, mk-flow, architect | None (pure SKILL.md + markdown workflows) |
 | mk-flow hook | bash, one of: jq / python3 / python (for JSON parsing) |
 | alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
 | project-note-tracker | Python >= 3.10, openpyxl (via uvx) |

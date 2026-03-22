@@ -157,6 +157,19 @@ Multi-step build project (user wants to build something with multiple components
 
 Simple single tasks: just execute directly. No skill routing needed.
 
+Pipeline-aware routing — if STATE.md has a Pipeline Position section, use it to suggest the next step:
+  If stage is "requirements-complete" and no PLAN.md exists in artifacts/designs/:
+    Suggest: "/architect to plan the implementation from the requirements."
+  If stage is "audit-complete" and no PLAN.md exists:
+    Suggest: "/architect to plan improvements from the audit findings."
+  If stage contains "sprint-" and ends with "-complete":
+    Suggest: "/architect for QA review and next sprint planning."
+  If stage is "design-complete" or a PLAN.md exists with task specs in artifacts/designs/:
+    Suggest: "/ladder-build to execute the current sprint's task specs."
+  If the user says "assess", "audit", or "where do we stand on the code":
+    Suggest: "/architect audit to assess the codebase."
+  These are suggestions, not mandates — the user may have a different intent. Only suggest when it naturally fits.
+
 For status_query intent:
 1. Run drift-check FIRST: bash plugins/mk-flow/skills/state/scripts/drift-check.sh
    This tool verifies milestone statuses against actual filesystem evidence. Its output is your source of truth.
