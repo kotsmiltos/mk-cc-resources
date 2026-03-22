@@ -1,13 +1,23 @@
 {
   "name": "mk-cc-all",
   "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "author": {
     "name": "kotsmiltos"
   },
   "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
   "repository": "https://github.com/kotsmiltos/mk-cc-resources",
   "license": "MIT",
+  "skills": [
+    "./plugins/schema-scout/skills/",
+    "./plugins/miltiaze/skills/",
+    "./plugins/ladder-build/skills/",
+    "./plugins/architect/skills/",
+    "./plugins/project-structure/skills/",
+    "./plugins/repo-audit/skills/",
+    "./plugins/project-note-tracker/skills/",
+    "./plugins/safe-commit/skills/"
+  ],
   "keywords": [
     "skills",
     "schema",

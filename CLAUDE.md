@@ -7,7 +7,8 @@
 ```
 .claude-plugin/
   marketplace.json          # Marketplace registry — lists all plugins
-  plugin.json               # Root plugin metadata (mk-cc-all)
+  plugin.json               # Root plugin metadata (mk-cc-all) — uses custom `skills` paths
+                            # to discover skills inside plugins/ (no root skills/ duplication)
 
 plugins/
   schema-scout/             # Data file schema exploration CLI
@@ -114,17 +115,6 @@ plugins/
       templates/            # plan.md, task-spec.md, audit-report.md
       references/           # architecture-patterns.md, sprint-management.md, team-culture.md
 
-skills/                     # mk-cc-all skill directories (copies from plugins/)
-  ladder-build/             # Copied from plugins/ladder-build/skills/ladder-build
-  miltiaze/                 # Copied from plugins/miltiaze/skills/miltiaze
-  schema-scout/             # Copied from plugins/schema-scout/skills/schema-scout
-  repo-audit/               # Copied from plugins/repo-audit/skills/repo-audit
-  note/                     # Copied from plugins/project-note-tracker/skills/note
-  safe-commit/              # Copied from plugins/safe-commit/skills/safe-commit
-  project-structure/        # Copied from plugins/project-structure/skills/project-structure
-  architect/              # Copied from plugins/architect/skills/architect
-  # mk-flow skills NOT here — mk-flow must be installed separately (has hooks)
-
 context/                    # Per-project mk-flow context (created by /mk-flow-init)
   STATE.md                  # Living project state — current focus, done, blocked, next
   rules.yaml                # Behavioral corrections — injected every message by hook
@@ -176,7 +166,6 @@ When changing files that follow these patterns, CHECK the related files for cons
 | Plugin layout | Changing the FORMAT of plugin.json | All `plugins/*/.claude-plugin/plugin.json` | All plugins must use same metadata format |
 | SKILL.md convention | Changing section structure (adding/removing XML tags) | All `plugins/*/skills/*/SKILL.md` | Shared convention across all skills |
 | Marketplace registry | Adding, removing, or renaming a plugin | `.claude-plugin/marketplace.json` | Must list every plugin in `plugins/` |
-| Skill aliases | Adding or removing a skill from any plugin | `skills/` directory | Alias file must exist for each plugin skill |
 | Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference the new workflow |
 | mk-flow hook | Adding a new context file type (like rules.yaml) | `plugins/mk-flow/hooks/intent-inject.sh` | Hook script must read and inject the new file |
 | mk-flow init | Adding a new context file type | `plugins/mk-flow/skills/mk-flow-init/SKILL.md` | Init must create the new file |
