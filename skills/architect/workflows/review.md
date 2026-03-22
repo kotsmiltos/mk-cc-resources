@@ -296,9 +296,36 @@ If this was the final sprint:
 - Produce a final completion summary
 </step_4_reassess_and_plan_next>
 
-<step_5_present_summary>
-Present a concise summary to the user:
+<step_5_update_state>
+If `context/STATE.md` exists, update the Pipeline Position section with exact values:
 
+**If more sprints remain:**
+```markdown
+## Pipeline Position
+- **Stage:** sprint-(N+1)
+- **Requirements:** [keep existing value]
+- **Audit:** [keep existing value]
+- **Plan:** [keep existing value — path to PLAN.md]
+- **Current sprint:** N+1
+```
+Update **Current Focus** to: "Sprint N reviewed. Sprint N+1 task specs ready for [feature]."
+
+**If this was the final sprint:**
+```markdown
+## Pipeline Position
+- **Stage:** complete
+- **Requirements:** [keep existing value]
+- **Audit:** [keep existing value]
+- **Plan:** [keep existing value]
+- **Current sprint:** done
+```
+Update **Current Focus** to: "[Feature] pipeline complete. All sprints executed and reviewed."
+</step_5_update_state>
+
+<step_6_present_summary>
+Present a concise summary with the exact next command:
+
+**If more sprints remain:**
 ```
 Sprint [N] review complete.
 
@@ -313,18 +340,30 @@ Plan updated:
 - [What changed in PLAN.md]
 - [Any new risks or decisions]
 
-Next sprint: [N+1] — [Name] ([Size])
-- [N] tasks: [brief list]
-- [Any amendments from what was originally planned]
+Sprint [N+1]: [N] tasks ready at [sprint dir path].
 
-Ready to proceed?
+To continue the pipeline, run:
+   /ladder-build
+
+You can /clear first to free up context — all state is on disk.
+```
+
+**If this was the final sprint:**
+```
+All sprints complete. QA passed.
+
+Final deliverables:
+- Plan: [PLAN.md path]
+- [Key files created]
+
+Pipeline complete. No further steps needed.
 ```
 
 Use AskUserQuestion:
 - **Continue to next sprint** — Start building sprint [N+1]
 - **Review QA report** — I want to read the full QA findings
 - **Discuss changes** — I want to adjust the plan before continuing
-</step_5_present_summary>
+</step_6_present_summary>
 
 </process>
 

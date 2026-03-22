@@ -170,13 +170,31 @@ Before presenting, check:
    - Filename: `YYYY-MM-DD-[topic-slug]-requirements.md`
    - Tell the user where it's saved.
 
-3. **Handoff to architect:**
-   "Requirements complete. The recommended next step is `/architect` to plan the implementation. The requirements at [path] have everything needed — acceptance criteria, constraints, build plans, and unresolved disagreements for the architect to decide on."
+3. **Update STATE.md** (if mk-flow initialized):
+   Update or add the Pipeline Position section with exact values:
+   ```markdown
+   ## Pipeline Position
+   - **Stage:** requirements-complete
+   - **Requirements:** artifacts/explorations/YYYY-MM-DD-[topic-slug]-requirements.md
+   - **Audit:** —
+   - **Plan:** —
+   - **Current sprint:** —
+   ```
+   Also update **Current Focus** to describe what was just researched.
 
-4. **Update STATE.md** (if mk-flow initialized):
-   If a Pipeline Position section exists, update stage to `requirements-complete`.
+4. **Handoff with exact next command:**
+   Present this to the user:
+   ```
+   Requirements complete and saved to [path].
 
-NEVER stop at "here's the requirements." Always push toward the architect handoff — the pipeline keeps moving.
+   To continue the pipeline, run:
+      /architect
+
+   The architect will read the requirements and plan sprints.
+   You can /clear first to free up context — all state is on disk.
+   ```
+
+NEVER stop at "here's the requirements." Always show the exact next command.
 </step_present_and_save>
 
 </process>

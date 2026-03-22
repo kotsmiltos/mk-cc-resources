@@ -374,20 +374,29 @@ Use AskUserQuestion:
 - Save each sprint 1 task spec to `[cwd]/artifacts/designs/[slug]/sprints/sprint-1/task-K-[short-name].md`
 
 **7b. Update STATE.md (if mk-flow is initialized):**
-Add or update the Pipeline Position section:
+Update or add the Pipeline Position section with exact values:
 ```markdown
 ## Pipeline Position
-stage: sprint-1
-requirements: [path to requirements/exploration]
-plan: artifacts/designs/[slug]/PLAN.md
-current_sprint: 1
+- **Stage:** sprint-1
+- **Requirements:** [path to requirements/exploration file]
+- **Audit:** [path to audit report, or —]
+- **Plan:** artifacts/designs/[slug]/PLAN.md
+- **Current sprint:** 1
 ```
+Also update **Current Focus** to: "Architect plan complete for [feature]. Sprint 1 ready for execution."
 
-**7c. Handoff:**
-If the user chose "Start building," tell them:
-- Where PLAN.md is saved
-- Where sprint 1 task specs are saved
-- Suggest: "Sprint 1 has [N] tasks. Use `/ladder-build` to execute, or I can walk through the task specs first."
+**7c. Handoff with exact next command:**
+Present this to the user:
+```
+Plan complete. PLAN.md saved to [path].
+Sprint 1: [N] tasks ready at [sprint dir path].
+
+To continue the pipeline, run:
+   /ladder-build
+
+It will read the task specs and execute sprint 1.
+You can /clear first to free up context — all state is on disk.
+```
 
 The architect's job for sprint 0 is done. Execution is ladder-build's responsibility. After the sprint completes, invoke the architect again with the review workflow.
 </step_7_save_and_handoff>

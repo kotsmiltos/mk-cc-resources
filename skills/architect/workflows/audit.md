@@ -244,7 +244,19 @@ Translate priority findings into architect-ready actions. Each action:
 **4a. Write AUDIT-REPORT.md:**
 Using templates/audit-report.md, save to: `[cwd]/artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md`
 
-**4b. Present executive summary to user:**
+**4b. Update STATE.md** (if mk-flow is initialized):
+Update or add the Pipeline Position section with exact values:
+```markdown
+## Pipeline Position
+- **Stage:** audit-complete
+- **Requirements:** —
+- **Audit:** artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md
+- **Plan:** —
+- **Current sprint:** —
+```
+Update **Current Focus** to: "Audit complete for [project/module]. [N] findings, [X] critical."
+
+**4c. Present executive summary with exact next command:**
 ```
 Audit complete: [Project/Module Name]
 
@@ -263,7 +275,11 @@ Top recommendations:
 
 Full report: [path to AUDIT-REPORT.md]
 
-Next step: `/architect` to plan improvements based on these findings.
+To continue the pipeline, run:
+   /architect
+
+The architect will plan sprints to address these findings.
+You can /clear first to free up context — all state is on disk.
 ```
 
 Use AskUserQuestion:

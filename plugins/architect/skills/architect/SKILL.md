@@ -56,14 +56,23 @@ Read references/team-culture.md for the full operating principles. These are emb
 <intake>
 Determine what the architect should do based on available context:
 
-1. **Check for existing PLAN.md:** Look in `[cwd]/artifacts/designs/` for a plan related to the current project. If found, read its sprint tracking to determine the current state.
+1. **Check Pipeline Position first** (fastest orientation after /clear):
+   Read `context/STATE.md` if it exists. Look for the Pipeline Position section:
+   - Stage `requirements-complete` → route to plan (requirements path is in Pipeline Position)
+   - Stage `audit-complete` → route to plan (audit path is in Pipeline Position)
+   - Stage `sprint-N-complete` → route to review (plan path is in Pipeline Position)
+   - Stage `sprint-N` → sprint is in progress, ask user what they need
+   - Stage `complete` → pipeline is done, ask user what's next
+   - No Pipeline Position → fall through to manual detection below
 
-2. **Check for inputs:**
+2. **Check for existing PLAN.md:** Look in `[cwd]/artifacts/designs/` for a plan related to the current project. If found, read its sprint tracking to determine the current state.
+
+3. **Check for inputs:**
    - miltiaze exploration/requirements in `[cwd]/artifacts/explorations/`
    - Audit report in `[cwd]/artifacts/audits/`
    - Direct user description of what to build
 
-3. **Determine the action:**
+4. **Determine the action:**
    - Existing PLAN.md + sprint just completed → route to review
    - Existing PLAN.md + decision needed → route to ask
    - No PLAN.md + miltiaze output exists → route to plan (new project entry point)

@@ -52,6 +52,12 @@ Building is climbing. Each milestone is a rung — small enough to step on, soli
 <intake>
 Analyze the user's input to determine what to build and where we are.
 
+**Check Pipeline Position first** (fastest orientation after /clear):
+Read `context/STATE.md` if it exists. Look for the Pipeline Position section:
+- Stage `sprint-N` with a Plan path → architect has planned, route to execute workflow using that Plan path
+- Stage `sprint-N-complete` → sprint done, user should run /architect for review, not /ladder-build. Tell them.
+- No Pipeline Position → fall through to manual detection below
+
 If the user referenced a miltiaze exploration or a specific project:
 - Look for the exploration file in `[cwd]/artifacts/explorations/`
 - Look for an existing build plan in `[cwd]/artifacts/builds/`

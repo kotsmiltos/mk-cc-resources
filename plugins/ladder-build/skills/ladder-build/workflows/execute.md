@@ -185,9 +185,16 @@ Sprint execution complete. Recommend running `/architect` for QA review and reas
 </step_5_sprint_completion_report>
 
 <step_6_update_state>
-If `context/STATE.md` exists and has a Pipeline Position section:
-- Update stage to `sprint-N-complete`
-- Note: "Sprint N executed. Awaiting architect review."
+If `context/STATE.md` exists, update the Pipeline Position section with exact values:
+```markdown
+## Pipeline Position
+- **Stage:** sprint-N-complete
+- **Requirements:** [keep existing value]
+- **Audit:** [keep existing value]
+- **Plan:** [keep existing value — path to PLAN.md]
+- **Current sprint:** N
+```
+Also update **Current Focus** to: "Sprint N executed for [feature]. Awaiting architect QA review."
 
 Update the PLAN.md Sprint Tracking table:
 - Mark the sprint's task count as completed
@@ -195,7 +202,7 @@ Update the PLAN.md Sprint Tracking table:
 </step_6_update_state>
 
 <step_7_handoff>
-Present a summary to the user:
+Present a summary with the exact next command:
 
 ```
 Sprint [N] executed: [X/Y] tasks complete.
@@ -208,7 +215,12 @@ All acceptance criteria met. No deviations.
 [N] flags for architect review.
 
 Completion report: [path]
-Next step: `/architect` for QA review and sprint [N+1] planning.
+
+To continue the pipeline, run:
+   /architect
+
+The architect will run QA review and plan sprint [N+1].
+You can /clear first to free up context — all state is on disk.
 ```
 
 The executor's job is done. QA and reassessment are the architect's responsibility.
