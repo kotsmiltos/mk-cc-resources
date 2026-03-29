@@ -107,9 +107,9 @@ if [ -f "$CONTINUE_HERE_FILE" ]; then
       STALE_RESUME=" (note: this resume context may be stale — STATE.md was updated more recently)"
     fi
     RESUME_SIZE=$(wc -c < "$CONTINUE_HERE_FILE" 2>/dev/null || echo "0")
-    MAX_RESUME_SIZE=10240  # 10KB cap
+    MAX_RESUME_SIZE=51200  # 50KB cap
     if [ "$RESUME_SIZE" -gt "$MAX_RESUME_SIZE" ]; then
-      RESUME_CONTENT="[Resume context truncated — file exceeds 10KB (${RESUME_SIZE} bytes). Read context/.continue-here.md manually for full context.]"
+      RESUME_CONTENT="[Resume context truncated — file exceeds 50KB (${RESUME_SIZE} bytes). Read context/.continue-here.md manually for full context.]"
     else
       RESUME_CONTENT=$(cat "$CONTINUE_HERE_FILE" | sed 's|</|<\\\/|g')
     fi
@@ -193,6 +193,17 @@ Multi-step build project (user wants to build something with multiple components
   "This is a multi-step build. Want me to plan it with:
   /ladder-build [brief project description]"
   If a miltiaze exploration report already exists for this topic, mention it.
+
+Bug report or broken behavior (user describes something not working, an error, unexpected results):
+  DO NOT jump to fixing. Follow the investigation protocol:
+  1. UNDERSTAND: Read the user's description carefully. What exactly is broken? What's the expected vs actual behavior?
+  2. REPRODUCE: Read the relevant code/config. Verify you can see the problem. If the user gave an error, trace it.
+  3. ROOT CAUSE: Find WHY it's broken, not just WHERE. Check recent changes (git log), cross-references, related files. Is this a symptom of something deeper?
+  4. ASSESS: Is this a one-off bug or part of a pattern? Check if similar issues exist elsewhere. Would a local fix leave related problems unfixed?
+  5. PROPOSE: Present your findings and proposed fix to the user BEFORE implementing. Include: what's broken, why, what the fix is, and what else it might affect.
+  6. FIX: Only after the user confirms (or for trivial/obvious fixes), implement the solution. Fix the root cause, not just the symptom.
+  If the issue is complex or systemic, suggest /miltiaze to explore it or /architect audit to assess the area.
+  Disambiguation: if the message describes BROKEN BEHAVIOR, classify as bug_report even if it contains action words like "fix". Action intent is for building/changing things that aren't broken.
 
 Simple single tasks: just execute directly. No skill routing needed.
 

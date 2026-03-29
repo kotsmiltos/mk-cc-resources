@@ -56,6 +56,25 @@ intents:
     route: "background_capture"
     enabled: true
 
+  bug_report:
+    description: "User reporting broken behavior, an error, or unexpected results — investigate root cause before fixing"
+    signals:
+      - "broken"
+      - "doesn't work"
+      - "not working"
+      - "bug"
+      - "crash"
+      - "error"
+      - "failing"
+      - "wrong"
+      - "unexpected"
+      - "something's off"
+      - "messed up"
+      - "it should be X but"
+    route: "investigate_then_fix"
+    enabled: true
+    disambiguation: "If the message describes BROKEN BEHAVIOR (something not working as expected), classify as bug_report even if it contains action words like 'fix'. If the message requests building or changing something WITHOUT describing broken behavior, classify as action."
+
   frustration_signal:
     description: "User expressing repeated frustration about a recurring issue — ask to clarify then scope"
     signals:

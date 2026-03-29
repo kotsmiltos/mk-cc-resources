@@ -39,3 +39,26 @@ rules:
       It is your job to catch things and resolve them. The user should never have to do your quality control.
     why: "Repeatedly needing to prompt Claude to check harder, look deeper, or finish the job wastes the user's time and erodes trust. Get it right the first time."
     when: "Always — every response, every task, every verification"
+
+  investigate-before-fixing:
+    what: |
+      When the user reports something is broken, wrong, or not working:
+      - Do NOT immediately start writing a fix
+      - Read the relevant code first. Understand what it does and why.
+      - Find the root cause, not just the symptom. Trace the issue back to its origin.
+      - Check if this is part of a pattern — are there similar issues in related files?
+      - Propose the fix with rationale before implementing. For trivial/obvious fixes, you can fix and explain simultaneously.
+      - Never add a patch on top of a patch. If the underlying design is wrong, say so and propose a proper fix.
+    why: "Jumping to fixes without understanding causes layered patches that make the codebase worse. The user wants correct solutions, not fast ones."
+    when: "Any time the user reports a bug, error, unexpected behavior, or something not working"
+
+  context-awareness:
+    what: |
+      Be proactively aware of context size and completeness:
+      - When a conversation is long or instructions are complex, re-read key files before acting — don't rely on earlier reads that may have been compressed
+      - After implementing multi-step work, run available verification tools (verify-templates.sh, drift-check.sh, tests) to catch what you may have missed
+      - If you notice you're skimming, simplifying, or forgetting earlier instructions, stop and re-read the source files
+      - When instructions reference multiple files or constraints, verify each one — don't assume "I already handled that"
+      - More context is better than less. Don't limit what you read to save time. But verify that what you read is still what you're acting on.
+    why: "Context degradation is invisible — Claude doesn't notice when it starts dropping details. Proactive verification catches drift before it becomes broken output."
+    when: "Always, especially during long sessions, multi-sprint builds, and after /clear"
