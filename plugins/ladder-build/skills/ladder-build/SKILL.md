@@ -53,7 +53,12 @@ Building is climbing. Each milestone is a rung — small enough to step on, soli
 Analyze the user's input to determine what to build and where we are.
 
 **Check Pipeline Position first** (fastest orientation after /clear):
-Read `context/STATE.md` if it exists. Look for the Pipeline Position section:
+Read `context/STATE.md` if it exists. Look for the Pipeline Position section.
+See canonical pipeline stages in the STATE.md template
+(`plugins/mk-flow/skills/state/templates/state.md`, Canonical Pipeline Stages section)
+for the authoritative stage list.
+
+Route based on stage:
 - Stage `sprint-N` with a Plan path → architect has planned, route to execute workflow using that Plan path
 - Stage `sprint-N-complete` → sprint done, user should run /architect for review, not /ladder-build. Tell them.
 - No Pipeline Position → fall through to manual detection below

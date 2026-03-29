@@ -34,7 +34,7 @@ End goal: [end goal summary]
 Done so far:
 - [list completed milestones briefly]
 
-Next up: Milestone [N]: [Name] — [goal]
+Next milestone: Milestone [N]: [Name] — [goal]
 
 [If discovered work exists: '[N] items in the discovered work queue.']
 [If refinement items exist and core is nearly done: '[N] refinement items ready to become milestones.']

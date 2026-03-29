@@ -57,12 +57,20 @@ Read references/team-culture.md for the full operating principles. These are emb
 Determine what the architect should do based on available context:
 
 1. **Check Pipeline Position first** (fastest orientation after /clear):
-   Read `context/STATE.md` if it exists. Look for the Pipeline Position section:
-   - Stage `requirements-complete` → route to plan (requirements path is in Pipeline Position)
-   - Stage `audit-complete` → route to plan (audit path is in Pipeline Position)
-   - Stage `sprint-N-complete` → route to review (plan path is in Pipeline Position)
-   - Stage `sprint-N` → sprint is in progress, ask user what they need
-   - Stage `complete` → pipeline is done, ask user what's next
+   Read `context/STATE.md` if it exists. Look for the Pipeline Position section.
+   See canonical pipeline stages in the STATE.md template
+   (`plugins/mk-flow/skills/state/templates/state.md`, Canonical Pipeline Stages section)
+   for the authoritative stage list and valid transitions.
+
+   Route based on stage:
+   - `requirements-complete` → route to plan (requirements path is in Pipeline Position)
+   - `audit-complete` → route to plan (audit path is in Pipeline Position)
+   - `sprint-N-complete` → route to review (plan path is in Pipeline Position)
+   - `sprint-N` → sprint is in progress, ask user what they need
+   - `complete` → pipeline is done, ask user what's next
+   - `idle` → no active pipeline work, ask what to build or audit
+   - `research` → miltiaze exploration in progress
+   - `reassessment` → mid-pipeline re-evaluation
    - No Pipeline Position → fall through to manual detection below
 
 2. **Check for existing PLAN.md:** Look in `[cwd]/artifacts/designs/` for a plan related to the current project. If found, read its sprint tracking to determine the current state.

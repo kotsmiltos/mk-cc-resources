@@ -117,17 +117,22 @@ Show the user what was built. Describe or demonstrate. Let them confirm before m
 Create: `[cwd]/artifacts/builds/[project-slug]/milestones/milestone-[N]-[slug].md`
 
 Use the templates/milestone-report.md structure. Include:
+- Metadata block at top (type: milestone-report, output_path, key_decisions, open_questions) in blockquote format
 - What was built
 - Files changed
 - Sample data created
-- Verification results
+- Acceptance Criteria checklist (each criterion from the milestone's "done when" as a checkbox — checked or unchecked)
+- Verification Notes prose (describe HOW each criterion was verified — what was tested, what was observed, what edge cases were tried. Not just "checked" — add the context checklists can't capture. If a criterion passed with caveats, explain here.)
+- What Could Be Wrong section (3+ specific concerns — what did verification NOT test? What assumptions were made? Where could the implementation be subtly wrong in ways the acceptance criteria don't catch? Be genuinely adversarial.)
 - Bugs found and fixed
 - Discoveries that affect the plan
+
+The milestone report must include BOTH the Acceptance Criteria checklist AND the Verification Notes prose. The checklist is the minimum bar; the prose is the proof. Neither replaces the other.
 </step_5_save_milestone_report>
 
 <step_6_update_state>
 If `context/STATE.md` exists (mk-flow is initialized), update it:
-- **Current Focus** → next milestone name and goal
+- **Current Focus** → next milestone name and goal. Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing. Example: "Milestone 4: API integration — ready" not "Start working on milestone 4."
 - **Done (Recent)** → add this milestone: "[x] Milestone N: [Name] — [outcome]"
 - **Decisions Made** → add any decisions from this milestone
 - **Last updated** → now
@@ -156,7 +161,7 @@ The end goal doesn't change. The milestones are the path, and paths adapt. The d
 Present the updated state:
 
 "Milestone [N] done: [summary].
-Next up: Milestone [N+1]: [Name] — [goal].
+Next milestone: Milestone [N+1]: [Name] — [goal].
 [If plan changed: 'Plan updated: (brief explanation of what changed and why).']"
 </step_7_reassess_and_adapt>
 

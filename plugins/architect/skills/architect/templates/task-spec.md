@@ -5,13 +5,17 @@ Use this structure for individual task specifications. Each task is a self-conta
 Save to: `artifacts/designs/[slug]/sprints/sprint-N/task-K-[short-name].md`
 
 ```markdown
-# Task [K]: [Short Descriptive Name]
+> **type:** task-spec
+> **output_path:** artifacts/designs/[slug]/sprints/sprint-N/task-K-[short-name].md
+> **sprint:** [N]
+> **status:** planned | in-progress | done | blocked
+> **depends_on:** [Task IDs that must complete first, or "None"]
+> **estimated_size:** S | M | L
+> **plan:** [Relative path to PLAN.md]
+> **key_decisions:** [decision IDs this task implements or is constrained by, e.g., D1, D3]
+> **open_questions:** [unresolved items, or "none"]
 
-> **Sprint:** [N]
-> **Status:** planned | in-progress | done | blocked
-> **Depends on:** [Task IDs that must complete first, or "None"]
-> **Estimated size:** S | M | L
-> **Plan:** [Relative path to PLAN.md]
+# Task [K]: [Short Descriptive Name]
 
 ## Goal
 [One paragraph — what this task delivers and why it matters in the context of the overall plan. A developer reading only this section should understand the purpose.]

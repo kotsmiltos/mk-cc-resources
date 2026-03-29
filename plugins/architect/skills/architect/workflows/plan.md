@@ -273,6 +273,14 @@ For each disagreement or choice point, decide. Record in the Decisions Log with:
 - Why this choice (tied to project constraints and requirements)
 
 If a decision is unclear or important enough to warrant user input, DON'T decide — flag it for the ask workflow (step 5).
+
+**3f. Adversarial Assessment:**
+From all agents' findings, identify 3+ specific ways the plan could fail. For each failure mode:
+- Name it concretely (not "timeline risk" — name the specific module, interface, or decision that breaks)
+- Identify which sprint it would affect
+- State the mitigation
+- Identify which plan assumption is at risk (include at least one scenario where the plan's own assumptions are wrong)
+This feeds directly into the Adversarial Assessment section of PLAN.md.
 </step_3_synthesize>
 
 <step_4_design_sprints>
@@ -311,10 +319,11 @@ Using templates/plan.md, create the full plan document:
 - Vision (from requirements/exploration)
 - Architecture Overview (Mermaid diagram from synthesis)
 - Module Map
-- Sprint Tracking table (columns: Sprint, Tasks, Completed, QA Result, Key Changes. Do NOT add a Status column — sprint status is tracked in STATE.md only)
+- Sprint Tracking table (columns: Sprint, Tasks, Completed, QA Result, Key Changes, Boundary Rationale. Do NOT add a Status column — sprint status is tracked in STATE.md only). For each sprint in the Sprint Tracking table, fill in the Boundary Rationale column explaining WHY the sprint breaks where it does. Use one of: "Decision gate: [what must be verified before continuing]", "Context limit: [why context health requires a break here]", "Scope boundary: [what independently verifiable capability this sprint delivers]". If you cannot name the rationale, the boundary is arbitrary — reconsider it.
 - Task Index (columns: Task, Sprint, File, Depends On. Do NOT add a Status column)
 - Interface Contracts
 - Decisions Log (populated from synthesis)
+- Adversarial Assessment (from synthesis — state 3+ specific ways this plan could fail, with failure mode, affected sprint, mitigation, and the plan assumption at risk)
 - Fitness Functions (from testing agent)
 - Risk Register (from all agents' concerns)
 - Change Log (initial entry)
@@ -370,8 +379,8 @@ Use AskUserQuestion:
 **7a. Save artifacts:**
 - Create directory: `[cwd]/artifacts/designs/[slug]/`
 - Create sprints directory: `[cwd]/artifacts/designs/[slug]/sprints/sprint-1/`
-- Save PLAN.md to `[cwd]/artifacts/designs/[slug]/PLAN.md`
-- Save each sprint 1 task spec to `[cwd]/artifacts/designs/[slug]/sprints/sprint-1/task-K-[short-name].md`
+- Save PLAN.md to `[cwd]/artifacts/designs/[slug]/PLAN.md` — include the metadata block at the top (type, output_path, source, created, key_decisions, open_questions) as defined in templates/plan.md
+- Save each sprint 1 task spec to `[cwd]/artifacts/designs/[slug]/sprints/sprint-1/task-K-[short-name].md` — include the metadata block at the top of each task spec as defined in templates/task-spec.md
 
 **7b. Update STATE.md (if mk-flow is initialized):**
 Update or add the Pipeline Position section with exact values:
@@ -382,8 +391,13 @@ Update or add the Pipeline Position section with exact values:
 - **Audit:** [path to audit report, or —]
 - **Plan:** artifacts/designs/[slug]/PLAN.md
 - **Current sprint:** 1
+- **Build plan:** —
+- **Task specs:** artifacts/designs/[slug]/sprints/sprint-1/
+- **Completion evidence:** —
+- **Last verified:** —
 ```
-Also update **Current Focus** to: "Architect plan complete for [feature]. Sprint 1 ready for execution."
+Also update **Current Focus** to: "Plan complete for [feature], Sprint 1 scoped."
+Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing.
 
 **7c. Handoff with exact next command:**
 Present this to the user:

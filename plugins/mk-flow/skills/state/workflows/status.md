@@ -24,7 +24,8 @@ Skip to step 4 (present summary without build plan context).
 If drift-check reported DRIFT (exit code 1):
 
 1. Read the drift-check output to identify which milestones need correction
-2. Update STATE.md Pipeline Position and Current Focus to match drift-check verdicts
+2. Update STATE.md Pipeline Position and Current Focus to match drift-check verdicts.
+   Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing.
 3. Tell the user what was corrected: "Found drift: [description]. Updated STATE.md."
 
 If no drift (exit code 0), proceed directly to step 3.

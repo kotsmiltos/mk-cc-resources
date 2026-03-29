@@ -16,6 +16,19 @@ Write `context/.continue-here.md` using the template from `templates/continue-he
 
 Fill in ALL sections with specific details from the current session. Do not leave sections empty — if nothing applies, omit the section entirely.
 
+When writing the "Pipeline Position at Pause" section, populate it from STATE.md's Pipeline Position:
+
+## Pipeline Position at Pause
+- **Stage:** [current stage from STATE.md]
+- **Plan:** [path from Pipeline Position]
+- **Sprint:** [current sprint from Pipeline Position]
+
+## In-progress Work
+[What was being worked on when paused — files, tasks, partial state]
+
+## To Resume
+Run the appropriate pipeline skill based on Pipeline Position above.
+
 The Resume Command section is critical. Generate a copy-paste command that includes:
 - Which skill to invoke (e.g., `/ladder-build continue mk-flow`)
 - What was just completed
@@ -34,6 +47,7 @@ milestone reports 1-3 for full context.
 <step_3_update_state>
 Update `context/STATE.md`:
 - Current Focus → what was in progress when paused
+  Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing.
 - Done (Recent) → add anything completed this session
 - Decisions Made → add any new decisions
 - Amendments → add any new amendments discovered

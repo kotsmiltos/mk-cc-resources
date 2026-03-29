@@ -7,23 +7,34 @@ How the architect designs sprints, sizes tasks, manages reassessment between spr
 <sprint_design>
 
 <principles>
+- Sprints serve the product, not the process — break only at decision gates, context limits, or natural scope boundaries
 - A sprint is a set of tasks that can be executed and verified as a unit
 - Sprints are designed by the architect, executed by ladder-build, verified by QA
 - Each sprint produces working, verifiable output — never intermediate-only artifacts
-- Sprint size is bounded by context window health (plan + build + test + verify must all fit)
+- Sprint boundaries are set by decision gates (points where the next step depends on results so far), context limits (the session can no longer hold plan + build + test + verify), or natural scope boundaries (a coherent piece of functionality is complete and independently verifiable)
+- Every sprint boundary must have a rationale: the sprint ends because [decision gate / context limit / scope boundary]. If you can't name the reason, the boundary is arbitrary — reconsider it.
+- Full implementation is the goal. Don't break a sprint just because a timebox or task count convention says to. Break it when the product needs a checkpoint.
 </principles>
 
 <sizing_guidelines>
-**Sprint sizes (rules of thumb):**
-- **Small (S):** 1-3 tasks, all simple. One component or feature. Can be planned, built, tested, and verified in a focused session.
-- **Medium (M):** 3-5 tasks, some complexity. A few connected components. May need research or iteration on one task.
-- **Large (L):** 5+ tasks or significant complexity. A subsystem or major feature. Consider splitting into two sprints if context fatigue is a risk.
+**Sprint sizes (by complexity, not task count):**
+- **Small (S):** Low complexity. One component or feature, well-understood problem space. Straightforward implementation with no research or design decisions needed. Can be planned, built, tested, and verified in a focused session.
+- **Medium (M):** Moderate complexity. A few connected components, or a single component requiring research, design decisions, or iteration. May involve tradeoffs that affect later sprints.
+- **Large (L):** High complexity. A subsystem, major feature, or work spanning multiple coupled modules. Multiple design decisions, significant uncertainty, or extensive verification surface. Consider splitting — but split at a decision gate or scope boundary, not at an arbitrary task count.
+
+Task count is a secondary signal, not a sizing criterion. A sprint with 7 straightforward tasks may be S. A sprint with 2 tasks that each require architectural decisions may be L.
 
 **When to split a sprint:**
-- Total tasks exceed 5 (context pressure)
+Primary criteria (split here):
+- A decision gate exists — the next set of tasks depends on results, findings, or user input from the first set
+- Context health is at risk — plan + build + test + verify for all tasks won't fit in one session
+- A subset of tasks is independently verifiable and produces a complete, working piece of functionality
+
+Secondary signals (consider splitting):
+- High task count creates context pressure (more to hold in mind increases error risk)
+- One task has significant uncertainty (isolate it so results inform the rest)
+- QA will need extensive verification (leave room for thorough checks)
 - Two subsets of tasks are independent (can be separate sprints executed in parallel)
-- One task has significant uncertainty (isolate it so it doesn't block the rest)
-- QA will need extensive verification (leave room for it)
 
 **When to merge sprints:**
 - Two planned sprints are both S and share context
@@ -125,7 +136,11 @@ Tasks or sprints can be parallelized when:
 <context_health>
 
 <monitoring>
-The architect and ladder-build must monitor context health during sprints. Signs of degradation:
+Context is a finite budget. Every sprint consumes it: reading files, holding plan state, building, testing, verifying. The architect sizes sprints to fit within the budget, and both the architect and ladder-build monitor consumption during execution.
+
+**Context budget model:** A sprint must fit plan + build + test + verify within a single session's context. If any of those phases would be squeezed out, the sprint is too large — split it at the nearest decision gate or scope boundary before starting, not after context is already strained.
+
+**Signs of degradation (context budget exhausted):**
 - Skimming files instead of reading fully
 - Assuming function behavior without checking
 - Skipping test runs
@@ -133,7 +148,7 @@ The architect and ladder-build must monitor context health during sprints. Signs
 - Simplifying error handling without acknowledgment
 - Repeating work already done in the session
 
-When these signs appear, the sprint is too big for the remaining context.
+When these signs appear, the remaining context cannot support quality output. Do not push through — trigger the recovery protocol below.
 </monitoring>
 
 <recovery>

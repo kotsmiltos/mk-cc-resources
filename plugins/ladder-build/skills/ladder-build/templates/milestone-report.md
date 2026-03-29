@@ -3,10 +3,14 @@
 Save one of these after each completed milestone. Omit sections that don't apply.
 
 ```markdown
-# Milestone [N]: [Name]
+> **type:** milestone-report
+> **output_path:** artifacts/builds/[project-name]/milestones/milestone-N-[name].md
+> **key_decisions:** [decisions made during this milestone, or "none"]
+> **open_questions:** [unresolved items, or "none"]
+> **status:** Completed — [YYYY-MM-DD]
+> **build_plan:** [relative path to BUILD-PLAN.md]
 
-> **Status:** Completed — [YYYY-MM-DD]
-> **Build plan:** [relative path to BUILD-PLAN.md]
+# Milestone [N]: [Name]
 
 ## What Was Built
 
@@ -22,9 +26,25 @@ _(Omit if none created)_
 
 - `[path]` — [what this data represents, what it tests]
 
-## Verification
+## Acceptance Criteria
 
-[How the milestone was verified. What was tested, what sample data was used, what the user confirmed. Include any commands run or output observed.]
+- [x] [Criterion from the milestone's acceptance criteria — checked or unchecked]
+- [ ] [Each criterion listed explicitly as a checkbox]
+
+## Verification Notes
+
+[Prose describing HOW each criterion was verified. Not just "checked" —
+describe what was tested, what was observed, what edge cases were tried.
+If a criterion passed with caveats, explain here. The checklist is the
+minimum bar; this prose adds the context checklists can't capture.]
+
+## What Could Be Wrong
+
+[State 3+ specific things that could be wrong with this milestone's
+output despite passing verification. What did verification NOT test?
+What assumptions were made? Where could the implementation be subtly
+wrong in ways the acceptance criteria don't catch? Be genuinely
+adversarial — think about failure modes, not just success paths.]
 
 ## Bugs Found and Fixed
 _(Omit if none)_
@@ -46,6 +66,8 @@ _(Omit if none. Things learned during this milestone that affect the plan.)_
 <notes>
 - Be concrete. "Built the trade execution module" is better than "Worked on trading stuff."
 - Files changed matters. A future session resuming this build needs to know what exists and where.
-- Verification is proof. Don't just say "tested it" — say what you tested and what happened.
+- Acceptance Criteria is the minimum bar — every criterion must have a checkbox, checked or unchecked.
+- Verification Notes is proof. Don't just say "tested it" — say what you tested and what happened. The prose adds context checklists can't capture.
+- What Could Be Wrong must be genuinely adversarial. State specific failure modes — not generic "there might be bugs." Think: what did verification NOT cover? What assumptions are baked in? Where could the implementation be subtly wrong?
 - Discoveries are gold. They're the reason the plan adapts. If building milestone 2 revealed that milestone 4 needs to be split, say so here.
 </notes>

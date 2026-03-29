@@ -91,6 +91,36 @@ ${RULES_CONTENT}
 </rules>"
 fi
 
+# Session flag infrastructure (shared by nudge and resume injection)
+PROJECT_HASH=$(echo "$PWD" | md5sum 2>/dev/null | cut -d' ' -f1 || echo "default")
+FLAG_DIR="${TMPDIR:-/tmp}/mk-flow-nudge"
+mkdir -p "$FLAG_DIR" 2>/dev/null
+
+# Resume context injection — first message only
+CONTINUE_HERE_FILE="context/.continue-here.md"
+if [ -f "$CONTINUE_HERE_FILE" ]; then
+  RESUME_FLAG_FILE="${FLAG_DIR}/${PROJECT_HASH}-resume"
+  if [ ! -f "$RESUME_FLAG_FILE" ]; then
+    # Staleness check: is .continue-here.md newer than STATE.md?
+    STALE_RESUME=""
+    if [ -f "$STATE_FILE" ] && [ "$STATE_FILE" -nt "$CONTINUE_HERE_FILE" ]; then
+      STALE_RESUME=" (note: this resume context may be stale — STATE.md was updated more recently)"
+    fi
+    RESUME_SIZE=$(wc -c < "$CONTINUE_HERE_FILE" 2>/dev/null || echo "0")
+    MAX_RESUME_SIZE=10240  # 10KB cap
+    if [ "$RESUME_SIZE" -gt "$MAX_RESUME_SIZE" ]; then
+      RESUME_CONTENT="[Resume context truncated — file exceeds 10KB (${RESUME_SIZE} bytes). Read context/.continue-here.md manually for full context.]"
+    else
+      RESUME_CONTENT=$(cat "$CONTINUE_HERE_FILE" | sed 's|</|<\\\/|g')
+    fi
+    CONTEXT="${CONTEXT}
+<resume_context${STALE_RESUME}>
+${RESUME_CONTENT}
+</resume_context>"
+    echo "$(date +%s)" > "$RESUME_FLAG_FILE" 2>/dev/null
+  fi
+fi
+
 # If no context files exist, nothing to inject
 if [ -z "$CONTEXT" ]; then
   exit 0
@@ -118,11 +148,8 @@ if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
 
   if [ -n "$INSTALLED_VERSION" ] && [ -n "$PROJECT_VERSION" ] && [ "$INSTALLED_VERSION" != "$PROJECT_VERSION" ]; then
     # Check flag file to avoid repeating the nudge every message
-    PROJECT_HASH=$(echo "$PWD" | md5sum 2>/dev/null | cut -d' ' -f1 || echo "default")
-    FLAG_DIR="${TMPDIR:-/tmp}/mk-flow-nudge"
     FLAG_FILE="${FLAG_DIR}/${PROJECT_HASH}-${INSTALLED_VERSION}"
     if [ ! -f "$FLAG_FILE" ]; then
-      mkdir -p "$FLAG_DIR" 2>/dev/null
       echo "$(date +%s)" > "$FLAG_FILE" 2>/dev/null
       STALE_NUDGE="[mk-flow] Defaults updated (${PROJECT_VERSION} -> ${INSTALLED_VERSION}). Run /mk-flow-update to sync your project context files."
     fi
@@ -170,16 +197,28 @@ Multi-step build project (user wants to build something with multiple components
 Simple single tasks: just execute directly. No skill routing needed.
 
 Pipeline-aware routing — if STATE.md has a Pipeline Position section, use it to suggest the next step:
+  If stage is "idle":
+    Suggest: "No active pipeline. Explore with /miltiaze or assess with /architect audit."
+  If stage is "research":
+    Suggest: "Miltiaze exploration in progress. Continue with /miltiaze."
   If stage is "requirements-complete" and no PLAN.md exists in artifacts/designs/:
     Suggest: "/architect to plan the implementation from the requirements."
   If stage is "audit-complete" and no PLAN.md exists:
     Suggest: "/architect to plan improvements from the audit findings."
+  If stage matches "sprint-" followed by a number but does NOT end with "-complete":
+    Suggest: "Sprint [N] in progress. Continue execution with /ladder-build."
   If stage contains "sprint-" and ends with "-complete":
     Suggest: "/architect for QA review and next sprint planning."
-  If a PLAN.md exists with task specs in artifacts/designs/:
+  If stage is "reassessment":
+    Suggest: "Mid-pipeline reassessment. Run /architect to evaluate."
+  If stage is "complete":
+    Suggest: "Pipeline cycle complete. Start new work with /miltiaze or /architect audit."
+  If a PLAN.md exists with task specs in artifacts/designs/ AND stage does not match any of: idle, research, requirements-complete, audit-complete, sprint-N (active), sprint-N-complete, reassessment, complete:
     Suggest: "/ladder-build to execute the current sprint's task specs."
   If the user says "assess", "audit", or "where do we stand on the code":
     Suggest: "/architect audit to assess the codebase."
+  If stage is set but matches none of the above:
+    Suggest: "Pipeline Position shows stage '[stage]' — no routing rule for this stage. Check STATE.md."
   These are suggestions, not mandates — the user may have a different intent. Only suggest when it naturally fits.
 
 For status_query intent:

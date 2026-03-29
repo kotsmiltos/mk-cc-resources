@@ -140,6 +140,21 @@ Use AskUserQuestion:
 - **Skip** — Don't apply changes right now
 </step_5_show_diff_and_confirm>
 
+<step_5b_migrate_state_sections>
+After syncing defaults and before applying meta updates, check if `context/STATE.md` contains legacy section names that need migration.
+
+**"Next Up" → "Planned Work" migration:**
+1. Read `context/STATE.md`
+2. If the file contains a `## Next Up` section header:
+   a. Check whether `## Planned Work` already exists in the file
+   b. If `## Planned Work` already exists: skip the rename, report "Skipped: STATE.md has both '## Next Up' and '## Planned Work' — resolve manually"
+   c. If `## Planned Work` does NOT exist: rename the `## Next Up` header to `## Planned Work`
+   d. Report: "Migrated: ## Next Up → ## Planned Work in STATE.md"
+3. If `## Next Up` does not exist: no action needed, skip silently
+
+This handles projects initialized before the state template overhaul (workflow-clarity Sprint 1, 2026-03-29). The migration is idempotent — running it again after a successful rename finds no `## Next Up` and skips.
+</step_5b_migrate_state_sections>
+
 <step_6_apply_and_update_meta>
 After confirmation, write the merged content to each file.
 

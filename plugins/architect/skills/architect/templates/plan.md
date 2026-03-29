@@ -5,10 +5,14 @@ Use this structure for PLAN.md — the architect's living master plan. This is t
 Save to: `artifacts/designs/[slug]/PLAN.md`
 
 ```markdown
-# Plan: [Feature/Project Name]
+> **type:** plan
+> **output_path:** artifacts/designs/[slug]/PLAN.md
+> **source:** [Path to miltiaze requirements/exploration, or audit report, or "Direct request"]
+> **created:** [YYYY-MM-DD]
+> **key_decisions:** [from Decisions Log — list decision IDs, e.g., D1, D2, D5]
+> **open_questions:** [unresolved items requiring user input, or "none"]
 
-> **Source:** [Path to miltiaze requirements/exploration, or audit report, or "Direct request"]
-> **Created:** [YYYY-MM-DD]
+# Plan: [Feature/Project Name]
 
 ## Vision
 [From miltiaze or user — what we're building and why, in the client's terms. 2-4 sentences. This is the North Star.]
@@ -31,11 +35,11 @@ graph TD
 
 ## Sprint Tracking
 
-| Sprint | Tasks | Completed | QA Result | Key Changes |
-|--------|-------|-----------|-----------|-------------|
-| 1 | 3 | 3/3 | PASS (1 note) | [Brief summary] |
-| 2 | 3 | 1/3 | — | [Brief summary] |
-| 3 | TBD | — | — | Scoped after sprint 2 review |
+| Sprint | Tasks | Completed | QA Result | Key Changes | Boundary Rationale |
+|--------|-------|-----------|-----------|-------------|-------------------|
+| 1 | 3 | 3/3 | PASS (1 note) | [Brief summary] | Scope boundary: [independently verifiable capability] |
+| 2 | 3 | 1/3 | — | [Brief summary] | Decision gate: [what must be verified before continuing] |
+| 3 | TBD | — | — | Scoped after sprint 2 review | Context limit: [why context health requires a break here] |
 
 ## Task Index
 
@@ -73,6 +77,17 @@ graph TD
 | Date | What Changed | Why | Impact on Remaining Work |
 |------|-------------|-----|-------------------------|
 | YYYY-MM-DD | [What was amended] | [Why the change was needed] | [How it affects upcoming sprints] |
+
+## Adversarial Assessment
+[State 3+ specific ways this plan could fail. For each: name the failure mode, which sprint it affects, and what the mitigation is. Include at least one scenario where the plan's own assumptions are wrong.]
+
+| # | Failure Mode | Affected Sprint(s) | Mitigation | Assumption at Risk |
+|---|-------------|--------------------|-----------|--------------------|
+| 1 | [Specific way this plan could fail] | Sprint N | [How to prevent or recover] | [Which plan assumption breaks if this happens] |
+| 2 | [Specific way this plan could fail] | Sprint N | [How to prevent or recover] | [Which plan assumption breaks] |
+| 3 | [Specific way this plan could fail] | Sprint N | [How to prevent or recover] | [Which plan assumption breaks] |
+
+[Do NOT produce generic risks ("timeline might slip"). Each failure mode must be specific to THIS plan — name the module, the interface, the decision, or the dependency that fails. If you can't name specifics, the plan isn't detailed enough to assess.]
 
 ## Fitness Functions
 [Machine-checkable assertions about architectural properties. Used by QA agents for verification.]

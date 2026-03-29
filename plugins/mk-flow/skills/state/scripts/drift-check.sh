@@ -465,14 +465,11 @@ parse_design_sprints() {
       continue
     fi
 
-    # Detect header row and determine format from column count
+    # Detect header row and determine format from column names (not count)
+    # OLD format has a Status column: | Sprint | Status | Tasks | Completed | ...
+    # NEW format omits Status:        | Sprint | Tasks  | Completed | ...
     if [[ "$line" =~ \|[[:space:]]*Sprint[[:space:]]*\| ]]; then
-      local header_row="${line#|}"
-      header_row="${header_row%|}"
-      IFS='|' read -ra header_fields <<< "$header_row"
-      local col_count=${#header_fields[@]}
-
-      if [ "$col_count" -ge 6 ]; then
+      if [[ "$line" =~ \|[[:space:]]*Status[[:space:]]*\| ]]; then
         format="old"
       else
         format="new"
@@ -674,23 +671,400 @@ verify_design_plan() {
 }
 
 # ---------------------------------------------------------------------------
+# Pipeline Position field validation
+# ---------------------------------------------------------------------------
+
+# Path to canonical template and routing hook (relative to repo root)
+STATE_TEMPLATE="plugins/mk-flow/skills/state/templates/state.md"
+INTENT_HOOK="plugins/mk-flow/hooks/intent-inject.sh"
+STATE_FILE="context/STATE.md"
+
+# --- Parse a Pipeline Position field from STATE.md ---
+# Usage: parse_pp_field "Stage" < file
+# Returns the value after "- **FieldName:**", with em-dash treated as empty.
+parse_pp_field() {
+  local field_label="$1"
+  local file="$2"
+  local value
+  # Match "- **Field:**" or "- **Field:** value" — case-insensitive field match
+  value=$(grep -m1 "^- \*\*${field_label}:\*\*" "$file" 2>/dev/null | sed "s/^- \*\*${field_label}:\*\*[[:space:]]*//" | tr -d '\r') || true
+
+  # Treat em-dash (—), en-dash (–), plain dash surrounded by spaces, and empty as "not set"
+  case "$value" in
+    ""|"—"|"–"|"-") echo "" ;;
+    *) echo "$value" ;;
+  esac
+}
+
+# --- Check if STATE.md has a Pipeline Position section ---
+has_pipeline_position() {
+  local file="$1"
+  grep -q "^## Pipeline Position" "$file" 2>/dev/null
+}
+
+# --- Validate Pipeline Position fields for the current stage ---
+# Prints [PASS]/[DRIFT] lines, sets PP_DRIFT_COUNT.
+PP_DRIFT_COUNT=0
+
+validate_pipeline_position() {
+  PP_DRIFT_COUNT=0
+  local pp_results=""
+  local pp_drift=0
+
+  # Skip if no STATE.md
+  if [ ! -f "$STATE_FILE" ]; then
+    echo ""
+    echo -e "${YELLOW}Pipeline Position: context/STATE.md not found — validation skipped${RESET}"
+    return
+  fi
+
+  # Skip if Pipeline Position section missing
+  if ! has_pipeline_position "$STATE_FILE"; then
+    echo ""
+    echo -e "${YELLOW}Pipeline Position: section not found in STATE.md — validation skipped${RESET}"
+    return
+  fi
+
+  # Parse all Pipeline Position fields
+  local pp_stage pp_requirements pp_audit pp_plan pp_current_sprint
+  local pp_build_plan pp_task_specs pp_completion_evidence pp_last_verified
+  pp_stage=$(parse_pp_field "Stage" "$STATE_FILE")
+  pp_requirements=$(parse_pp_field "Requirements" "$STATE_FILE")
+  pp_audit=$(parse_pp_field "Audit" "$STATE_FILE")
+  pp_plan=$(parse_pp_field "Plan" "$STATE_FILE")
+  pp_current_sprint=$(parse_pp_field "Current sprint" "$STATE_FILE")
+  pp_build_plan=$(parse_pp_field "Build plan" "$STATE_FILE")
+  pp_task_specs=$(parse_pp_field "Task specs" "$STATE_FILE")
+  pp_completion_evidence=$(parse_pp_field "Completion evidence" "$STATE_FILE")
+  pp_last_verified=$(parse_pp_field "Last verified" "$STATE_FILE")
+
+  if [ -z "$pp_stage" ]; then
+    echo ""
+    echo -e "${YELLOW}Pipeline Position: Stage field is empty — validation skipped${RESET}"
+    return
+  fi
+
+  # Determine required fields for the current stage
+  # sprint-N and sprint-N-complete are pattern-matched
+  local required_fields=""
+  local stage_category="$pp_stage"
+
+  # Normalize sprint-N patterns to generic form for the case statement
+  if [[ "$pp_stage" =~ ^sprint-[0-9]+-complete$ ]]; then
+    stage_category="sprint-N-complete"
+  elif [[ "$pp_stage" =~ ^sprint-[0-9]+$ ]]; then
+    stage_category="sprint-N"
+  fi
+
+  case "$stage_category" in
+    idle)
+      required_fields=""
+      ;;
+    research)
+      required_fields=""
+      ;;
+    requirements-complete)
+      required_fields="requirements"
+      ;;
+    audit-complete)
+      required_fields="audit"
+      ;;
+    sprint-N)
+      required_fields="plan current_sprint task_specs"
+      ;;
+    sprint-N-complete)
+      required_fields="plan current_sprint completion_evidence"
+      ;;
+    reassessment)
+      required_fields="plan"
+      ;;
+    complete)
+      required_fields="plan"
+      ;;
+    *)
+      # Unknown stage — report but don't fail
+      pp_results="${pp_results}$(printf "  ${YELLOW}[NOTE]${RESET} Pipeline Position: unknown stage '%s' — not in canonical list" "$pp_stage")\n"
+      required_fields=""
+      ;;
+  esac
+
+  # Validate required fields are non-empty
+  local field_name field_value
+  for field_name in $required_fields; do
+    case "$field_name" in
+      requirements)       field_value="$pp_requirements" ;;
+      audit)              field_value="$pp_audit" ;;
+      plan)               field_value="$pp_plan" ;;
+      current_sprint)     field_value="$pp_current_sprint" ;;
+      build_plan)         field_value="$pp_build_plan" ;;
+      task_specs)         field_value="$pp_task_specs" ;;
+      completion_evidence) field_value="$pp_completion_evidence" ;;
+      last_verified)      field_value="$pp_last_verified" ;;
+      *)                  field_value="" ;;
+    esac
+
+    if [ -z "$field_value" ]; then
+      pp_results="${pp_results}$(printf "  ${RED}[DRIFT]${RESET} Pipeline Position: '%s' is empty but stage '%s' requires it" "$field_name" "$pp_stage")\n"
+      ((pp_drift++)) || true
+    fi
+  done
+
+  # Validate artifact paths exist when referenced (R3/R4: array-based, strips trailing descriptions)
+  local -a artifact_fields=("plan" "task_specs" "completion_evidence" "requirements" "audit" "build_plan")
+  local -a artifact_values=("$pp_plan" "$pp_task_specs" "$pp_completion_evidence" "$pp_requirements" "$pp_audit" "$pp_build_plan")
+  local i
+  for ((i=0; i<${#artifact_fields[@]}; i++)); do
+    local a_field="${artifact_fields[$i]}"
+    local a_path="${artifact_values[$i]}"
+    [ -z "$a_path" ] && continue
+
+    # Strip trailing description after em-dash or en-dash (e.g., "path/file.md — 3 sprints")
+    a_path="${a_path%% —*}"
+    a_path="${a_path%% –*}"
+
+    # Only check if it looks like a path (contains / or .)
+    if [[ "$a_path" != */* ]] && [[ "$a_path" != *.* ]]; then
+      continue
+    fi
+
+    if [ -e "$a_path" ]; then
+      pp_results="${pp_results}$(printf "  ${GREEN}[PASS]${RESET} Pipeline Position: '%s' artifact exists: %s" "$a_field" "$a_path")\n"
+    else
+      pp_results="${pp_results}$(printf "  ${RED}[DRIFT]${RESET} Pipeline Position: '%s' references non-existent path: %s" "$a_field" "$a_path")\n"
+      ((pp_drift++)) || true
+    fi
+  done
+
+  # If no required fields and no artifact issues, report overall pass
+  if [ "$pp_drift" -eq 0 ] && [ -z "$pp_results" ]; then
+    pp_results="$(printf "  ${GREEN}[PASS]${RESET} Pipeline Position: all fields consistent with stage '%s'" "$pp_stage")\n"
+  elif [ "$pp_drift" -eq 0 ]; then
+    pp_results="${pp_results}$(printf "  ${GREEN}[PASS]${RESET} Pipeline Position: all required fields present for stage '%s'" "$pp_stage")\n"
+  fi
+
+  # Print results
+  echo ""
+  echo -e "${BOLD}PIPELINE POSITION VALIDATION${RESET}"
+  echo "───────────────────────────────────────────────────────────────────────"
+  echo -e "$pp_results"
+  echo "───────────────────────────────────────────────────────────────────────"
+
+  if [ "$pp_drift" -eq 0 ]; then
+    echo -e "${GREEN}Result: Pipeline Position fields are consistent${RESET}"
+  else
+    echo -e "${RED}Result: Pipeline Position has ${pp_drift} issue(s)${RESET}"
+  fi
+
+  PP_DRIFT_COUNT=$pp_drift
+}
+
+# ---------------------------------------------------------------------------
+# Canonical stage consistency check
+# ---------------------------------------------------------------------------
+
+# --- Extract canonical stages from state.md template ---
+# Reads the fenced YAML block under "### Canonical Pipeline Stages"
+# Expected format: "  - stage_name   # comment"
+extract_canonical_stages() {
+  local template="$1"
+  local in_block=false
+  local in_yaml=false
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+
+    # Detect the Canonical Pipeline Stages heading
+    if [[ "$line" =~ ^###[[:space:]]+Canonical[[:space:]]+Pipeline[[:space:]]+Stages ]]; then
+      in_block=true
+      continue
+    fi
+
+    # Next heading ends the section
+    if [ "$in_block" = true ] && [[ "$line" =~ ^## ]]; then
+      break
+    fi
+
+    # Detect start of yaml fence
+    if [ "$in_block" = true ] && [[ "$line" =~ ^\`\`\`yaml ]]; then
+      in_yaml=true
+      continue
+    fi
+
+    # Detect end of yaml fence
+    if [ "$in_yaml" = true ] && [[ "$line" =~ ^\`\`\` ]]; then
+      break
+    fi
+
+    # Extract stage names from "  - stage_name" lines (under stages: key)
+    if [ "$in_yaml" = true ] && [[ "$line" =~ ^[[:space:]]*-[[:space:]]+([a-zA-Z][-a-zA-Z0-9]*) ]]; then
+      # Skip lines under "consumers:" — those are file paths, not stages
+      local stage_candidate="${BASH_REMATCH[1]}"
+      # Consumer paths start with "plugins/" or similar — stage names don't contain "/"
+      if [[ "$line" != */* ]]; then
+        echo "$stage_candidate"
+      fi
+    fi
+
+  done < "$template"
+}
+
+# --- Extract stages referenced in intent-inject.sh routing rules ---
+# Looks for stage names in the pipeline-aware routing section.
+# Expected patterns: 'stage is "name"', 'stage matches "sprint-"', 'stage contains "sprint-"'
+extract_routing_stages() {
+  local hook="$1"
+  local in_routing=false
+  local stages_found=""
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+
+    # Detect start of pipeline-aware routing section
+    if [[ "$line" =~ Pipeline-aware[[:space:]]+routing ]]; then
+      in_routing=true
+      continue
+    fi
+
+    # End of routing section: next major instruction block (starts with non-indented text
+    # that doesn't start with "If" or "These" or whitespace)
+    if [ "$in_routing" = true ] && [[ "$line" =~ ^[A-Z] ]] && [[ ! "$line" =~ ^If ]] && [[ ! "$line" =~ ^These ]]; then
+      break
+    fi
+
+    if [ "$in_routing" = false ]; then
+      continue
+    fi
+
+    # Extract quoted stage names from "If stage is" patterns
+    # Match: idle, research, requirements-complete, audit-complete, reassessment, complete
+    if [[ "$line" =~ stage[[:space:]]+is[[:space:]]+\"([a-zA-Z][-a-zA-Z0-9]*)\" ]]; then
+      stages_found="${stages_found} ${BASH_REMATCH[1]}"
+    fi
+
+    # Match sprint-N patterns: "sprint-" followed by a number
+    # Line 208: "does NOT end with -complete" → sprint-N (active sprint)
+    # Line 210: "ends with -complete" → sprint-N-complete (completed sprint)
+    # Must check "NOT" before generic "-complete" to avoid false classification
+    if [[ "$line" =~ sprint- ]] && [[ "$line" =~ stage ]]; then
+      if [[ "$line" =~ NOT[[:space:]]+end ]] || [[ "$line" =~ followed[[:space:]]+by[[:space:]]+a[[:space:]]+number[[:space:]]+but ]]; then
+        stages_found="${stages_found} sprint-N"
+      elif [[ "$line" =~ ends[[:space:]]+with[[:space:]]+\"-complete\" ]] || [[ "$line" =~ ends[[:space:]]+with[[:space:]]+-complete ]]; then
+        stages_found="${stages_found} sprint-N-complete"
+      fi
+    fi
+
+  done < "$hook"
+
+  # Deduplicate and print
+  echo "$stages_found" | tr ' ' '\n' | sort -u | while IFS= read -r s; do
+    [ -z "$s" ] && continue
+    echo "$s"
+  done
+}
+
+# --- Compare canonical stages with routing rules ---
+# Prints [PASS]/[DRIFT] lines, sets CANONICAL_DRIFT_COUNT.
+CANONICAL_DRIFT_COUNT=0
+
+check_canonical_stages() {
+  CANONICAL_DRIFT_COUNT=0
+  local cs_results=""
+  local cs_drift=0
+
+  # Locate the template file — try repo root first, then relative to script
+  local template_path="$STATE_TEMPLATE"
+  if [ ! -f "$template_path" ]; then
+    # Try relative to script location
+    local script_dir
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    template_path="${script_dir}/../templates/state.md"
+  fi
+
+  if [ ! -f "$template_path" ]; then
+    echo ""
+    echo -e "${YELLOW}Canonical stages: state.md template not found — consistency check skipped${RESET}"
+    return
+  fi
+
+  local hook_path="$INTENT_HOOK"
+  if [ ! -f "$hook_path" ]; then
+    echo ""
+    echo -e "${YELLOW}Canonical stages: intent-inject.sh not found — consistency check skipped${RESET}"
+    return
+  fi
+
+  # Extract both stage lists
+  local canonical_stages routing_stages
+  canonical_stages=$(extract_canonical_stages "$template_path")
+  routing_stages=$(extract_routing_stages "$hook_path")
+
+  if [ -z "$canonical_stages" ]; then
+    echo ""
+    echo -e "${YELLOW}Canonical stages: could not extract stages from template — check skipped${RESET}"
+    return
+  fi
+
+  local canonical_count=0
+  local matched_count=0
+
+  # Check each canonical stage has a routing rule
+  while IFS= read -r stage; do
+    [ -z "$stage" ] && continue
+    ((canonical_count++)) || true
+
+    if echo "$routing_stages" | grep -qx "$stage" 2>/dev/null; then
+      ((matched_count++)) || true
+    else
+      cs_results="${cs_results}$(printf "  ${RED}[DRIFT]${RESET} Canonical stage '%s' has no routing rule in intent-inject.sh" "$stage")\n"
+      ((cs_drift++)) || true
+    fi
+  done <<< "$canonical_stages"
+
+  # Check each routing stage is in the canonical list
+  while IFS= read -r stage; do
+    [ -z "$stage" ] && continue
+    if ! echo "$canonical_stages" | grep -qx "$stage" 2>/dev/null; then
+      cs_results="${cs_results}$(printf "  ${RED}[DRIFT]${RESET} Routing rule references stage '%s' not in canonical list" "$stage")\n"
+      ((cs_drift++)) || true
+    fi
+  done <<< "$routing_stages"
+
+  # Report results
+  if [ "$cs_drift" -eq 0 ]; then
+    cs_results="$(printf "  ${GREEN}[PASS]${RESET} Canonical stages: all %d stages have routing rules" "$canonical_count")\n"
+  fi
+
+  echo ""
+  echo -e "${BOLD}CANONICAL STAGE CONSISTENCY${RESET}"
+  echo "───────────────────────────────────────────────────────────────────────"
+  echo -e "$cs_results"
+  echo "───────────────────────────────────────────────────────────────────────"
+
+  if [ "$cs_drift" -eq 0 ]; then
+    echo -e "${GREEN}Result: Canonical stages are consistent across consumers${RESET}"
+  else
+    echo -e "${RED}Result: ${cs_drift} canonical stage inconsistency(ies) found${RESET}"
+  fi
+
+  CANONICAL_DRIFT_COUNT=$cs_drift
+}
+
+# ---------------------------------------------------------------------------
 # --fix flag: correct STATE.md Pipeline Position from evidence
 # ---------------------------------------------------------------------------
 
 fix_state() {
-  local STATE_FILE="context/STATE.md"
-
   if [ ! -f "$STATE_FILE" ]; then
     echo ""
     echo -e "${YELLOW}WARNING: --fix requested but context/STATE.md not found. Nothing to fix.${RESET}"
     return
   fi
 
-  # Read current Pipeline Position values
+  # Read current Pipeline Position values (markdown format: "- **Field:** value")
   local current_stage current_sprint current_plan
-  current_stage=$(grep -m1 '^stage:' "$STATE_FILE" 2>/dev/null | sed 's/^stage:[[:space:]]*//' | tr -d '\r') || true
-  current_sprint=$(grep -m1 '^current_sprint:' "$STATE_FILE" 2>/dev/null | sed 's/^current_sprint:[[:space:]]*//' | tr -d '\r') || true
-  current_plan=$(grep -m1 '^plan:' "$STATE_FILE" 2>/dev/null | sed 's/^plan:[[:space:]]*//' | tr -d '\r') || true
+  current_stage=$(parse_pp_field "Stage" "$STATE_FILE")
+  current_sprint=$(parse_pp_field "Current sprint" "$STATE_FILE")
+  current_plan=$(parse_pp_field "Plan" "$STATE_FILE")
 
   local correct_stage="" correct_sprint=""
 
@@ -774,12 +1148,12 @@ fix_state() {
     fi
 
     if [ "$in_pipeline" = true ]; then
-      if [[ "$line" =~ ^stage: ]]; then
-        echo "stage: ${correct_stage}" >> "$tmp_file"
-      elif [[ "$line" =~ ^current_sprint: ]]; then
-        echo "current_sprint: ${correct_sprint}" >> "$tmp_file"
+      if [[ "$line" =~ ^-[[:space:]]\*\*Stage:\*\* ]]; then
+        echo "- **Stage:** ${correct_stage}" >> "$tmp_file"
+      elif [[ "$line" =~ ^-[[:space:]]\*\*Current[[:space:]]sprint:\*\* ]]; then
+        echo "- **Current sprint:** ${correct_sprint}" >> "$tmp_file"
       else
-        # Preserve plan:, requirements:, audit:, and other fields unchanged
+        # Preserve other Pipeline Position fields unchanged
         echo "$line" >> "$tmp_file"
       fi
     else
@@ -793,6 +1167,132 @@ fix_state() {
   echo -e "${GREEN}FIXED: Pipeline Position updated${RESET}"
   echo "  stage: ${current_stage} → ${correct_stage}"
   echo "  current_sprint: ${current_sprint} → ${correct_sprint}"
+}
+
+# --- Fix empty Pipeline Position fields from discovered artifacts ---
+fix_pipeline_fields() {
+  if [ ! -f "$STATE_FILE" ]; then
+    return
+  fi
+
+  if ! has_pipeline_position "$STATE_FILE"; then
+    return
+  fi
+
+  local pp_stage pp_plan pp_task_specs pp_completion_evidence pp_current_sprint
+  pp_stage=$(parse_pp_field "Stage" "$STATE_FILE")
+  pp_plan=$(parse_pp_field "Plan" "$STATE_FILE")
+  pp_task_specs=$(parse_pp_field "Task specs" "$STATE_FILE")
+  pp_completion_evidence=$(parse_pp_field "Completion evidence" "$STATE_FILE")
+  pp_current_sprint=$(parse_pp_field "Current sprint" "$STATE_FILE")
+
+  [ -z "$pp_stage" ] && return
+
+  local fixes_made=false
+  local fix_plan="" fix_task_specs="" fix_completion=""
+
+  # Discover plan if empty
+  if [ -z "$pp_plan" ]; then
+    # Search for PLAN.md files
+    local found_plans=()
+    for f in artifacts/designs/*/PLAN.md; do
+      [ -f "$f" ] && found_plans+=("$f")
+    done
+    # Also check BUILD-PLAN.md
+    for f in artifacts/builds/*/BUILD-PLAN.md; do
+      [ -f "$f" ] && found_plans+=("$f")
+    done
+
+    if [ "${#found_plans[@]}" -eq 1 ]; then
+      fix_plan="${found_plans[0]}"
+    elif [ "${#found_plans[@]}" -gt 1 ]; then
+      echo -e "  ${YELLOW}--fix: Multiple plan files found — cannot auto-select plan field${RESET}"
+    fi
+  fi
+
+  # Use the plan (existing or just-discovered) to derive other fields
+  local effective_plan="${pp_plan:-$fix_plan}"
+
+  # Discover task_specs if empty and stage is sprint-N
+  if [ -z "$pp_task_specs" ] && [[ "$pp_stage" =~ ^sprint-[0-9]+$ ]]; then
+    local sprint_num="${pp_stage#sprint-}"
+    if [ -n "$effective_plan" ] && [[ "$effective_plan" == *PLAN.md ]]; then
+      local plan_dir
+      plan_dir=$(dirname "$effective_plan")
+      local candidate="${plan_dir}/sprints/sprint-${sprint_num}/"
+      if [ -d "$candidate" ]; then
+        fix_task_specs="$candidate"
+      fi
+    fi
+  fi
+
+  # Discover completion_evidence if empty and stage is sprint-N-complete
+  if [ -z "$pp_completion_evidence" ] && [[ "$pp_stage" =~ ^sprint-[0-9]+-complete$ ]]; then
+    local sprint_num="${pp_stage#sprint-}"
+    sprint_num="${sprint_num%-complete}"
+    if [ -n "$effective_plan" ] && [[ "$effective_plan" == *PLAN.md ]]; then
+      local plan_dir
+      plan_dir=$(dirname "$effective_plan")
+      local candidate="${plan_dir}/sprints/sprint-${sprint_num}/COMPLETION.md"
+      if [ -f "$candidate" ]; then
+        fix_completion="$candidate"
+      fi
+      # Also check for QA-REPORT.md
+      candidate="${plan_dir}/sprints/sprint-${sprint_num}/QA-REPORT.md"
+      if [ -z "$fix_completion" ] && [ -f "$candidate" ]; then
+        fix_completion="$candidate"
+      fi
+    fi
+  fi
+
+  # Apply fixes if any were found
+  if [ -z "$fix_plan" ] && [ -z "$fix_task_specs" ] && [ -z "$fix_completion" ]; then
+    return
+  fi
+
+  # Backup already created by fix_state or create one now
+  if [ ! -f "${STATE_FILE}.bak" ]; then
+    cp "$STATE_FILE" "${STATE_FILE}.bak"
+    echo -e "${BOLD}Backup created: ${STATE_FILE}.bak${RESET}"
+  fi
+
+  local tmp_file="${STATE_FILE}.tmp"
+  rm -f "$tmp_file"
+  local in_pipeline=false
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    if [[ "$line" =~ ^##[[:space:]]+Pipeline[[:space:]]+Position ]]; then
+      in_pipeline=true
+      echo "$line" >> "$tmp_file"
+      continue
+    fi
+
+    if [ "$in_pipeline" = true ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+      in_pipeline=false
+    fi
+
+    if [ "$in_pipeline" = true ]; then
+      if [ -n "$fix_plan" ] && [[ "$line" =~ ^\-[[:space:]]\*\*Plan:\*\* ]]; then
+        echo "- **Plan:** ${fix_plan}" >> "$tmp_file"
+      elif [ -n "$fix_task_specs" ] && [[ "$line" =~ ^\-[[:space:]]\*\*Task[[:space:]]specs:\*\* ]]; then
+        echo "- **Task specs:** ${fix_task_specs}" >> "$tmp_file"
+      elif [ -n "$fix_completion" ] && [[ "$line" =~ ^\-[[:space:]]\*\*Completion[[:space:]]evidence:\*\* ]]; then
+        echo "- **Completion evidence:** ${fix_completion}" >> "$tmp_file"
+      else
+        echo "$line" >> "$tmp_file"
+      fi
+    else
+      echo "$line" >> "$tmp_file"
+    fi
+  done < "$STATE_FILE"
+
+  mv "$tmp_file" "$STATE_FILE"
+
+  echo -e "${GREEN}FIXED: Pipeline Position fields populated from evidence${RESET}"
+  [ -n "$fix_plan" ] && echo "  Plan: — → ${fix_plan}"
+  [ -n "$fix_task_specs" ] && echo "  Task specs: — → ${fix_task_specs}"
+  [ -n "$fix_completion" ] && echo "  Completion evidence: — → ${fix_completion}"
 }
 
 # ---------------------------------------------------------------------------
@@ -821,17 +1321,9 @@ if [ -n "$TARGET" ]; then
   case "$(basename "$TARGET")" in
     BUILD-PLAN.md)
       process_build_plan "$TARGET"
-      if [ "$FIX_MODE" = true ]; then
-        fix_state
-      fi
-      [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
       ;;
     PLAN.md)
       verify_design_plan "$TARGET"
-      if [ "$FIX_MODE" = true ]; then
-        fix_state
-      fi
-      [ "$PLAN_DRIFT_COUNT" -eq 0 ] && exit 0 || exit 1
       ;;
     *)
       echo "ERROR: Unrecognized plan file: $TARGET" >&2
@@ -839,6 +1331,17 @@ if [ -n "$TARGET" ]; then
       exit 2
       ;;
   esac
+
+  # Pipeline Position validation runs after plan checks (even in single-file mode)
+  validate_pipeline_position
+
+  if [ "$FIX_MODE" = true ]; then
+    fix_state
+    fix_pipeline_fields
+  fi
+
+  local_drift=$((PLAN_DRIFT_COUNT + PP_DRIFT_COUNT))
+  [ "$local_drift" -eq 0 ] && exit 0 || exit 1
 fi
 
 # --- Auto-discovery mode: find both plan types ---
@@ -882,21 +1385,28 @@ for plan_file in "${design_plans[@]}"; do
   ((total_plans++)) || true
 done
 
-# --- Final summary when multiple plans were processed ---
-if [ "$total_plans" -gt 1 ]; then
-  echo ""
-  echo "═══════════════════════════════════════════════════════════════════════"
-  if [ "$total_drift" -eq 0 ]; then
-    echo -e "${GREEN}${BOLD}OVERALL: NO DRIFT across ${total_plans} plan(s)${RESET}"
-  else
-    echo -e "${RED}${BOLD}OVERALL: DRIFT in ${total_drift} item(s) across ${total_plans} plan(s)${RESET}"
-  fi
-  echo ""
+# --- Pipeline Position validation (auto-discover mode) ---
+validate_pipeline_position
+((total_drift += PP_DRIFT_COUNT)) || true
+
+# --- Canonical stage consistency check (auto-discover mode only) ---
+check_canonical_stages
+((total_drift += CANONICAL_DRIFT_COUNT)) || true
+
+# --- Final summary ---
+echo ""
+echo "═══════════════════════════════════════════════════════════════════════"
+if [ "$total_drift" -eq 0 ]; then
+  echo -e "${GREEN}${BOLD}OVERALL: NO DRIFT across ${total_plans} plan(s) + pipeline checks${RESET}"
+else
+  echo -e "${RED}${BOLD}OVERALL: DRIFT in ${total_drift} item(s) across ${total_plans} plan(s) + pipeline checks${RESET}"
 fi
+echo ""
 
 # --- Apply --fix if requested ---
 if [ "$FIX_MODE" = true ]; then
   fix_state
+  fix_pipeline_fields
 fi
 
 [ "$total_drift" -eq 0 ] && exit 0 || exit 1

@@ -3,6 +3,11 @@
 Use this structure. Omit sections that don't apply — NEVER include empty sections.
 
 ```markdown
+> **type:** exploration
+> **output_path:** artifacts/explorations/YYYY-MM-DD-[topic-slug]-exploration.md
+> **key_decisions:** [bullet list of decisions made in this exploration]
+> **open_questions:** [bullet list of unresolved questions, or "none"]
+
 # Exploration: [Idea Title]
 
 > **TL;DR:** [2-4 sentences. What is this idea? Is it feasible? What's the most important thing to know? What's the recommended path forward?]
@@ -108,6 +113,15 @@ _(Include when the exploration leads to building. This table feeds directly into
 | [Plan name] | [What it delivers — one sentence] | [Count] | S/M/L | [Other plan name, or "None"] |
 
 **Recommended order:** [Plan A] → [Plan B] → [Plan C]
+
+---
+
+## Where This Can Fail
+
+State 3+ specific ways this exploration's recommendations could fail. Name the failure mode, the trigger condition that causes it, and what the fallback is. Do NOT write generic hedging ("there may be risks") or vague hand-waving ("scalability could be a concern"). Be specific and honest — name real scenarios with real consequences. If you cannot find failure modes, the exploration is not deep enough — go back and stress-test the recommendations.
+
+Each failure mode must follow this structure:
+- **[Failure mode name]:** [What goes wrong] — **Trigger:** [specific condition] — **Fallback:** [concrete alternative or mitigation]
 
 ---
 

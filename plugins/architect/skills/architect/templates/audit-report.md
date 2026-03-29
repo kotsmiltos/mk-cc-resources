@@ -5,12 +5,16 @@ Use this structure for audit reports — the output of the audit workflow when a
 Save to: `artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md`
 
 ```markdown
-# Audit Report: [Project/Codebase Name]
+> **type:** audit-report
+> **output_path:** artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md
+> **date:** YYYY-MM-DD
+> **scope:** [What was assessed — full codebase, specific module, specific concern]
+> **entry_point:** [What triggered this audit — user request, pre-build assessment, periodic review]
+> **existing_goals:** [Path to STATE.md, BUILD-PLAN.md, or REQUIREMENTS.md if they exist]
+> **key_decisions:** [key findings that require decisions — list finding IDs, e.g., IQ-1, AC-3]
+> **open_questions:** [unresolved items from the audit, or "none"]
 
-> **Date:** YYYY-MM-DD
-> **Scope:** [What was assessed — full codebase, specific module, specific concern]
-> **Entry point:** [What triggered this audit — user request, pre-build assessment, periodic review]
-> **Existing goals:** [Path to STATE.md, BUILD-PLAN.md, or REQUIREMENTS.md if they exist]
+# Audit Report: [Project/Codebase Name]
 
 ## Executive Summary
 [3-5 sentences. What's the overall state? What are the biggest risks? What's the recommended next action? Write for the user (client), not a developer.]
@@ -89,6 +93,17 @@ Save to: `artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md`
 
 1. [Action] — addresses findings [IDs]. Estimated effort: S/M/L
 2. [Action] — addresses findings [IDs]. Estimated effort: S/M/L
+
+## Adversarial Assessment
+[State 3+ ways this audit's findings could be wrong, incomplete, or misleading. For each: name the blind spot, what it could miss, and what the consequence would be if the audit is wrong about it.]
+
+| # | Blind Spot | What It Could Miss | Consequence If Wrong |
+|---|-----------|-------------------|---------------------|
+| 1 | [Where the audit methodology has a gap] | [What problems could slip through] | [What happens if this gap matters] |
+| 2 | [Where the audit methodology has a gap] | [What problems could slip through] | [What happens if this gap matters] |
+| 3 | [Where the audit methodology has a gap] | [What problems could slip through] | [What happens if this gap matters] |
+
+[If the audit gives a clean bill of health, what could still be broken? If the audit found many issues, what patterns might the methodology amplify or suppress? Do NOT produce generic disclaimers — name specific areas this audit could not adequately assess and why.]
 
 ## Handoff
 [Next step suggestion for the user.]

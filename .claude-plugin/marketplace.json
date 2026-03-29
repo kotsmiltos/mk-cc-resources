@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.",
-    "version": "1.17.0"
+    "version": "1.19.0"
   },
   "plugins": [
     {
@@ -18,13 +18,13 @@
       "name": "miltiaze",
       "source": "./plugins/miltiaze",
       "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents with acceptance criteria.",
-      "version": "1.2.0"
+      "version": "1.3.0"
     },
     {
       "name": "ladder-build",
       "source": "./plugins/ladder-build",
       "description": "Incremental build pipeline — decomposes projects into small verifiable milestones, or executes architect-planned sprints with parallel task execution. Build, test, verify each rung before climbing to the next.",
-      "version": "1.2.0"
+      "version": "1.4.0"
     },
     {
       "name": "project-structure",
@@ -60,19 +60,19 @@
       "name": "mk-flow",
       "source": "./plugins/mk-flow",
       "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, pipeline-aware routing, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
-      "version": "0.8.0"
+      "version": "0.10.0"
     },
     {
       "name": "architect",
       "source": "./plugins/architect",
       "description": "Multi-agent technical leadership — spawns perspective agents to design architecture, produce sprint plans with task specs, run adversarial QA, audit existing codebases, and escalate decisions. The tech lead between research and execution.",
-      "version": "0.2.0"
+      "version": "0.4.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",
-      "version": "1.17.0"
+      "version": "1.19.0"
     }
   ]
 }

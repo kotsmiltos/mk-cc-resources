@@ -155,11 +155,15 @@ After all tasks in the sprint are executed and verified, produce a sprint comple
 Save to: `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/COMPLETION.md`
 
 ```markdown
-# Sprint [N] Completion Report
+> **type:** completion-report
+> **output_path:** artifacts/designs/[slug]/sprints/sprint-N/COMPLETION.md
+> **key_decisions:** [decisions or deviations during execution, or "none"]
+> **open_questions:** [flags for architect review, or "none"]
+> **date:** YYYY-MM-DD
+> **plan:** [Path to PLAN.md]
+> **tasks_executed:** [N] of [N]
 
-> **Date:** YYYY-MM-DD
-> **Plan:** [Path to PLAN.md]
-> **Tasks executed:** [N] of [N]
+# Sprint [N] Completion Report
 
 ## Task Results
 
@@ -197,8 +201,14 @@ If `context/STATE.md` exists, update the Pipeline Position section with exact va
 - **Audit:** [keep existing value]
 - **Plan:** [keep existing value — path to PLAN.md]
 - **Current sprint:** N
+- **Build plan:** —
+- **Task specs:** [keep existing value — path to sprint's task spec directory]
+- **Completion evidence:** artifacts/designs/[slug]/sprints/sprint-N/COMPLETION.md
+- **Last verified:** —
 ```
-Also update **Current Focus** to: "Sprint N executed for [feature]. Awaiting architect QA review."
+Also update **Current Focus** to: "Sprint N executed for [feature]. Architect QA review pending."
+
+Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing.
 
 Update PLAN.md Sprint Tracking: fill in the Completed count for this sprint (e.g., 3/3). Do NOT write a Status column — status lives in STATE.md only.
 </step_6_update_state>

@@ -238,11 +238,19 @@ Translate priority findings into architect-ready actions. Each action:
 - Addresses specific finding IDs
 - Has an estimated effort (S/M/L)
 - Feeds directly into the plan workflow as sprint task seeds
+
+**3e. Adversarial Self-Assessment:**
+Before writing the report, assess the audit's own blind spots. Identify 3+ ways the audit findings could be wrong, incomplete, or misleading:
+- Where does the audit methodology have gaps? (e.g., static analysis cannot catch runtime issues, the scope excluded certain modules, the agents share similar biases)
+- What patterns could the methodology amplify or suppress?
+- If the audit gives a clean bill of health in an area, what could still be broken there?
+This feeds directly into the Adversarial Assessment section of the audit report.
 </step_3_synthesize_findings>
 
 <step_4_write_and_present>
 **4a. Write AUDIT-REPORT.md:**
 Using templates/audit-report.md, save to: `[cwd]/artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md`
+Include the metadata block at the top of the audit report (type, output_path, date, scope, entry_point, existing_goals, key_decisions, open_questions) as defined in templates/audit-report.md.
 
 **4b. Update STATE.md** (if mk-flow is initialized):
 Update or add the Pipeline Position section with exact values:
@@ -253,8 +261,13 @@ Update or add the Pipeline Position section with exact values:
 - **Audit:** artifacts/audits/YYYY-MM-DD-[slug]-audit-report.md
 - **Plan:** —
 - **Current sprint:** —
+- **Build plan:** —
+- **Task specs:** —
+- **Completion evidence:** —
+- **Last verified:** —
 ```
 Update **Current Focus** to: "Audit complete for [project/module]. [N] findings, [X] critical."
+State description, not action. Pipeline Position handles routing.
 
 **4c. Present executive summary with exact next command:**
 ```

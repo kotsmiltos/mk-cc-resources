@@ -192,6 +192,7 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
 - **Behavioral corrections** go in `context/rules.yaml` (hook-injected), not auto-memory files
+- **Metadata convention** — Every pipeline template output includes a blockquote metadata block as the first content (before `# Title`). Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. All field names use snake_case. Domain-specific fields may follow. Format: `> **field_name:** value`
 
 ## Adopting Architecture-Aware Builds in Your Projects
 

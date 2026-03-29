@@ -1,6 +1,6 @@
 {
   "name": "ladder-build",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Incremental build pipeline — decomposes projects into small verifiable milestones, or executes architect-planned sprints with parallel task execution. Build, test, verify each rung before climbing to the next.",
   "author": {
     "name": "kotsmiltos"

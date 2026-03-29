@@ -108,6 +108,8 @@ Create milestones directory: `[cwd]/artifacts/builds/[project-slug]/milestones/`
 
 Save the build plan using the templates/build-plan.md structure.
 
+Include the metadata block at the top of BUILD-PLAN.md (type, output_path, key_decisions, open_questions) in blockquote format as specified in templates/build-plan.md. For initial creation, key_decisions is "none yet" and open_questions captures any unresolved items from the kickoff discussion.
+
 If there's a miltiaze exploration, link to it in the Source field.
 
 Tell the user where it's saved.

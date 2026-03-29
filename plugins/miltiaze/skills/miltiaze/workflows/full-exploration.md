@@ -105,23 +105,34 @@ Recommend one (or a hybrid) with clear reasoning tied to the specific context.
 </step_formulate_solutions>
 
 <step_assemble_report>
-1. Cross-reference findings. Do dimensions contradict each other? (e.g., best UX approach requires a library that's poorly maintained) Flag these tensions explicitly.
+1. **Generate the metadata block.** At the very top of the report, before the title and TL;DR, include:
+   > **type:** exploration
+   > **output_path:** artifacts/explorations/YYYY-MM-DD-[topic-slug]-exploration.md
+   > **key_decisions:** [list the key decisions that emerged from the exploration — what was chosen and why]
+   > **open_questions:** [list questions that remain unresolved after research, or "none" if all questions were answered]
 
-2. Write the TL;DR. Synthesize everything into 2-4 sentences that answer: What is this? Does it work? What's the recommended solution?
+   The metadata block must use blockquote format (`> **field:** value`), one field per line, no nesting.
 
-3. Build the Key Terms glossary. Scan all dimension findings for jargon. If there are 3+ non-obvious terms, include the glossary.
+2. Cross-reference findings. Do dimensions contradict each other? (e.g., best UX approach requires a library that's poorly maintained) Flag these tensions explicitly.
 
-4. Assemble the report using the templates/exploration-report.md structure. Dimensions first, then Solutions section, then Next Steps.
+3. Write the TL;DR. Synthesize everything into 2-4 sentences that answer: What is this? Does it work? What's the recommended solution?
 
-5. Write Next Steps. Based on the recommended solution, what are the concrete steps toward the full production implementation? Be specific and actionable — no fixed count, include as many as are genuinely needed.
+4. Build the Key Terms glossary. Scan all dimension findings for jargon. If there are 3+ non-obvious terms, include the glossary.
+
+5. Assemble the report using the templates/exploration-report.md structure. Dimensions first, then Solutions section, then Next Steps.
+
+6. Write Next Steps. Based on the recommended solution, what are the concrete steps toward the full production implementation? Be specific and actionable — no fixed count, include as many as are genuinely needed.
 
    **If the exploration leads to building:** Add a "Build Plans" subsection with a structured table (Plan | Goal | Milestones | Effort | Depends On). This table feeds directly into ladder-build's kickoff — it accepts these plans as milestones without re-decomposing. Include recommended build order. See the exploration-report template for the format.
 
-6. Compile sources. Merge all sources from all dimensions. Remove duplicates. Ensure every source was actually used.
+7. **Generate the "Where This Can Fail" section.** This section is mandatory. It must contain 3+ specific failure modes, each with a trigger condition and a fallback. Review each recommended solution and actively look for how it breaks — under what conditions, with what inputs, at what scale, or with what dependencies changing. Do NOT produce generic hedging or boilerplate risk lists. If the failure modes feel vague, the exploration wasn't deep enough — go back and stress-test before writing this section.
+
+8. Compile sources. Merge all sources from all dimensions. Remove duplicates. Ensure every source was actually used.
 </step_assemble_report>
 
 <step_verify>
 Before presenting, check:
+- Metadata block is present at the very top (before title), uses blockquote format (`> **field:** value`), and includes all 4 fields: type, output_path, key_decisions, open_questions
 - Every factual claim has a source or is explicitly marked as reasoning/unverified
 - No fabricated library names, APIs, or tools
 - No empty or filler sections
@@ -130,6 +141,7 @@ Before presenting, check:
 - At least 2 genuine solutions presented (no straw-men)
 - Each solution has: dependencies, pitfalls, hard limits, effort estimate
 - Solutions comparison table included
+- "Where This Can Fail" section is present with 3+ specific failure modes, each naming a trigger and fallback — reject generic hedging
 - Next Steps are specific and actionable (not "consider your options")
 - All sources list URLs and access dates
 - No dimension section just restates what another said
@@ -153,6 +165,7 @@ Before presenting, check:
 </process>
 
 <success_criteria>
+- Metadata block present at top with type, output_path, key_decisions, open_questions in blockquote format
 - Idea was decomposed into every relevant dimension — no artificial limits
 - Each dimension was researched with appropriate tools (not just reasoning)
 - All factual claims are sourced or explicitly qualified
@@ -160,6 +173,7 @@ Before presenting, check:
 - Solutions match reality — as many as genuinely exist, each with dependencies, pitfalls, limits, and effort estimate
 - No straw-man options or padding — every solution is a real contender
 - Solutions comparison table included
+- "Where This Can Fail" section present with 3+ specific failure modes (not boilerplate hedging)
 - Output follows the exploration-report template
 - TL;DR would make sense to someone who reads nothing else
 - Key Terms glossary included when needed

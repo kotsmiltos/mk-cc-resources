@@ -97,6 +97,31 @@ rules:
       - "plugins/ladder-build/skills/ladder-build/workflows/execute.md — sets stage"
     why: "Stage names are a distributed constant — all consumers must agree on exact strings"
 
+  metadata-format:
+    when: "Changing the metadata blockquote format (> **field:** value) in any template"
+    check:
+      - "All 10 pipeline templates — must use same format"
+      - "plugins/mk-flow/skills/state/scripts/verify-templates.sh — FF-1, FF-18, FF-19 check metadata"
+    why: "Metadata format is a pipeline-wide contract. Inconsistency breaks extraction."
+    source: "workflow-clarity remediation, Decision #1"
+
+  adversarial-sections:
+    when: "Adding or changing adversarial/risk/failure section in any template"
+    check:
+      - "Decision #5 in workflow-clarity PLAN.md — contextual naming convention"
+      - "plugins/mk-flow/skills/state/scripts/verify-templates.sh — FF-2 checks adversarial sections exist"
+    why: "Section names are contextual per template type (exploration vs plan vs milestone). Using the wrong name breaks FF-2."
+    source: "workflow-clarity remediation, Decision #5"
+
+  routing-rules:
+    when: "Adding or changing stage routing rules in intent-inject.sh"
+    check:
+      - "plugins/mk-flow/skills/state/templates/state.md — canonical stage list must include the new stage"
+      - "plugins/mk-flow/skills/state/scripts/verify-templates.sh — FF-7 checks all stages have routing"
+      - "plugins/mk-flow/skills/state/scripts/drift-check.sh — canonical stage consistency check"
+    why: "Routing rules, canonical stage list, and drift-check must all agree on stage names."
+    source: "workflow-clarity remediation, FF-7"
+
   schema-scout-versions:
     when: "Bumping schema-scout plugin.json or pyproject.toml version"
     check:

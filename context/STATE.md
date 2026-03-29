@@ -2,13 +2,21 @@
 > Last updated: 2026-03-29
 
 ## Current Focus
-Workflow clarity exploration complete. 12 design decisions made. Next: coherence audit (/architect audit) in fresh session, then plan and build.
+Workflow clarity remediation complete. 3 sprints, 13 tasks, all QA passed. 20/20 fitness functions verified.
 
 ## Pipeline Position
-stage: research
-exploration: artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
+- **Stage:** complete
+- **Requirements:** artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
+- **Audit:** artifacts/audits/2026-03-29-coherence-audit-report.md
+- **Plan:** artifacts/designs/workflow-clarity/PLAN.md
+- **Current sprint:** done
+- **Build plan:** —
+- **Task specs:** —
+- **Completion evidence:** artifacts/designs/workflow-clarity/sprints/sprint-3/QA-REPORT.md
+- **Last verified:** 2026-03-29
 
 ## Done (Recent)
+- [x] Workflow clarity — 3 sprints, 13 tasks, 12 design decisions implemented. 20/20 fitness functions. 10 autonomous QA fixes across 3 reviews.
 - [x] State consolidation — 2 sprints: removed status from plans, drift-check evidence-based + --fix flag, 5 QA fixes
 - [x] Audit remediation — 4 sprints, 53 findings resolved, all QA passed
 - [x] Pipeline integration — miltiaze requirements mode, ladder-build executor mode, mk-flow pipeline routing, cross-tool packaging (4/4 milestones)
@@ -21,9 +29,7 @@ exploration: artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
 ## Paused
 - [ ] mk-flow M7: Tooltips + commands + context handoff — paused 2026-03-22 to prioritize pipeline integration. Per artifacts/builds/mk-flow/BUILD-PLAN.md.
 
-## Next Up
-- [ ] Coherence audit — /architect audit in fresh session. Cross-reference all skill instructions, templates, references against 12 decisions in the exploration.
-- [ ] /architect plan — design sprints from exploration + audit findings
+## Planned Work
 - [ ] mk-flow M7: Tooltips + commands + context handoff (paused, per artifacts/builds/mk-flow/BUILD-PLAN.md)
 
 ## Decisions Made
@@ -36,7 +42,8 @@ See artifacts/builds/architect/BUILD-PLAN.md Decisions Log (4 entries).
 |----|--------|-------------|--------|-------|
 
 ## Context for Future Me
-Workflow clarity exploration: artifacts/explorations/2026-03-29-workflow-clarity-exploration.md (12 decisions, 3 solutions, adversarial pass with resolutions). Core problem: fresh sessions get injected context but no actionable orientation. 7 failure points mapped. Solutions: Active Orientation (enrich Pipeline Position), Consumption Contracts (standardized metadata + inverted contracts), Session Ceremony (event-driven, configurable).
-Key principles established: adversarial self-assessment is a product principle (D10), sprints serve the product not the process (D9), sprint boundaries must explain WHY (D12), coherence audit before planning (D11).
+Workflow clarity remediation COMPLETE: artifacts/designs/workflow-clarity/PLAN.md — 3 sprints, 13 tasks, all QA passed. 12 design decisions (D1-D12) implemented across all pipeline skills. 20 fitness functions verified by verify-templates.sh. QA reports at sprints/sprint-{1,2,3}/QA-REPORT.md.
+Sprint 3 QA: 3 autonomous fixes (FF-16 consumer list, FF-17 status.md, FF-17 script independence). 6 deferred refactor requests in PLAN.md Refactor Requests table — all relate to drift-check/verify-templates tooling, not pipeline contracts.
+Coherence audit: artifacts/audits/2026-03-29-coherence-audit-report.md — 74 findings, 10 recommended actions (all addressed).
 mk-flow build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, M1-M6 complete, M7 paused).
-Plugin versions: miltiaze 1.2.0, ladder-build 1.3.0, mk-flow 0.9.0, architect 0.3.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.18.0.
+Plugin versions: miltiaze 1.3.0, ladder-build 1.4.0, mk-flow 0.10.0, architect 0.4.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.19.0.

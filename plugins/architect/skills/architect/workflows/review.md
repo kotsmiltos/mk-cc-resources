@@ -242,11 +242,15 @@ For Critical findings or findings that affect scope, escalate to the user via th
 Save to `[cwd]/artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md`:
 
 ```markdown
-# QA Report: Sprint [N]
+> **type:** qa-report
+> **output_path:** artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md
+> **date:** YYYY-MM-DD
+> **plan:** [Path to PLAN.md]
+> **overall_result:** PASS | PASS (N notes) | FAIL (N issues)
+> **key_decisions:** [decisions made during review, or "none"]
+> **open_questions:** [items needing user input, or "none"]
 
-> **Date:** YYYY-MM-DD
-> **Plan:** [Path to PLAN.md]
-> **Overall Result:** PASS | PASS (N notes) | FAIL (N issues)
+# QA Report: Sprint [N]
 
 ## Summary
 - Task spec compliance: [N/N] criteria passed
@@ -358,8 +362,13 @@ If `context/STATE.md` exists, update the Pipeline Position section with exact va
 - **Audit:** [keep existing value]
 - **Plan:** [keep existing value — path to PLAN.md]
 - **Current sprint:** N+1
+- **Build plan:** —
+- **Task specs:** artifacts/designs/[slug]/sprints/sprint-(N+1)/
+- **Completion evidence:** artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md
+- **Last verified:** [today's date]
 ```
-Update **Current Focus** to: "Sprint N reviewed. Sprint N+1 task specs ready for [feature]."
+Update **Current Focus** to: "Sprint [N] reviewed. [QA result summary]. Sprint [N+1] scoped."
+State description, not action. Pipeline Position handles routing.
 
 **If this was the final sprint:**
 ```markdown
@@ -369,8 +378,13 @@ Update **Current Focus** to: "Sprint N reviewed. Sprint N+1 task specs ready for
 - **Audit:** [keep existing value]
 - **Plan:** [keep existing value]
 - **Current sprint:** done
+- **Build plan:** —
+- **Task specs:** —
+- **Completion evidence:** artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md
+- **Last verified:** [today's date]
 ```
 Update **Current Focus** to: "[Feature] pipeline complete. All sprints executed and reviewed."
+State description, not action. Pipeline Position handles routing.
 </step_5_update_state>
 
 <step_6_present_summary>

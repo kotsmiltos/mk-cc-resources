@@ -3,11 +3,14 @@
 Use this structure. The build plan is a living document — updated after every milestone.
 
 ```markdown
+> **type:** build-plan
+> **output_path:** artifacts/builds/[project-name]/BUILD-PLAN.md
+> **key_decisions:** [from Decisions Log — summarize key decisions, or "none yet"]
+> **open_questions:** [unresolved items that need answers, or "none"]
+> **end_goal:** [2-4 sentences. What does the finished product look like? Who uses it? What does it do? This is the North Star — it doesn't change unless the user explicitly redefines it.]
+> **source:** [Path to miltiaze exploration, or "Direct build request", or other context]
+
 # Build Plan: [Project Name]
-
-> **End Goal:** [2-4 sentences. What does the finished product look like? Who uses it? What does it do? This is the North Star — it doesn't change unless the user explicitly redefines it.]
-
-> **Source:** [Path to miltiaze exploration, or "Direct build request", or other context]
 
 ---
 

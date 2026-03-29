@@ -5,11 +5,14 @@ Use this structure when producing requirements for the architect. This is NOT an
 Omit sections that don't apply — NEVER include empty sections.
 
 ```markdown
+> **type:** requirements
+> **output_path:** artifacts/explorations/YYYY-MM-DD-[topic-slug]-requirements.md
+> **key_decisions:** [bullet list of decisions made during requirements research]
+> **open_questions:** [bullet list of unresolved questions, or "none"]
+
 # Requirements: [Project/Feature Title]
 
 > **TL;DR:** [2-4 sentences. What are we building? What's the recommended approach? What are the key constraints? What's the most important thing the architect needs to know?]
-
-> **For:** Architect — this document is the input to /architect for sprint planning.
 
 ---
 
@@ -127,6 +130,17 @@ _(Structured table for the architect. Same format as exploration reports — thi
 | [Plan name] | [What it delivers] | [Count] | S/M/L | [Dependencies or "None"] |
 
 **Recommended order:** [Plan A] → [Plan B] → [Plan C]
+
+---
+
+## Implementation Risks
+
+State 3+ specific ways the recommended approach could fail during implementation. Name the risk, its likelihood (H/M/L), and the mitigation. Cross-reference with perspective agent disagreements — unresolved disagreements are risks by definition. Do NOT write generic hedging ("there could be integration challenges"). Be specific: name the component, the failure mode, and what happens to the project if it occurs.
+
+Each risk must follow this structure:
+- **[Risk name]:** [What goes wrong and why] — **Likelihood:** [H/M/L] — **Mitigation:** [concrete action or fallback]
+
+Aggregate risks from all perspective agents here. Risks scattered across individual perspective sections must be collected and deduplicated in this section so the architect has a single view.
 
 ---
 

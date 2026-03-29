@@ -138,25 +138,36 @@ Decompose the recommended solution into plans that feed the architect's sprint p
 </step_synthesize_requirements>
 
 <step_assemble_report>
-1. Write the TL;DR — what we're building, recommended approach, key constraint
-2. Write "What We're Building" with user stories
-3. Write Research Findings with each perspective's analysis
-4. Write Cross-Perspective Agreements and Disagreements
-5. Write Recommended Solution with alternatives if they exist
-6. Write Acceptance Criteria (testable assertions)
-7. Write Implementation Constraints
-8. Write Build Plans table
-9. Compile sources
+1. **Generate the metadata block.** At the very top of the report, before the title and TL;DR, include:
+   > **type:** requirements
+   > **output_path:** artifacts/explorations/YYYY-MM-DD-[topic-slug]-requirements.md
+   > **key_decisions:** [list decisions made during requirements research — technology choices, approach selections, constraint resolutions]
+   > **open_questions:** [list questions that remain unresolved, or "none"]
+
+   The metadata block must use blockquote format (`> **field:** value`), one field per line, no nesting.
+
+2. Write the TL;DR — what we're building, recommended approach, key constraint
+3. Write "What We're Building" with user stories
+4. Write Research Findings with each perspective's analysis
+5. Write Cross-Perspective Agreements and Disagreements
+6. Write Recommended Solution with alternatives if they exist
+7. Write Acceptance Criteria (testable assertions)
+8. Write Implementation Constraints
+9. **Generate the "Implementation Risks" section.** Aggregate risks from ALL perspective agents into a single section. Each risk must name the component, the failure mode, the likelihood (H/M/L), and the mitigation. Cross-reference with cross-perspective disagreements — any unresolved disagreement is a risk. Do NOT scatter risks across perspective sections without also aggregating them here. The architect needs a single view of all risks.
+10. Write Build Plans table
+11. Compile sources
 
 Use the templates/requirements-report.md structure exactly.
 </step_assemble_report>
 
 <step_verify>
 Before presenting, check:
+- Metadata block is present at the very top (before title), uses blockquote format (`> **field:** value`), and includes all 4 fields: type, output_path, key_decisions, open_questions
 - Every factual claim has a source or is explicitly qualified
 - No fabricated libraries, APIs, or tools
 - Acceptance criteria are all testable (not vague)
 - Disagreements are surfaced, not smoothed over
+- "Implementation Risks" section is present with 3+ specific risks aggregated from all perspective agents, each with likelihood and mitigation
 - Build Plans table is actionable for the architect
 - Requirements use MUST/SHOULD/MUST NOT language
 - Every section earns its place — no filler
@@ -179,8 +190,16 @@ Before presenting, check:
    - **Audit:** —
    - **Plan:** —
    - **Current sprint:** —
+   - **Build plan:** —
+   - **Task specs:** —
+   - **Completion evidence:** —
+   - **Last verified:** —
    ```
+   Stage name `requirements-complete` is from the canonical pipeline stages spec
+   (`plugins/mk-flow/skills/state/templates/state.md`, Canonical Pipeline Stages section).
+
    Also update **Current Focus** to describe what was just researched.
+   Write Current Focus as a state description — what IS, not what to DO. Pipeline Position handles routing.
 
 4. **Handoff with exact next command:**
    Present this to the user:
@@ -200,11 +219,13 @@ NEVER stop at "here's the requirements." Always show the exact next command.
 </process>
 
 <success_criteria>
+- Metadata block present at top with type, output_path, key_decisions, open_questions in blockquote format
 - Project need was analyzed with appropriate professional perspectives
 - Each perspective agent carried a distinct professional role (not just a topic)
 - All factual claims are sourced or qualified
 - Cross-perspective agreements and disagreements explicitly surfaced
 - Disagreements are presented for the architect to resolve, not resolved by miltiaze
+- "Implementation Risks" section present with 3+ specific risks aggregated from all perspectives (not boilerplate)
 - Acceptance criteria are all testable assertions
 - Build Plans table feeds directly into architect sprint planning
 - Requirements use MUST/SHOULD/MUST NOT language

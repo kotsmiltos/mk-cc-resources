@@ -9,6 +9,16 @@ Look for resume context in this order:
 Use the first one found as the primary context source. Cross-reference with others for completeness.
 </step_1_find_resume_point>
 
+<step_1b_drift_check>
+**Drift-check before acting:**
+Before trusting STATE.md data, run drift-check to verify state accuracy:
+```
+bash plugins/mk-flow/skills/state/scripts/drift-check.sh
+```
+If drift-check reports DRIFT, fix state first (run with --fix flag), then proceed.
+Do not act on unverified state — STATE.md may be stale from a previous session.
+</step_1b_drift_check>
+
 <step_2_load_context>
 If .continue-here.md exists:
 - Read all sections
