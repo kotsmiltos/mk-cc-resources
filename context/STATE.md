@@ -1,13 +1,12 @@
 # Project State: cc-marketplace
-> Last updated: 2026-03-22
+> Last updated: 2026-03-29
 
 ## Current Focus
-State consolidation pipeline complete. All sprints executed and reviewed. 10/10 fitness functions passing.
+Workflow clarity exploration complete. 12 design decisions made. Next: coherence audit (/architect audit) in fresh session, then plan and build.
 
 ## Pipeline Position
-stage: complete
-plan: artifacts/designs/state-consolidation/PLAN.md
-current_sprint: done
+stage: research
+exploration: artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
 
 ## Done (Recent)
 - [x] State consolidation — 2 sprints: removed status from plans, drift-check evidence-based + --fix flag, 5 QA fixes
@@ -23,6 +22,8 @@ current_sprint: done
 - [ ] mk-flow M7: Tooltips + commands + context handoff — paused 2026-03-22 to prioritize pipeline integration. Per artifacts/builds/mk-flow/BUILD-PLAN.md.
 
 ## Next Up
+- [ ] Coherence audit — /architect audit in fresh session. Cross-reference all skill instructions, templates, references against 12 decisions in the exploration.
+- [ ] /architect plan — design sprints from exploration + audit findings
 - [ ] mk-flow M7: Tooltips + commands + context handoff (paused, per artifacts/builds/mk-flow/BUILD-PLAN.md)
 
 ## Decisions Made
@@ -35,7 +36,7 @@ See artifacts/builds/architect/BUILD-PLAN.md Decisions Log (4 entries).
 |----|--------|-------------|--------|-------|
 
 ## Context for Future Me
-State consolidation plan: artifacts/designs/state-consolidation/PLAN.md (2 sprints, both complete, QA passed).
-Core problem: STATE.md, PLAN.md Sprint Tracking, and BUILD-PLAN.md Status all tracked status independently, causing drift. Fix: plans become immutable intent, STATE.md is single status authority, drift-check validates against evidence.
+Workflow clarity exploration: artifacts/explorations/2026-03-29-workflow-clarity-exploration.md (12 decisions, 3 solutions, adversarial pass with resolutions). Core problem: fresh sessions get injected context but no actionable orientation. 7 failure points mapped. Solutions: Active Orientation (enrich Pipeline Position), Consumption Contracts (standardized metadata + inverted contracts), Session Ceremony (event-driven, configurable).
+Key principles established: adversarial self-assessment is a product principle (D10), sprints serve the product not the process (D9), sprint boundaries must explain WHY (D12), coherence audit before planning (D11).
 mk-flow build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, M1-M6 complete, M7 paused).
 Plugin versions: miltiaze 1.2.0, ladder-build 1.3.0, mk-flow 0.9.0, architect 0.3.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.18.0.
