@@ -8,7 +8,14 @@ Decompose any project into small, verifiable milestones and build them one at a 
 </objective>
 
 <quick_start>
-Check for existing build plans in `[cwd]/artifacts/builds/`. If one exists for this project, route to workflows/continue.md. If this is a new project, route to workflows/kickoff.md. If a milestone is already in progress, route to workflows/build-milestone.md.
+BEFORE ANYTHING ELSE — check for architect task specs:
+1. Glob for `artifacts/designs/*/sprints/*/task-*.md`
+2. If task spec files exist: read workflows/execute.md and follow it. STOP reading this file.
+3. Also check `context/STATE.md` Pipeline Position — if stage starts with `sprint-`, read workflows/execute.md. STOP.
+
+Only if NO task specs exist AND no active sprint in STATE.md, continue:
+4. Check for existing build plans in `artifacts/builds/`. If found → workflows/continue.md
+5. Otherwise → workflows/kickoff.md
 </quick_start>
 
 <essential_principles>
