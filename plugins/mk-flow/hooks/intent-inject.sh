@@ -210,24 +210,33 @@ cat <<INSTRUCTION
 [mk-flow] Context loaded (${LOADED_COUNT} files):${STATUS_PARTS}
 INSTRUCTION
 
-# First-message-of-session: inject proactive state summary directive
+cat <<INSTRUCTION
+At the END of every response, include a next-action line. Format:
+
+**Next:** \`/exact-slash-command with arguments\` — [brief description]
+
+Rules:
+- If Pipeline Position stage is an active sprint: the exact /ladder-build or /architect command to continue
+- If stage is "complete" or "idle": "/miltiaze [topic]" or "/architect audit" depending on what makes sense
+- If task spec files exist in artifacts/designs/ waiting to execute: "/ladder-build execute [specific sprint/plan]"
+- The command must be copy-pasteable. Not "run ladder-build" — give "/ladder-build execute sprint 4 of item-expansion"
+- If you just completed work that changes what's next, update the command accordingly
+- If the response IS the execution of a slash command (e.g., user ran /ladder-build), skip the next-action line — the skill handles its own flow
+- If you don't know the exact command, read PLAN.md or task spec files to figure it out
+
+INSTRUCTION
+
+# First-message-of-session: additional context summary
 if [ -n "$FIRST_MESSAGE" ] && [ -f "$STATE_FILE" ]; then
   cat <<FIRST_MSG
 
-IMPORTANT — This is the FIRST message of a new session. You MUST start your response with a session context block before addressing the user's actual message. Format:
+IMPORTANT — This is the FIRST message of a new session. You MUST start your response with a session context block before addressing the user's actual message:
 
 **Session context:** [1 line: what was last done]
-**Next action:** \`/exact-slash-command with arguments\` — [1 line: what it does]
+**Next:** \`/exact-slash-command with arguments\` — [1 line: what it does]
 [If uncommitted files or paused work exist, add: **Warning:** N uncommitted files / paused at X]
 
-Rules for the next action command:
-- If Pipeline Position stage is an active sprint: suggest the exact /ladder-build or /architect command to continue
-- If stage is "complete" or "idle": say "Pipeline idle. Start new work with /miltiaze or /architect audit."
-- If there are task spec files in artifacts/designs/ waiting to execute: suggest /ladder-build with the specific plan
-- The command must be copy-pasteable. Not "run ladder-build" — give "/ladder-build execute sprint 4 of item-expansion"
-- If you don't know the exact command, read the PLAN.md or task spec files to figure it out before responding
-
-Then proceed with normal intent classification for whatever the user actually said.
+Then proceed with the user's actual message.
 FIRST_MSG
 fi
 
