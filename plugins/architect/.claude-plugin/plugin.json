@@ -1,6 +1,6 @@
 {
   "name": "architect",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Multi-agent technical leadership — spawns perspective agents to design architecture, produce sprint plans with task specs, run adversarial QA, audit existing codebases, and escalate decisions. The tech lead between research and execution.",
   "author": {
     "name": "kotsmiltos"

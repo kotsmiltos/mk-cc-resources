@@ -81,16 +81,11 @@ Then proceed to routing.
 </intake>
 
 <routing>
-
-| Signal | Workflow | File |
-|--------|----------|------|
-| New project, references miltiaze, "build X", "start building" | Kickoff | workflows/kickoff.md |
-| "continue", "next", "pick up", references existing build plan | Continue | workflows/continue.md |
-| Already in a build session, milestone completed or in progress | Build milestone | workflows/build-milestone.md |
-| Architect task specs exist in `artifacts/designs/`, "execute sprint", "run sprint" | Execute | workflows/execute.md |
-
-Default: If architect task specs exist in `artifacts/designs/[slug]/sprints/sprint-N/`, route to execute. If there's an existing build plan, route to continue. Otherwise, kickoff.
-
+CHECK THESE IN ORDER. First match wins:
+1. Architect task specs exist in `artifacts/designs/`, or user said "execute sprint" / "run sprint" → Read workflows/execute.md. STOP.
+2. Already in a build session, milestone completed or in progress → Read workflows/build-milestone.md. STOP.
+3. User said "continue", "next", "pick up", or references existing build plan → Read workflows/continue.md. STOP.
+4. New project, references miltiaze, "build X", or "start building" → Read workflows/kickoff.md.
 </routing>
 
 <reference_index>

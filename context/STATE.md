@@ -2,13 +2,13 @@
 > Last updated: 2026-03-30
 
 ## Current Focus
-Cross-session reliability fixes: 3 new rules (no-therapy-speak, self-verify, ask-specifics), hook visual cues + first-message state summary, audit state conflict detection, Windows grep -oP portability fix.
+Instruction adherence remediation Sprint 1 planned. 5 tasks: fix miltiaze + architect quick_starts, convert routing tables, add rule examples, shorten hook injection.
 
 ## Pipeline Position
-- **Stage:** complete
+- **Stage:** sprint-1
 - **Requirements:** artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
-- **Audit:** artifacts/audits/2026-03-29-coherence-audit-report.md
-- **Plan:** artifacts/designs/workflow-clarity/PLAN.md
+- **Audit:** artifacts/audits/2026-03-31-instruction-adherence-audit-report.md
+- **Plan:** artifacts/designs/instruction-adherence/PLAN.md
 - **Current sprint:** done
 - **Build plan:** —
 - **Task specs:** —

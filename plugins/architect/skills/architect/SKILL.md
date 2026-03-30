@@ -8,7 +8,16 @@ Provide technical leadership for software projects by spawning parallel perspect
 </objective>
 
 <quick_start>
-Check for existing design artifacts in `[cwd]/artifacts/designs/`. If a PLAN.md exists for this project, check its sprint tracking to determine what's needed: if a sprint just completed, route to review; if a sprint is planned, route to plan or ask the user to start building. If no design exists, check for miltiaze output in `[cwd]/artifacts/explorations/` or an audit report in `[cwd]/artifacts/audits/` — these are the architect's inputs. If nothing exists, ask the user what they want to build or audit.
+BEFORE ANYTHING ELSE — check Pipeline Position:
+1. Read context/STATE.md Pipeline Position stage.
+2. If stage is sprint-N-complete: read workflows/review.md. STOP.
+3. If stage is requirements-complete or audit-complete: read workflows/plan.md. STOP.
+4. If user said "audit" or "assess": read workflows/audit.md. STOP.
+
+Only if no Pipeline Position or stage is idle/complete:
+5. Check for existing PLAN.md in artifacts/designs/
+6. Check for miltiaze output in artifacts/explorations/
+7. If nothing exists, ask user what to build or audit
 </quick_start>
 
 <essential_principles>
@@ -91,16 +100,11 @@ If the user invoked with a specific request (e.g., "architect, plan the auth sys
 </intake>
 
 <routing>
-
-| Signal | Workflow | File |
-|--------|----------|------|
-| New project, has requirements/exploration, needs a plan | Plan (sprint 0) | workflows/plan.md |
-| Sprint completed, needs QA + reassessment + next sprint | Review (post-sprint) | workflows/review.md |
-| Decision needed, unclear choice, user input required | Ask (escalation) | workflows/ask.md |
-| Existing codebase, needs assessment, "audit", "where do we stand" | Audit (assessment) | workflows/audit.md |
-
-Default: If a PLAN.md exists and a sprint just completed, route to review. If no PLAN.md exists and inputs are available, route to plan. If the user mentions auditing or assessing, route to audit.
-
+CHECK THESE IN ORDER. First match wins:
+1. Sprint just completed (PLAN.md exists with sprint-N-complete) → Read workflows/review.md. STOP.
+2. Decision needed, unclear choice, user input required → Read workflows/ask.md. STOP.
+3. User said "audit", "assess", or "where do we stand" → Read workflows/audit.md. STOP.
+4. New project with requirements/exploration input, or no PLAN.md exists → Read workflows/plan.md. STOP.
 </routing>
 
 <reference_index>

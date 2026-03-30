@@ -211,18 +211,10 @@ cat <<INSTRUCTION
 INSTRUCTION
 
 cat <<INSTRUCTION
-At the END of every response, include a next-action line. Format:
-
-**Next:** \`/exact-slash-command with arguments\` — [brief description]
-
-Rules:
-- If Pipeline Position stage is an active sprint: the exact /ladder-build or /architect command to continue
-- If stage is "complete" or "idle": "/miltiaze [topic]" or "/architect audit" depending on what makes sense
-- If task spec files exist in artifacts/designs/ waiting to execute: "/ladder-build execute [specific sprint/plan]"
-- The command must be copy-pasteable. Not "run ladder-build" — give "/ladder-build execute sprint 4 of item-expansion"
-- If you just completed work that changes what's next, update the command accordingly
-- If the response IS the execution of a slash command (e.g., user ran /ladder-build), skip the next-action line — the skill handles its own flow
-- If you don't know the exact command, read PLAN.md or task spec files to figure it out
+End every response with: **Next:** \`/exact-slash-command with arguments\` — [brief description]
+The command must be copy-pasteable (e.g., "/ladder-build execute sprint 2 of auth-system").
+Derive it from Pipeline Position in STATE.md or task specs in artifacts/designs/.
+Skip the next-action line if the response IS a slash command execution (skill handles its own flow).
 
 INSTRUCTION
 
@@ -230,95 +222,30 @@ INSTRUCTION
 if [ -n "$FIRST_MESSAGE" ] && [ -f "$STATE_FILE" ]; then
   cat <<FIRST_MSG
 
-IMPORTANT — This is the FIRST message of a new session. You MUST start your response with a session context block before addressing the user's actual message:
-
+FIRST MESSAGE of new session. Start with:
 **Session context:** [1 line: what was last done]
-**Next:** \`/exact-slash-command with arguments\` — [1 line: what it does]
-[If uncommitted files or paused work exist, add: **Warning:** N uncommitted files / paused at X]
-
-Then proceed with the user's actual message.
+**Next:** \`/exact-slash-command\` — [what it does]
+[If uncommitted files or paused work: **Warning:** details]
+Then proceed with the user's message.
 FIRST_MSG
 fi
 
 cat <<INSTRUCTION
-Before responding, silently classify this message's intent using the context below.
-Classify as one of the enabled intents from the intents config.
-For context_addition intent, also determine the temporal target (current_work, past_work, future_work, decision_override, or general).
-If the vocabulary section is present and the message contains ambiguous terms, use it to disambiguate. If the user clarifies what a term means, add the mapping to context/vocabulary.yaml.
-When the intent is action (building, fixing, changing code), check cross_references for related files that should be verified for consistency. If the user points out you missed updating a related file, add that relationship to context/cross-references.yaml.
-If a rules section is present, follow every rule unconditionally. These are hard corrections from the user — not suggestions.
-Do NOT mention the classification to the user — just use it to guide your response behavior.
+Silently classify this message using intents_config below. Do NOT mention classification to the user.
+Follow every rule in the rules section unconditionally — hard corrections, not suggestions.
+On action intent: check cross_references for related files. If user flags a missed update, add it to context/cross-references.yaml.
+On bug_report: investigate before fixing — read code, find root cause, propose fix BEFORE implementing. Classify as bug_report even if message says "fix".
+On status_query: run drift-check first (bash ${DRIFT_CHECK_SCRIPT}). Its output is source of truth. Fix DRIFT before reporting.
+On multi-issue input (3+ items): decompose with assumption table before acting. Read intake SKILL.md at ${INTAKE_SKILL_PATH}/.
+On vocabulary ambiguity: use vocabulary section to disambiguate. Add new mappings to context/vocabulary.yaml.
+Check Pipeline Position in STATE.md for the **Next:** command.
 
-Skill routing — based on classification, automatically engage or suggest the right skill:
+If the user asks to add/modify/remove an intent:
+1. Update .claude/mk-flow/intents.yaml
+2. Update ${INTENT_LIBRARY_PATH} (add used_in project)
+3. Confirm briefly
 
-Multi-issue input (3+ distinct items, dense bug dumps, stream-of-consciousness with mixed concerns):
-  Automatically follow the intake process — decompose into items, show assumption table, route each item.
-  Read the intake SKILL.md at ${INTAKE_SKILL_PATH}/ for the full process.
-  Err on the side of using intake — missing a case where it should fire is worse than over-triggering.
-  Single clear requests ("fix the button") skip intake and execute directly.
-
-Exploration or uncertainty (user is unsure what to build, wants to understand tradeoffs, research options):
-  Suggest /miltiaze with a ready-to-go prompt, e.g.:
-  "This sounds like it needs exploration before building. Want me to run:
-  /miltiaze [brief topic description]"
-
-Multi-step build project (user wants to build something with multiple components or milestones):
-  Suggest /ladder-build with a ready-to-go prompt, e.g.:
-  "This is a multi-step build. Want me to plan it with:
-  /ladder-build [brief project description]"
-  If a miltiaze exploration report already exists for this topic, mention it.
-
-Bug report or broken behavior (user describes something not working, an error, unexpected results):
-  DO NOT jump to fixing. Follow the investigation protocol:
-  1. UNDERSTAND: Read the user's description carefully. What exactly is broken? What's the expected vs actual behavior?
-  2. REPRODUCE: Read the relevant code/config. Verify you can see the problem. If the user gave an error, trace it.
-  3. ROOT CAUSE: Find WHY it's broken, not just WHERE. Check recent changes (git log), cross-references, related files. Is this a symptom of something deeper?
-  4. ASSESS: Is this a one-off bug or part of a pattern? Check if similar issues exist elsewhere. Would a local fix leave related problems unfixed?
-  5. PROPOSE: Present your findings and proposed fix to the user BEFORE implementing. Include: what's broken, why, what the fix is, and what else it might affect.
-  6. FIX: Only after the user confirms (or for trivial/obvious fixes), implement the solution. Fix the root cause, not just the symptom.
-  If the issue is complex or systemic, suggest /miltiaze to explore it or /architect audit to assess the area.
-  Disambiguation: if the message describes BROKEN BEHAVIOR, classify as bug_report even if it contains action words like "fix". Action intent is for building/changing things that aren't broken.
-
-Simple single tasks: just execute directly. No skill routing needed.
-
-Pipeline-aware routing — if STATE.md has a Pipeline Position section, use it to suggest the next step:
-  If stage is "idle":
-    Suggest: "No active pipeline. Explore with /miltiaze or assess with /architect audit."
-  If stage is "research":
-    Suggest: "Miltiaze exploration in progress. Continue with /miltiaze."
-  If stage is "requirements-complete" and no PLAN.md exists in artifacts/designs/:
-    Suggest: "/architect to plan the implementation from the requirements."
-  If stage is "audit-complete" and no PLAN.md exists:
-    Suggest: "/architect to plan improvements from the audit findings."
-  If stage matches "sprint-" followed by a number but does NOT end with "-complete":
-    Suggest: "Sprint [N] in progress. Continue execution with /ladder-build."
-  If stage contains "sprint-" and ends with "-complete":
-    Suggest: "/architect for QA review and next sprint planning."
-  If stage is "reassessment":
-    Suggest: "Mid-pipeline reassessment. Run /architect to evaluate."
-  If stage is "complete":
-    Suggest: "Pipeline cycle complete. Start new work with /miltiaze or /architect audit."
-  If a PLAN.md exists with task specs in artifacts/designs/ AND stage does not match any of: idle, research, requirements-complete, audit-complete, sprint-N (active), sprint-N-complete, reassessment, complete:
-    Suggest: "/ladder-build to execute the current sprint's task specs."
-  If the user says "assess", "audit", or "where do we stand on the code":
-    Suggest: "/architect audit to assess the codebase."
-  If stage is set but matches none of the above:
-    Suggest: "Pipeline Position shows stage '[stage]' — no routing rule for this stage. Check STATE.md."
-  These are suggestions, not mandates — the user may have a different intent. Only suggest when it naturally fits.
-
-For status_query intent:
-1. Run drift-check FIRST: bash ${DRIFT_CHECK_SCRIPT}
-   This tool verifies milestone statuses against actual filesystem evidence. Its output is your source of truth.
-2. Do NOT rely on plan documents for status — STATE.md is the single source of truth, validated by drift-check against filesystem evidence.
-3. If drift-check reports DRIFT (exit code 1), fix the state files to match reality, then report.
-4. Present status from the drift-check output. If drift-check wasn't run, your status report is not trustworthy.
-
-If the user asks to add, modify, or remove an intent (e.g., "add an intent for X", "add X to Y intent signals"):
-1. Update .claude/mk-flow/intents.yaml — add/modify the intent following the existing format
-2. Update the global library at ${INTENT_LIBRARY_PATH} — same change, plus update used_in with project name
-3. Confirm briefly what changed
-
-If a mk_flow_nudge tag is present below, mention it briefly to the user at the END of your response (not the beginning — don't lead with it). Keep it to one line.
+If a mk_flow_nudge tag is present below, mention it briefly at END of response (one line).
 INSTRUCTION
 
 echo "$CONTEXT"

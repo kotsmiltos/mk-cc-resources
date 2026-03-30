@@ -8,7 +8,14 @@ Explore ideas by decomposing them into as many research dimensions as are releva
 </objective>
 
 <quick_start>
-If the user provided an idea, extract the core concept, hinted dimensions, implicit constraints, and apparent goal — then route to the appropriate workflow. If invoked without context, ask: "What idea, concept, or question do you want to explore?"
+BEFORE ANYTHING ELSE — check for existing context:
+1. Read context/STATE.md Pipeline Position — if stage is "research", use the current focus as input. STOP asking.
+2. Glob artifacts/explorations/ for existing explorations. If the user's input references one, route to workflows/drill-deeper.md. STOP.
+3. If the user said "requirements", "spec", or "build" — route to workflows/requirements.md. STOP.
+
+Only if NO upstream context matches:
+4. If user provided an idea with their invocation, extract and route to workflows/full-exploration.md.
+5. If bare invocation with no input, ask: "What idea, concept, or question do you want to explore?"
 </quick_start>
 
 <essential_principles>
@@ -71,25 +78,11 @@ Wait for response before proceeding.
 </intake>
 
 <routing>
-
-Analyze user input to determine the workflow:
-
-| Signal | Workflow | File |
-|--------|----------|------|
-| New idea, concept, or question | Full exploration | workflows/full-exploration.md |
-| "drill deeper", "more about X", references a previous exploration | Drill deeper | workflows/drill-deeper.md |
-| Mentions a specific previous exploration file | Drill deeper | workflows/drill-deeper.md |
-| "I want to build X", "requirements for X", "spec out X", build intent | Requirements | workflows/requirements.md |
-| Architect needs input, pipeline handoff to architect | Requirements | workflows/requirements.md |
-
-Default: If unclear, assume full exploration. If the user clearly wants to BUILD something (not just understand it), route to requirements.
-
-Intent-based routing (if user provides clear intent without selecting menu):
-- "explore X", "think through X", "research X" -> workflows/full-exploration.md
-- "tell me more about the UX angle", "deeper on feasibility" -> workflows/drill-deeper.md
-- "follow up on [previous topic]" -> workflows/drill-deeper.md
-- "I want to build X", "requirements for X", "spec this out" -> workflows/requirements.md
-- "what do we need to build X" -> workflows/requirements.md
+CHECK THESE IN ORDER. First match wins:
+1. User said "requirements", "spec", "build", or architect needs input → Read workflows/requirements.md. STOP.
+2. User said "drill deeper", "more about X", or references a previous exploration file → Read workflows/drill-deeper.md. STOP.
+3. User said "follow up on [topic]", "tell me more about [angle]" → Read workflows/drill-deeper.md. STOP.
+4. New idea, concept, question, or unclear intent → Read workflows/full-exploration.md. STOP.
 
 After reading the workflow, follow it exactly.
 </routing>
