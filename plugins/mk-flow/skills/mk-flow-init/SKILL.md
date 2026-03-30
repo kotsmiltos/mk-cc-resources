@@ -254,8 +254,19 @@ If `~/.claude/mk-flow/intent-library.yaml` doesn't exist, create it.
 Merge any new intents the user created into the global library. Update usage tracking (which projects use which intents).
 </step_6_update_global_library>
 
-<step_7_confirm>
-Show the user what was created:
+<step_7_verify_hook>
+Before confirming to the user, verify the hook is actually working in this project:
+
+1. Check that the mk-flow plugin's hooks.json exists and contains the UserPromptSubmit hook configuration.
+2. Run a test: `echo '{"prompt":"test"}' | CLAUDE_PLUGIN_ROOT="[actual plugin root]" bash "[plugin root]/hooks/intent-inject.sh"` and check the output starts with `[mk-flow] Context loaded`.
+3. If the test fails, diagnose why (missing files, missing jq/python, path issues) and fix before proceeding.
+4. If you cannot run the test, tell the user: "I wrote the files but I haven't confirmed the hook fires in this project. On your next message, look for '[mk-flow] Context loaded' in the hook output to verify."
+
+NEVER say "init is complete" without running this verification. If verification fails, say what failed and what needs to be fixed.
+</step_7_verify_hook>
+
+<step_8_confirm>
+Show the user what was created AND what to look for:
 
 ```
 mk-flow initialized for [project-name].
@@ -272,12 +283,20 @@ Architecture engagement: [level]
 Active intents: [list]
 [If context imported: 'State bootstrapped from: GSD (6 phases), ladder-build (1 plan), note-tracker (8 items)']
 
-Intent classification is automatic — the mk-flow plugin
-handles it. You can talk naturally and I'll detect if
-you're asking a question, reporting a bug, or adding
-context. Say 'what can I do?' anytime for options.
+Hook verification: [PASS — test output showed status line | FAIL — describe issue]
+
+HOW TO VERIFY IT'S WORKING:
+On every message you send, you should see this in the hook output:
+  [mk-flow] Context loaded (N files): intents:N stage:X rules:N
+
+If you don't see this line, the hook isn't firing. Check:
+  1. Is the mk-flow plugin installed? (check .claude/plugins/)
+  2. Are context files present? (ls context/ and .claude/mk-flow/)
+
+On the FIRST message of each session, you'll also get a state
+summary showing where you left off and what to do next.
 ```
-</step_7_confirm>
+</step_8_confirm>
 
 </process>
 

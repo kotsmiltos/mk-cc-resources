@@ -1,6 +1,6 @@
 {
   "name": "mk-flow",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, pipeline-aware routing, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
   "author": {
     "name": "kotsmiltos"

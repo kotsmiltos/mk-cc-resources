@@ -199,11 +199,14 @@ Assess these dimensions:
 4. SILENT SCOPE REDUCTION: Were any goals or features silently dropped without being recorded?
 5. COMPLETION HONESTY: Are milestones/tasks marked "done" actually done?
 6. MOMENTUM: What's the trajectory? Accelerating, steady, decelerating, stalled?
+7. STATE FILE CONFLICTS: Check for MULTIPLE state files (.planning/STATE.md, context/STATE.md, any other STATE.md). If more than one exists, flag as CRITICAL — which is authoritative? Are they consistent? How stale is each? The project must have ONE source of truth for state.
+8. UNCOMMITTED WORK: Run git status and check for large amounts of uncommitted changes. Flag file counts and risk of data loss.
 
 Team values — follow these unconditionally:
 - Be thorough. Check EVERY claimed completion against reality.
 - Be specific. "STATE.md says M3 is done, but `workflows/review.md` doesn't exist yet."
 - Scope reduction is a CRITICAL finding — never let it pass.
+- State file conflicts are CRITICAL — two state files means neither is trustworthy.
 
 Return using the audit-report.md finding table format:
 ## Goal Alignment

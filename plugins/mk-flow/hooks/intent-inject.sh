@@ -126,6 +126,46 @@ if [ -z "$CONTEXT" ]; then
   exit 0
 fi
 
+# --- Visual status line ---
+# Compact summary so the user can see the hook fired and what was loaded.
+STATUS_PARTS=""
+LOADED_COUNT=0
+if [ -f "$INTENTS_FILE" ]; then
+  INTENT_COUNT=$(grep -c "^  [a-z]" "$INTENTS_FILE" 2>/dev/null || echo "0")
+  STATUS_PARTS="${STATUS_PARTS} intents:${INTENT_COUNT}"
+  LOADED_COUNT=$((LOADED_COUNT + 1))
+fi
+if [ -f "$STATE_FILE" ]; then
+  # Extract pipeline stage from STATE.md (portable — no grep -P)
+  STAGE=$(grep '**Stage:**' "$STATE_FILE" 2>/dev/null | head -1 | sed 's/.*\*\*Stage:\*\*[[:space:]]*//' | tr -d '[:space:]')
+  if [ -n "$STAGE" ]; then
+    STATUS_PARTS="${STATUS_PARTS} stage:${STAGE}"
+  fi
+  LOADED_COUNT=$((LOADED_COUNT + 1))
+fi
+RULES_COUNT=0
+if [ -f "$PLUGIN_RULES" ]; then
+  RULES_COUNT=$(grep -c "^  [a-z]" "$PLUGIN_RULES" 2>/dev/null || echo "0")
+fi
+if [ -f "$PROJECT_RULES" ]; then
+  PROJECT_RULES_COUNT=$(grep -c "^  [a-z]" "$PROJECT_RULES" 2>/dev/null || echo "0")
+  RULES_COUNT=$((RULES_COUNT + PROJECT_RULES_COUNT))
+fi
+if [ "$RULES_COUNT" -gt 0 ]; then
+  STATUS_PARTS="${STATUS_PARTS} rules:${RULES_COUNT}"
+  LOADED_COUNT=$((LOADED_COUNT + 1))
+fi
+if [ -f "$VOCAB_FILE" ]; then LOADED_COUNT=$((LOADED_COUNT + 1)); fi
+if [ -f "$XREF_FILE" ]; then LOADED_COUNT=$((LOADED_COUNT + 1)); fi
+
+# First-message session detection — proactive state summary
+SESSION_FLAG_FILE="${FLAG_DIR}/${PROJECT_HASH}-session"
+FIRST_MESSAGE=""
+if [ ! -f "$SESSION_FLAG_FILE" ]; then
+  echo "$(date +%s)" > "$SESSION_FLAG_FILE" 2>/dev/null
+  FIRST_MESSAGE="yes"
+fi
+
 # Stale defaults detection — nudge user once per session if context files are behind
 STALE_NUDGE=""
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
@@ -135,16 +175,16 @@ if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$PROJECT_RULES" ]; then
   PLUGIN_JSON="${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
   INSTALLED_VERSION=""
   if [ -f "$PLUGIN_JSON" ]; then
-    INSTALLED_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$PLUGIN_JSON" 2>/dev/null)
+    INSTALLED_VERSION=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$PLUGIN_JSON" 2>/dev/null | head -1)
   fi
   if [ -z "$INSTALLED_VERSION" ]; then
     # Fallback: extract version from cache directory path
     # Path format: .../cache/marketplace/mk-flow/<version>/
-    INSTALLED_VERSION=$(echo "$CLAUDE_PLUGIN_ROOT" | grep -oP 'mk-flow/\K[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null)
+    INSTALLED_VERSION=$(echo "$CLAUDE_PLUGIN_ROOT" | sed -n 's/.*mk-flow\/\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')
   fi
 
-  # Extract defaults_version from project rules.yaml
-  PROJECT_VERSION=$(grep -oP 'defaults_version:\s*"\K[^"]+' "$PROJECT_RULES" 2>/dev/null)
+  # Extract defaults_version from project rules.yaml (portable — no grep -P)
+  PROJECT_VERSION=$(sed -n 's/.*defaults_version:[[:space:]]*"\([^"]*\)".*/\1/p' "$PROJECT_RULES" 2>/dev/null | head -1)
 
   if [ -n "$INSTALLED_VERSION" ] && [ -n "$PROJECT_VERSION" ] && [ "$INSTALLED_VERSION" != "$PROJECT_VERSION" ]; then
     # Check flag file to avoid repeating the nudge every message
@@ -165,7 +205,24 @@ DRIFT_CHECK_SCRIPT="${CLAUDE_PLUGIN_ROOT}/skills/state/scripts/drift-check.sh"
 # path leaks into the injected instruction text.
 INTENT_LIBRARY_PATH="~/.claude/mk-flow/intent-library.yaml"
 
-# Output classification instructions with embedded context
+# Output status line + classification instructions with embedded context
+cat <<INSTRUCTION
+[mk-flow] Context loaded (${LOADED_COUNT} files):${STATUS_PARTS}
+INSTRUCTION
+
+# First-message-of-session: inject proactive state summary directive
+if [ -n "$FIRST_MESSAGE" ] && [ -f "$STATE_FILE" ]; then
+  cat <<FIRST_MSG
+
+IMPORTANT — This is the FIRST message of a new session. Before classifying intent, check STATE.md for active work:
+- If Pipeline Position shows an active sprint or planned next step, tell the user what they were working on and what the next action is. Give them the exact command to continue.
+- If there are uncommitted files or paused work, mention it.
+- If stage is "complete", just note the pipeline is idle.
+- Keep it to 2-3 lines. Don't dump the whole state — just the actionable summary.
+- Then proceed with normal intent classification for whatever they actually said.
+FIRST_MSG
+fi
+
 cat <<INSTRUCTION
 Before responding, silently classify this message's intent using the context below.
 Classify as one of the enabled intents from the intents config.

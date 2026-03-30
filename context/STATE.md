@@ -1,8 +1,8 @@
 # Project State: cc-marketplace
-> Last updated: 2026-03-29
+> Last updated: 2026-03-30
 
 ## Current Focus
-Workflow clarity remediation complete. 3 sprints, 13 tasks, all QA passed. 20/20 fitness functions verified.
+Cross-session reliability fixes: 3 new rules (no-therapy-speak, self-verify, ask-specifics), hook visual cues + first-message state summary, audit state conflict detection, Windows grep -oP portability fix.
 
 ## Pipeline Position
 - **Stage:** complete
@@ -46,4 +46,4 @@ Workflow clarity remediation COMPLETE: artifacts/designs/workflow-clarity/PLAN.m
 Sprint 3 QA: 3 autonomous fixes (FF-16 consumer list, FF-17 status.md, FF-17 script independence). 6 deferred refactor requests in PLAN.md Refactor Requests table — all relate to drift-check/verify-templates tooling, not pipeline contracts.
 Coherence audit: artifacts/audits/2026-03-29-coherence-audit-report.md — 74 findings, 10 recommended actions (all addressed).
 mk-flow build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, M1-M6 complete, M7 paused).
-Plugin versions: miltiaze 1.3.0, ladder-build 1.4.0, mk-flow 0.10.0, architect 0.4.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.19.0.
+Plugin versions: miltiaze 1.3.0, ladder-build 1.4.0, mk-flow 0.12.0, architect 0.5.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.20.0.
