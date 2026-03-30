@@ -214,12 +214,20 @@ INSTRUCTION
 if [ -n "$FIRST_MESSAGE" ] && [ -f "$STATE_FILE" ]; then
   cat <<FIRST_MSG
 
-IMPORTANT — This is the FIRST message of a new session. Before classifying intent, check STATE.md for active work:
-- If Pipeline Position shows an active sprint or planned next step, tell the user what they were working on and what the next action is. Give them the exact command to continue.
-- If there are uncommitted files or paused work, mention it.
-- If stage is "complete", just note the pipeline is idle.
-- Keep it to 2-3 lines. Don't dump the whole state — just the actionable summary.
-- Then proceed with normal intent classification for whatever they actually said.
+IMPORTANT — This is the FIRST message of a new session. You MUST start your response with a session context block before addressing the user's actual message. Format:
+
+**Session context:** [1 line: what was last done]
+**Next action:** \`/exact-slash-command with arguments\` — [1 line: what it does]
+[If uncommitted files or paused work exist, add: **Warning:** N uncommitted files / paused at X]
+
+Rules for the next action command:
+- If Pipeline Position stage is an active sprint: suggest the exact /ladder-build or /architect command to continue
+- If stage is "complete" or "idle": say "Pipeline idle. Start new work with /miltiaze or /architect audit."
+- If there are task spec files in artifacts/designs/ waiting to execute: suggest /ladder-build with the specific plan
+- The command must be copy-pasteable. Not "run ladder-build" — give "/ladder-build execute sprint 4 of item-expansion"
+- If you don't know the exact command, read the PLAN.md or task spec files to figure it out before responding
+
+Then proceed with normal intent classification for whatever the user actually said.
 FIRST_MSG
 fi
 
