@@ -10,14 +10,17 @@ Provide technical leadership for software projects by spawning parallel perspect
 <quick_start>
 BEFORE ANYTHING ELSE — check Pipeline Position:
 1. Read context/STATE.md Pipeline Position stage.
-2. If stage is sprint-N-complete: read workflows/review.md. STOP.
-3. If stage is requirements-complete or audit-complete: read workflows/plan.md. STOP.
-4. If user said "audit" or "assess": read workflows/audit.md. STOP.
+2. If user command starts with "/architect scope discover": read workflows/scope-discover.md. STOP.
+2b. If user command starts with "/architect scope" or "/architect decompose", or stage starts with "scope-L": read workflows/scope-decompose.md. STOP.
+3. If stage is sprint-N-complete: read workflows/review.md. STOP.
+4. If stage is requirements-complete or audit-complete: read workflows/plan.md. STOP.
+5. If user said "audit" or "assess": read workflows/audit.md. STOP.
 
 Only if no Pipeline Position or stage is idle/complete:
-5. Check for existing PLAN.md in artifacts/designs/
-6. Check for miltiaze output in artifacts/explorations/
-7. If nothing exists, ask user what to build or audit
+6. Check for INDEX.md at artifacts/scope/INDEX.md — if found, suggest scope workflow
+7. Check for existing PLAN.md in artifacts/designs/
+8. Check for miltiaze output in artifacts/explorations/
+9. If nothing exists, ask user what to build or audit
 </quick_start>
 
 <essential_principles>
@@ -72,6 +75,7 @@ Determine what the architect should do based on available context:
    for the authoritative stage list and valid transitions.
 
    Route based on stage:
+   - `scope-LN` or `scope-LN-complete` → route to scope-decompose (scope_root is in Pipeline Position)
    - `requirements-complete` → route to plan (requirements path is in Pipeline Position)
    - `audit-complete` → route to plan (audit path is in Pipeline Position)
    - `sprint-N-complete` → route to review (plan path is in Pipeline Position)
@@ -82,14 +86,19 @@ Determine what the architect should do based on available context:
    - `reassessment` → mid-pipeline re-evaluation
    - No Pipeline Position → fall through to manual detection below
 
-2. **Check for existing PLAN.md:** Look in `[cwd]/artifacts/designs/` for a plan related to the current project. If found, read its sprint tracking to determine the current state.
+2. **Check for scope INDEX.md** (scope mode detection):
+   Check for `artifacts/scope/INDEX.md`.
+   - If INDEX.md exists AND user didn't specify a non-scope command: suggest scope-decompose workflow.
+   - If INDEX.md does not exist: fall through to existing intake logic.
 
-3. **Check for inputs:**
+3. **Check for existing PLAN.md:** Look in `[cwd]/artifacts/designs/` for a plan related to the current project. If found, read its sprint tracking to determine the current state.
+
+4. **Check for inputs:**
    - miltiaze exploration/requirements in `[cwd]/artifacts/explorations/`
    - Audit report in `[cwd]/artifacts/audits/`
    - Direct user description of what to build
 
-4. **Determine the action:**
+5. **Determine the action:**
    - Existing PLAN.md + sprint just completed → route to review
    - Existing PLAN.md + decision needed → route to ask
    - No PLAN.md + miltiaze output exists → route to plan (new project entry point)
@@ -101,6 +110,8 @@ If the user invoked with a specific request (e.g., "architect, plan the auth sys
 
 <routing>
 CHECK THESE IN ORDER. First match wins:
+0. User command starts with "/architect scope discover" → Read workflows/scope-discover.md. STOP.
+0b. User command starts with "/architect scope" or "/architect decompose", or stage starts with "scope-L" → Read workflows/scope-decompose.md. STOP.
 1. Sprint just completed (PLAN.md exists with sprint-N-complete) → Read workflows/review.md. STOP.
 2. Decision needed, unclear choice, user input required → Read workflows/ask.md. STOP.
 3. User said "audit", "assess", or "where do we stand" → Read workflows/audit.md. STOP.
@@ -114,6 +125,7 @@ All in `references/`:
 | Reference | Purpose |
 |-----------|---------|
 | architecture-patterns.md | Module decomposition, bounded contexts, dependency rules, C4 modeling |
+| scope-decomposition.md | Stopping criteria, tier ordering, brief assembly, quality gates, INDEX.md update protocol |
 | sprint-management.md | Sprint sizing, task design, reassessment patterns, parallel execution |
 | team-culture.md | Operating principles embedded in every agent prompt — work ethic, communication, quality standards |
 
@@ -129,6 +141,8 @@ All in `workflows/`:
 | review.md | Post-sprint — spawn QA agents, compare to plan/requirements, amend, plan next sprint |
 | ask.md | Escalation — surface unclear decision, present options, record in Decisions Log |
 | audit.md | Assessment — spawn assessment agents on existing codebase, produce AUDIT-REPORT.md |
+| scope-discover.md | Feature flow discovery — scan existing codebase, map architecture, trace feature impact, produce discovery artifacts |
+| scope-decompose.md | Cascading decomposition — read INDEX.md, assign tiers, spawn parallel agents, verify consistency, update INDEX.md |
 
 </workflows_index>
 
@@ -141,6 +155,14 @@ All in `templates/`:
 | plan.md | PLAN.md structure — the living master plan (sprint tracking, task index, decisions, risks, changes) |
 | task-spec.md | Individual task specification — goal, interfaces, pseudocode, acceptance criteria |
 | audit-report.md | Audit output — findings, risk ratings, recommended actions |
+| index.md | INDEX.md structure — master routing table for scope decomposition |
+| agent-brief-decompose.md | Decomposition agent brief — YAML+XML contract for module breakdown |
+| agent-brief-implement.md | Implementation agent brief — YAML+XML contract for leaf task execution |
+| decision-record.md | Individual decision record — immutable architectural decision |
+| interface-contract.md | Interface contract between module pairs — bidirectional signatures + guarantees |
+| cross-cutting-pattern.md | Cross-cutting pattern — concrete code examples for consistent implementation |
+| consistency-check.md | Consistency verification agent prompt — 5 cross-module alignment checks |
+| system-map.md | System map — top-level architecture overview with module definitions |
 
 </templates_index>
 
@@ -156,6 +178,12 @@ The architect reads from and writes to standardized locations:
 | Sprint tasks | `artifacts/designs/[slug]/sprints/sprint-N/task-*.md` | architect (plan) | ladder-build, architect (review) |
 | QA reports | `artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md` | architect (review) | architect (review), user |
 | Decisions | Inline in PLAN.md Decisions Log | architect (ask, plan, review) | everyone |
+| Scope index | `artifacts/scope/INDEX.md` | miltiaze (created), architect (updated) | architect, ladder-build |
+| Scope discovery | `artifacts/scope/features/<slug>/discovery/` | architect (scope-discover) | architect (scope-decompose L0) |
+| Scope briefs | `artifacts/scope/brief/` | miltiaze | architect (scope-decompose) |
+| Scope architecture | `artifacts/scope/architecture/` | architect (L0) | architect (L1+), ladder-build |
+| Scope modules | `artifacts/scope/modules/*/` | architect (L1+) | architect (next level), ladder-build |
+| Consistency reports | `artifacts/scope/reports/` | architect (scope-decompose) | architect, user |
 
 </artifact_locations>
 

@@ -1,6 +1,9 @@
 # Schema Scout index files
 *.scout-index.json
 
+# Scope decomposition artifacts (architectural details, function signatures — D2)
+artifacts/scope/
+
 # Claude Code local settings
 .claude/*
 !.claude/mk-flow/

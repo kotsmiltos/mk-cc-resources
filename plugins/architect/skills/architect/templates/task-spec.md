@@ -14,6 +14,10 @@ Save to: `artifacts/designs/[slug]/sprints/sprint-N/task-K-[short-name].md`
 > **plan:** [Relative path to PLAN.md]
 > **key_decisions:** [decision IDs this task implements or is constrained by, e.g., D1, D3]
 > **open_questions:** [unresolved items, or "none"]
+> **parent_task:** [Task ID of parent, or "None" for top-level tasks]
+> **children:** [Comma-separated child task IDs, or "None" for leaf tasks]
+> **decomposition_level:** [0, 1, 2, ... — depth in the hierarchy. Default 0 for non-cascade tasks]
+> **traces_to:** [Parent acceptance criterion this task satisfies, or "None"]
 
 # Task [K]: [Short Descriptive Name]
 
@@ -35,6 +39,12 @@ Save to: `artifacts/designs/[slug]/sprints/sprint-N/task-K-[short-name].md`
 ### Contracts with Other Tasks
 - [Task M] provides [what] → this task consumes it as [how]
 - This task produces [what] → [Task P] will consume it as [how]
+
+## Traceability
+[How this task traces to parent requirements. Omit this section for non-cascade (level 0) tasks.]
+
+- **[Parent module/component]** criterion: "[quoted acceptance criterion from parent task]"
+  - How this task satisfies it: [explanation of what this task delivers toward that criterion]
 
 ## Pseudocode
 [Step-by-step logic in plain language with enough specificity to implement directly. Not actual code — but close enough that translating to code is mechanical, not creative.]
@@ -86,4 +96,5 @@ FUNCTION do_the_thing(input):
 - **Acceptance Criteria:** Written as checkboxes. QA agents will check every one. If a criterion can't be tested, rewrite it until it can.
 - **Edge Cases:** Don't just list them — describe the correct behavior for each. This is what QA will test adversarially.
 - **Size estimates:** S = one function/file, M = a few connected pieces, L = a subsystem. If a task is L, consider splitting it.
+- **Hierarchy fields:** `parent_task`, `children`, `decomposition_level`, and `traces_to` are optional. When absent, the task is treated as level 0 with no parent — backward-compatible with non-cascade projects. When present, they enable hierarchical decomposition tracking across cascaded task trees.
 </conventions>

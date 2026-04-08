@@ -111,9 +111,13 @@ plugins/
     .claude-plugin/plugin.json
     skills/architect/
       SKILL.md
-      workflows/            # plan.md, review.md, ask.md, audit.md
-      templates/            # plan.md, task-spec.md, audit-report.md
-      references/           # architecture-patterns.md, sprint-management.md, team-culture.md
+      workflows/            # plan.md, review.md, ask.md, audit.md, scope-decompose.md, scope-discover.md
+      templates/            # plan.md, task-spec.md, audit-report.md, index.md,
+                            # agent-brief-decompose.md, agent-brief-implement.md,
+                            # system-map.md, decision-record.md, interface-contract.md,
+                            # cross-cutting-pattern.md, consistency-check.md
+      references/           # architecture-patterns.md, sprint-management.md, team-culture.md,
+                            # scope-decomposition.md
 
 context/                    # Per-project mk-flow context (created by /mk-flow-init)
   STATE.md                  # Living project state — current focus, done, blocked, next
@@ -157,6 +161,21 @@ STANDALONE:       /miltiaze (exploration) → /ladder-build (kickoff) — existi
 
 mk-flow tracks pipeline position in STATE.md and suggests the next skill based on the current stage.
 
+### Scope Pipeline (cascading decomposition)
+
+```
+GREENFIELD:  /miltiaze (scope requirements) → /architect scope level-0 → /architect scope level-1+ → /ladder-build (scope execute) → /architect (review) → loop
+FEATURE:     /miltiaze (scope requirements) → /architect scope discover → /architect scope level-0 → level-1+ → /ladder-build → review
+```
+
+| Stage | Skill | Mode | Output | Next |
+|-------|-------|------|--------|------|
+| Scope Research | miltiaze | `workflows/requirements.md` (scope mode) | `artifacts/scope/brief/` + INDEX.md | /architect scope level-0 |
+| Discovery (features only) | architect | `workflows/scope-discover.md` | `artifacts/scope/features/<slug>/discovery/` | /architect scope level-0 |
+| Architecture (L0) | architect | `workflows/scope-decompose.md` | `artifacts/scope/architecture/` | /architect scope level-1 |
+| Decomposition (L1+) | architect | `workflows/scope-decompose.md` | `artifacts/scope/modules/*/` | /architect scope level-N or /ladder-build |
+| Implementation | ladder-build | `workflows/execute.md` (scope mode) | source code + `reports/` | /architect review |
+
 ## Cross-Reference Patterns
 
 When changing files that follow these patterns, CHECK the related files for consistency. Only modify them if actually broken by your change.
@@ -169,6 +188,10 @@ When changing files that follow these patterns, CHECK the related files for cons
 | Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference the new workflow |
 | mk-flow hook | Adding a new context file type (like rules.yaml) | `plugins/mk-flow/hooks/intent-inject.sh` | Hook script must read and inject the new file |
 | mk-flow init | Adding a new context file type | `plugins/mk-flow/skills/mk-flow-init/SKILL.md` | Init must create the new file |
+| Scope templates | Changing section structure in scope templates | `references/scope-decomposition.md`, `workflows/scope-decompose.md`, `workflows/scope-discover.md` | Templates, reference, and workflows must agree on structure |
+| INDEX.md template | Changing INDEX.md fields or structure | `workflows/scope-decompose.md`, `workflows/scope-discover.md`, `miltiaze/workflows/requirements.md`, `ladder-build/workflows/execute.md` | Four skills read/write INDEX.md |
+| Agent brief format | Changing agent brief YAML/XML structure | `workflows/scope-decompose.md`, `templates/consistency-check.md`, `references/scope-decomposition.md` | Brief format validated at assembly, check, and reference |
+| Scope output path | Changing where miltiaze writes scope briefs | `workflows/scope-decompose.md`, `templates/index.md` | miltiaze output is scope-decompose input |
 
 Per-project cross-references live in `context/cross-references.yaml` (created by mk-flow init, grows from corrections).
 
@@ -193,6 +216,7 @@ Per-project cross-references live in `context/cross-references.yaml` (created by
 - **All paths** normalized to forward slashes (Windows compatibility)
 - **Behavioral corrections** go in `context/rules.yaml` (hook-injected), not auto-memory files
 - **Metadata convention** — Every pipeline template output includes a blockquote metadata block as the first content (before `# Title`). Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. All field names use snake_case. Domain-specific fields may follow. Format: `> **field_name:** value`
+- **Scope artifacts** live in `artifacts/scope/` (gitignored by default per D2). Every scope artifact has dual representation (`.md` human + `.agent.md` agent)
 
 ## Adopting Architecture-Aware Builds in Your Projects
 

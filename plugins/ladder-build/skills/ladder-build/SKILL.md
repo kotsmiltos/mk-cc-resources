@@ -8,7 +8,8 @@ Decompose any project into small, verifiable milestones and build them one at a 
 </objective>
 
 <quick_start>
-BEFORE ANYTHING ELSE — check for architect task specs:
+BEFORE ANYTHING ELSE — check for scope mode or architect task specs:
+0. Check for `artifacts/scope/INDEX.md` — if exists AND has modules with status "ready" or "leaf-ready", read workflows/execute.md. STOP.
 1. Glob for `artifacts/designs/*/sprints/*/task-*.md`
 2. If task spec files exist: read workflows/execute.md and follow it. STOP reading this file.
 3. Also check `context/STATE.md` Pipeline Position — if stage starts with `sprint-`, read workflows/execute.md. STOP.

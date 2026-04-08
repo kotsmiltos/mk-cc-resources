@@ -98,3 +98,12 @@ rules:
       prevent you from doing the wrong work.
     why: "Claude fills ambiguity with assumptions, does the wrong work, and the user has to correct it. One targeted question saves an entire wasted iteration."
     when: "When the user's request has meaningful ambiguity that could lead you down the wrong path"
+
+  surface-remaining-work:
+    what: |
+      When you finish a task, sprint, or any unit of planned work, always surface what planned work remains.
+      - Read the PLAN.md or build plan for remaining sprints/tasks/milestones
+      - List them briefly: "Remaining: sprint 2 (3 tasks), sprint 3 (4 tasks)" or "No remaining planned work."
+      - This goes BEFORE the **Next:** line so the user sees the full picture
+    why: "The user needs to know what's still on the plate without having to ask. Finishing work silently hides the remaining scope."
+    when: "Any time you complete a task, sprint, milestone, or other unit of planned work"

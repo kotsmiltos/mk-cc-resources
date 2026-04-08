@@ -1,19 +1,19 @@
 # Project State: cc-marketplace
-> Last updated: 2026-03-30
+> Last updated: 2026-04-08
 
 ## Current Focus
-Instruction adherence remediation Sprint 1 planned. 5 tasks: fix miltiaze + architect quick_starts, convert routing tables, add rule examples, shorten hook injection.
+Cascading decomposition pipeline complete. 4 sprints, 23 tasks, all QA passed. 20 autonomous QA fixes across 4 reviews. AC1-AC6 fully met. 1 escalation (Pattern Extractor parallelization) and 9 deferred improvements pending user disposition.
 
 ## Pipeline Position
-- **Stage:** sprint-1
-- **Requirements:** artifacts/explorations/2026-03-29-workflow-clarity-exploration.md
-- **Audit:** artifacts/audits/2026-03-31-instruction-adherence-audit-report.md
-- **Plan:** artifacts/designs/instruction-adherence/PLAN.md
+- **Stage:** complete
+- **Requirements:** artifacts/explorations/2026-04-07-cascading-decomposition-requirements.md
+- **Audit:** —
+- **Plan:** artifacts/designs/cascading-decomposition/PLAN.md
 - **Current sprint:** done
 - **Build plan:** —
 - **Task specs:** —
-- **Completion evidence:** artifacts/designs/workflow-clarity/sprints/sprint-3/QA-REPORT.md
-- **Last verified:** 2026-03-29
+- **Completion evidence:** artifacts/designs/cascading-decomposition/sprints/sprint-4/QA-REPORT.md
+- **Last verified:** 2026-04-08
 
 ## Done (Recent)
 - [x] Workflow clarity — 3 sprints, 13 tasks, 12 design decisions implemented. 20/20 fitness functions. 10 autonomous QA fixes across 3 reviews.
@@ -46,4 +46,4 @@ Workflow clarity remediation COMPLETE: artifacts/designs/workflow-clarity/PLAN.m
 Sprint 3 QA: 3 autonomous fixes (FF-16 consumer list, FF-17 status.md, FF-17 script independence). 6 deferred refactor requests in PLAN.md Refactor Requests table — all relate to drift-check/verify-templates tooling, not pipeline contracts.
 Coherence audit: artifacts/audits/2026-03-29-coherence-audit-report.md — 74 findings, 10 recommended actions (all addressed).
 mk-flow build plan: artifacts/builds/mk-flow/BUILD-PLAN.md (7 milestones, M1-M6 complete, M7 paused).
-Plugin versions: miltiaze 1.3.0, ladder-build 1.4.0, mk-flow 0.12.0, architect 0.5.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.20.0.
+Plugin versions: miltiaze 1.4.0, ladder-build 1.5.0, mk-flow 0.13.0, architect 0.6.0, alert-sounds 1.1.0, schema-scout 1.2.1, repo-audit 1.2.0, note 1.8.0, safe-commit 1.0.1, mk-cc-all 1.21.0.

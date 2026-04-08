@@ -129,3 +129,51 @@ rules:
       - "plugins/schema-scout/skills/schema-scout/tool/pyproject.toml — Python package version"
     note: "These versions are intentionally independent. Plugin version tracks the skill. pyproject.toml tracks the Python CLI package."
     why: "Prevents confusion about which version to bump and whether they should match"
+
+  scope-template-reference-sync:
+    when: "Changing section structure in any scope template (index.md, agent-brief-decompose.md, agent-brief-implement.md, decision-record.md, interface-contract.md, cross-cutting-pattern.md, consistency-check.md, system-map.md)"
+    check:
+      - "plugins/architect/skills/architect/references/scope-decomposition.md — references template structures"
+      - "plugins/architect/skills/architect/workflows/scope-decompose.md — assembles briefs from templates"
+    why: "Templates, reference, and workflow must agree on section names, required fields, and file structure. Sprint 2 QA caught 3 inconsistencies from this coupling."
+
+  scope-decompose-workflow-consumers:
+    when: "Changing the scope-decompose workflow output format (what files it produces, where it writes them)"
+    check:
+      - "plugins/ladder-build/skills/ladder-build/workflows/execute.md — reads scope/ leaf tasks"
+      - "plugins/architect/skills/architect/workflows/review.md — reviews scope/ output"
+      - "plugins/architect/skills/architect/templates/index.md — INDEX.md tracks scope/ files"
+    why: "Downstream consumers read scope-decompose output. Format changes break the pipeline."
+
+  scope-index-template:
+    when: "Changing INDEX.md template fields or structure"
+    check:
+      - "plugins/architect/skills/architect/workflows/scope-decompose.md — reads and writes INDEX.md"
+      - "plugins/miltiaze/skills/miltiaze/workflows/requirements.md — creates initial INDEX.md"
+      - "plugins/ladder-build/skills/ladder-build/workflows/execute.md — reads INDEX.md for scope detection"
+    why: "Three skills read/write INDEX.md. Field additions or renames break consumers."
+
+  scope-agent-brief-format:
+    when: "Changing agent brief YAML frontmatter fields or required XML sections"
+    check:
+      - "plugins/architect/skills/architect/workflows/scope-decompose.md — assembles and validates agent briefs"
+      - "plugins/architect/skills/architect/templates/consistency-check.md — validates agent brief content"
+      - "plugins/architect/skills/architect/references/scope-decomposition.md — lists required fields"
+    why: "Brief format is validated at assembly, consistency check, and reference level. All three must agree."
+
+  miltiaze-scope-output:
+    when: "Changing miltiaze requirements workflow output path or format for scope mode"
+    check:
+      - "plugins/architect/skills/architect/workflows/scope-decompose.md — reads project-brief.agent.md at Level 0"
+      - "plugins/architect/skills/architect/templates/index.md — INDEX.md File Inventory format"
+    why: "miltiaze creates the brief that scope-decompose consumes. Path or format changes break the handoff."
+
+  scope-stages:
+    when: "Adding or changing scope-specific pipeline stages (scope-L0, scope-LN, etc.)"
+    check:
+      - "plugins/mk-flow/skills/state/templates/state.md — canonical stage list"
+      - "plugins/architect/skills/architect/SKILL.md — routing by stage"
+      - "plugins/architect/skills/architect/workflows/scope-decompose.md — sets scope stages"
+      - "plugins/ladder-build/skills/ladder-build/SKILL.md — routing by stage"
+    why: "Scope stages are referenced by routing in multiple skills. Adding or renaming breaks routing."
+    note: "The existing stage-names rule covers general stage changes. This rule is specific to scope stage semantics."
