@@ -1,6 +1,6 @@
 # mk-cc-resources
 
-Custom Claude Code plugins — multi-agent architecture, workflow orchestration, data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.
+Custom Claude Code plugins — multi-agent architecture, workflow orchestration, data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, cross-platform alerts, and multi-phase development pipelines.
 
 ## Quick Start
 
@@ -14,6 +14,7 @@ claude plugin install mk-cc-all
 # Install hook-based plugins separately (they need their own plugin root)
 claude plugin install mk-flow
 claude plugin install alert-sounds
+claude plugin install essense-flow
 ```
 
 ### Install skills individually
@@ -29,6 +30,7 @@ claude plugin install repo-audit
 claude plugin install project-note-tracker
 claude plugin install mk-flow          # has hooks — must be installed separately
 claude plugin install alert-sounds     # has hooks — must be installed separately
+claude plugin install essense-flow     # has hooks — must be installed separately
 ```
 
 ## mk-flow — Unified Workflow System
@@ -132,6 +134,40 @@ Edit `config.json` in the plugin directory to toggle features per event:
 ```
 
 Set `"sound"` to a file path (mp3/wav/ogg/aiff) to use a custom sound instead of built-in tones. Set `"beep": false` to disable sounds for an event entirely.
+
+## essense-flow — Multi-Phase Development Pipeline
+
+Multi-phase AI development pipeline with state machine, context injection, and session orientation. **Not included in `mk-cc-all`** — this is a hook-based plugin that must be installed on its own.
+
+```bash
+claude plugin install essense-flow
+```
+
+Then in any project:
+
+```
+/init
+```
+
+### Pipeline phases
+
+| Phase | Command | What happens |
+|-------|---------|-------------|
+| Research | `/research` | Perspective agents research the problem space, produce briefs |
+| Architecture | `/architect` | Design architecture with decomposition, planning, and review workflows |
+| Build | `/build` | Execute task specs with wave-based parallelization |
+| Review | `/review` | Validate deliverables against specs |
+| Context | (automatic) | Context injection hook keeps pipeline state across sessions |
+
+### Hooks
+
+- **UserPromptSubmit** — Injects pipeline state, config, and rules into every message
+- **PostToolUse** — Validates YAML files after Write/Edit operations
+- **Notification** — Orients new sessions to current pipeline state
+
+### Commands
+
+`/init`, `/research`, `/architect`, `/build`, `/review`, `/status`, `/next`
 
 ## Skills Reference
 

@@ -1,0 +1,24 @@
+{
+  "name": "essense-flow",
+  "version": "0.1.0",
+  "description": "Multi-phase AI development pipeline: Research → Architecture → Build → Review → Context",
+  "author": {
+    "name": "mkots"
+  },
+  "commands": [
+    { "name": "init", "file": "commands/init.md" },
+    { "name": "research", "file": "commands/research.md" },
+    { "name": "architect", "file": "commands/architect.md" },
+    { "name": "build", "file": "commands/build.md" },
+    { "name": "review", "file": "commands/review.md" },
+    { "name": "status", "file": "commands/status.md" },
+    { "name": "next", "file": "commands/next.md" }
+  ],
+  "skills": [
+    { "name": "research", "file": "skills/research/SKILL.md" },
+    { "name": "architect", "file": "skills/architect/SKILL.md" },
+    { "name": "build", "file": "skills/build/SKILL.md" },
+    { "name": "context", "file": "skills/context/SKILL.md" }
+  ],
+  "hooks": "hooks/hooks.json"
+}

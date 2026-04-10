@@ -1,0 +1,11 @@
+# Fitness function definition
+# check_command MUST be from the static allowlist per D7
+schema_version: 1
+id: "{{FITNESS_ID}}"
+name: ""
+type: "" # static | runtime | structural
+assertion: ""
+check_command: "" # MUST be from static allowlist per D7
+applies_to: []
+created_by: ""
+severity: "" # blocking | warning

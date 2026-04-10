@@ -1,0 +1,34 @@
+# essense-flow pipeline state
+# Single source of truth for pipeline position (D11)
+# Copied to .pipeline/state.yaml during init
+schema_version: 1
+last_updated: ""                       # ISO-8601, updated on every write
+
+pipeline:
+  phase: "idle"                        # Current phase (from transition table)
+  sprint: null                         # Current sprint number (null if not sprinting)
+  wave: null                           # Current build wave (null if not building)
+  task_in_progress: null               # Current task ID (null if between tasks)
+
+phases_completed:
+  research: null                       # {completed_at, artifact_path} or null
+  architecture: null                   # {completed_at, artifact_path} or null
+
+sprints: {}                            # Map of sprint-NN -> sprint state
+  # Example:
+  # sprint-01:
+  #   status: pending | building | reviewing | complete | failed
+  #   tasks_total: 5
+  #   tasks_complete: 0
+  #   tasks_blocked: 0
+  #   qa_verdict: null | pass | fail | pass-with-issues
+
+blocked_on: null                       # Description of blocker, or null
+next_action: ""                        # Exact command suggestion
+
+decisions_count: 0                     # Number of recorded decisions
+last_decision_id: null                 # Most recent DEC-NNN
+
+session:
+  last_verified: null                  # ISO-8601 timestamp of last drift-check
+  continue_from: null                  # Resume context if paused

@@ -1,0 +1,162 @@
+# essense-flow state machine transition table
+# Defines every legal state transition, its trigger, preconditions, and effects.
+# Referenced by state-management hooks to validate phase changes.
+schema_version: 1
+
+# Valid phases (for reference):
+#   idle, research, requirements-ready, architecture,
+#   decomposing, sprinting, sprint-complete, reviewing,
+#   reassessment, complete
+
+transitions:
+  idle-to-research:
+    from: "idle"
+    to: "research"
+    triggered_by: "research-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  research-to-requirements-ready:
+    from: "research"
+    to: "requirements-ready"
+    triggered_by: "research-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "phases_completed.research"
+      - "last_updated"
+
+  requirements-ready-to-architecture:
+    from: "requirements-ready"
+    to: "architecture"
+    triggered_by: "architecture-skill"
+    requires: ".pipeline/requirements/REQ.md exists"
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  architecture-to-decomposing:
+    from: "architecture"
+    to: "decomposing"
+    triggered_by: "architecture-skill"
+    requires: ".pipeline/requirements/REQ.md exists"
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  architecture-to-sprinting:
+    from: "architecture"
+    to: "sprinting"
+    triggered_by: "architecture-skill"
+    requires: ".pipeline/requirements/REQ.md exists"
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "phases_completed.architecture"
+      - "last_updated"
+
+  decomposing-to-decomposing:
+    from: "decomposing"
+    to: "decomposing"
+    triggered_by: "architecture-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.wave"
+      - "last_updated"
+
+  decomposing-to-sprinting:
+    from: "decomposing"
+    to: "sprinting"
+    triggered_by: "architecture-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "phases_completed.architecture"
+      - "last_updated"
+
+  sprinting-to-sprint-complete:
+    from: "sprinting"
+    to: "sprint-complete"
+    triggered_by: "build-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.task_in_progress"
+      - "last_updated"
+
+  sprint-complete-to-reviewing:
+    from: "sprint-complete"
+    to: "reviewing"
+    triggered_by: "review-skill"
+    requires: "completion report exists for current sprint"
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  reviewing-to-sprinting:
+    from: "reviewing"
+    to: "sprinting"
+    triggered_by: "review-skill"
+    requires: "QA report exists for current sprint"
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "last_updated"
+
+  reviewing-to-complete:
+    from: "reviewing"
+    to: "complete"
+    triggered_by: "review-skill"
+    requires: "QA report exists for current sprint"
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "last_updated"
+
+  reviewing-to-reassessment:
+    from: "reviewing"
+    to: "reassessment"
+    triggered_by: "review-skill"
+    requires: "QA report exists for current sprint"
+    fields_changed:
+      - "pipeline.phase"
+      - "blocked_on"
+      - "last_updated"
+
+  reassessment-to-architecture:
+    from: "reassessment"
+    to: "architecture"
+    triggered_by: "orchestrator"
+    requires: "user approval"
+    fields_changed:
+      - "pipeline.phase"
+      - "blocked_on"
+      - "last_updated"
+
+  reassessment-to-research:
+    from: "reassessment"
+    to: "research"
+    triggered_by: "orchestrator"
+    requires: "user approval"
+    fields_changed:
+      - "pipeline.phase"
+      - "blocked_on"
+      - "phases_completed.research"
+      - "phases_completed.architecture"
+      - "last_updated"
+
+  complete-to-idle:
+    from: "complete"
+    to: "idle"
+    triggered_by: "orchestrator"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "pipeline.wave"
+      - "pipeline.task_in_progress"
+      - "next_action"
+      - "last_updated"

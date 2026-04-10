@@ -1,0 +1,43 @@
+# essense-flow pipeline configuration
+# Copied to .pipeline/config.yaml during project init
+schema_version: 1
+
+pipeline:
+  name: ""                           # Project name (set during init)
+  created_at: ""                     # ISO-8601 timestamp (set during init)
+
+token_budgets:
+  brief_ceiling: 12000              # Max tokens for any assembled agent brief
+  section_max: 4000                 # Max tokens for any single brief section
+  identity_max: 200                 # Max tokens for identity block
+  constraints_max: 500              # Max tokens for constraints block
+  injection_ceiling: 5000           # Max tokens for context hook injection
+  safety_margin_pct: 10             # Buffer percentage subtracted from ceilings
+
+timeouts:
+  hook_ms: 5000                     # Max milliseconds for any hook script
+  agent_ms: 300000                  # Max milliseconds for any subagent (5 min)
+
+overflow:
+  file_lines_backstop: 300          # File size backstop in lines (secondary signal)
+  max_decomposition_depth: 5        # Max recursive decomposition before escalation
+
+quorum:
+  research: "all"                   # All perspective agents required
+  architecture_perspective: "n-1"   # Tolerate one missing perspective
+  architecture_decomposition: "all" # All decomposition agents required
+  build: "all"                      # All build agents required
+  review: "n-1"                     # Tolerate one missing review angle
+
+retry:
+  max_per_agent: 1                    # Max retries per agent before marking terminal
+  allow_partial_synthesis: true       # Proceed with gaps when quorum is met
+
+fitness_functions:
+  allowlist_only: true              # check_commands must come from static allowlist (D7)
+  check_timeout_ms: 10000           # Max milliseconds for any fitness function check
+
+validation:
+  yaml_validate_paths:              # Paths to validate on write (D6)
+    - ".pipeline/"
+    - "context/"
