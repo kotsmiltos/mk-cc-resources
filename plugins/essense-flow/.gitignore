@@ -1,0 +1,3 @@
+# Override repo-level lib/ ignore — essense-flow needs its lib/ tracked
+!lib/
+!node_modules/**/lib/
