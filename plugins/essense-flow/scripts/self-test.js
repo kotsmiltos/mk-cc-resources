@@ -30,7 +30,7 @@ function report(check, name, pass, detail) {
 function checkSkillFiles() {
   console.log("\nCheck 1: SKILL.md files have valid frontmatter");
 
-  const skillDirs = ["research", "architect", "context", "build"];
+  const skillDirs = ["research", "architect", "context", "build", "elicit"];
   const requiredFields = ["name", "description", "version", "schema_version"];
 
   for (const skill of skillDirs) {
@@ -71,7 +71,7 @@ function checkTemplates() {
 
   // Only check files in skills/*/templates/ directories and defaults/*.yaml
   const templateGlobs = [];
-  const skillDirs = ["research", "architect", "context", "build"];
+  const skillDirs = ["research", "architect", "context", "build", "elicit"];
   for (const skill of skillDirs) {
     const tplDir = path.join(PLUGIN_ROOT, "skills", skill, "templates");
     if (fs.existsSync(tplDir)) {
@@ -123,7 +123,7 @@ function checkTemplates() {
 function checkCrossSkillImports() {
   console.log("\nCheck 3: No cross-skill imports");
 
-  const skillDirs = ["research", "architect", "context", "build"];
+  const skillDirs = ["research", "architect", "context", "build", "elicit"];
 
   for (const skill of skillDirs) {
     const scriptDir = path.join(PLUGIN_ROOT, "skills", skill, "scripts");

@@ -6,6 +6,7 @@ const { yamlIO, stateMachine, tokens } = require("../../../lib");
 // Phase display labels for human-readable output
 const PHASE_LABELS = {
   idle: "Idle — no pipeline active",
+  eliciting: "Eliciting — design exploration in progress",
   research: "Research — multi-perspective analysis in progress",
   "requirements-ready": "Requirements ready — awaiting architecture",
   architecture: "Architecture — designing system structure",
@@ -54,7 +55,9 @@ function getNextAction(state) {
 
   switch (phase) {
     case "idle":
-      return "/research";
+      return "/elicit or /research";
+    case "eliciting":
+      return "/elicit (continue session)";
     case "research":
       return "Continue research (in progress)";
     case "requirements-ready":

@@ -14,6 +14,7 @@ const { yamlIO, paths } = require("../../../lib");
 const PIPELINE_DIR = ".pipeline";
 
 const PIPELINE_SUBDIRS = [
+  "elicitation",
   "requirements",
   "architecture",
   "sprints",
@@ -57,7 +58,7 @@ function initPipeline(projectRoot, projectName) {
     throw new Error(`Default state not found at ${path.join(defaultsDir, "state.yaml")}`);
   }
   stateSrc.last_updated = new Date().toISOString();
-  stateSrc.next_action = "/research";
+  stateSrc.next_action = "/elicit or /research";
   yamlIO.safeWrite(path.join(pipelineDir, "state.yaml"), stateSrc);
 
   // Create empty rules.yaml from template

@@ -20,7 +20,8 @@ Suggest what to do next based on the current pipeline phase. Read-only — does 
 
 | Current Phase | Next Command | Explanation |
 |---------------|-------------|-------------|
-| `idle` | `/research` | Start with research to understand the problem |
+| `idle` | `/elicit` or `/research` | Start with elicitation to explore the idea, or research directly |
+| `eliciting` | `/elicit` | Continue design exploration session |
 | `research` | _(wait)_ | Research in progress — wait for completion |
 | `requirements-ready` | `/architect` | Requirements done — plan the architecture |
 | `architecture` | _(wait)_ | Architecture in progress — wait for completion |

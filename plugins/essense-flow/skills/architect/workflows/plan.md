@@ -13,6 +13,7 @@ phase_transitions: requirements-ready → architecture → sprinting
 - Pipeline initialized with `.pipeline/state.yaml`
 - Research complete: `.pipeline/requirements/REQ.md` exists
 - State phase is `requirements-ready`
+- Optional: `.pipeline/elicitation/SPEC.md` exists (from elicitation phase)
 
 ## Steps
 
@@ -22,11 +23,16 @@ Read `.pipeline/state.yaml`. Verify phase is `requirements-ready`. If not, repor
 ### 2. Transition to Architecture
 Use `lib/state-machine.transition()` to move from `requirements-ready` to `architecture`.
 
-### 3. Read Requirements
-Read `.pipeline/requirements/REQ.md`. Extract FR list, NFR list, constraints, risks.
+### 3. Read Input Sources
+
+**Always read:** `.pipeline/requirements/REQ.md` — extract FR list, NFR list, constraints, risks.
+
+**If exists, also read:** `.pipeline/elicitation/SPEC.md` — the comprehensive design spec with feature mechanics, flows, and structured dependency map. When present, this is the primary source for decomposition. Use its dependency map to inform sprint structure and task ordering.
+
+Combine both into the context provided to perspective agents.
 
 ### 4. Assemble Perspective Briefs
-Call `architect-runner.planArchitecture()` with requirements content. Produces 4 briefs (infrastructure, interface, testing, security).
+Call `architect-runner.planArchitecture()` with requirements content (and SPEC.md content if available). Produces 4 briefs (infrastructure, interface, testing, security). When SPEC.md is present, token budget adapts to accommodate the larger context.
 
 ### 5. Dispatch Perspective Agents
 Spawn all 4 agents in parallel using the Agent tool. Each gets its assembled brief.

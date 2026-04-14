@@ -12,13 +12,15 @@
     { "name": "build", "file": "commands/build.md" },
     { "name": "review", "file": "commands/review.md" },
     { "name": "status", "file": "commands/status.md" },
-    { "name": "next", "file": "commands/next.md" }
+    { "name": "next", "file": "commands/next.md" },
+    { "name": "elicit", "file": "commands/elicit.md" }
   ],
   "skills": [
     { "name": "research", "file": "skills/research/SKILL.md" },
     { "name": "architect", "file": "skills/architect/SKILL.md" },
     { "name": "build", "file": "skills/build/SKILL.md" },
-    { "name": "context", "file": "skills/context/SKILL.md" }
+    { "name": "context", "file": "skills/context/SKILL.md" },
+    { "name": "elicit", "file": "skills/elicit/SKILL.md" }
   ],
   "hooks": "hooks/hooks.json"
 }

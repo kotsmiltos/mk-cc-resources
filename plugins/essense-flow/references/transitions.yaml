@@ -4,11 +4,43 @@
 schema_version: 1
 
 # Valid phases (for reference):
-#   idle, research, requirements-ready, architecture,
+#   idle, eliciting, research, requirements-ready, architecture,
 #   decomposing, sprinting, sprint-complete, reviewing,
 #   reassessment, complete
 
 transitions:
+  idle-to-eliciting:
+    from: "idle"
+    to: "eliciting"
+    triggered_by: "elicit-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "elicitation.status"
+      - "elicitation.started_at"
+      - "last_updated"
+
+  eliciting-to-eliciting:
+    from: "eliciting"
+    to: "eliciting"
+    triggered_by: "elicit-skill"
+    requires: null
+    fields_changed:
+      - "elicitation.current_round"
+      - "elicitation.explored"
+      - "last_updated"
+
+  eliciting-to-idle:
+    from: "eliciting"
+    to: "idle"
+    triggered_by: "elicit-skill"
+    requires: null
+    fields_changed:
+      - "pipeline.phase"
+      - "elicitation.status"
+      - "elicitation.completed_at"
+      - "last_updated"
+
   idle-to-research:
     from: "idle"
     to: "research"

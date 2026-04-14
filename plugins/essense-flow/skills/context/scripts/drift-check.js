@@ -29,7 +29,7 @@ function runDriftCheck(pipelineDir) {
 
   // Check 1: Phase is a known phase
   const knownPhases = [
-    "idle", "research", "requirements-ready", "architecture",
+    "idle", "eliciting", "research", "requirements-ready", "architecture",
     "decomposing", "sprinting", "sprint-complete", "reviewing",
     "reassessment", "complete",
   ];
@@ -48,6 +48,16 @@ function runDriftCheck(pipelineDir) {
       findings.push({ check: "requirements-exist", result: STATUS_DRIFT, detail: "Phase implies research is done, but requirements/ is missing or empty" });
     } else {
       findings.push({ check: "requirements-exist", result: STATUS_OK, detail: "requirements/ exists" });
+    }
+  }
+
+  // Check 3a: If phase is eliciting, elicitation state should exist
+  if (phase === "eliciting") {
+    const elicitStateFile = path.join(pipelineDir, "elicitation", "state.yaml");
+    if (!fs.existsSync(elicitStateFile)) {
+      findings.push({ check: "elicitation-state-exists", result: STATUS_DRIFT, detail: "Phase is eliciting but elicitation/state.yaml not found" });
+    } else {
+      findings.push({ check: "elicitation-state-exists", result: STATUS_OK, detail: "elicitation/state.yaml exists" });
     }
   }
 

@@ -11,8 +11,11 @@ pipeline:
   task_in_progress: null               # Current task ID (null if between tasks)
 
 phases_completed:
+  elicitation: null                    # {completed_at, artifact_path} or null
   research: null                       # {completed_at, artifact_path} or null
   architecture: null                   # {completed_at, artifact_path} or null
+
+elicitation: null                      # Hydrated on first /elicit — see elicitation-state.yaml for schema
 
 sprints: {}                            # Map of sprint-NN -> sprint state
   # Example:

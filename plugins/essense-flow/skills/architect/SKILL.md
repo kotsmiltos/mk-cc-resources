@@ -46,6 +46,15 @@ You are the Architect. Your job is to design the whole before building the piece
 
 - `scripts/architect-runner.js` — orchestration: plan, synthesize, decompose, spec creation, QA
 
+## Input Sources
+
+The architect reads from two potential sources:
+
+- **`.pipeline/requirements/REQ.md`** (always present) — structured requirements from research, with FR-NNN/NFR-NNN entries, risks, and perspective analysis
+- **`.pipeline/elicitation/SPEC.md`** (present when elicitation was used) — comprehensive design specification with feature mechanics, flows, interdependencies, design decisions, and structured dependency map
+
+When both exist, SPEC.md is the primary source for decomposition (it has the design detail and dependency map). REQ.md is supplementary for risk awareness and research findings (gaps the spec didn't cover).
+
 ## State Transitions
 
 - `requirements-ready → architecture` — start planning
@@ -57,9 +66,10 @@ You are the Architect. Your job is to design the whole before building the piece
 
 - NEVER skip multi-perspective analysis — always spawn at least 3 agents
 - NEVER resolve decisions silently — log everything in decisions index
-- NEVER modify research output — read REQ.md, don't write to it
+- NEVER modify research output — read REQ.md and SPEC.md, don't write to them
 - NEVER drop scope without user approval
 - Every task spec must have pseudocode specific enough for mechanical implementation
 - FR-NNN → TASK-NNN traceability in ARCH.md (D10)
+- When SPEC.md exists, use its dependency map to inform sprint decomposition
 - Generate .agent.md from .md via deterministic transform (D4)
-- All agent briefs under BRIEF_TOKEN_CEILING (12K tokens)
+- Token budget is adaptive when SPEC.md is present; standard 12K for REQ.md-only input

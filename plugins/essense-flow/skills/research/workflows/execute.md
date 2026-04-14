@@ -12,7 +12,7 @@ phase_transitions: idle → research → requirements-ready
 
 - Pipeline initialized (`.pipeline/state.yaml` exists)
 - State phase is `idle`
-- Problem statement provided by user or in `.pipeline/problem.md`
+- Problem statement provided by user, `.pipeline/elicitation/SPEC.md`, or `.pipeline/problem.md`
 
 ## Steps
 
@@ -24,22 +24,32 @@ Read `.pipeline/state.yaml`. Verify phase is `idle`. If not, report current phas
 
 Use `lib/state-machine.transition()` to move from `idle` to `research`.
 
-### 3. Read Problem Statement
+### 3. Read Input and Determine Mode
 
-Accept the problem statement from:
-- User's direct input (preferred)
-- `.pipeline/problem.md` if it exists
+Check for `.pipeline/elicitation/SPEC.md`:
 
-If neither is available, ask the user for the problem statement.
+**If SPEC.md exists (rich input mode):**
+- Read the file, strip YAML frontmatter (delimited by `---`), use body as `problemStatement`
+- Log: "Using elicited design spec from `.pipeline/elicitation/SPEC.md`"
+- Select adaptive perspectives based on the spec's domain and content (see SKILL.md Mode 2)
+- Set token budget to accommodate full spec: `brief_ceiling = max(12000, countTokens(spec) + 2000)`
+
+**If no SPEC.md (direct input mode):**
+- Accept problem statement from user's direct input or `.pipeline/problem.md`
+- If neither is available, ask the user for the problem statement
+- Use default 4 perspectives and standard token budget
 
 ### 4. Assemble Perspective Briefs
 
 Call `research-runner.assemblePerspectiveBriefs()` with:
-- The problem statement
+- The problem statement (SPEC.md body or direct input)
 - Plugin root path
 - Pipeline config
+- Custom lenses array (for rich input mode) or omit for defaults
 
-This produces one brief per perspective lens (security, infrastructure, UX, testing).
+For rich input mode, each agent brief instructs two-pass analysis:
+1. Gap-finding: what the design missed from this perspective
+2. Depth: what needs more detail in this perspective's domain
 
 ### 5. Dispatch Perspective Agents
 

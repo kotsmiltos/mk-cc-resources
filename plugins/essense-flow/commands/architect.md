@@ -21,6 +21,7 @@ Plan architecture from requirements or review a completed sprint. Action is auto
 
 **If `requirements-ready` (plan):**
 - Read `.pipeline/requirements/REQ.md`
+- Also read `.pipeline/elicitation/SPEC.md` if it exists (primary design source — DEC-010)
 - Use `skills/architect/scripts/architect-runner.js`:
   - `planArchitecture(requirements, pluginRoot, config)` — 4 perspective briefs
   - Dispatch perspective agents
