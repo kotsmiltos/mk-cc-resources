@@ -44,16 +44,34 @@ function main() {
   }
 
   const phase = state && state.pipeline && state.pipeline.phase;
-  if (phase !== "reviewing") process.exit(0); // not reviewing, allow
+  if (phase !== "reviewing" && phase !== "verifying") process.exit(0); // not a guarded phase, allow
 
-  // Write/Edit guard
-  if (toolName === "Write" || toolName === "Edit") {
+  // Write/Edit guard — reviewing phase
+  if (phase === "reviewing" && (toolName === "Write" || toolName === "Edit")) {
     const filePath = toolInput.file_path || "";
     const normalized = filePath.replace(/\\/g, "/");
     if (normalized.includes(".pipeline/reviews/") && normalized.includes("/tests/")) {
       process.exit(0); // sandbox path, allow
     }
     process.stderr.write("BLOCKED: Review agents can only write to .pipeline/reviews/sprint-N/tests/\n");
+    process.exit(1);
+  }
+
+  // Write/Edit guard — verifying phase (read-only except verify artifacts)
+  if (phase === "verifying" && (toolName === "Write" || toolName === "Edit")) {
+    const filePath = toolInput.file_path || "";
+    const normalized = filePath.replace(/\\/g, "/");
+    const VERIFY_ALLOWED_PATHS = [
+      ".pipeline/verify/",
+      ".pipeline/VERIFICATION-REPORT.md",
+      ".pipeline/VERIFICATION-REPORT-ondemand.md",
+      ".pipeline/extracted-items.yaml",
+      ".pipeline/verify-checkpoint.yaml",
+    ];
+    if (VERIFY_ALLOWED_PATHS.some((allowed) => normalized.endsWith(allowed) || normalized.includes("/" + allowed))) {
+      process.exit(0); // verify artifact path, allow
+    }
+    process.stderr.write("BLOCKED: Verify phase is read-only — writes only permitted to .pipeline/verify/ and verification report files\n");
     process.exit(1);
   }
 

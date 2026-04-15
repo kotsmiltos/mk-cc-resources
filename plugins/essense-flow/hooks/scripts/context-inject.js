@@ -56,7 +56,7 @@ function main() {
   const payload = contextManager.buildInjectionPayload(pipelineDir, config);
   if (payload) {
     // Auto-advance guidance for autonomous phases
-    const AUTO_ADVANCE_PHASES = ["research", "triaging", "sprinting", "sprint-complete", "reviewing"];
+    const AUTO_ADVANCE_PHASES = ["research", "triaging", "verifying", "sprinting", "sprint-complete", "reviewing"];
     const stateFile = path.join(pipelineDir, "state.yaml");
     const state = yamlIO.safeReadWithFallback(stateFile);
     const phase = state && state.pipeline ? state.pipeline.phase : null;

@@ -122,4 +122,4 @@ function hashOnWrite(pipelineDir, relativePath, content) {
   return { ok: true, hash };
 }
 
-module.exports = { computeHash, storeHash, verifyHash, hashOnWrite };
+module.exports = { computeHash, computeHashFromContent, storeHash, verifyHash, hashOnWrite };

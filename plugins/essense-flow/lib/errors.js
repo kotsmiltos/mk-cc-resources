@@ -45,6 +45,26 @@ const ERRORS = {
     message: "Decomposition depth {depth} exceeds max {max}",
     recovery: "The decomposition tree is too deep. Review the convergence summary and consider stopping.",
   },
+  E_VERIFY_EXTRACTION_FAILED: {
+    message: "Verify extraction failed: {reason} (attempt {retries})",
+    recovery: "Check that the source artifact is well-formed and accessible. Inspect logs for the underlying cause and re-run the verify phase.",
+  },
+  E_VERIFY_STALE_CACHE: {
+    message: "Verify cache is stale: cached hash {cached} does not match current hash {current}",
+    recovery: "The source artifact changed since the last verify run. Re-run the verify phase to rebuild the cache against the current artifact.",
+  },
+  E_VERIFY_SPEC_MUTATED: {
+    message: "SPEC.md mutated during verify: hash at start was {hash_start}, now {hash_current}",
+    recovery: "Do not edit SPEC.md while verify is running. Restore the original SPEC.md or re-run the verify phase from the beginning.",
+  },
+  E_VERIFY_PARTIAL_REPORT: {
+    message: "Verify report is incomplete: {failed} of {total} item groups failed to produce output",
+    recovery: "Check agent logs for the failed groups. Re-run the verify phase; if failures persist, reduce items_per_group in config to narrow the failing scope.",
+  },
+  E_VERIFY_LOOP_LIMIT: {
+    message: "Verify-elicit loop limit reached: limit is {limit}, current count is {count}",
+    recovery: "The pipeline has cycled between verify and elicit too many times. Review the VERIFICATION-REPORT.md and SPEC.md manually to resolve outstanding gaps before retrying.",
+  },
 };
 
 /**

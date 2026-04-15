@@ -23,12 +23,19 @@ overflow:
   file_lines_backstop: 300          # File size backstop in lines (secondary signal)
   max_decomposition_depth: 5        # Max recursive decomposition before escalation
 
+verify:
+  items_per_group: 5                 # Max items per agent group in a verify pass
+  elicit_loop_max: 3                 # Max verify-to-elicit cycles before escalation
+  file_inline_token_threshold: 2000  # Files below this threshold are inlined in full
+  file_excerpt_token_threshold: 8000 # Files above this threshold are excerpted only
+
 quorum:
   research: "all"                   # All perspective agents required
   architecture_perspective: "n-1"   # Tolerate one missing perspective
   architecture_decomposition: "all" # All decomposition agents required
   build: "all"                      # All build agents required
   review: "n-1"                     # Tolerate one missing review angle
+  verify: "all"                     # All verify agents required
 
 retry:
   max_per_agent: 1                    # Max retries per agent before marking terminal

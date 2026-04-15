@@ -9,6 +9,7 @@ const paths = require("./paths");
 const PROGRESS_PATHS = {
   research: "research/progress.yaml",
   architecture: "architecture/progress.yaml",
+  verify: "verify/progress.yaml",
   // Build and review use sprint-specific paths — handled dynamically
 };
 

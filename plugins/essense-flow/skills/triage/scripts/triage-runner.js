@@ -6,7 +6,7 @@ const yamlIO = require("../../../lib/yaml-io");
 const paths = require("../../../lib/paths");
 
 // Phase priority for multi-category routing (lowest index = earliest phase)
-const PHASE_PRIORITY = ["eliciting", "research", "architecture", "complete"];
+const PHASE_PRIORITY = ["eliciting", "research", "architecture", "verifying"];
 
 // Words shorter than this threshold are excluded from keyword extraction
 const MIN_KEYWORD_LENGTH = 5;
@@ -498,7 +498,7 @@ function determineRoute(categorized) {
     return "architecture";
   }
   if (categorized.acceptable.length > 0 && categorized.all_items.length === categorized.acceptable.length) {
-    return "complete";
+    return "verifying";
   }
   // Default: all gaps are implementation tasks, forward to architect
   return "requirements-ready";

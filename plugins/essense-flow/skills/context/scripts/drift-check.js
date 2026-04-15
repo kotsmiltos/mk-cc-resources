@@ -74,6 +74,10 @@ const REPAIR_ACTIONS = {
       }
     },
   },
+  "verification-report-exists": {
+    description: "Cannot auto-repair — re-run /verify to regenerate the verification report",
+    apply: null,
+  },
   "schema-version": {
     description: "Add schema_version: 1 to state.yaml",
     apply: (pipelineDir, _finding) => {
@@ -104,7 +108,7 @@ function runDriftCheck(pipelineDir) {
   const knownPhases = [
     "idle", "eliciting", "research", "triaging", "requirements-ready",
     "architecture", "decomposing", "sprinting", "sprint-complete",
-    "reviewing", "complete",
+    "reviewing", "verifying", "complete",
   ];
   const phase = state.pipeline && state.pipeline.phase;
   if (!knownPhases.includes(phase)) {
@@ -178,6 +182,14 @@ function runDriftCheck(pipelineDir) {
       const artifactPath = state.phases_completed.architecture.artifact_path;
       if (artifactPath && !fs.existsSync(path.resolve(pipelineDir, "..", artifactPath))) {
         findings.push({ check: "architecture-artifact", result: STATUS_DRIFT, detail: `Architecture artifact claimed at "${artifactPath}" but not found` });
+      }
+    }
+    if (state.phases_completed.verify) {
+      const verificationReport = path.join(pipelineDir, "VERIFICATION-REPORT.md");
+      if (!fs.existsSync(verificationReport)) {
+        findings.push({ check: "verification-report-exists", result: STATUS_DRIFT, detail: "phases_completed.verify is set but VERIFICATION-REPORT.md not found — re-run /verify" });
+      } else {
+        findings.push({ check: "verification-report-exists", result: STATUS_OK, detail: "VERIFICATION-REPORT.md exists" });
       }
     }
   }

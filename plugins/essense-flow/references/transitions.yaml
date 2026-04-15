@@ -105,12 +105,43 @@ transitions:
       - "pipeline.phase"
       - "last_updated"
 
-  triaging-to-complete:
+  triaging-to-verifying:
     from: "triaging"
-    to: "complete"
+    to: "verifying"
     triggered_by: "triage-skill"
-    requires: null
+    requires: "SPEC.md exists at .pipeline/elicitation/SPEC.md"
     auto_advance: true
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  verifying-to-complete:
+    from: "verifying"
+    to: "complete"
+    triggered_by: "verify-skill"
+    requires: "VERIFICATION-REPORT.md exists with completion_status: complete and no CONFIRMED gaps"
+    auto_advance: true
+    fields_changed:
+      - "pipeline.phase"
+      - "phases_completed.verify"
+      - "last_updated"
+
+  verifying-to-eliciting:
+    from: "verifying"
+    to: "eliciting"
+    triggered_by: "verify-skill"
+    requires: "VERIFICATION-REPORT.md contains CONFIRMED spec drift items"
+    auto_advance: false
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  verifying-to-architecture:
+    from: "verifying"
+    to: "architecture"
+    triggered_by: "verify-skill"
+    requires: "VERIFICATION-REPORT.md contains CONFIRMED missing implementation items"
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "last_updated"

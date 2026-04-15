@@ -1,30 +1,31 @@
 {
   "name": "essense-flow",
-  "version": "0.2.0",
-  "description": "Multi-phase AI development pipeline: Elicit → Research → Triage → Architecture → Build → Review",
+  "version": "0.3.0",
+  "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review, Verify — 11 commands, 8 skills",
   "author": {
     "name": "mkots"
   },
   "commands": [
-    { "name": "init", "file": "commands/init.md" },
-    { "name": "elicit", "file": "commands/elicit.md" },
-    { "name": "research", "file": "commands/research.md" },
-    { "name": "architect", "file": "commands/architect.md" },
-    { "name": "build", "file": "commands/build.md" },
-    { "name": "review", "file": "commands/review.md" },
-    { "name": "triage", "file": "commands/triage.md" },
-    { "name": "status", "file": "commands/status.md" },
-    { "name": "next", "file": "commands/next.md" },
-    { "name": "help", "file": "commands/help.md" }
+    { "name": "architect", "path": "commands/architect.md" },
+    { "name": "build", "path": "commands/build.md" },
+    { "name": "elicit", "path": "commands/elicit.md" },
+    { "name": "help", "path": "commands/help.md" },
+    { "name": "init", "path": "commands/init.md" },
+    { "name": "next", "path": "commands/next.md" },
+    { "name": "research", "path": "commands/research.md" },
+    { "name": "review", "path": "commands/review.md" },
+    { "name": "status", "path": "commands/status.md" },
+    { "name": "triage", "path": "commands/triage.md" },
+    { "name": "verify", "path": "commands/verify.md" }
   ],
   "skills": [
-    { "name": "elicit", "file": "skills/elicit/SKILL.md" },
-    { "name": "research", "file": "skills/research/SKILL.md" },
-    { "name": "architect", "file": "skills/architect/SKILL.md" },
-    { "name": "build", "file": "skills/build/SKILL.md" },
-    { "name": "review", "file": "skills/review/SKILL.md" },
-    { "name": "triage", "file": "skills/triage/SKILL.md" },
-    { "name": "context", "file": "skills/context/SKILL.md" }
-  ],
-  "hooks": "hooks/hooks.json"
+    { "name": "architect", "path": "skills/architect/SKILL.md" },
+    { "name": "build", "path": "skills/build/SKILL.md" },
+    { "name": "context", "path": "skills/context/SKILL.md" },
+    { "name": "elicit", "path": "skills/elicit/SKILL.md" },
+    { "name": "research", "path": "skills/research/SKILL.md" },
+    { "name": "review", "path": "skills/review/SKILL.md" },
+    { "name": "triage", "path": "skills/triage/SKILL.md" },
+    { "name": "verify", "path": "skills/verify/SKILL.md" }
+  ]
 }
