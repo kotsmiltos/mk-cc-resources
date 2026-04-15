@@ -26,7 +26,7 @@ Read it with `lib/yaml-io.safeReadWithFallback()`. Write it with `lib/yaml-io.sa
 ## Phase Flow
 
 ```
-idle → research → requirements-ready → architecture → [decomposing →] sprinting → sprint-complete → reviewing → sprinting|complete|reassessment
+idle → [eliciting →] research → triaging → requirements-ready → architecture → [decomposing →] sprinting → sprint-complete → reviewing → triaging → architecture|complete
 ```
 
 See `references/transitions.yaml` for the full transition table.
@@ -39,7 +39,7 @@ See `references/transitions.yaml` for the full transition table.
 
 ## Constraints
 
-- NEVER auto-approve transitions that require "user approval" (reassessment phase)
+- NEVER auto-approve transitions that require "user approval" (triaging phase — ambiguous items)
 - NEVER write state without going through the state machine transition validator
 - NEVER read another skill's internal files — use interface contracts only
 - Keep injection payload under `config.token_budgets.injection_ceiling`

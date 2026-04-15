@@ -125,6 +125,18 @@ transitions:
       - "pipeline.phase"
       - "last_updated"
 
+  architecture-to-sprinting:
+    from: "architecture"
+    to: "sprinting"
+    triggered_by: "architecture-skill"
+    requires: "task specs exist for current sprint"
+    auto_advance: true
+    fields_changed:
+      - "pipeline.phase"
+      - "pipeline.sprint"
+      - "phases_completed.architecture"
+      - "last_updated"
+
   architecture-to-decomposing:
     from: "architecture"
     to: "decomposing"

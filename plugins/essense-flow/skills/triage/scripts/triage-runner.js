@@ -395,7 +395,56 @@ function categorizeItem(item, specContent, pipelineDir) {
 }
 
 /**
+ * Load queued findings from a prior triage pass.
+ * These are findings that were deferred to later phases and need re-evaluation.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {Array<{ id: string, description: string, source: string }>}
+ */
+function loadQueuedFindings(pipelineDir) {
+  if (!pipelineDir) return [];
+  const queuedPath = path.join(pipelineDir, "triage", "queued-findings.yaml");
+  const data = yamlIO.safeReadWithFallback(queuedPath);
+  if (!data || !Array.isArray(data.items)) return [];
+  return data.items;
+}
+
+/**
+ * Merge new items with previously queued findings, deduplicating by id.
+ * Queued items are marked with source "queued" so they can be distinguished
+ * from fresh findings in the triage report.
+ *
+ * @param {Array} newItems — fresh gaps or findings from current phase
+ * @param {Array} queuedItems — items from prior queued-findings.yaml
+ * @returns {Array} — merged, deduplicated item list
+ */
+function mergeWithQueued(newItems, queuedItems) {
+  if (!queuedItems || queuedItems.length === 0) return newItems || [];
+  if (!newItems || newItems.length === 0) {
+    return queuedItems.map((item) => ({ ...item, source: item.source || "queued" }));
+  }
+
+  const seen = new Set();
+  const merged = [];
+
+  // New items take precedence
+  for (const item of newItems) {
+    if (item.id) seen.add(item.id);
+    merged.push(item);
+  }
+
+  // Queued items only added if not already present
+  for (const item of queuedItems) {
+    if (item.id && seen.has(item.id)) continue;
+    merged.push({ ...item, source: item.source || "queued" });
+  }
+
+  return merged;
+}
+
+/**
  * Categorize all items against spec, architecture, and task coverage.
+ * Automatically loads and merges queued findings from prior triage passes.
  * Falls back to Increment 1 pass-through when specContent is not provided.
  *
  * @param {Array<{ id: string, description: string, source: string }>} items — gaps or findings
@@ -406,6 +455,10 @@ function categorizeItem(item, specContent, pipelineDir) {
 function categorizeItems(items, specContent, pipelineDir) {
   pipelineDir = pipelineDir || null;
 
+  // Load and merge queued findings from prior triage passes
+  const queuedItems = loadQueuedFindings(pipelineDir);
+  const allItems = mergeWithQueued(items, queuedItems);
+
   const categorized = {
     design_gaps: [],
     design_decisions: [],
@@ -413,16 +466,16 @@ function categorizeItems(items, specContent, pipelineDir) {
     missing_analysis: [],
     ambiguous: [],
     acceptable: [],
-    all_items: items || [],
+    all_items: allItems,
   };
 
   // Increment 1 fallback: when no specContent provided, pass through
-  if (!specContent || !items || items.length === 0) {
+  if (!specContent || !allItems || allItems.length === 0) {
     return categorized;
   }
 
   // Full categorization (Increment 2)
-  for (const item of items) {
+  for (const item of allItems) {
     const { category, rationale } = categorizeItem(item, specContent, pipelineDir);
     const enrichedItem = { ...item, rationale };
     categorized[category].push(enrichedItem);
@@ -565,6 +618,8 @@ module.exports = {
   determineRoute,
   generateReport,
   writeTriage,
+  loadQueuedFindings,
+  mergeWithQueued,
   // Helper functions exported for testability
   extractKeywords,
   hasSpecCoverage,

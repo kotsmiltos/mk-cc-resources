@@ -34,21 +34,6 @@ retry:
   max_per_agent: 1                    # Max retries per agent before marking terminal
   allow_partial_synthesis: true       # Proceed with gaps when quorum is met
 
-fitness_functions:
-  allowlist_only: true              # check_commands must come from static allowlist (D7)
-  check_timeout_ms: 10000           # Max milliseconds for any fitness function check
-
-elicitation:
-  coverage_dimensions:              # Starting dimensions for design exploration
-    - core_problem
-    - users
-    - scope
-    - constraints
-    - success_criteria
-    - failure_modes
-    - precedent
-    - priority
-
 validation:
   yaml_validate_paths:              # Paths to validate on write (D6)
     - ".pipeline/"

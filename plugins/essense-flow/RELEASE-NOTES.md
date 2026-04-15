@@ -44,12 +44,20 @@ Full implementation of the design specification. All 3 increments complete.
 - Wired artifact-integrity, progress, errors into runners
 - Fixed injection_ceiling from 5000 to 10000 per spec
 
+### Spec Compliance Fixes
+- Added `architecture-to-sprinting` transition for simple projects that skip multi-wave decomposition
+- Triage now loads and merges queued findings from prior passes (carry-forward per spec)
+- Research `loadSpec()` now blocks on stale SPEC.md instead of just warning
+- Fixed context SKILL.md stale "reassessment" references (now "triaging")
+- Removed vestigial `fitness_functions` and `elicitation.coverage_dimensions` from config
+- Fixed config-schema: `injection_ceiling` default 5000 → 10000, added `max_brief_ceiling`
+
 ### Plugin Stats
 - 7 skills: elicit, research, architect, build, review, triage, context
 - 10 commands: init, elicit, research, architect, build, review, triage, status, next, help
-- 16 lib modules
+- 17 lib modules
 - 4 hooks (context-inject, yaml-validate, session-orient, review-guard)
-- 11 states, 18 transitions
+- 11 states, 19 transitions
 - Self-test: 43/43
 
 ## 0.1.0 (2026-04-10)

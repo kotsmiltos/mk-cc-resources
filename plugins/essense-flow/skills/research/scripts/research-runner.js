@@ -25,14 +25,20 @@ function loadSpec(pipelineDir) {
   const stripped = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
   if (!stripped) return null;
 
-  // Verify SPEC.md hasn't changed since last hash
+  // Verify SPEC.md hasn't changed since last hash — block if stale
   try {
     const integrity = require("../../../lib/artifact-integrity");
     const check = integrity.verifyHash(pipelineDir, "elicitation/SPEC.md");
     if (check.ok && check.stale) {
-      console.error("[essense-flow] WARNING: SPEC.md changed since last hashed. Downstream artifacts may be stale.");
+      return {
+        ok: false,
+        stale: true,
+        error: "SPEC.md changed since research last ran. Downstream artifacts (REQ.md) may not reflect the current design. Re-run /research to refresh, or use /research --full to start fresh.",
+        storedHash: check.storedHash,
+        currentHash: check.currentHash,
+      };
     }
-  } catch (_e) { /* integrity is advisory */ }
+  } catch (_e) { /* integrity check unavailable — proceed without blocking */ }
 
   return {
     ok: true,
