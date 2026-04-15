@@ -71,8 +71,8 @@
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline — Research, Architecture, Build, Review, Context. State machine with phase transitions, context injection, and session orientation hooks.",
-      "version": "0.1.0"
+      "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review. Adaptive perspectives, wave-based decomposition, adversarial QA, artifact integrity, and auto-advance.",
+      "version": "0.2.0"
     },
     {
       "name": "mk-cc-all",
