@@ -79,4 +79,29 @@ function checkBudget(sections, config) {
   return { ok: true, details };
 }
 
-module.exports = { countTokens, checkBudget };
+/**
+ * Compute adaptive brief ceiling based on SPEC.md size.
+ * When a rich spec exists, the brief ceiling scales to accommodate it
+ * (spec tokens + overhead for agent instructions), capped at max_brief_ceiling.
+ * Falls back to default brief_ceiling when no spec content provided.
+ *
+ * @param {string|null} specContent — raw SPEC.md content (null if no spec)
+ * @param {Object} config — pipeline config with token_budgets
+ * @returns {number} effective brief ceiling in tokens
+ */
+function adaptiveBriefCeiling(specContent, config) {
+  const budgets = (config && config.token_budgets) || {};
+  const defaultCeiling = budgets.brief_ceiling || 12000;
+  const maxCeiling = budgets.max_brief_ceiling || 100000;
+
+  if (!specContent || typeof specContent !== "string") {
+    return defaultCeiling;
+  }
+
+  const specTokens = countTokens(specContent);
+  // Spec tokens + 2000 for agent identity, instructions, and output overhead
+  const AGENT_OVERHEAD = 2000;
+  return Math.min(Math.max(defaultCeiling, specTokens + AGENT_OVERHEAD), maxCeiling);
+}
+
+module.exports = { countTokens, checkBudget, adaptiveBriefCeiling };

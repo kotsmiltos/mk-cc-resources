@@ -1,7 +1,7 @@
 ---
 name: elicit
 description: Exhaustive design exploration — takes a project pitch and collaboratively develops it into a comprehensive, build-ready specification.
-version: 0.1.0
+version: 0.2.0
 schema_version: 1
 ---
 

@@ -8,13 +8,13 @@ const PHASE_LABELS = {
   idle: "Idle — no pipeline active",
   eliciting: "Eliciting — design exploration in progress",
   research: "Research — multi-perspective analysis in progress",
+  triaging: "Triaging — categorizing gaps and routing",
   "requirements-ready": "Requirements ready — awaiting architecture",
   architecture: "Architecture — designing system structure",
   decomposing: "Decomposing — breaking modules into leaf tasks",
   sprinting: "Sprinting — building tasks",
   "sprint-complete": "Sprint complete — awaiting review",
   reviewing: "Reviewing — adversarial QA in progress",
-  reassessment: "Reassessment — requires user decision",
   complete: "Complete — pipeline finished",
 };
 
@@ -59,7 +59,7 @@ function getNextAction(state) {
     case "eliciting":
       return "/elicit (continue session)";
     case "research":
-      return "Continue research (in progress)";
+      return "Auto-advancing to triage (in progress)";
     case "requirements-ready":
       return "/architect";
     case "architecture":
@@ -69,11 +69,11 @@ function getNextAction(state) {
     case "sprinting":
       return sprint !== null ? `/build sprint ${sprint}` : "/build";
     case "sprint-complete":
-      return sprint !== null ? `/review sprint ${sprint}` : "/review";
+      return "Auto-advancing to review";
+    case "triaging":
+      return "Auto-advancing — categorizing and routing";
     case "reviewing":
-      return "Review in progress — awaiting QA verdict";
-    case "reassessment":
-      return "User decision required — /architect or /research";
+      return "Auto-advancing to triage (review in progress)";
     case "complete":
       return "/status — pipeline complete";
     default:

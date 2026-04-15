@@ -24,6 +24,24 @@ Show the current pipeline status. Read-only — does not modify state.
    - **Completion evidence:** path (if applicable)
    - **Next action:** derived from phase (see `/next` mapping)
 
+### Live Progress
+
+After showing pipeline state, check for active progress files:
+
+1. Call `lib/progress.readProgress(pipelineDir, currentPhase, sprintNumber)`
+2. If progress data exists, display:
+   - Phase name and elapsed time
+   - Agent statuses (running/complete/failed) with timing
+   - Task completion count (tasks_complete/tasks_total)
+3. Format as compact summary:
+   ```
+   Live: research (2m 14s)
+     research-security: running (1m 30s)
+     research-scalability: complete (44s)
+     Tasks: 1/4
+   ```
+4. If no progress file exists, skip this section (phase not actively running)
+
 ## Constraints
 
 - Do NOT modify `.pipeline/state.yaml` or any other file

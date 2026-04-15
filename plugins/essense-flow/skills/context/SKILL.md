@@ -1,7 +1,7 @@
 ---
 name: context
 description: Pipeline state management — reads/writes .pipeline/state.yaml, formats context injection, manages pause/resume, suggests next actions.
-version: 0.1.0
+version: 0.2.0
 schema_version: 1
 ---
 
@@ -43,3 +43,14 @@ See `references/transitions.yaml` for the full transition table.
 - NEVER write state without going through the state machine transition validator
 - NEVER read another skill's internal files — use interface contracts only
 - Keep injection payload under `config.token_budgets.injection_ceiling`
+
+## Pipeline Completion
+
+When the pipeline reaches `complete` state:
+
+1. Generate summary report using `lib/completion.generateSummaryReport(pipelineDir)`
+2. Write to `.pipeline/COMPLETION-REPORT.md`
+3. Offer user two options:
+   - **Archive and reset**: Archive `.pipeline/` to `.pipeline-archive/YYYY-MM-DD-name/`, then reset to initial state
+   - **Keep as-is**: Leave `.pipeline/` intact for reference, transition `complete → idle`
+4. Execute the user's choice using `lib/completion.archivePipeline()` and/or `lib/completion.resetPipeline()`

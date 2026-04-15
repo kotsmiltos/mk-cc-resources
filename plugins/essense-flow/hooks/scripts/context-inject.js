@@ -33,12 +33,40 @@ function main() {
     return;
   }
 
+  // Check for concurrent session lock
+  try {
+    const lockfile = require("../../lib/lockfile");
+    const lockStatus = lockfile.checkLock(pipelineDir);
+    if (lockStatus.locked && !lockStatus.stale) {
+      process.stdout.write(`[essense-flow] WARNING: Pipeline locked by another session (started ${lockStatus.lockInfo.session_start}). Proceed with caution.\n`);
+    } else if (lockStatus.locked && lockStatus.stale) {
+      process.stdout.write(`[essense-flow] Stale lock detected (last heartbeat: ${lockStatus.lockInfo.heartbeat}). Consider deleting .pipeline/.lock\n`);
+    }
+  } catch (_e) { /* lock check is advisory */ }
+
+  // Update lockfile heartbeat on each user prompt
+  try {
+    const lockfile = require("../../lib/lockfile");
+    lockfile.updateHeartbeat(pipelineDir);
+  } catch (_e) { /* heartbeat is advisory */ }
+
   const configFile = path.join(pipelineDir, "config.yaml");
   const config = yamlIO.safeReadWithFallback(configFile);
 
   const payload = contextManager.buildInjectionPayload(pipelineDir, config);
   if (payload) {
-    process.stdout.write(payload);
+    // Auto-advance guidance for autonomous phases
+    const AUTO_ADVANCE_PHASES = ["research", "triaging", "sprinting", "sprint-complete", "reviewing"];
+    const stateFile = path.join(pipelineDir, "state.yaml");
+    const state = yamlIO.safeReadWithFallback(stateFile);
+    const phase = state && state.pipeline ? state.pipeline.phase : null;
+
+    let output = payload;
+    if (phase && AUTO_ADVANCE_PHASES.includes(phase)) {
+      output += "\n[auto-advance] This phase chains automatically — proceed without waiting for user command.";
+    }
+
+    process.stdout.write(output);
   }
 }
 

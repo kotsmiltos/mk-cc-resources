@@ -3,10 +3,9 @@
 # Referenced by state-management hooks to validate phase changes.
 schema_version: 1
 
-# Valid phases (for reference):
-#   idle, eliciting, research, requirements-ready, architecture,
-#   decomposing, sprinting, sprint-complete, reviewing,
-#   reassessment, complete
+# Valid phases:
+#   idle, eliciting, research, triaging, requirements-ready, architecture,
+#   decomposing, sprinting, sprint-complete, reviewing, complete
 
 transitions:
   idle-to-eliciting:
@@ -14,6 +13,7 @@ transitions:
     to: "eliciting"
     triggered_by: "elicit-skill"
     requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "elicitation.status"
@@ -25,6 +25,7 @@ transitions:
     to: "eliciting"
     triggered_by: "elicit-skill"
     requires: null
+    auto_advance: false
     fields_changed:
       - "elicitation.current_round"
       - "elicitation.explored"
@@ -35,10 +36,12 @@ transitions:
     to: "idle"
     triggered_by: "elicit-skill"
     requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "elicitation.status"
       - "elicitation.completed_at"
+      - "phases_completed.elicitation"
       - "last_updated"
 
   idle-to-research:
@@ -46,18 +49,70 @@ transitions:
     to: "research"
     triggered_by: "research-skill"
     requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "last_updated"
 
-  research-to-requirements-ready:
+  research-to-triaging:
     from: "research"
-    to: "requirements-ready"
+    to: "triaging"
     triggered_by: "research-skill"
     requires: null
+    auto_advance: true
     fields_changed:
       - "pipeline.phase"
       - "phases_completed.research"
+      - "last_updated"
+
+  triaging-to-eliciting:
+    from: "triaging"
+    to: "eliciting"
+    triggered_by: "triage-skill"
+    requires: null
+    auto_advance: false
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  triaging-to-requirements-ready:
+    from: "triaging"
+    to: "requirements-ready"
+    triggered_by: "triage-skill"
+    requires: null
+    auto_advance: false
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  triaging-to-research:
+    from: "triaging"
+    to: "research"
+    triggered_by: "triage-skill"
+    requires: null
+    auto_advance: true
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  triaging-to-architecture:
+    from: "triaging"
+    to: "architecture"
+    triggered_by: "triage-skill"
+    requires: null
+    auto_advance: false
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
+  triaging-to-complete:
+    from: "triaging"
+    to: "complete"
+    triggered_by: "triage-skill"
+    requires: null
+    auto_advance: true
+    fields_changed:
+      - "pipeline.phase"
       - "last_updated"
 
   requirements-ready-to-architecture:
@@ -65,6 +120,7 @@ transitions:
     to: "architecture"
     triggered_by: "architecture-skill"
     requires: ".pipeline/requirements/REQ.md exists"
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "last_updated"
@@ -73,20 +129,10 @@ transitions:
     from: "architecture"
     to: "decomposing"
     triggered_by: "architecture-skill"
-    requires: ".pipeline/requirements/REQ.md exists"
+    requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
-      - "last_updated"
-
-  architecture-to-sprinting:
-    from: "architecture"
-    to: "sprinting"
-    triggered_by: "architecture-skill"
-    requires: ".pipeline/requirements/REQ.md exists"
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.sprint"
-      - "phases_completed.architecture"
       - "last_updated"
 
   decomposing-to-decomposing:
@@ -94,6 +140,7 @@ transitions:
     to: "decomposing"
     triggered_by: "architecture-skill"
     requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.wave"
       - "last_updated"
@@ -103,6 +150,7 @@ transitions:
     to: "sprinting"
     triggered_by: "architecture-skill"
     requires: null
+    auto_advance: true
     fields_changed:
       - "pipeline.phase"
       - "pipeline.sprint"
@@ -114,6 +162,7 @@ transitions:
     to: "sprint-complete"
     triggered_by: "build-skill"
     requires: null
+    auto_advance: true
     fields_changed:
       - "pipeline.phase"
       - "pipeline.task_in_progress"
@@ -124,60 +173,19 @@ transitions:
     to: "reviewing"
     triggered_by: "review-skill"
     requires: "completion report exists for current sprint"
+    auto_advance: true
     fields_changed:
       - "pipeline.phase"
       - "last_updated"
 
-  reviewing-to-sprinting:
+  reviewing-to-triaging:
     from: "reviewing"
-    to: "sprinting"
+    to: "triaging"
     triggered_by: "review-skill"
     requires: "QA report exists for current sprint"
+    auto_advance: true
     fields_changed:
       - "pipeline.phase"
-      - "pipeline.sprint"
-      - "last_updated"
-
-  reviewing-to-complete:
-    from: "reviewing"
-    to: "complete"
-    triggered_by: "review-skill"
-    requires: "QA report exists for current sprint"
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.sprint"
-      - "last_updated"
-
-  reviewing-to-reassessment:
-    from: "reviewing"
-    to: "reassessment"
-    triggered_by: "review-skill"
-    requires: "QA report exists for current sprint"
-    fields_changed:
-      - "pipeline.phase"
-      - "blocked_on"
-      - "last_updated"
-
-  reassessment-to-architecture:
-    from: "reassessment"
-    to: "architecture"
-    triggered_by: "orchestrator"
-    requires: "user approval"
-    fields_changed:
-      - "pipeline.phase"
-      - "blocked_on"
-      - "last_updated"
-
-  reassessment-to-research:
-    from: "reassessment"
-    to: "research"
-    triggered_by: "orchestrator"
-    requires: "user approval"
-    fields_changed:
-      - "pipeline.phase"
-      - "blocked_on"
-      - "phases_completed.research"
-      - "phases_completed.architecture"
       - "last_updated"
 
   complete-to-idle:
@@ -185,6 +193,7 @@ transitions:
     to: "idle"
     triggered_by: "orchestrator"
     requires: null
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "pipeline.sprint"

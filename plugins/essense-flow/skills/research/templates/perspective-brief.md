@@ -25,12 +25,31 @@ You are a {{ROLE_LENS}} analyzing a software project proposal. Your sole concern
 
 ## Task
 
-Analyze the problem statement above from your professional perspective ({{ROLE_LENS}}). Produce:
+Analyze the problem statement above from your professional perspective ({{ROLE_LENS}}). Perform two explicit analysis passes:
 
-1. **Findings** — what you observe about the problem from your angle
-2. **Proposed constraints** — limitations or boundaries the solution must respect
-3. **Risks** — threats, failure modes, or gaps you identify
-4. **Confidence assessment** — how confident you are in each finding (high/medium/low)
+## Pass 1: Gap Analysis
+
+Identify what the design **missed entirely** from your perspective. These are things the proposal does not mention at all but should, given your domain expertise. For each gap:
+
+- Name it clearly
+- Explain why it matters from your perspective
+- Provide a testable acceptance criterion for closing the gap
+- Rate confidence (high/medium/low)
+
+## Pass 2: Depth Analysis
+
+Identify what **exists in the proposal but needs more detail** from your perspective. These are topics that are mentioned but insufficiently specified, underspecified, or too vague to implement. For each depth item:
+
+- Name the existing element and where it appears
+- Explain what additional detail is needed and why
+- Provide a testable acceptance criterion for sufficient depth
+- Rate confidence (high/medium/low)
+
+After both passes, also produce:
+
+- **Proposed constraints** — limitations or boundaries the solution must respect
+- **Risks** — threats, failure modes, or gaps you identify
+- **Confidence assessment** — overall confidence and gaps in your analysis
 
 Be thorough but concise. Focus on insights that other perspectives are likely to miss.
 
@@ -45,15 +64,20 @@ Be thorough but concise. Focus on insights that other perspectives are likely to
     <timestamp>{{TIMESTAMP}}</timestamp>
   </meta>
   <payload>
-    <findings>
-      - **Finding name** — description. Acceptance criterion: [criterion]. Confidence: [high|medium|low]
-    </findings>
-    <constraints>
-      - **Constraint name** — description. Rationale: [why this constraint matters]
-    </constraints>
+    <gaps>
+      <!-- Pass 1: things the design missed entirely from this perspective -->
+      - **Gap name** — description. Acceptance criterion: [criterion]. Confidence: [high|medium|low]
+    </gaps>
+    <depth>
+      <!-- Pass 2: things that exist but need more detail -->
+      - **Element name** — what exists and what additional detail is needed. Acceptance criterion: [criterion]. Confidence: [high|medium|low]
+    </depth>
     <risks>
       - **Risk name** — description. Severity: [critical|high|medium|low]. Mitigation: [suggested approach]
     </risks>
+    <constraints>
+      - **Constraint name** — description. Rationale: [why this constraint matters]
+    </constraints>
     <confidence>
       Overall confidence in analysis: [high|medium|low]. Gaps: [what you couldn't assess and why]
     </confidence>
@@ -71,8 +95,10 @@ Be thorough but concise. Focus on insights that other perspectives are likely to
 ## Acceptance Criteria
 
 1. All findings are specific to the {{ROLE_LENS}} perspective
-2. Every finding includes a testable acceptance criterion
-3. At least 2 risks identified with severity and mitigation
-4. At least 1 constraint proposed with rationale
-5. Confidence assessment covers gaps in analysis
-6. Output follows the XML format exactly, ending with the SENTINEL line
+2. Pass 1 (gaps) identifies at least 2 items the design missed entirely
+3. Pass 2 (depth) identifies at least 2 items that need more detail
+4. Every gap and depth item includes a testable acceptance criterion
+5. At least 2 risks identified with severity and mitigation
+6. At least 1 constraint proposed with rationale
+7. Confidence assessment covers gaps in analysis
+8. Output follows the XML format exactly, ending with the SENTINEL line

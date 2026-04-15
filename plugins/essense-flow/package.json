@@ -1,7 +1,7 @@
 {
   "name": "essense-flow",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.2.0",
+  "description": "Multi-phase AI development pipeline plugin for Claude Code",
   "main": "index.js",
   "directories": {
     "lib": "lib"

@@ -11,8 +11,9 @@ token_budgets:
   section_max: 4000                 # Max tokens for any single brief section
   identity_max: 200                 # Max tokens for identity block
   constraints_max: 500              # Max tokens for constraints block
-  injection_ceiling: 5000           # Max tokens for context hook injection
+  injection_ceiling: 10000          # Max tokens for context hook injection
   safety_margin_pct: 10             # Buffer percentage subtracted from ceilings
+  max_brief_ceiling: 100000         # Hard cap on adaptive brief scaling
 
 timeouts:
   hook_ms: 5000                     # Max milliseconds for any hook script

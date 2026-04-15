@@ -16,6 +16,7 @@ const PIPELINE_DIR = ".pipeline";
 const PIPELINE_SUBDIRS = [
   "elicitation",
   "requirements",
+  "triage",
   "architecture",
   "sprints",
   "reviews",
@@ -73,6 +74,12 @@ function initPipeline(projectRoot, projectName) {
     schema_version: 1,
     decisions: [],
   });
+
+  // Acquire session lock
+  try {
+    const lockfile = require("../../../lib/lockfile");
+    lockfile.acquireLock(pipelineDir);
+  } catch (_e) { /* lock is advisory */ }
 
   return {
     pipelineDir,

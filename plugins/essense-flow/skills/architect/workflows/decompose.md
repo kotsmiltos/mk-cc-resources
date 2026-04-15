@@ -3,38 +3,50 @@ workflow: architect-decompose
 skill: architect
 trigger: module-too-large
 phase_requires: architecture
-phase_transitions: architecture → decomposing → architecture
+phase_transitions: decomposing → decomposing | decomposing → sprinting
 ---
 
 # Cascading Decomposition Workflow
 
 ## Prerequisites
 
-- Architecture phase active
-- A module or task exceeds the file size backstop or token ceiling
+- Decomposing phase active (initialized by the plan workflow)
+- DECOMPOSITION-STATE.yaml exists in `.pipeline/architecture/`
 
 ## Steps
 
-### 1. Identify Oversized Module
-Check which module or task exceeds limits:
-- File lines backstop (from config.overflow.file_lines_backstop)
-- Brief token ceiling (from config.token_budgets.brief_ceiling)
-- Max decomposition depth (from config.overflow.max_decomposition_depth)
+### 1. Load State
 
-### 2. Spawn Decomposition Agents
-For the oversized module, spawn parallel agents to break it into sub-components:
-- Each agent focuses on a logical sub-boundary
-- Interface contracts between sub-components are defined
+Load DECOMPOSITION-STATE using `architect-runner.loadDecompositionState()`.
+If no state exists, this is an error — decomposition should have been initialized by the plan workflow.
 
-### 3. Verify Sub-Components
-Run consistency verifier on the sub-component outputs.
+### 2. Resume Context
 
-### 4. Update Architecture
-Add sub-components to the module map. Update dependency graph. Regenerate waves.
+If resuming a session:
+- Load exchange-log for "architecture" phase
+- Show last exchange (question asked + user answer)
+- Show convergence summary (nodes by state, resolution trend)
 
-### 5. Check Depth
-If any sub-component still exceeds limits and depth < max_decomposition_depth, recurse.
-If depth reached, escalate to user.
+### 3. Process Wave
 
-### 6. Regenerate Task Specs
-Create .md + .agent.md for the new leaf tasks.
+Call `architect-runner.decomposeWave()` for the current wave.
+
+### 4. Surface Design Questions
+
+For each question from the wave:
+- Format via `architect-runner.createDesignQuestion()`
+- Present via AskUserQuestion
+- Apply answer via `architect-runner.applyAnswer()`
+- Check for spec gaps via `architect-runner.detectSpecGap()`
+- Record in exchange-log and decisions index
+
+### 5. Save State
+
+Call `architect-runner.saveDecompositionState()` after processing.
+
+### 6. Check Completion
+
+Call `architect-runner.isDecompositionComplete()`:
+- **Complete**: Generate output (TREE.md, task specs), transition `decomposing → sprinting`
+- **Not complete**: Continue to next wave (self-loop `decomposing → decomposing`)
+- **After 10 waves**: Show convergence summary, ask user to continue or stop

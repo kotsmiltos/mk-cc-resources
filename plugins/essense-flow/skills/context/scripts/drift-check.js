@@ -15,6 +15,79 @@ const { yamlIO } = require("../../../lib");
 const STATUS_OK = "OK";
 const STATUS_DRIFT = "DRIFT";
 
+// Maps drift check names to repair actions
+const REPAIR_ACTIONS = {
+  "phase-valid": {
+    description: "Reset phase to idle",
+    apply: (pipelineDir, _finding) => {
+      const stateFile = path.join(pipelineDir, "state.yaml");
+      const state = yamlIO.safeReadWithFallback(stateFile);
+      if (state && state.pipeline) {
+        state.pipeline.phase = "idle";
+        state.last_updated = new Date().toISOString();
+        yamlIO.safeWrite(stateFile, state);
+      }
+    },
+  },
+  "requirements-exist": {
+    description: "Flag: re-run /research to regenerate requirements",
+    apply: null, // cannot auto-repair — needs user to run /research
+  },
+  "elicitation-state-exists": {
+    description: "Create empty elicitation state file",
+    apply: (pipelineDir, _finding) => {
+      const elicitDir = path.join(pipelineDir, "elicitation");
+      if (!fs.existsSync(elicitDir)) fs.mkdirSync(elicitDir, { recursive: true });
+      yamlIO.safeWrite(path.join(elicitDir, "state.yaml"), {
+        schema_version: 1,
+        status: "active",
+        current_round: 0,
+        started_at: new Date().toISOString(),
+        last_updated: new Date().toISOString(),
+        seed: "",
+        explored: {},
+        deferred: [],
+        decisions: [],
+      });
+    },
+  },
+  "sprint-dir-exists": {
+    description: "Create missing sprint directory with standard structure",
+    apply: (pipelineDir, finding) => {
+      // Extract sprint number from finding detail
+      const match = finding.detail.match(/sprint[- ](\d+)/i);
+      const sprintNum = match ? match[1].padStart(2, "0") : "01";
+      const sprintDir = path.join(pipelineDir, "sprints", `sprint-${sprintNum}`);
+      fs.mkdirSync(path.join(sprintDir, "tasks"), { recursive: true });
+      fs.mkdirSync(path.join(sprintDir, "completion"), { recursive: true });
+    },
+  },
+  "config-exists": {
+    description: "Re-initialize config from defaults",
+    apply: (pipelineDir, _finding) => {
+      const pluginRoot = path.resolve(__dirname, "..", "..", "..");
+      const defaultConfig = path.join(pluginRoot, "defaults", "config.yaml");
+      if (fs.existsSync(defaultConfig)) {
+        const config = yamlIO.safeRead(defaultConfig);
+        config.pipeline.created_at = new Date().toISOString();
+        yamlIO.safeWrite(path.join(pipelineDir, "config.yaml"), config);
+      }
+    },
+  },
+  "schema-version": {
+    description: "Add schema_version: 1 to state.yaml",
+    apply: (pipelineDir, _finding) => {
+      const stateFile = path.join(pipelineDir, "state.yaml");
+      const state = yamlIO.safeReadWithFallback(stateFile);
+      if (state) {
+        state.schema_version = 1;
+        state.last_updated = new Date().toISOString();
+        yamlIO.safeWrite(stateFile, state);
+      }
+    },
+  },
+};
+
 /**
  * Run all drift checks and return a report.
  */
@@ -29,9 +102,9 @@ function runDriftCheck(pipelineDir) {
 
   // Check 1: Phase is a known phase
   const knownPhases = [
-    "idle", "eliciting", "research", "requirements-ready", "architecture",
-    "decomposing", "sprinting", "sprint-complete", "reviewing",
-    "reassessment", "complete",
+    "idle", "eliciting", "research", "triaging", "requirements-ready",
+    "architecture", "decomposing", "sprinting", "sprint-complete",
+    "reviewing", "complete",
   ];
   const phase = state.pipeline && state.pipeline.phase;
   if (!knownPhases.includes(phase)) {
@@ -140,17 +213,119 @@ function formatReport(report) {
   return lines.join("\n");
 }
 
+/**
+ * Generate repair actions for drift findings and apply selected ones.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {Array} findings — drift findings from runDriftCheck
+ * @returns {{ repairsAvailable: Array<{check, description, canAutoRepair}>, repairsApplied: Array<string>, remaining: Array }}
+ */
+function repairDrift(pipelineDir, findings) {
+  const driftFindings = findings.filter(f => f.result === STATUS_DRIFT);
+
+  const repairsAvailable = [];
+
+  for (const finding of driftFindings) {
+    // Check for exact match first, then prefix match for sprint-specific checks
+    let action = REPAIR_ACTIONS[finding.check];
+    if (!action) {
+      // Try prefix matching (e.g., "sprint-01-dir" matches "sprint-dir-exists" pattern)
+      if (finding.check.match(/^sprint-.*-dir$/)) action = REPAIR_ACTIONS["sprint-dir-exists"];
+      if (finding.check.match(/^sprint-.*-completion$/)) action = REPAIR_ACTIONS["sprint-dir-exists"]; // same repair
+      if (finding.check === "research-artifact") action = { description: "Remove stale research artifact path from state", apply: (pd) => {
+        const state = yamlIO.safeReadWithFallback(path.join(pd, "state.yaml"));
+        if (state && state.phases_completed && state.phases_completed.research) {
+          state.phases_completed.research = null;
+          state.last_updated = new Date().toISOString();
+          yamlIO.safeWrite(path.join(pd, "state.yaml"), state);
+        }
+      }};
+      if (finding.check === "architecture-artifact") action = { description: "Remove stale architecture artifact path from state", apply: (pd) => {
+        const state = yamlIO.safeReadWithFallback(path.join(pd, "state.yaml"));
+        if (state && state.phases_completed && state.phases_completed.architecture) {
+          state.phases_completed.architecture = null;
+          state.last_updated = new Date().toISOString();
+          yamlIO.safeWrite(path.join(pd, "state.yaml"), state);
+        }
+      }};
+    }
+
+    if (action) {
+      repairsAvailable.push({
+        check: finding.check,
+        detail: finding.detail,
+        description: action.description,
+        canAutoRepair: action.apply !== null,
+        apply: action.apply,
+      });
+    }
+  }
+
+  // Apply auto-repairable actions
+  const repairsApplied = [];
+  for (const repair of repairsAvailable) {
+    if (repair.canAutoRepair && repair.apply) {
+      try {
+        repair.apply(pipelineDir, { check: repair.check, detail: repair.detail });
+        repairsApplied.push(repair.check);
+      } catch (e) {
+        // Log but don't fail
+        console.error(`Repair failed for ${repair.check}: ${e.message}`);
+      }
+    }
+  }
+
+  // Re-run drift check to see what remains
+  const recheck = runDriftCheck(pipelineDir);
+  const remaining = recheck.findings.filter(f => f.result === STATUS_DRIFT);
+
+  return { repairsAvailable, repairsApplied, remaining };
+}
+
 // CLI entry point
 if (require.main === module) {
   const pipelineDir = process.argv[2] || path.join(process.cwd(), ".pipeline");
+  const repairMode = process.argv.includes("--repair");
+
   if (!fs.existsSync(pipelineDir)) {
     console.log("No .pipeline/ directory found. Run /init first.");
     process.exit(0);
   }
+
   const report = runDriftCheck(pipelineDir);
   console.log(formatReport(report));
 
-  // Update last_verified in state
+  if (repairMode && report.status === STATUS_DRIFT) {
+    console.log("\nRepair mode enabled. Applying available repairs...\n");
+    const result = repairDrift(pipelineDir, report.findings);
+
+    console.log(`Repairs applied: ${result.repairsApplied.length}`);
+    for (const r of result.repairsApplied) {
+      console.log(`  [+] ${r}`);
+    }
+
+    if (result.remaining.length > 0) {
+      console.log(`\nRemaining drift (${result.remaining.length}):`);
+      for (const f of result.remaining) {
+        console.log(`  [!] ${f.check}: ${f.detail}`);
+      }
+    } else {
+      console.log("\nAll drift resolved.");
+    }
+
+    // Update last_verified
+    const stateFile = path.join(pipelineDir, "state.yaml");
+    const state = yamlIO.safeReadWithFallback(stateFile);
+    if (state && state.session) {
+      state.session.last_verified = new Date().toISOString();
+      state.last_updated = new Date().toISOString();
+      yamlIO.safeWrite(stateFile, state);
+    }
+
+    process.exit(result.remaining.length > 0 ? 1 : 0);
+  }
+
+  // Non-repair mode: just update last_verified and exit
   const stateFile = path.join(pipelineDir, "state.yaml");
   const state = yamlIO.safeReadWithFallback(stateFile);
   if (state && state.session) {
@@ -162,4 +337,4 @@ if (require.main === module) {
   process.exit(report.status === STATUS_DRIFT ? 1 : 0);
 }
 
-module.exports = { runDriftCheck, formatReport };
+module.exports = { runDriftCheck, formatReport, REPAIR_ACTIONS, repairDrift };

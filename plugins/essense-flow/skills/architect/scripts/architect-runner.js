@@ -24,16 +24,55 @@ const ARCHITECTURE_LENSES = [
 ];
 
 /**
+ * Load SPEC.md from the elicitation directory, strip YAML frontmatter.
+ * Returns null if no SPEC.md exists.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {{ content: string, tokenCount: number } | null}
+ */
+function loadSpec(pipelineDir) {
+  const specPath = path.join(pipelineDir, "elicitation", "SPEC.md");
+  if (!fs.existsSync(specPath)) return null;
+
+  const raw = fs.readFileSync(specPath, "utf8");
+  const stripped = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
+  if (!stripped) return null;
+
+  // Verify SPEC.md hasn't changed since last hash
+  try {
+    const integrity = require("../../../lib/artifact-integrity");
+    const check = integrity.verifyHash(pipelineDir, "elicitation/SPEC.md");
+    if (check.ok && check.stale) {
+      console.error("[essense-flow] WARNING: SPEC.md changed since last hashed. Downstream artifacts may be stale.");
+    }
+  } catch (_e) { /* integrity is advisory */ }
+
+  return { content: stripped, tokenCount: tokens.countTokens(stripped) };
+}
+
+/**
  * Assemble perspective briefs for architecture analysis.
+ * SPEC.md is the primary design source when present; REQ.md is supplementary.
  *
  * @param {string} requirementsContent — parsed REQ.md content
  * @param {string} pluginRoot — path to essense-flow plugin root
  * @param {Object} config — pipeline config
+ * @param {string} [specContent] — SPEC.md content (primary, when present)
  * @returns {{ ok: boolean, briefs?: Array, error?: string }}
  */
-function planArchitecture(requirementsContent, pluginRoot, config) {
+function planArchitecture(requirementsContent, pluginRoot, config, specContent) {
   if (!requirementsContent || !requirementsContent.trim()) {
     return { ok: false, error: "Requirements content is required" };
+  }
+
+  // When SPEC.md is present, adapt the brief ceiling
+  const effectiveConfig = { ...config };
+  if (specContent) {
+    const adaptiveCeiling = tokens.adaptiveBriefCeiling(specContent, config);
+    effectiveConfig.token_budgets = {
+      ...config.token_budgets,
+      brief_ceiling: adaptiveCeiling,
+    };
   }
 
   const briefs = [];
@@ -43,32 +82,57 @@ function planArchitecture(requirementsContent, pluginRoot, config) {
     const briefId = `arch-${lens.id}-${Date.now().toString(36)}`;
     const agentId = `architect-${lens.id}`;
 
-    const briefBody = [
+    const briefParts = [
       `You are a ${lens.role} reviewing a technical plan.`,
       "",
       `Your focus: ${lens.focus}`,
       "",
-      "## Requirements",
-      "",
-      briefAssembly.wrapDataBlock(requirementsContent, "requirements"),
-      "",
-      "## Task",
-      "",
-      `Analyze the requirements above from a ${lens.role.toLowerCase()} perspective.`,
-      `Focus on: ${lens.focus}.`,
-      "",
-      "Return your analysis with sections for your perspective's concerns,",
-      "cross-perspective flags, and specific recommendations.",
-      "",
-      `<!-- SENTINEL:COMPLETE:${briefId}:${agentId} -->`,
-    ].join("\n");
+    ];
+
+    // SPEC.md is the primary design source when present
+    if (specContent) {
+      briefParts.push("## Design Specification (primary)");
+      briefParts.push("");
+      briefParts.push(briefAssembly.wrapDataBlock(specContent, "specification"));
+      briefParts.push("");
+      briefParts.push("## Research Requirements (supplementary)");
+      briefParts.push("");
+      briefParts.push(briefAssembly.wrapDataBlock(requirementsContent, "requirements"));
+      briefParts.push("");
+      briefParts.push("## Task");
+      briefParts.push("");
+      briefParts.push("The design specification is the primary source for decomposition.");
+      briefParts.push("The research requirements provide supplementary risk awareness and gap analysis.");
+      briefParts.push(`Analyze both from a ${lens.role.toLowerCase()} perspective.`);
+    } else {
+      briefParts.push("## Requirements");
+      briefParts.push("");
+      briefParts.push(briefAssembly.wrapDataBlock(requirementsContent, "requirements"));
+      briefParts.push("");
+      briefParts.push("## Task");
+      briefParts.push("");
+      briefParts.push(`Analyze the requirements above from a ${lens.role.toLowerCase()} perspective.`);
+    }
+
+    briefParts.push(`Focus on: ${lens.focus}.`);
+    briefParts.push("");
+    briefParts.push("Return your analysis with sections for your perspective's concerns,");
+    briefParts.push("cross-perspective flags, and specific recommendations.");
+    briefParts.push("");
+    briefParts.push(`<!-- SENTINEL:COMPLETE:${briefId}:${agentId} -->`);
+
+    const briefBody = briefParts.join("\n");
+
+    const contextContent = specContent
+      ? specContent + "\n\n" + requirementsContent
+      : requirementsContent;
 
     const sections = {
       identity: `You are a ${lens.role}.`,
-      context: requirementsContent,
+      context: contextContent,
     };
 
-    const budgetCheck = tokens.checkBudget(sections, config);
+    const budgetCheck = tokens.checkBudget(sections, effectiveConfig);
     if (!budgetCheck.ok) {
       return { ok: false, error: `Budget exceeded for ${lens.id}: ${JSON.stringify(budgetCheck)}` };
     }
@@ -297,6 +361,13 @@ function writeArchitectureArtifacts(pipelineDir, archDoc, synthDoc) {
   paths.ensureDir(archDir);
 
   fs.writeFileSync(path.join(archDir, "ARCH.md"), archDoc, "utf8");
+
+  // Store content hash for staleness detection
+  try {
+    const integrity = require("../../../lib/artifact-integrity");
+    integrity.storeHash(pipelineDir, "architecture/ARCH.md", integrity.computeHash(path.join(pipelineDir, "architecture", "ARCH.md")));
+  } catch (_e) { /* integrity is advisory */ }
+
   if (synthDoc) {
     fs.writeFileSync(path.join(archDir, "synthesis.md"), synthDoc, "utf8");
   }
@@ -587,10 +658,528 @@ function runReview(parsedQAOutputs, sprintNumber, pipelineDir, config) {
   return { ok: true, report, findings, summary };
 }
 
+// ---------------------------------------------------------------------------
+// DECOMPOSITION-STATE tracking
+// ---------------------------------------------------------------------------
+
+// Valid node states and their allowed transitions
+const NODE_STATES = {
+  unresolved: ["in-progress", "pending-user-decision"],
+  "in-progress": ["resolved", "leaf", "blocked"],
+  resolved: ["unresolved"], // can re-open if further decomposition needed
+  leaf: [], // terminal — no transitions out
+  blocked: ["unresolved"], // can unblock
+  "pending-user-decision": ["resolved", "blocked"],
+};
+
+const DECOMPOSITION_STATE_FILENAME = "DECOMPOSITION-STATE.yaml";
+
+/**
+ * Resolve the absolute path to the DECOMPOSITION-STATE.yaml file.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {string}
+ */
+function _statePath(pipelineDir) {
+  return path.join(pipelineDir, "architecture", DECOMPOSITION_STATE_FILENAME);
+}
+
+/**
+ * Create the initial DECOMPOSITION-STATE.yaml at
+ * .pipeline/architecture/DECOMPOSITION-STATE.yaml.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {{ ok: boolean, statePath: string }}
+ */
+function initDecompositionState(pipelineDir) {
+  const statePath = _statePath(pipelineDir);
+  paths.ensureDir(path.join(pipelineDir, "architecture"));
+
+  const state = {
+    schema_version: 1,
+    last_updated: new Date().toISOString(),
+    current_wave: 0,
+    total_waves: null,
+    nodes: {},
+    wave_history: [],
+    convergence: { resolution_rate: [] },
+  };
+
+  yamlIO.safeWrite(statePath, state);
+  return { ok: true, statePath };
+}
+
+/**
+ * Read DECOMPOSITION-STATE.yaml.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {Object|null} state object, or null if the file does not exist
+ */
+function loadDecompositionState(pipelineDir) {
+  return yamlIO.safeReadWithFallback(_statePath(pipelineDir));
+}
+
+/**
+ * Atomically write the decomposition state back to disk.
+ * Automatically bumps the last_updated timestamp.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {Object} state — full state object
+ */
+function saveDecompositionState(pipelineDir, state) {
+  state.last_updated = new Date().toISOString();
+  paths.ensureDir(path.join(pipelineDir, "architecture"));
+  yamlIO.safeWrite(_statePath(pipelineDir), state);
+}
+
+/**
+ * Validate and apply a state transition on a single node.
+ *
+ * @param {Object} state — full decomposition state (mutated in place)
+ * @param {string} nodeId — node identifier
+ * @param {string} newState — target state name
+ * @param {Object} [metadata] — optional fields to merge (design_question, user_answer, wave_resolved, children, etc.)
+ * @returns {{ ok: boolean, error?: string }}
+ */
+function updateNodeState(state, nodeId, newState, metadata) {
+  const node = state.nodes[nodeId];
+  if (!node) {
+    return { ok: false, error: `Node "${nodeId}" not found` };
+  }
+
+  const currentState = node.state;
+  const allowed = NODE_STATES[currentState];
+
+  if (!allowed) {
+    return { ok: false, error: `Unknown current state "${currentState}"` };
+  }
+
+  if (!allowed.includes(newState)) {
+    return { ok: false, error: `Cannot transition from ${currentState} to ${newState}` };
+  }
+
+  node.state = newState;
+
+  if (metadata) {
+    Object.assign(node, metadata);
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Add a new node to the decomposition tree.
+ *
+ * @param {Object} state — full decomposition state (mutated in place)
+ * @param {string} nodeId — unique node identifier
+ * @param {Object} nodeData — { name, state: "unresolved", depth, parent_id, children: [] }
+ * @returns {{ ok: boolean }}
+ */
+function addNode(state, nodeId, nodeData) {
+  state.nodes[nodeId] = {
+    name: nodeData.name,
+    state: nodeData.state || "unresolved",
+    depth: nodeData.depth,
+    parent_id: nodeData.parent_id || null,
+    children: nodeData.children || [],
+  };
+  return { ok: true };
+}
+
+/**
+ * Append a wave record to wave_history, update convergence metrics,
+ * and increment current_wave.
+ *
+ * @param {Object} state — full decomposition state (mutated in place)
+ * @param {Object} waveData — { wave, started_at, nodes_processed, nodes_resolved, nodes_pending }
+ */
+function addWaveRecord(state, waveData) {
+  state.wave_history.push(waveData);
+
+  const rate =
+    waveData.nodes_processed > 0
+      ? waveData.nodes_resolved / waveData.nodes_processed
+      : 0;
+
+  state.convergence.resolution_rate.push(rate);
+  state.current_wave = state.current_wave + 1;
+}
+
+/**
+ * Compute a high-level convergence summary from current state.
+ *
+ * @param {Object} state — full decomposition state
+ * @returns {{ total: number, resolved: number, unresolved: number, pending: number, leafCount: number, blockedCount: number, resolutionTrend: number[] }}
+ */
+function getConvergenceSummary(state) {
+  const nodes = Object.values(state.nodes);
+  const total = nodes.length;
+
+  let resolved = 0;
+  let unresolved = 0;
+  let pending = 0;
+  let leafCount = 0;
+  let blockedCount = 0;
+
+  for (const node of nodes) {
+    switch (node.state) {
+      case "resolved":
+        resolved++;
+        break;
+      case "unresolved":
+        unresolved++;
+        break;
+      case "pending-user-decision":
+        pending++;
+        break;
+      case "leaf":
+        leafCount++;
+        break;
+      case "blocked":
+        blockedCount++;
+        break;
+      // "in-progress" nodes are counted only in total
+      default:
+        break;
+    }
+  }
+
+  const TREND_WINDOW = 3;
+  const rates = state.convergence.resolution_rate;
+  const resolutionTrend = rates.slice(-TREND_WINDOW);
+
+  return { total, resolved, unresolved, pending, leafCount, blockedCount, resolutionTrend };
+}
+
+/**
+ * Format a convergence summary as a human-readable string.
+ *
+ * @param {Object} summary — output of getConvergenceSummary()
+ * @param {number} currentWave — current wave number
+ * @returns {string}
+ */
+function formatConvergenceSummary(summary, currentWave) {
+  const rateStr = summary.resolutionTrend
+    .map(r => Math.round(r * 100) + "%")
+    .join(", ");
+
+  const lines = [
+    `After ${currentWave} waves:`,
+    `  Leaves: ${summary.leafCount}`,
+    `  Resolved: ${summary.resolved}`,
+    `  Unresolved: ${summary.unresolved}`,
+    `  Pending user decisions: ${summary.pending}`,
+    `  Blocked: ${summary.blockedCount}`,
+    `  Total nodes: ${summary.total}`,
+    `  Resolution rate trend: [${rateStr}]`,
+  ];
+
+  return lines.join("\n");
+}
+
+/**
+ * Generate a markdown visualization of the decomposition tree.
+ * Shows node state next to each node name using indentation for depth.
+ *
+ * @param {Object} state — full decomposition state
+ * @returns {string} markdown string
+ */
+function generateTreeMd(state) {
+  const nodes = state.nodes;
+  const nodeIds = Object.keys(nodes);
+
+  if (nodeIds.length === 0) {
+    return "_(no nodes in decomposition tree)_\n";
+  }
+
+  // Build a lookup of children for each node
+  const childrenMap = {};
+  const roots = [];
+
+  for (const id of nodeIds) {
+    const node = nodes[id];
+    if (!node.parent_id || !nodes[node.parent_id]) {
+      roots.push(id);
+    } else {
+      if (!childrenMap[node.parent_id]) {
+        childrenMap[node.parent_id] = [];
+      }
+      childrenMap[node.parent_id].push(id);
+    }
+  }
+
+  const STATE_ICONS = {
+    unresolved: "[ ]",
+    "in-progress": "[~]",
+    resolved: "[x]",
+    leaf: "[.]",
+    blocked: "[!]",
+    "pending-user-decision": "[?]",
+  };
+
+  const lines = [];
+  lines.push("# Decomposition Tree");
+  lines.push("");
+
+  /**
+   * Recursively render a node and its descendants.
+   *
+   * @param {string} id — node id
+   * @param {number} indent — indentation level
+   */
+  function renderNode(id, indent) {
+    const node = nodes[id];
+    const prefix = "  ".repeat(indent) + "-";
+    const icon = STATE_ICONS[node.state] || `[${node.state}]`;
+    lines.push(`${prefix} ${icon} **${node.name}** \`${id}\``);
+
+    const children = childrenMap[id] || node.children || [];
+    for (const childId of children) {
+      // Only render if the child exists in nodes to avoid infinite loops
+      if (nodes[childId]) {
+        renderNode(childId, indent + 1);
+      }
+    }
+  }
+
+  for (const rootId of roots) {
+    renderNode(rootId, 0);
+  }
+
+  lines.push("");
+  return lines.join("\n");
+}
+
+// Convergence check threshold — show summary and ask user after this many waves
+const CONVERGENCE_CHECK_WAVE = 10;
+
+/**
+ * Process one wave of decomposition.
+ * For each unresolved node at the current depth:
+ *   - If it has design choices → mark pending-user-decision
+ *   - If it's a technical detail → resolve it (architect decides)
+ *   - If it's small enough → mark as leaf
+ *
+ * @param {Object} state — DECOMPOSITION-STATE (mutated)
+ * @param {string} specContent — SPEC.md content for context
+ * @param {string} reqContent — REQ.md content for risk awareness
+ * @param {Object} config — pipeline config
+ * @returns {{ ok: boolean, nodesProcessed: number, nodesResolved: number, nodesPending: number, questionsToSurface: Array }}
+ */
+function decomposeWave(state, specContent, reqContent, config) {
+  const unresolvedNodes = Object.entries(state.nodes)
+    .filter(([_, n]) => n.state === "unresolved");
+
+  let nodesProcessed = 0;
+  let nodesResolved = 0;
+  let nodesPending = 0;
+  const questionsToSurface = [];
+
+  for (const [nodeId, node] of unresolvedNodes) {
+    nodesProcessed++;
+
+    // First transition to in-progress
+    updateNodeState(state, nodeId, "in-progress");
+
+    const evaluation = evaluateNode(node, specContent);
+
+    if (evaluation.isLeaf) {
+      // Small enough, no design choices — mark as leaf
+      updateNodeState(state, nodeId, "leaf");
+      nodesResolved++;
+    } else if (evaluation.hasDesignChoice) {
+      // Design question — needs user input
+      updateNodeState(state, nodeId, "pending-user-decision", {
+        design_question: evaluation.question,
+      });
+      questionsToSurface.push({
+        nodeId,
+        nodeName: node.name,
+        question: evaluation.question,
+        options: evaluation.options,
+      });
+      nodesPending++;
+    } else {
+      // Technical detail — architect resolves, create children for further decomposition
+      updateNodeState(state, nodeId, "resolved", {
+        wave_resolved: state.current_wave,
+      });
+      nodesResolved++;
+
+      // If the node can be decomposed further, add child nodes
+      if (evaluation.children && evaluation.children.length > 0) {
+        for (const child of evaluation.children) {
+          const childId = `${nodeId}-${child.id}`;
+          addNode(state, childId, {
+            name: child.name,
+            state: "unresolved",
+            depth: node.depth + 1,
+            parent_id: nodeId,
+            children: [],
+          });
+          // Update parent's children list
+          if (!node.children) node.children = [];
+          node.children.push(childId);
+        }
+      }
+    }
+  }
+
+  // Record wave
+  addWaveRecord(state, {
+    wave: state.current_wave + 1,
+    started_at: new Date().toISOString(),
+    nodes_processed: nodesProcessed,
+    nodes_resolved: nodesResolved,
+    nodes_pending: nodesPending,
+  });
+
+  return { ok: true, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+}
+
+/**
+ * Evaluate whether a node has design choices remaining.
+ * This is a heuristic based on the node name and spec content.
+ *
+ * @param {Object} node — the node to evaluate
+ * @param {string} specContent — SPEC.md content for context
+ * @returns {{ isLeaf: boolean, hasDesignChoice: boolean, question?: string, options?: Array, children?: Array }}
+ */
+function evaluateNode(node, specContent) {
+  const name = (node.name || "").toLowerCase();
+
+  // Check if the node is already small/specific enough to be a leaf
+  // Leaf indicators: very specific names, single-file scope, utility functions
+  const LEAF_INDICATORS = [
+    "test", "config", "constant", "type definition", "schema",
+    "helper", "utility", "fixture", "migration", "seed",
+  ];
+
+  const isSmallScope = LEAF_INDICATORS.some(ind => name.includes(ind));
+  if (isSmallScope) {
+    return { isLeaf: true, hasDesignChoice: false };
+  }
+
+  // Check for design choice indicators in the node name or description
+  const DESIGN_CHOICE_INDICATORS = [
+    "or", "vs", "choose", "decide", "strategy", "approach",
+    "pattern", "which", "alternative",
+  ];
+
+  const hasDesignKeyword = DESIGN_CHOICE_INDICATORS.some(ind => name.includes(ind));
+
+  if (hasDesignKeyword) {
+    return {
+      isLeaf: false,
+      hasDesignChoice: true,
+      question: `How should "${node.name}" be implemented?`,
+      options: [
+        { label: "Option A", description: `Standard approach for ${node.name}` },
+        { label: "Option B", description: `Alternative approach for ${node.name}` },
+      ],
+    };
+  }
+
+  // Default: not a leaf, no design choice — decompose further
+  return {
+    isLeaf: false,
+    hasDesignChoice: false,
+    children: [],  // The architect workflow will fill in actual children based on spec analysis
+  };
+}
+
+/**
+ * Format a design question for AskUserQuestion tool.
+ *
+ * @param {Object} questionData — { nodeId, nodeName, question, options }
+ * @returns {Object} — formatted for AskUserQuestion
+ */
+function createDesignQuestion(questionData) {
+  return {
+    question: questionData.question,
+    header: questionData.nodeName.substring(0, 12),
+    multiSelect: false,
+    options: (questionData.options || []).map(opt => ({
+      label: opt.label,
+      description: opt.description,
+    })),
+  };
+}
+
+/**
+ * Apply a user's answer to a pending-user-decision node.
+ * Records the decision and transitions the node to resolved.
+ *
+ * @param {Object} state — DECOMPOSITION-STATE (mutated)
+ * @param {string} nodeId — node that had the question
+ * @param {string} answer — the user's selected option
+ * @param {Object} [decisionRecord] — optional decision to add to index
+ * @returns {{ ok: boolean, error?: string }}
+ */
+function applyAnswer(state, nodeId, answer, decisionRecord) {
+  const node = state.nodes[nodeId];
+  if (!node) {
+    return { ok: false, error: `Node "${nodeId}" not found` };
+  }
+
+  if (node.state !== "pending-user-decision") {
+    return { ok: false, error: `Node "${nodeId}" is not pending a decision (state: ${node.state})` };
+  }
+
+  return updateNodeState(state, nodeId, "resolved", {
+    user_answer: answer,
+    wave_resolved: state.current_wave,
+  });
+}
+
+/**
+ * Check if decomposition is complete — all nodes are either leaf or blocked.
+ *
+ * @param {Object} state — DECOMPOSITION-STATE
+ * @returns {{ complete: boolean, summary: Object }}
+ */
+function isDecompositionComplete(state) {
+  const summary = getConvergenceSummary(state);
+  const complete = summary.unresolved === 0 && summary.pending === 0;
+  return { complete, summary };
+}
+
+/**
+ * Detect potential spec gaps from a user's answer.
+ * If the answer suggests the spec didn't cover something, flag it.
+ *
+ * @param {string} answer — user's answer text
+ * @param {string} nodeName — what was being discussed
+ * @returns {{ isSpecGap: boolean, reason?: string }}
+ */
+function detectSpecGap(answer, nodeName) {
+  if (!answer || typeof answer !== "string") return { isSpecGap: false };
+
+  const lower = answer.toLowerCase();
+  const GAP_INDICATORS = [
+    "not in the spec", "spec doesn't cover", "spec doesn't mention",
+    "wasn't specified", "need to go back", "missing from spec",
+    "should have been in elicit", "design gap",
+  ];
+
+  const matched = GAP_INDICATORS.find(ind => lower.includes(ind));
+  if (matched) {
+    return {
+      isSpecGap: true,
+      reason: `User answer for "${nodeName}" suggests a spec gap: "${matched}"`,
+    };
+  }
+
+  return { isSpecGap: false };
+}
+
 module.exports = {
   ARCHITECTURE_LENSES,
   QA_PERSPECTIVES,
   SEVERITY_KEYWORDS,
+  NODE_STATES,
+  CONVERGENCE_CHECK_WAVE,
+  loadSpec,
   planArchitecture,
   runQAReview,
   synthesizeArchitecture,
@@ -602,4 +1191,19 @@ module.exports = {
   categorizeFindings,
   generateQAReport,
   runReview,
+  initDecompositionState,
+  loadDecompositionState,
+  saveDecompositionState,
+  updateNodeState,
+  addNode,
+  addWaveRecord,
+  getConvergenceSummary,
+  formatConvergenceSummary,
+  generateTreeMd,
+  decomposeWave,
+  evaluateNode,
+  createDesignQuestion,
+  applyAnswer,
+  isDecompositionComplete,
+  detectSpecGap,
 };

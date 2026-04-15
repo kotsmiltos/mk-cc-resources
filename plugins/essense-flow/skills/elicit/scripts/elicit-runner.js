@@ -5,6 +5,7 @@ const fs = require("fs");
 const yamlIO = require("../../../lib/yaml-io");
 const tokens = require("../../../lib/tokens");
 const paths = require("../../../lib/paths");
+const exchangeLog = require("../../../lib/exchange-log");
 
 const ELICITATION_DIR = "elicitation";
 const STATE_FILE = "state.yaml";
@@ -108,15 +109,8 @@ function saveState(pipelineDir, state) {
  * @param {Object} exchange — { round, timestamp, system, user, areas_touched, decisions_made }
  */
 function appendExchange(pipelineDir, exchange) {
-  const exchangesFile = path.join(pipelineDir, ELICITATION_DIR, EXCHANGES_FILE);
-  const data = yamlIO.safeReadWithFallback(exchangesFile) || { schema_version: 1, exchanges: [] };
-
-  if (!exchange.timestamp) {
-    exchange.timestamp = new Date().toISOString();
-  }
-
-  data.exchanges.push(exchange);
-  yamlIO.safeWrite(exchangesFile, data);
+  const { logPath } = exchangeLog.createLog(pipelineDir, "elicitation");
+  return exchangeLog.appendExchange(logPath, exchange);
 }
 
 /**
@@ -126,9 +120,8 @@ function appendExchange(pipelineDir, exchange) {
  * @returns {Array} array of exchange objects, or empty array
  */
 function loadExchanges(pipelineDir) {
-  const exchangesFile = path.join(pipelineDir, ELICITATION_DIR, EXCHANGES_FILE);
-  const data = yamlIO.safeReadWithFallback(exchangesFile);
-  return (data && data.exchanges) || [];
+  const { logPath } = exchangeLog.createLog(pipelineDir, "elicitation");
+  return exchangeLog.loadExchanges(logPath);
 }
 
 /**
@@ -166,6 +159,12 @@ function writeSpec(pipelineDir, content) {
   const specPath = path.join(pipelineDir, ELICITATION_DIR, SPEC_FILE);
   paths.ensureDir(path.dirname(specPath));
   fs.writeFileSync(specPath, sanitized, "utf8");
+
+  // Store content hash for staleness detection
+  try {
+    const integrity = require("../../../lib/artifact-integrity");
+    integrity.storeHash(pipelineDir, "elicitation/SPEC.md", integrity.computeHash(specPath));
+  } catch (_e) { /* integrity is advisory */ }
 
   return { ok: true, path: specPath, tokenCount };
 }

@@ -1,7 +1,7 @@
 ---
 name: research
 description: Multi-perspective research — spawns parallel perspective agents, synthesizes findings into structured requirements with testable acceptance criteria.
-version: 0.1.0
+version: 0.2.0
 schema_version: 1
 ---
 

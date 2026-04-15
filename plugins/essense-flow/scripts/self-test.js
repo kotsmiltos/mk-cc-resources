@@ -42,7 +42,7 @@ function checkSkillFiles() {
     }
 
     const content = fs.readFileSync(skillPath, "utf8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!fmMatch) {
       report(1, `skills/${skill}/SKILL.md frontmatter`, false, "No YAML frontmatter found");
       continue;
@@ -89,7 +89,7 @@ function checkTemplates() {
   for (const filePath of templateGlobs) {
     const relPath = path.relative(PLUGIN_ROOT, filePath);
     const content = fs.readFileSync(filePath, "utf8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
 
     if (!fmMatch) {
       // YAML files may not have frontmatter delimiters — check for schema_version directly
@@ -251,7 +251,7 @@ function checkCommands() {
 
   for (const cmdFile of cmdFiles) {
     const content = fs.readFileSync(path.join(cmdDir, cmdFile), "utf8");
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
 
     if (!fmMatch) {
       report(6, `commands/${cmdFile} frontmatter`, false, "No YAML frontmatter");

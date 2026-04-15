@@ -22,14 +22,14 @@ Suggest what to do next based on the current pipeline phase. Read-only — does 
 |---------------|-------------|-------------|
 | `idle` | `/elicit` or `/research` | Start with elicitation to explore the idea, or research directly |
 | `eliciting` | `/elicit` | Continue design exploration session |
-| `research` | _(wait)_ | Research in progress — wait for completion |
+| `research` | _(auto-advancing to triage)_ | Research in progress — auto-advances to triage |
 | `requirements-ready` | `/architect` | Requirements done — plan the architecture |
 | `architecture` | _(wait)_ | Architecture in progress — wait for completion |
 | `decomposing` | _(wait)_ | Decomposition in progress — wait for completion |
 | `sprinting` | `/build` | Sprint ready — execute tasks |
-| `sprint-complete` | `/review` or `/architect` | Sprint done — run QA review |
-| `reviewing` | _(wait)_ | Review in progress — wait for completion |
-| `reassessment` | `/architect` (with user approval) | Reassessment needed — re-plan |
+| `sprint-complete` | _(auto-advancing to review)_ | Sprint done — auto-advances to review |
+| `reviewing` | _(auto-advancing to triage)_ | Review in progress — auto-advances to triage |
+| `triaging` | _(auto-advancing to target phase)_ | Triage in progress — auto-categorizes and routes |
 | `complete` | "Pipeline complete" | All work done |
 
 4. Report the suggestion with a brief explanation

@@ -1,26 +1,30 @@
 {
   "name": "essense-flow",
-  "version": "0.1.0",
-  "description": "Multi-phase AI development pipeline: Research → Architecture → Build → Review → Context",
+  "version": "0.2.0",
+  "description": "Multi-phase AI development pipeline: Elicit → Research → Triage → Architecture → Build → Review",
   "author": {
     "name": "mkots"
   },
   "commands": [
     { "name": "init", "file": "commands/init.md" },
+    { "name": "elicit", "file": "commands/elicit.md" },
     { "name": "research", "file": "commands/research.md" },
     { "name": "architect", "file": "commands/architect.md" },
     { "name": "build", "file": "commands/build.md" },
     { "name": "review", "file": "commands/review.md" },
+    { "name": "triage", "file": "commands/triage.md" },
     { "name": "status", "file": "commands/status.md" },
     { "name": "next", "file": "commands/next.md" },
-    { "name": "elicit", "file": "commands/elicit.md" }
+    { "name": "help", "file": "commands/help.md" }
   ],
   "skills": [
+    { "name": "elicit", "file": "skills/elicit/SKILL.md" },
     { "name": "research", "file": "skills/research/SKILL.md" },
     { "name": "architect", "file": "skills/architect/SKILL.md" },
     { "name": "build", "file": "skills/build/SKILL.md" },
-    { "name": "context", "file": "skills/context/SKILL.md" },
-    { "name": "elicit", "file": "skills/elicit/SKILL.md" }
+    { "name": "review", "file": "skills/review/SKILL.md" },
+    { "name": "triage", "file": "skills/triage/SKILL.md" },
+    { "name": "context", "file": "skills/context/SKILL.md" }
   ],
   "hooks": "hooks/hooks.json"
 }

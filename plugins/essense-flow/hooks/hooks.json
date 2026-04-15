@@ -20,6 +20,15 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/yaml-validate.sh\""
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/review-guard.sh\""
+          }
+        ]
       }
     ],
     "Notification": [

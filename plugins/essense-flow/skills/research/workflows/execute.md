@@ -3,7 +3,7 @@ workflow: research-execute
 skill: research
 trigger: /research
 phase_requires: idle
-phase_transitions: idle → research → requirements-ready
+phase_transitions: idle → research → triaging → [routing]
 ---
 
 # Research Execution Workflow
@@ -32,7 +32,7 @@ Check for `.pipeline/elicitation/SPEC.md`:
 - Read the file, strip YAML frontmatter (delimited by `---`), use body as `problemStatement`
 - Log: "Using elicited design spec from `.pipeline/elicitation/SPEC.md`"
 - Select adaptive perspectives based on the spec's domain and content (see SKILL.md Mode 2)
-- Set token budget to accommodate full spec: `brief_ceiling = max(12000, countTokens(spec) + 2000)`
+- Set token budget using `lib/tokens.adaptiveBriefCeiling(specContent, config)` — scales ceiling to fit the spec, capped at `max_brief_ceiling`
 
 **If no SPEC.md (direct input mode):**
 - Accept problem statement from user's direct input or `.pipeline/problem.md`
@@ -86,14 +86,29 @@ Call `research-runner.writeRequirements()` to write:
 - `.pipeline/requirements/REQ.md` — the structured requirements
 - `.pipeline/requirements/synthesis.md` — the full synthesis (for reference)
 
-### 10. Transition to Requirements-Ready
+### 10. Transition to Triaging
 
-Use `lib/state-machine.transition()` to move from `research` to `requirements-ready`.
+Use `lib/state-machine.transition()` to move from `research` to `triaging`. This auto-advances — triage runs immediately to categorize the research findings.
 
-### 11. Report
+For Increment 1 (basic pipeline), triage defaults to routing all gaps as implementation tasks → `triaging -> requirements-ready`. Full triage categorization is Increment 2.
+
+### 11. Auto-Advance: Triage
+
+This transition auto-advances. After transitioning to `triaging`, immediately run triage categorization without waiting for user input:
+
+1. Read the REQ.md just produced
+2. Read SPEC.md if it exists
+3. Call `triage-runner.categorizeItems()` with the research gaps
+4. Call `triage-runner.determineRoute()` to get the target phase
+5. Call `triage-runner.generateReport()` and `triage-runner.writeTriage()` to persist results
+6. Transition from `triaging` to the determined target phase
+7. If target is interactive (eliciting, architecture, requirements-ready): stop and report. User runs the next command.
+8. If target is autonomous (research): continue chaining.
+
+### 12. Report
 
 Show the user:
 - Summary of perspectives analyzed
 - Count of FRs, NFRs, risks identified
 - Any disagreements or escalations
-- Suggested next step: `/architect`
+- Triage result and next recommended action
