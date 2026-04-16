@@ -4,28 +4,5 @@
   "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review, Verify — 11 commands, 8 skills",
   "author": {
     "name": "mkots"
-  },
-  "commands": [
-    { "name": "architect", "path": "commands/architect.md" },
-    { "name": "build", "path": "commands/build.md" },
-    { "name": "elicit", "path": "commands/elicit.md" },
-    { "name": "help", "path": "commands/help.md" },
-    { "name": "init", "path": "commands/init.md" },
-    { "name": "next", "path": "commands/next.md" },
-    { "name": "research", "path": "commands/research.md" },
-    { "name": "review", "path": "commands/review.md" },
-    { "name": "status", "path": "commands/status.md" },
-    { "name": "triage", "path": "commands/triage.md" },
-    { "name": "verify", "path": "commands/verify.md" }
-  ],
-  "skills": [
-    { "name": "architect", "path": "skills/architect/SKILL.md" },
-    { "name": "build", "path": "skills/build/SKILL.md" },
-    { "name": "context", "path": "skills/context/SKILL.md" },
-    { "name": "elicit", "path": "skills/elicit/SKILL.md" },
-    { "name": "research", "path": "skills/research/SKILL.md" },
-    { "name": "review", "path": "skills/review/SKILL.md" },
-    { "name": "triage", "path": "skills/triage/SKILL.md" },
-    { "name": "verify", "path": "skills/verify/SKILL.md" }
-  ]
+  }
 }
