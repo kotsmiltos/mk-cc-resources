@@ -66,9 +66,17 @@ The user can change earlier decisions at any point. When they do:
 - Walk through every area the change touches systematically (full ripple analysis)
 - "If armor switches from flat to percentage, that changes: (1) shop pricing — percentage items are harder to value; (2) the difficulty curve — percentage stacks multiplicatively; (3) existing items we designed — the +3 armor item now means something different. Let's work through each."
 
+### Topic Tracking
+When you present multiple topics or questions and the user responds to one:
+- The answered topic is explored — record it
+- The unanswered topics are **pending** — they have NOT been skipped or deferred
+- NEVER label a topic as "skipped" unless the user explicitly says to skip it
+- Come back to pending topics naturally in subsequent turns
+- Before summarizing status, cross-reference the exchange log — if the user discussed a topic, it is explored, not skipped
+
 ### Deferral Handling
 The user can defer any topic: "We'll figure out balance later." When they do:
-- Record it as explicitly deferred
+- Record it as explicitly deferred — this requires an explicit user signal, not silence
 - Continue with other areas
 - Before wrap-up, revisit deferred items: "You deferred balance tuning, accessibility, and sound design. Now that the full picture is clearer, want to tackle any of these, or keep them deferred?"
 - Anything still deferred flows into SPEC.md as explicit gaps for architecture
@@ -116,6 +124,7 @@ Call `writeSpec(pipelineDir, content)` to persist. The runner handles sanitizati
 - NEVER project assumptions the user hasn't stated — approach unstated areas through scenarios or options
 - NEVER leave gaps because the user didn't volunteer — present options with tradeoffs
 - NEVER skip implicit requirements — if a feature implies a system, surface it
+- NEVER label a topic as "skipped" unless the user explicitly said to skip it — unanswered topics are pending, not skipped
 - NEVER resolve contradictions silently — surface them for the user to decide
 - NEVER probe for credentials, API keys, secrets, or authentication tokens
 - NEVER write to another skill's files — output only to `.pipeline/elicitation/`
