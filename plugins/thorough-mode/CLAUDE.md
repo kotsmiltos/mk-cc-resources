@@ -28,6 +28,10 @@ Forces all choices and decisions through `AskUserQuestion` with arrow-key naviga
 - Batches up to 4 independent decisions per call
 - Recommended option listed first
 
+## Smart Hints
+
+When you describe the intent without using the keyword (e.g., "don't skip anything", "push it", "show me choices with arrows"), the hook shows a one-line hint suggesting the relevant modifier. Hints are suppressed when the modifier is already active — no nagging.
+
 ## Sub-agent Propagation
 
 When dispatching sub-agents while a modifier is active, pass the behavioral instructions through in the agent prompt. The trigger keywords are detected by the hook at the conversation level — sub-agents need the rules stated explicitly in their prompts.

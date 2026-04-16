@@ -298,6 +298,8 @@ claude plugin install thorough-mode
 
 Just add the keyword anywhere in your message. Modifiers stack — `++ @ship` fires both.
 
+If you describe the intent without the keyword (e.g., "don't skip anything", "push it"), you'll get a one-line hint reminding you of the shorthand.
+
 ## Credits
 
 Schema Scout inspired by [ckifonidis](https://github.com/ckifonidis). Plugin architecture inspired by [taches-cc-resources](https://github.com/glittercowboy/taches-cc-resources).

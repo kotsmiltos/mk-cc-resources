@@ -1,9 +1,10 @@
 "use strict";
 
 /**
- * UserPromptSubmit hook: prompt modifier injection.
+ * UserPromptSubmit hook: prompt modifier injection + hints.
  * Detects keywords in the user's prompt and injects
  * structured behavioral instructions into the context.
+ * Also detects intent-without-keyword patterns and suggests modifiers.
  *
  * Modifiers:
  *   ++ / @thorough  — exhaustive processing, no skipping
@@ -59,20 +60,64 @@ const MODIFIERS = [
   },
 ];
 
+// Patterns that suggest a modifier would help, but the user didn't use it.
+// Each hint only fires if the corresponding modifier was NOT already triggered.
+const HINTS = [
+  {
+    name: "thorough",
+    patterns: [
+      /\b(be thorough|don'?t skip|don'?t be lazy|take your time|carefully|don'?t drop|every single|each one|all of them|don'?t miss|don'?t forget any|don'?t leave out|exhaustive|make sure you get)\b/i,
+    ],
+    hint: `[hint] Tip: add \`++\` or \`@thorough\` to your message to auto-enforce exhaustive processing.`,
+  },
+  {
+    name: "ship",
+    patterns: [
+      /\b(push it|push this|push to|go ahead and push|yeah push|do.{0,10}push|git push|push the changes|push the commit)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@ship\` to auto-check README, versions, and docs before pushing.`,
+  },
+  {
+    name: "present",
+    patterns: [
+      /\b(present.{0,15}options|show.{0,10}choices|interactive.{0,10}question|arrow.{0,10}key|navigate.{0,10}option|nice.{0,10}way|select.{0,10}from)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@present\` to force interactive arrow-key question format.`,
+  },
+];
+
 function main() {
   const prompt = process.env.CLAUDE_USER_PROMPT || "";
   if (!prompt) return;
 
+  // Check which modifiers are explicitly triggered
+  const activeModifiers = new Set();
   const injections = [];
+
   for (const modifier of MODIFIERS) {
     const triggered = modifier.triggers.some((rx) => rx.test(prompt));
     if (triggered) {
+      activeModifiers.add(modifier.name);
       injections.push(modifier.injection);
     }
   }
 
-  if (injections.length > 0) {
-    process.stdout.write(injections.join("\n\n"));
+  // Check for hints — only for modifiers NOT already active
+  const hints = [];
+  for (const hint of HINTS) {
+    if (activeModifiers.has(hint.name)) continue;
+    const matches = hint.patterns.some((rx) => rx.test(prompt));
+    if (matches) {
+      hints.push(hint.hint);
+    }
+  }
+
+  const output = [];
+  if (injections.length > 0) output.push(injections.join("\n\n"));
+  if (hints.length > 0) output.push(hints.join("\n"));
+
+  if (output.length > 0) {
+    process.stdout.write(output.join("\n\n"));
   }
 }
 
