@@ -8,6 +8,7 @@
  * Modifiers:
  *   ++ / @thorough  — exhaustive processing, no skipping
  *   @ship           — pre-push documentation and versioning checklist
+ *   @present        — use AskUserQuestion for all choices
  */
 
 const MODIFIERS = [
@@ -40,6 +41,21 @@ const MODIFIERS = [
 - Marketplace versions — if this is a plugin repo, does marketplace.json match the plugin version?
 - DO NOT push until every applicable item is verified or confirmed not applicable.
 - Report what you checked and what you updated before executing the push.`,
+  },
+  {
+    name: "present",
+    triggers: [
+      /(?:^|\s)@present(?:\s|$)/i,  // @present as standalone token
+    ],
+    injection: `[present-mode] Use the AskUserQuestion tool for ALL choices, options, and decisions in this response.
+- NEVER present options as inline text (A/B/C, numbered lists, or bullet points in your response body).
+- Use the \`options\` parameter with \`label\` (concise name) and \`description\` (tradeoffs/implications).
+- Use \`preview\` when comparing concrete artifacts (UI layouts, code snippets, schemas).
+- Use \`multiSelect: true\` when choices aren't mutually exclusive.
+- Put your recommended option first with "(Recommended)" in the label.
+- Batch up to 4 independent decisions into a single AskUserQuestion call.
+- The tool always includes an "Other" option for free text — no need to add one yourself.
+- Plain text is only acceptable for genuinely open-ended questions with no finite option set.`,
   },
 ];
 

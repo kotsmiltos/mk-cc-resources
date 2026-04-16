@@ -294,6 +294,7 @@ claude plugin install thorough-mode
 |---------|-------------|
 | `++` or `@thorough` | Exhaustive processing — enumerate all items, process every one, verify completeness, no skipping or summarizing |
 | `@ship` | Pre-push checklist — verify README, CHANGELOG, version bumps, CLAUDE.md, and docs before pushing |
+| `@present` | Interactive questions — force all choices through `AskUserQuestion` with arrow-key navigation |
 
 Just add the keyword anywhere in your message. Modifiers stack — `++ @ship` fires both.
 

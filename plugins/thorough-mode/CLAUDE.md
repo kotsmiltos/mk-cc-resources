@@ -21,6 +21,13 @@ Enforces documentation and versioning hygiene before pushing:
 - New skills/commands/hooks are documented
 - Reports what was checked and updated before pushing
 
+### `@present` — Interactive Question Format
+Forces all choices and decisions through `AskUserQuestion` with arrow-key navigation:
+- No inline A/B/C or numbered option lists in the response body
+- Uses labels, descriptions, previews, and multiSelect as appropriate
+- Batches up to 4 independent decisions per call
+- Recommended option listed first
+
 ## Sub-agent Propagation
 
 When dispatching sub-agents while a modifier is active, pass the behavioral instructions through in the agent prompt. The trigger keywords are detected by the hook at the conversation level — sub-agents need the rules stated explicitly in their prompts.

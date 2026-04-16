@@ -77,8 +77,8 @@
     {
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship) that inject behavioral rules for thoroughness, pre-push documentation checks, and more.",
-      "version": "1.1.0"
+      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present) that inject behavioral rules for thoroughness, documentation checks, interactive questions, and more.",
+      "version": "1.2.0"
     },
     {
       "name": "mk-cc-all",
