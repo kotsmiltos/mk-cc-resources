@@ -1,7 +1,7 @@
 {
   "name": "thorough-mode",
-  "version": "1.0.0",
-  "description": "Thoroughness modifier — type ++ or @thorough in any prompt to enforce exhaustive processing with no skipping, summarizing, or cutting corners.",
+  "version": "1.1.0",
+  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship) that inject behavioral rules for thoroughness, pre-push documentation checks, and more.",
   "author": {
     "name": "kotsmiltos"
   }

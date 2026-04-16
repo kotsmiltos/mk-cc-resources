@@ -31,6 +31,7 @@ claude plugin install project-note-tracker
 claude plugin install mk-flow          # has hooks — must be installed separately
 claude plugin install alert-sounds     # has hooks — must be installed separately
 claude plugin install essense-flow     # has hooks — must be installed separately
+claude plugin install thorough-mode   # has hooks — must be installed separately
 ```
 
 ## mk-flow — Unified Workflow System
@@ -156,7 +157,9 @@ Then in any project:
 | Research | `/research` | Perspective agents research the problem space, produce briefs |
 | Architecture | `/architect` | Design architecture with decomposition, planning, and review workflows |
 | Build | `/build` | Execute task specs with wave-based parallelization |
+| Triage | (automatic) | Categorize findings, route to the correct phase |
 | Review | `/review` | Validate deliverables against specs |
+| Verify | `/verify` | Top-down spec compliance check before completing |
 | Context | (automatic) | Context injection hook keeps pipeline state across sessions |
 
 ### Hooks
@@ -167,7 +170,7 @@ Then in any project:
 
 ### Commands
 
-`/init`, `/research`, `/architect`, `/build`, `/review`, `/status`, `/next`
+`/init`, `/elicit`, `/research`, `/architect`, `/build`, `/review`, `/triage`, `/verify`, `/status`, `/next`, `/help`
 
 ## Skills Reference
 
@@ -276,6 +279,23 @@ Track questions per handler/department across projects. Claude auto-detects whic
 - **Decided** — decision made with rationale
 
 Each handler has a `research.md` file where you define what files to search, what terminology matters, and what this handler cares about. The better your research.md files are, the better the auto-detection and research quality. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
+
+## Thorough Mode — Prompt Modifiers (separate install)
+
+Keyword triggers that inject behavioral rules into any prompt. **Not included in `mk-cc-all`** — this is a hook-based plugin.
+
+```bash
+claude plugin install thorough-mode
+```
+
+### Modifiers
+
+| Keyword | What it does |
+|---------|-------------|
+| `++` or `@thorough` | Exhaustive processing — enumerate all items, process every one, verify completeness, no skipping or summarizing |
+| `@ship` | Pre-push checklist — verify README, CHANGELOG, version bumps, CLAUDE.md, and docs before pushing |
+
+Just add the keyword anywhere in your message. Modifiers stack — `++ @ship` fires both.
 
 ## Credits
 

@@ -1,5 +1,18 @@
 # essense-flow Release Notes
 
+## 0.3.1 (2026-04-16)
+
+- Elicit skill now enforces `AskUserQuestion` with interactive options — no more inline A/B/C text
+- Added constraint reinforcement in elicit constraints section
+
+## 0.3.0 (2026-04-16)
+
+- Added verify phase — top-down spec compliance checking
+- Verify extracts discrete items from SPEC.md, dispatches parallel verification agents
+- Verdicts: MATCH, PARTIAL, GAP, DEVIATED, SKIPPED with confidence tiers
+- Gate mode (state-changing) and on-demand mode (diagnostic)
+- `/verify` command added
+
 ## 0.2.0 (2026-04-15)
 
 Full implementation of the design specification. All 3 increments complete.

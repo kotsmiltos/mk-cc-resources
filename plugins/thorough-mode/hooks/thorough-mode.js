@@ -1,40 +1,68 @@
 "use strict";
 
 /**
- * UserPromptSubmit hook: thorough mode injection.
- * Detects ++ or @thorough in the user's prompt and injects
- * structured thoroughness instructions into the context.
+ * UserPromptSubmit hook: prompt modifier injection.
+ * Detects keywords in the user's prompt and injects
+ * structured behavioral instructions into the context.
  *
- * Triggers: "++", "@thorough" (case-insensitive, word boundary)
+ * Modifiers:
+ *   ++ / @thorough  — exhaustive processing, no skipping
+ *   @ship           — pre-push documentation and versioning checklist
  */
 
-const TRIGGERS = [
-  /(?:^|\s)\+\+(?:\s|$)/,       // ++ as standalone token
-  /(?:^|\s)@thorough(?:\s|$)/i,  // @thorough as standalone token
-];
-
-const INJECTION = `[thorough-mode] Active for this response. Follow these rules strictly:
+const MODIFIERS = [
+  {
+    name: "thorough",
+    triggers: [
+      /(?:^|\s)\+\+(?:\s|$)/,       // ++ as standalone token
+      /(?:^|\s)@thorough(?:\s|$)/i,  // @thorough as standalone token
+    ],
+    injection: `[thorough-mode] Active for this response. Follow these rules strictly:
 - ENUMERATE all items, files, or steps before processing any. State the count.
 - PROCESS EVERY ITEM — do not skip, summarize, batch, or say "and so on."
 - DO NOT abbreviate intermediate work. Show each step.
 - VERIFY completeness at the end — count outputs vs inputs. If they don't match, go back.
 - When in doubt, INCLUDE rather than exclude.
 - READ fully before acting — do not skim or assume.
-- DO NOT merge, group, or compress separate items into summaries.`;
+- DO NOT merge, group, or compress separate items into summaries.`,
+  },
+  {
+    name: "ship",
+    triggers: [
+      /(?:^|\s)@ship(?:\s|$)/i,  // @ship as standalone token
+    ],
+    injection: `[pre-ship checklist] Before pushing, verify ALL of the following:
+- README.md — does it mention new features, changed behavior, or new commands/skills? Update if not.
+- CHANGELOG / RELEASE-NOTES — are the changes being pushed documented? Add entries if not.
+- Version numbers — are package.json, plugin.json, marketplace.json bumped appropriately? (patch for fixes, minor for features)
+- CLAUDE.md — does it reflect new patterns, structure, or conventions introduced?
+- New skills/commands/hooks — are they listed and described in the appropriate docs?
+- Marketplace versions — if this is a plugin repo, does marketplace.json match the plugin version?
+- DO NOT push until every applicable item is verified or confirmed not applicable.
+- Report what you checked and what you updated before executing the push.`,
+  },
+];
 
 function main() {
   const prompt = process.env.CLAUDE_USER_PROMPT || "";
   if (!prompt) return;
 
-  const triggered = TRIGGERS.some((rx) => rx.test(prompt));
-  if (triggered) {
-    process.stdout.write(INJECTION);
+  const injections = [];
+  for (const modifier of MODIFIERS) {
+    const triggered = modifier.triggers.some((rx) => rx.test(prompt));
+    if (triggered) {
+      injections.push(modifier.injection);
+    }
+  }
+
+  if (injections.length > 0) {
+    process.stdout.write(injections.join("\n\n"));
   }
 }
 
 try {
   main();
 } catch (err) {
-  process.stderr.write(`[thorough-mode hook error] ${err.message}\n`);
+  process.stderr.write(`[prompt-modifier hook error] ${err.message}\n`);
   process.exit(0);
 }
