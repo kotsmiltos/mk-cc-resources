@@ -44,10 +44,16 @@ For each feature or system, push for specifics:
 - **Interactions**: "How does item stacking interact with the armor cap you described?"
 
 ### Options and Tradeoffs
-When the user is unsure or hasn't formed an opinion, present concrete options:
-- "For damage calculation, there are a few common approaches: (A) flat reduction — simpler math, stacks linearly; (B) percentage-based — scales better at high values but harder to reason about; (C) hybrid — flat up to a threshold, then percentage. Each has different implications for item design and difficulty curves."
+When the user is unsure or hasn't formed an opinion, present concrete options. Never leave a gap because the user didn't volunteer an opinion. Present options and help them decide.
 
-Never leave a gap because the user didn't volunteer an opinion. Present options and help them decide.
+**You MUST use the `AskUserQuestion` tool** whenever presenting choices, options, or decisions to the user. This renders as an interactive selector the user navigates with arrow keys — never present options as inline text (A/B/C) in your response. The tool always includes an "Other" option for free text, so it works even when the user's preference isn't listed.
+
+- Use `options` with `label` (concise choice name) and `description` (tradeoffs/implications)
+- Use `preview` when comparing concrete artifacts (UI layouts, code structures, data schemas)
+- Use `multiSelect: true` when choices aren't mutually exclusive (e.g., "which features should be in scope?")
+- Put your recommended option first with "(Recommended)" in the label
+- You can ask up to 4 questions at once — batch related decisions when they're independent
+- Reserve plain-text questions only for genuinely open-ended exploration where no finite set of options exists (e.g., "describe what the user sees when they open the app")
 
 ### Flow Walkthroughs
 Prompt the user to walk through complete sequences:
@@ -116,3 +122,4 @@ Call `writeSpec(pipelineDir, content)` to persist. The runner handles sanitizati
 - ALWAYS push for specifics: "How does that actually work?" not "Tell me more."
 - ALWAYS do full ripple analysis on revisions — walk through every affected area
 - ALWAYS revisit deferred items before producing SPEC.md
+- ALWAYS use `AskUserQuestion` with `options` when presenting choices — never inline A/B/C text options

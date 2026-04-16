@@ -7,7 +7,7 @@ Read the BUILD-PLAN.md for the target project before proceeding.
 <step_1_find_build_plan>
 Look for the build plan:
 1. If the user specified a project name or path, look in `[cwd]/artifacts/builds/[project-slug]/BUILD-PLAN.md`
-2. If not specified, list available build plans in `[cwd]/artifacts/builds/` and let the user choose
+2. If not specified, list available build plans in `[cwd]/artifacts/builds/` and use `AskUserQuestion` to let the user choose
 3. If no build plans exist, redirect to workflows/kickoff.md
 </step_1_find_build_plan>
 
