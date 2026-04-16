@@ -75,6 +75,12 @@
       "version": "0.3.0"
     },
     {
+      "name": "thorough-mode",
+      "source": "./plugins/thorough-mode",
+      "description": "Thoroughness modifier — type ++ or @thorough in any prompt to enforce exhaustive processing with no skipping, summarizing, or cutting corners.",
+      "version": "1.0.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",

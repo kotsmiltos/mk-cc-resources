@@ -1,0 +1,15 @@
+{
+  "description": "Detects ++ or @thorough in user prompts and injects thoroughness instructions",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/thorough-mode.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

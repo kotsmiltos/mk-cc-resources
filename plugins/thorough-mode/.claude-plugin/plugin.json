@@ -1,0 +1,8 @@
+{
+  "name": "thorough-mode",
+  "version": "1.0.0",
+  "description": "Thoroughness modifier — type ++ or @thorough in any prompt to enforce exhaustive processing with no skipping, summarizing, or cutting corners.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}
