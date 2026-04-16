@@ -2,8 +2,10 @@
 
 ## 0.3.1 (2026-04-16)
 
-- Elicit skill now enforces `AskUserQuestion` with interactive options — no more inline A/B/C text
-- Added constraint reinforcement in elicit constraints section
+- Verify is now a prompted step — triage transitions to `verifying` but stops for user to run `/verify`
+- Context injection no longer marks verifying as auto-advance
+- `/next` command lists `/verify` as the recommended action when in verifying phase
+- Elicit skill enforces `AskUserQuestion` for all choices — no inline A/B/C text options
 
 ## 0.3.0 (2026-04-16)
 

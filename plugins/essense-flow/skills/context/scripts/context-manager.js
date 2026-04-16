@@ -15,7 +15,7 @@ const PHASE_LABELS = {
   sprinting: "Sprinting — building tasks",
   "sprint-complete": "Sprint complete — awaiting review",
   reviewing: "Reviewing — adversarial QA in progress",
-  verifying: "Verifying — spec compliance check in progress",
+  verifying: "Ready for verification — run /verify to check spec compliance",
   complete: "Complete — pipeline finished",
 };
 
@@ -75,7 +75,7 @@ function getNextAction(state) {
       return "Auto-advancing — categorizing and routing";
     case "reviewing":
       return "Auto-advancing to triage (review in progress)";
-    case "verifying": return "Auto-advancing — checking spec compliance";
+    case "verifying": return "/verify — check spec compliance before completing";
     case "complete":
       return "/status — pipeline complete";
     default:

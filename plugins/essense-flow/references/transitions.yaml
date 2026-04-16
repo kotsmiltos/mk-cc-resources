@@ -110,7 +110,7 @@ transitions:
     to: "verifying"
     triggered_by: "triage-skill"
     requires: "SPEC.md exists at .pipeline/elicitation/SPEC.md"
-    auto_advance: true
+    auto_advance: false
     fields_changed:
       - "pipeline.phase"
       - "last_updated"

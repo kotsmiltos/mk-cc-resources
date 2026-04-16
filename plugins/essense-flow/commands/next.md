@@ -30,6 +30,7 @@ Suggest what to do next based on the current pipeline phase. Read-only — does 
 | `sprint-complete` | _(auto-advancing to review)_ | Sprint done — auto-advances to review |
 | `reviewing` | _(auto-advancing to triage)_ | Review in progress — auto-advances to triage |
 | `triaging` | _(auto-advancing to target phase)_ | Triage in progress — auto-categorizes and routes |
+| `verifying` | `/verify` | Run spec compliance check before completing |
 | `complete` | "Pipeline complete" | All work done |
 
 4. Report the suggestion with a brief explanation
