@@ -86,8 +86,38 @@ const HINTS = [
   },
 ];
 
-function main() {
-  const prompt = process.env.CLAUDE_USER_PROMPT || "";
+/**
+ * Read the user prompt from stdin (JSON) or env var fallback.
+ * Claude Code sends UserPromptSubmit hooks a JSON payload on stdin:
+ *   { "session_id": "...", "hook_event_name": "UserPromptSubmit", "prompt": "..." }
+ */
+function readPrompt() {
+  return new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("end", () => {
+      // Try stdin JSON first, fall back to env var (for manual testing)
+      if (data.trim()) {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed.prompt || "");
+          return;
+        } catch (_e) { /* not JSON, treat as raw */ }
+        resolve(data.trim());
+        return;
+      }
+      resolve(process.env.CLAUDE_USER_PROMPT || "");
+    });
+    // If stdin is a TTY (manual run without piping), resolve immediately with env var
+    if (process.stdin.isTTY) {
+      resolve(process.env.CLAUDE_USER_PROMPT || "");
+    }
+  });
+}
+
+async function main() {
+  const prompt = await readPrompt();
   if (!prompt) return;
 
   // Check which modifiers are explicitly triggered
@@ -121,9 +151,7 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (err) {
+main().catch((err) => {
   process.stderr.write(`[prompt-modifier hook error] ${err.message}\n`);
   process.exit(0);
-}
+});

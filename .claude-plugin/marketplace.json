@@ -78,7 +78,7 @@
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
       "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present) that inject behavioral rules for thoroughness, documentation checks, interactive questions, and more. Smart hints suggest modifiers when you describe the intent without the keyword.",
-      "version": "1.3.0"
+      "version": "1.3.1"
     },
     {
       "name": "mk-cc-all",
