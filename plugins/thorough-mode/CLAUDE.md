@@ -5,12 +5,13 @@ Keyword triggers that inject behavioral rules into the current response.
 ## Available Modifiers
 
 ### `++` / `@thorough` — Thorough Mode
-Enforces exhaustive processing:
-- Enumerate all items before processing — state the count
-- Process every item — never skip, summarize, or batch
-- Show intermediate work — don't abbreviate steps
-- Verify completeness — count outputs vs inputs at the end
+Be thorough, not hasty — take the time to do it right:
+- Read and understand fully before acting — don't skim or assume
+- Don't skip, drop, or silently omit things
+- Don't take shortcuts that sacrifice quality — prefer careful over fast
+- Handle each item properly — don't batch, merge, or hand-wave
 - Include rather than exclude when in doubt
+- Go back and fix if you missed something
 
 ### `@ship` — Pre-Push Checklist
 Enforces documentation and versioning hygiene before pushing:

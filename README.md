@@ -292,7 +292,7 @@ claude plugin install thorough-mode
 
 | Keyword | What it does |
 |---------|-------------|
-| `++` or `@thorough` | Exhaustive processing — enumerate all items, process every one, verify completeness, no skipping or summarizing |
+| `++` or `@thorough` | Thorough mode — be careful and unhurried, read fully before acting, don't skip or take shortcuts, include rather than exclude |
 | `@ship` | Pre-push checklist — verify README, CHANGELOG, version bumps, CLAUDE.md, and docs before pushing |
 | `@present` | Interactive questions — force all choices through `AskUserQuestion` with arrow-key navigation |
 
