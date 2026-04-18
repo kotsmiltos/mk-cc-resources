@@ -19,14 +19,13 @@ const MODIFIERS = [
       /(?:^|\s)\+\+(?:\s|$)/,       // ++ as standalone token
       /(?:^|\s)@thorough(?:\s|$)/i,  // @thorough as standalone token
     ],
-    injection: `[thorough-mode] Active for this response. Follow these rules strictly:
-- ENUMERATE all items, files, or steps before processing any. State the count.
-- PROCESS EVERY ITEM — do not skip, summarize, batch, or say "and so on."
-- DO NOT abbreviate intermediate work. Show each step.
-- VERIFY completeness at the end — count outputs vs inputs. If they don't match, go back.
+    injection: `[thorough-mode] Be thorough, not hasty. Take the time to do this right:
+- READ and UNDERSTAND fully before acting — do not skim, assume, or jump to conclusions.
+- Do not skip, drop, or silently omit things. If something is relevant, address it.
+- Do not take shortcuts that sacrifice quality — prefer the careful path over the fast one.
+- When working through multiple items, handle each one properly — do not batch, merge, or hand-wave.
 - When in doubt, INCLUDE rather than exclude.
-- READ fully before acting — do not skim or assume.
-- DO NOT merge, group, or compress separate items into summaries.`,
+- If you realize you missed something, go back and fix it rather than hoping it doesn't matter.`,
   },
   {
     name: "ship",
