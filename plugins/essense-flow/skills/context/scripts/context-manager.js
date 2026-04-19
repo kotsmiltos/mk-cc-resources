@@ -97,24 +97,17 @@ function formatStateForInjection(state, config) {
   lines.push(`[essense-flow] ${summary}`);
   lines.push(`Next: ${next}`);
 
-  // Sprint progress
-  if (state.sprints && Object.keys(state.sprints).length > 0) {
-    const sprintEntries = Object.entries(state.sprints);
-    const recent = sprintEntries.slice(-3); // Last 3 sprints
-    for (const [id, s] of recent) {
-      const status = s.status || "unknown";
-      const progress =
-        s.tasks_total > 0 ? ` (${s.tasks_complete || 0}/${s.tasks_total})` : "";
-      lines.push(`  ${id}: ${status}${progress}`);
-    }
+  // Current sprint only — stale sprints are noise every turn
+  const currentSprintId = state.pipeline && state.pipeline.sprint ? `sprint-${state.pipeline.sprint}` : null;
+  if (currentSprintId && state.sprints && state.sprints[currentSprintId]) {
+    const s = state.sprints[currentSprintId];
+    const status = s.status || "unknown";
+    const progress =
+      s.tasks_total > 0 ? ` (${s.tasks_complete || 0}/${s.tasks_total})` : "";
+    lines.push(`  ${currentSprintId}: ${status}${progress}`);
   }
 
-  // Decisions count
-  if (state.decisions_count > 0) {
-    lines.push(`Decisions: ${state.decisions_count} recorded`);
-  }
-
-  // Blocker
+  // Blocker (decisions count removed — status metric, not actionable)
   if (state.blocked_on) {
     lines.push(`BLOCKED: ${state.blocked_on}`);
   }

@@ -62,24 +62,26 @@ function generateBriefId(perspectiveId) {
 /**
  * Assemble review briefs for each perspective agent.
  *
- * Each brief includes task specs, completion evidence, built file paths,
- * and SPEC.md content (if it exists) so the agent has full context for review.
+ * Briefs list paths to task specs, completion records, and SPEC.md — agents
+ * read on demand rather than receiving pre-embedded content. This eliminates
+ * brief-re-embedding waste (SPEC waste prior #4) and supports the grounding
+ * requirement that every finding quote verbatim code from the cited file.
  *
  * @param {number} sprintNumber — the completed sprint number
- * @param {string} taskSpecs — concatenated task spec contents
- * @param {string} completionRecords — concatenated completion record contents
- * @param {string|null} specContent — SPEC.md content (null if no spec exists)
+ * @param {string[]} taskSpecPaths — absolute paths to task spec files
+ * @param {string[]} completionRecordPaths — absolute paths to completion records
+ * @param {string|null} specPath — absolute path to SPEC.md (null if absent)
  * @param {string} pluginRoot — absolute path to essense-flow plugin root
  * @param {Object} config — pipeline config
  * @returns {{ ok: boolean, briefs?: Array<{ perspectiveId: string, agentId: string, briefId: string, brief: string }>, error?: string }}
  */
-function assembleReviewBriefs(sprintNumber, taskSpecs, completionRecords, specContent, pluginRoot, config) {
-  if (!taskSpecs || typeof taskSpecs !== "string" || !taskSpecs.trim()) {
-    return { ok: false, error: "Task specs content is required and must be a non-empty string" };
+function assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config) {
+  if (!Array.isArray(taskSpecPaths) || taskSpecPaths.length === 0) {
+    return { ok: false, error: "taskSpecPaths must be a non-empty array of file paths" };
   }
 
-  if (!completionRecords || typeof completionRecords !== "string" || !completionRecords.trim()) {
-    return { ok: false, error: "Completion records content is required and must be a non-empty string" };
+  if (!Array.isArray(completionRecordPaths) || completionRecordPaths.length === 0) {
+    return { ok: false, error: "completionRecordPaths must be a non-empty array of file paths" };
   }
 
   const templatePath = path.join(pluginRoot, BRIEF_TEMPLATE_REL);
@@ -95,16 +97,19 @@ function assembleReviewBriefs(sprintNumber, taskSpecs, completionRecords, specCo
     const agentId = `review-${perspective.id}`;
     const timestamp = new Date().toISOString();
 
-    // Extract built file paths from completion records for the agent to read
-    const builtFiles = extractBuiltFilePaths(completionRecords);
+    const taskSpecList = taskSpecPaths.map((p) => `- ${p}`).join("\n");
+    const completionRecordList = completionRecordPaths.map((p) => `- ${p}`).join("\n");
+    // Extract built file paths by reading completion records (agents re-read them,
+    // but the brief pre-computes this list so the agent has a starting reading plan)
+    const builtFiles = extractBuiltFilePathsFromPaths(completionRecordPaths);
 
     const bindings = {
       REVIEW_PERSPECTIVE: perspective.role,
       FOCUS_AREA: perspective.focus,
-      TASK_SPECS: taskSpecs,
-      COMPLETION_RECORDS: completionRecords,
+      TASK_SPEC_PATHS: taskSpecList,
+      COMPLETION_RECORD_PATHS: completionRecordList,
       BUILT_FILES: builtFiles,
-      SPEC_CONTENT: specContent || "(no SPEC.md available)",
+      SPEC_PATH: specPath || "(no SPEC.md available)",
       SPRINT_NUMBER: String(sprintNumber),
       SANDBOX_PATH: `.pipeline/reviews/sprint-${String(sprintNumber).padStart(2, "0")}/tests/`,
       BRIEF_ID: briefId,
@@ -112,9 +117,10 @@ function assembleReviewBriefs(sprintNumber, taskSpecs, completionRecords, specCo
       TIMESTAMP: timestamp,
     };
 
-    // Build sections for budget checking
+    // Build sections for budget checking — brief no longer embeds artifact bodies,
+    // so the context section is just the path manifest.
     const identity = `You are a ${perspective.role} performing adversarial review of Sprint ${sprintNumber}. Your sole concern is ${perspective.focus}.`;
-    const context = taskSpecs + "\n" + completionRecords;
+    const context = taskSpecList + "\n" + completionRecordList;
 
     const sections = {
       identity,
@@ -150,29 +156,27 @@ function assembleReviewBriefs(sprintNumber, taskSpecs, completionRecords, specCo
 }
 
 /**
- * Extract built file paths from completion records.
- * Looks for file paths in markdown list items and table cells.
+ * Extract built file paths by scanning completion record files on disk.
+ * Returns a newline-separated bulleted list suitable for brief injection.
  *
- * @param {string} completionRecords — raw completion record content
- * @returns {string} — newline-separated list of file paths found
+ * @param {string[]} completionRecordPaths — paths to completion record files
+ * @returns {string} — newline-separated bulleted list of file paths found
  */
-function extractBuiltFilePaths(completionRecords) {
+function extractBuiltFilePathsFromPaths(completionRecordPaths) {
   const paths = [];
-
-  // Match paths that look like file references (contain / or \ and have extensions)
   const pathPattern = /(?:^|\s|`)((?:[\w./-]+\/)?[\w.-]+\.\w{1,10})(?:\s|$|`|,|\|)/gm;
-  let match;
-  while ((match = pathPattern.exec(completionRecords)) !== null) {
-    const candidate = match[1].trim();
-    // Filter out obvious non-paths
-    if (candidate.includes("/") || candidate.includes("\\")) {
-      if (!paths.includes(candidate)) {
-        paths.push(candidate);
+  for (const recordPath of completionRecordPaths) {
+    if (!fs.existsSync(recordPath)) continue;
+    const content = fs.readFileSync(recordPath, "utf8");
+    let match;
+    while ((match = pathPattern.exec(content)) !== null) {
+      const candidate = match[1].trim();
+      if (candidate.includes("/") || candidate.includes("\\")) {
+        if (!paths.includes(candidate)) paths.push(candidate);
       }
     }
   }
-
-  return paths.length > 0 ? paths.map((p) => `- ${p}`).join("\n") : "(extract from completion records)";
+  return paths.length > 0 ? paths.map((p) => `- ${p}`).join("\n") : "(extract by reading the completion records above)";
 }
 
 /**
@@ -557,13 +561,9 @@ function writeQAReport(pipelineDir, sprintNumber, report) {
  * @param {string} pipelineDir — absolute path to .pipeline/
  * @returns {string|null} — stripped SPEC.md content, or null
  */
-function loadSpec(pipelineDir) {
+function loadSpecPath(pipelineDir) {
   const specPath = path.join(pipelineDir, "elicitation", "SPEC.md");
-  if (!fs.existsSync(specPath)) return null;
-
-  const raw = fs.readFileSync(specPath, "utf8");
-  const stripped = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
-  return stripped || null;
+  return fs.existsSync(specPath) ? specPath : null;
 }
 
 /**
@@ -589,19 +589,13 @@ function loadRequirements(pipelineDir) {
  * @param {number} sprintNumber — sprint number
  * @returns {string} — concatenated task spec contents with file headers
  */
-function loadTaskSpecs(pipelineDir, sprintNumber) {
+function loadTaskSpecPaths(pipelineDir, sprintNumber) {
   const tasksDir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`, "tasks");
-  if (!fs.existsSync(tasksDir)) return "";
-
-  const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md") && !f.endsWith(".agent.md"));
-  const parts = [];
-
-  for (const file of files) {
-    const content = fs.readFileSync(path.join(tasksDir, file), "utf8");
-    parts.push(`### ${file}\n\n${content}`);
-  }
-
-  return parts.join("\n\n---\n\n");
+  if (!fs.existsSync(tasksDir)) return [];
+  return fs
+    .readdirSync(tasksDir)
+    .filter((f) => f.endsWith(".md") && !f.endsWith(".agent.md"))
+    .map((f) => path.join(tasksDir, f));
 }
 
 /**
@@ -611,19 +605,13 @@ function loadTaskSpecs(pipelineDir, sprintNumber) {
  * @param {number} sprintNumber — sprint number
  * @returns {string} — concatenated completion record contents with file headers
  */
-function loadCompletionRecords(pipelineDir, sprintNumber) {
+function loadCompletionRecordPaths(pipelineDir, sprintNumber) {
   const completionDir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`, "completion");
-  if (!fs.existsSync(completionDir)) return "";
-
-  const files = fs.readdirSync(completionDir).filter((f) => f.endsWith(".md") || f.endsWith(".yaml"));
-  const parts = [];
-
-  for (const file of files) {
-    const content = fs.readFileSync(path.join(completionDir, file), "utf8");
-    parts.push(`### ${file}\n\n${content}`);
-  }
-
-  return parts.join("\n\n---\n\n");
+  if (!fs.existsSync(completionDir)) return [];
+  return fs
+    .readdirSync(completionDir)
+    .filter((f) => f.endsWith(".md") || f.endsWith(".yaml"))
+    .map((f) => path.join(completionDir, f));
 }
 
 /**
@@ -702,7 +690,7 @@ module.exports = {
   SUSPECTED_CAP_RATIO,
   generateBriefId,
   assembleReviewBriefs,
-  extractBuiltFilePaths,
+  extractBuiltFilePathsFromPaths,
   parseReviewOutputs,
   inferConfidence,
   inferSeverity,
@@ -711,10 +699,10 @@ module.exports = {
   generateQAReport,
   extractFindingName,
   writeQAReport,
-  loadSpec,
+  loadSpecPath,
   loadRequirements,
-  loadTaskSpecs,
-  loadCompletionRecords,
+  loadTaskSpecPaths,
+  loadCompletionRecordPaths,
   validatePositiveControl,
   MAX_REVIEW_CYCLES,
   checkReviewCycleLimit,

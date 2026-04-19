@@ -21,8 +21,6 @@ You are a {{ROLE_LENS}} analyzing a software project proposal. Your sole concern
 {{PROBLEM_STATEMENT}}
 </data-block>
 
-{{SIBLING_CONTEXT}}
-
 ## Task
 
 Analyze the problem statement above from your professional perspective ({{ROLE_LENS}}). Perform two explicit analysis passes:

@@ -211,7 +211,6 @@ function assemblePerspectiveBriefs(problemStatement, pluginRoot, config, lenses)
       ROLE_LENS: lens.role,
       FOCUS_AREA: lens.focus,
       PROBLEM_STATEMENT: problemStatement,
-      SIBLING_CONTEXT: "", // First batch — no sibling context
       BRIEF_ID: briefId,
       AGENT_ID: agentId,
       TIMESTAMP: timestamp,

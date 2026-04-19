@@ -31,22 +31,18 @@ Use `lib/state-machine.transition()` to move from `sprint-complete` to `reviewin
 
 Gather all review inputs:
 
-- **Task specs**: Read all `.md` files (excluding `.agent.md`) from `.pipeline/sprints/sprint-N/tasks/` using `review-runner.loadTaskSpecs()`
-- **Completion records**: Read all files from `.pipeline/sprints/sprint-N/completion/` using `review-runner.loadCompletionRecords()`
-- **SPEC.md**: Load from `.pipeline/elicitation/SPEC.md` if it exists using `review-runner.loadSpec()` — for compliance checking against original design
-- **REQ.md**: Load from `.pipeline/requirements/REQ.md` if it exists using `review-runner.loadRequirements()` — for FR-NNN and NFR-NNN traceability
+- **Task spec paths**: `review-runner.loadTaskSpecPaths(pipelineDir, sprintNumber)` — returns file paths, not content
+- **Completion record paths**: `review-runner.loadCompletionRecordPaths(pipelineDir, sprintNumber)` — paths only
+- **SPEC.md path**: `review-runner.loadSpecPath(pipelineDir)` — path or null
+- **REQ.md**: `review-runner.loadRequirements()` if FR-NNN/NFR-NNN traceability is needed
 
-If task specs or completion records are empty, escalate to user and exit.
+Agents read the files on demand. Briefs carry paths, not content — this eliminates the re-embedding waste category and supports the verbatim-quote grounding requirement.
+
+If task spec or completion record paths are empty, escalate to user and exit.
 
 ### 4. Assemble Review Briefs
 
-Call `review-runner.assembleReviewBriefs()` with:
-- Sprint number
-- Concatenated task spec content
-- Concatenated completion record content
-- SPEC.md content (or null)
-- Plugin root path
-- Pipeline config
+Call `review-runner.assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config)`. Each brief lists paths (not content) and the associated hard-constraint requiring a verbatim on-disk quote per finding — fabricated findings fail the grounding check and are auto-dropped at synthesis.
 
 This produces one brief per review perspective (spec-compliance, edge-cases, integration, requirements).
 

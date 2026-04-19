@@ -37,6 +37,12 @@ See `references/transitions.yaml` for the full transition table.
 - **pause** — Save current context to `state.session.continue_from`, report what was saved
 - **resume** — Read and clear `state.session.continue_from`, orient the session
 
+## Scripts
+
+- `scripts/context-manager.js` — formats `state.yaml` + rules into the per-turn injection payload; derives the next-action hint; backs the session-orient hook.
+- `scripts/drift-check.js` — compares claimed state against filesystem reality and reports divergences (used on pause/resume and in doctor-style checks).
+- `scripts/init.js` — initializes a fresh `.pipeline/` tree (state.yaml, config.yaml, rules.yaml) for a new project; invoked by `/init`.
+
 ## Constraints
 
 - NEVER auto-approve transitions that require "user approval" (triaging phase — ambiguous items)

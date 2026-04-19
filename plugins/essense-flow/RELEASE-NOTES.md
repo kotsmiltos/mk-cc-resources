@@ -1,5 +1,31 @@
 # essense-flow Release Notes
 
+## 0.3.2 (2026-04-20)
+
+Optimization and clarity sweep across hooks, lib, and skills. No new commands or skills.
+
+### Packaging fix
+- `skills/build/` (SKILL.md, `build-runner.js`, `execute.md`) was silently gitignored in the marketplace repo by a generic Python-distribution `build/` rule and never shipped in prior releases. Plugin `.gitignore` now adds `!skills/build/` to override it. Users on 0.3.1 and earlier did not receive the build skill files alongside the `/build` command — 0.3.2 is the first release that actually ships the build skill.
+
+### Fixes
+- `review-guard` path check now prefix-rooted against the pipeline parent directory — prevents a substring-traversal hole where an allowed filename fragment appearing mid-path would incorrectly permit writes.
+- `verify-merge.worstVerdict` validates all input verdicts upfront so single-element arrays (which skip reduce's callback) also surface unknown verdicts with a clear error.
+- Auto-advance banner trimmed to `[auto-advance]` — the long prose was redundant noise in every injected context.
+
+### Build runner
+- New `extractOrchestratorTaskFlag(spec)` — detects `orchestrator_task: true` in task frontmatter. Tasks flagged this way are recorded as `deferred` instead of dispatched, because they invoke `/essense-flow:*` commands that a sub-agent cannot reach.
+- `recordCompletion` / `getSprintSummary` accept and tally a new `deferred` status alongside `complete`, `blocked`, `failed`.
+- Build workflow classifies each task as `inline` (single file, small diff, verifiable-by-diff) or `dispatch` (multi-file or logic requiring runtime verification) and records the choice in the completion record.
+
+### Waste removal
+- `lib/transform.js` no longer embeds ARCH.md into each task brief; briefs now reference `.pipeline/architecture/ARCH.md` by path. Agents have Read — the re-embedded copy was duplicated context, burning tokens per task.
+- Redundant hardcoded "Completion" checklist removed from every task brief — acceptance criteria already live in the task spec.
+- Per-file 4-criteria audits across architect, build, context, elicit, research, review, triage, verify skills: trimmed repeated preambles, tightened workflow steps, consolidated duplicate guidance.
+
+### Tests
+- `tests/sprint-05-regressions.test.js` pins fixes for QA findings C-1..C-3, H-1..H-5 so future refactors can't reintroduce them.
+- `tests/build-runner-orchestrator-task.test.js` covers the new orchestrator_task flag end-to-end.
+
 ## 0.3.1 (2026-04-16)
 
 - Verify is now a prompted step — triage transitions to `verifying` but stops for user to run `/verify`

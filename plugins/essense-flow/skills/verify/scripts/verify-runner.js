@@ -13,7 +13,7 @@ const paths = require("../../../lib/paths");
 const lockfile = require("../../../lib/lockfile");
 const integrity = require("../../../lib/artifact-integrity");
 const errors = require("../../../lib/errors");
-const verifySchemas = require("./verify-schemas");
+const verifySchemas = require("./verify-schemas.js");
 const verifyMerge = require("../../../lib/verify-merge");
 
 // ---------------------------------------------------------------------------
@@ -1708,8 +1708,11 @@ async function runVerify({ pipelineDir, pluginRoot, config, mode, dispatchFn = n
     }
     lockAcquired = true;
 
-    const { specContent, specHash, fileTree, fileTreeText, decisions, cacheHit } =
+    const { specContent, specHash, fileTree, fileTreeText, decisions } =
       preflightResult;
+    // cacheHit is declared mutable — the post-lock spec-hash re-check below
+    // invalidates it when SPEC.md changes between preflight and dispatch (H-4).
+    let cacheHit = preflightResult.cacheHit;
 
     // -----------------------------------------------------------------------
     // Step 2: Extraction — load cached items or dispatch the extraction agent

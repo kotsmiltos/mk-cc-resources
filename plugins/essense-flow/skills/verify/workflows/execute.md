@@ -22,6 +22,17 @@ Before any other step, read `.pipeline/state.yaml` and check `state.pipeline.pha
 - **`verifying`** → gate mode: runs state transitions and routing on completion
 - **any other phase** → on-demand mode: produces report with routing suggestions, no state changes
 
+## Scope Variant: lightweight vs full-swarm
+
+Orthogonal to gate/on-demand, verify runs in one of two scope variants:
+
+- **full-swarm** (default) — step 10 dispatches one verification agent per group in parallel.
+- **lightweight** — step 10 is skipped; the orchestrator runs verification inline in step 11. Valid when BOTH conditions are true:
+  1. The diff since the last verify (or since SPEC.md's last modification) fits within `config.verify.lightweight_max_files` (default 6 files).
+  2. The most recent QA report for the current sprint is PASS with grounded findings (findings carry verbatim on-disk quotes — see review skill).
+
+Lightweight exists because dispatching ~N verification agents for a 3-file change set that already passed grounded review produces no new signal and costs the full swarm's tokens. The extraction agent (step 5) still runs — it provides the audit trail. Record the variant in `state.verify.variant: lightweight|full-swarm` with a one-line rationale.
+
 ## Steps
 
 ### 1. Preflight
@@ -106,9 +117,11 @@ For each group (excluding groups already completed in a checkpoint), call `verif
 
 ### 10. Dispatch Verification Agents
 
-Spawn all verification agents in parallel using the Agent tool — one agent per group. All groups in the same batch.
+**full-swarm variant**: Spawn all verification agents in parallel using the Agent tool — one agent per group. All groups in the same batch.
 
-Each agent must:
+**lightweight variant**: SKIP this step. Verification runs inline in step 11.
+
+Each agent (full-swarm) must:
 1. Read each spec item's text and understand the design intent
 2. Read the implementation files provided
 3. Check `decisions/index.yaml` entries for DEC-NNN overrides covering this item
@@ -119,7 +132,7 @@ Each agent must:
 
 ### 11. Process Verification Responses
 
-For each agent's raw output, call `verify-runner.processVerificationResponse(rawOutput, specHash, extractedItems)`. This:
+**full-swarm variant**: For each agent's raw output, call `verify-runner.processVerificationResponse(rawOutput, specHash, extractedItems)`. This:
 
 - Parses the structured verdict output
 - Validates verdict values and confidence tiers
@@ -127,6 +140,8 @@ For each agent's raw output, call `verify-runner.processVerificationResponse(raw
 - Returns the parsed verdict map for this group
 
 If an agent's output is malformed, retry that agent once. If still failing, escalate to the user — a missing group means the report cannot be complete.
+
+**lightweight variant**: The orchestrator performs the same semantic-comparison logic inline, reading each group's items, the cached file contents, and relevant decisions. Produce the verdict map directly. Inline verdicts are capped at LIKELY confidence (no CONFIRMED) since there is no independent agent review; the recency of the grounded review carries the confidence.
 
 Call `verify-runner.saveCheckpoint(pipelineDir, specHash, completedGroups)` after each successful group to persist progress.
 

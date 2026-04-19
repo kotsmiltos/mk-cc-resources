@@ -12,65 +12,43 @@ decisions_applied: []
 
 {{TASK_OBJECTIVE}}
 
+## Files to Create/Modify
+
+| File          | Action           | Purpose        |
+|---------------|------------------|----------------|
+| {{FILE_PATH}} | create\|modify   | {{PURPOSE}}    |
+
+## Acceptance Criteria
+
+- [ ] {{CRITERION}}
+
+<!--
+Include the sections below ONLY when they carry load. Omit for mechanical edits
+(rename, single-function change, typo fix) where they would be empty or duplicate
+the objective.
+
 ## Interfaces
-
 ### Inputs
-
 - {{INPUT_DESCRIPTION}}
-
 ### Outputs
-
 - {{OUTPUT_DESCRIPTION}}
 
 ## Pseudocode
-
 ```
 {{PSEUDOCODE}}
 ```
 
 ## Constraints
-
 - {{CONSTRAINT_DESCRIPTION}}
 
-## Acceptance Criteria
-
-### Functional
-
-- [ ] {{CRITERION}}
-
-### Error Path
-
-- [ ] {{CRITERION}}
-
-### Boundary
-
-- [ ] {{CRITERION}}
-
-### Contract
-
-- [ ] {{CRITERION}}
-
-### Fitness
-
-- [ ] {{FITNESS_ID}}: {{FITNESS_ASSERTION}}
-
 ## Edge Cases
-
 - {{EDGE_CASE_DESCRIPTION}}
 
-## Files to Create/Modify
-
-| File                  | Action   | Purpose              |
-|-----------------------|----------|----------------------|
-| {{FILE_PATH}}         | create   | {{PURPOSE}}          |
-| {{FILE_PATH}}         | modify   | {{PURPOSE}}          |
-
 ## Rationale
-
 {{RATIONALE_DESCRIPTION}}
 
 ## Alternatives Considered
-
-| Alternative            | Why Rejected             |
-|------------------------|--------------------------|
-| {{ALTERNATIVE}}        | {{REJECTION_REASON}}     |
+| Alternative     | Why Rejected         |
+|-----------------|----------------------|
+| {{ALTERNATIVE}} | {{REJECTION_REASON}} |
+-->

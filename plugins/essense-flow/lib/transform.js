@@ -20,44 +20,21 @@ function transformToAgentMd(spec, architectureContext, config) {
 
     const warnings = [];
 
-    // Build the agent markdown
+    // Architecture context is referenced by path, not re-embedded. Agents have
+    // Read — they pull ARCH.md themselves. Embedding ARCH.md per task is the
+    // waste pattern prior #4/#7 targets.
     const sections = [];
 
-    // Architecture context (trimmed if too large)
     if (architectureContext) {
-      const archTokens = tokens.countTokens(architectureContext);
-      const contextLimit = config && config.token_budgets
-        ? Math.floor((config.token_budgets.section_max || 4000) * 0.9)
-        : 3600;
-
-      if (archTokens > contextLimit) {
-        warnings.push(`Architecture context truncated from ${archTokens} to ~${contextLimit} tokens`);
-        // Approximate truncation by character count
-        const charLimit = Math.floor(contextLimit * 3.5);
-        sections.push("## Architecture Context (truncated)");
-        sections.push("");
-        sections.push(architectureContext.slice(0, charLimit) + "\n\n[... truncated for token budget]");
-      } else {
-        sections.push("## Architecture Context");
-        sections.push("");
-        sections.push(architectureContext);
-      }
+      sections.push("## Architecture Context");
+      sections.push("");
+      sections.push("Read `.pipeline/architecture/ARCH.md` for module boundaries, interface contracts, and decisions that apply to this task.");
       sections.push("");
     }
 
-    // Task spec
     sections.push("## Task Specification");
     sections.push("");
     sections.push(spec);
-    sections.push("");
-
-    // Completion sentinel
-    sections.push("## Completion");
-    sections.push("");
-    sections.push("When you have completed this task:");
-    sections.push("1. Verify all acceptance criteria are met");
-    sections.push("2. Ensure code compiles/lints without errors");
-    sections.push("3. Confirm no regressions in related functionality");
     sections.push("");
 
     const agentMd = sections.join("\n");

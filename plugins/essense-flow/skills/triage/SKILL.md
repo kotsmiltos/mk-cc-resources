@@ -18,9 +18,20 @@ Categorize, don't resolve. Triage reads research gaps or review findings, cross-
 
 ## How You Work
 
+### Pre-Categorization: Findings Revalidation
+
+Before categorizing, re-validate each incoming finding against current state:
+
+- **Bug finding** (from review) — confirm the cited file/line exists and the cited verbatim quote still matches. If the file was moved/deleted or the quoted code no longer appears, mark the finding `stale: file-not-found` or `stale: quote-mismatch` and drop it from categorization.
+- **Gap finding** (from research) — confirm the cited gap isn't already covered by current SPEC.md or ARCH.md. If it is, mark `stale: covered-elsewhere` and drop it.
+
+Log every dropped finding with its stale reason and the trust source (review agent id or research perspective id). Repeat drops from the same source are a trust breach — surface to the user.
+
+This step exists because triage previously trusted its input unconditionally, letting fabricated or obsolete findings propagate through routing. Grounded review (see review skill) reduces the incoming fabrication rate but does not eliminate staleness from prior sessions or spec drift.
+
 ### Categorization Algorithm
 
-1. Cross-reference each gap/finding against SPEC.md traceability
+1. Cross-reference each surviving gap/finding against SPEC.md traceability
 2. **No spec coverage** → design gap → route to `/elicit`
 3. **Spec exists, no architecture/task coverage** → design decision → route to `/architect`
 4. **Task spec exists, implementation diverges** → implementation bug → route to `/architect` (architect creates fix sprint)
@@ -52,9 +63,10 @@ For the initial pipeline (before full categorization is implemented), triage def
 ## Scripts
 
 - `skills/triage/scripts/triage-runner.js`
-  - `categorizeItems(items, specContent)` — apply categorization algorithm
+  - `revalidateFindings(items, pipelineDir)` — pre-categorization staleness check; returns `{ surviving, dropped }`
+  - `categorizeItems(survivingItems, specContent)` — apply categorization algorithm to revalidated items only
   - `determineRoute(categorized)` — select target phase from earliest-phase rule
-  - `writeTriage(pipelineDir, report, queued)` — write output artifacts
+  - `writeTriage(pipelineDir, report, queued, dropped)` — write output artifacts including dropped stale findings
 
 ## State Transitions
 

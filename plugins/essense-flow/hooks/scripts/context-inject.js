@@ -63,7 +63,7 @@ function main() {
 
     let output = payload;
     if (phase && AUTO_ADVANCE_PHASES.includes(phase)) {
-      output += "\n[auto-advance] This phase chains automatically — proceed without waiting for user command.";
+      output += "\n[auto-advance]";
     }
 
     process.stdout.write(output);

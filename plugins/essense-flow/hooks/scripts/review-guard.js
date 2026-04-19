@@ -68,7 +68,22 @@ function main() {
       ".pipeline/extracted-items.yaml",
       ".pipeline/verify-checkpoint.yaml",
     ];
-    if (VERIFY_ALLOWED_PATHS.some((allowed) => normalized.endsWith(allowed) || normalized.includes("/" + allowed))) {
+    // Prefix check rooted at the pipeline parent directory — prevents substring
+    // traversal where an allowed fragment appears mid-path.
+    const pipelineParent = path.dirname(pipelineDir).replace(/\\/g, "/");
+    const allowedResolved = VERIFY_ALLOWED_PATHS.map((rel) => {
+      const full = (pipelineParent + "/" + rel).replace(/\/+/g, "/");
+      return full;
+    });
+    const isAllowed = allowedResolved.some((full) => {
+      if (full.endsWith("/")) {
+        // Directory allow — require prefix-with-separator match
+        return normalized === full.slice(0, -1) || normalized.startsWith(full);
+      }
+      // File allow — require exact match
+      return normalized === full;
+    });
+    if (isAllowed) {
       process.exit(0); // verify artifact path, allow
     }
     process.stderr.write("BLOCKED: Verify phase is read-only — writes only permitted to .pipeline/verify/ and verification report files\n");

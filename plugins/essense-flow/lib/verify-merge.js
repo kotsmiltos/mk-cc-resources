@@ -52,12 +52,18 @@ const PROBLEM_VERDICT_THRESHOLD = VERDICT_ORDER.DEVIATED;
  */
 function worstVerdict(verdicts) {
   if (!verdicts || verdicts.length === 0) return null;
-  return verdicts.reduce((best, v) => {
-    const rankV = VERDICT_ORDER[v];
-    const rankBest = VERDICT_ORDER[best];
-    if (rankV === undefined || rankBest === undefined) return best;
-    return rankV < rankBest ? v : best;
-  });
+  // Validate upfront so single-element arrays (which skip reduce's callback)
+  // also surface unknown verdicts.
+  for (const v of verdicts) {
+    if (VERDICT_ORDER[v] === undefined) {
+      throw new Error(
+        `Unknown verdict "${v}" — expected one of ${Object.keys(VERDICT_ORDER).join(", ")}`
+      );
+    }
+  }
+  return verdicts.reduce((best, v) =>
+    VERDICT_ORDER[v] < VERDICT_ORDER[best] ? v : best
+  );
 }
 
 /**
@@ -72,12 +78,16 @@ function worstConfidence(confidences) {
   // (lowest CONFIDENCE_ORDER rank), which is the right value to carry forward
   // when multiple agents agree on the worst verdict.
   if (!confidences || confidences.length === 0) return null;
-  return confidences.reduce((best, c) => {
-    const rankC = CONFIDENCE_ORDER[c];
-    const rankBest = CONFIDENCE_ORDER[best];
-    if (rankC === undefined || rankBest === undefined) return best;
-    return rankC < rankBest ? c : best;
-  });
+  for (const c of confidences) {
+    if (CONFIDENCE_ORDER[c] === undefined) {
+      throw new Error(
+        `Unknown confidence "${c}" — expected one of ${Object.keys(CONFIDENCE_ORDER).join(", ")}`
+      );
+    }
+  }
+  return confidences.reduce((best, c) =>
+    CONFIDENCE_ORDER[c] < CONFIDENCE_ORDER[best] ? c : best
+  );
 }
 
 // ---------------------------------------------------------------------------

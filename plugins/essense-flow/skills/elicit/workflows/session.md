@@ -17,24 +17,30 @@ phase_transitions: idle -> eliciting -> idle
 
 ### 1. Determine Session Mode
 
-Read `.pipeline/state.yaml`. Check pipeline phase and elicitation state.
+Read `.pipeline/state.yaml`. Check pipeline phase, elicitation state, and `.pipeline/triage/queued-findings.yaml`.
 
-**If phase is `idle` and no seed argument:**
-- Check for existing elicitation state (`.pipeline/elicitation/state.yaml`)
-- If exists with `status: "complete"`: load session and resume (re-entry per DEC-008)
-- If exists with `status: "active"` or `"paused"`: load session and resume
-- If no existing state: report to user: "No active session found. Start one with `/elicit \"your project idea\"`" — then stop
+**Branch A — Initial elicitation** (no queued findings or no prior SPEC.md):
+- Phase `idle` with seed → initSession, transition to `eliciting`
+- Phase `idle` without seed → resume or prompt for seed
+- Phase `eliciting` → loadSession + loadExchanges, continue from last exchange
 
-**If phase is `idle` with seed argument:**
-- Check for existing elicitation state
-- If exists: resume existing session (ignore seed, warn user)
-- If no existing state: call `elicit-runner.initSession(pipelineDir, seed, config)`
-- Transition state: `idle` -> `eliciting`
-
-**If phase is `eliciting`:**
-- Call `elicit-runner.loadSession(pipelineDir)` and `elicit-runner.loadExchanges(pipelineDir)`
-- Present summary of where the conversation stands
-- Continue from last exchange
+**Branch B — Spec-expansion** (queued-findings.yaml has items AND SPEC.md exists):
+- Triggered when triage routed here because of a blocked build, a spec gap surfaced mid-sprint, or a verify gap. See DEC-025 / DEC-026.
+- Skip initial-seed flow. Read each queued finding's `kind` and `description`.
+- For each finding, classify the block type in-conversation (do NOT hardcode sub-workflows):
+  - **execution-model-mismatch** — task assumed a capability that doesn't exist (e.g., sub-agent trying to invoke a slash command). Resolution typically mutates the task spec (split, change orchestrator_task flag, etc.).
+  - **missing-data** — SPEC is silent on a required design decision (e.g., ledger schema field, replacement policy). Resolution appends SPEC.md and records a DEC-NNN.
+  - **ambiguous-spec** — SPEC has two readings; which one is load-bearing is unclear. Resolution picks one in conversation, appends a SPEC.md addendum disambiguating, records a DEC-NNN.
+- Present targeted questions sized to the block type (one focused topic per turn, via AskUserQuestion).
+- For every resolution, pick the appropriate output(s):
+  - Mutate task spec(s) in `.pipeline/sprints/sprint-N/tasks/`
+  - Append SPEC.md with an Addendum section dated today
+  - Record DEC-NNN in `.pipeline/decisions/index.yaml`
+  - Route to `/architect` if tasks need to be added or waves restructured
+- Exit criteria: all queued-findings items resolved. Write the updated SPEC.md (if appended), update task specs (if mutated), and transition:
+  - Only task specs changed → back to `sprinting`
+  - SPEC.md appended or architect re-plan needed → to `requirements-ready`
+  - Otherwise → back to the phase that routed in
 
 ### 2. Explore
 

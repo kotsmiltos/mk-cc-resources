@@ -31,30 +31,42 @@ Use `lib/state-machine.transition()` to move from `requirements-ready` to `archi
 
 Combine both into the context provided to perspective agents.
 
-### 4. Assemble Perspective Briefs
-Call `architect-runner.planArchitecture()` with requirements content (and SPEC.md content if available). Produces 4 briefs (infrastructure, interface, testing, security). When SPEC.md is present, token budget adapts to accommodate the larger context.
+### 4. Classify the plan: design-bearing vs mechanical
 
-### 5. Dispatch Perspective Agents
+Before dispatching any perspective agents, judge the plan:
+
+- **Design-bearing** — input has open design decisions: new architecture, novel module boundaries, multiple viable approaches. Run the full 4-perspective swarm.
+- **Mechanical** — input is a fix sprint for cited bugs, re-plan of already-specced tasks, or spec-addendum cleanup. The structure is prescribed; there is nothing for 4 perspectives to disagree about. Skip the swarm; run synthesis inline.
+
+Record the choice in `.pipeline/state.yaml` under `phases_completed.architecture.perspective_swarm: invoked|skipped` with a one-line `rationale_decision` (e.g., DEC-NNN) so the absence is auditable.
+
+### 5. Assemble Perspective Briefs (swarm path only)
+If design-bearing, call `architect-runner.planArchitecture()` with requirements content (and SPEC.md if available). Produces 4 briefs (infrastructure, interface, testing, security). Token budget adapts when SPEC.md is present.
+
+### 6. Dispatch Perspective Agents (swarm path only)
 Spawn all 4 agents in parallel using the Agent tool. Each gets its assembled brief.
 
-### 6. Parse and Verify Outputs
+### 7. Parse and Verify Outputs (swarm path only)
 Parse with `lib/agent-output`. Check quorum (architecture_perspective: n-1). Run consistency verifier.
 
-### 7. Synthesize Architecture
-Call `architect-runner.synthesizeArchitecture()` to produce:
+### 8. Synthesize Architecture
+**Swarm path**: call `architect-runner.synthesizeArchitecture()` over the parsed perspective outputs.
+**Mechanical path**: produce ARCH.md inline, citing the source SPEC.md/REQ.md sections and the mechanical-plan rationale decision.
+
+Either path produces:
 - ARCH.md with module map, contracts, traceability
-- Synthesis document
+- Synthesis document (skip for mechanical path if already implicit in ARCH.md)
 - Consistency verification result
 
-### 8. Begin Wave-Based Decomposition
+### 9. Begin Wave-Based Decomposition
 
 Transition from `architecture` to `decomposing`.
 
 Initialize DECOMPOSITION-STATE using `architect-runner.initDecompositionState()`.
 
-Create initial nodes from the synthesized architecture — one node per top-level module/system identified in step 7.
+Create initial nodes from the synthesized architecture — one node per top-level module/system identified in step 8.
 
-### 9. Decomposition Loop
+### 10. Decomposition Loop
 
 For each wave:
 
@@ -69,7 +81,7 @@ For each wave:
    - Persist exchange via `lib/exchange-log.appendExchange()`
 3. Save DECOMPOSITION-STATE after each wave
 4. Check `architect-runner.isDecompositionComplete(state)`:
-   - If complete → proceed to step 10
+   - If complete → proceed to step 11
    - If not complete → continue next wave
 5. **Convergence check**: After each wave, check `if (state.current_wave >= CONVERGENCE_CHECK_WAVE)`:
    - Call `formatConvergenceSummary(getConvergenceSummary(state), state.current_wave)` and display to user
@@ -78,10 +90,10 @@ For each wave:
      - **"Stop and create tasks from current leaves"** — end decomposition, generate task specs from resolved leaf nodes only, note skipped nodes in ARCH.md
      - **"Escalate blocked nodes"** — surface each blocked node with its blocking reason, pause for user resolution
    - On **Continue**: proceed to next wave iteration
-   - On **Stop**: skip to step 10 (Generate Output), excluding unresolved/blocked nodes from task specs
+   - On **Stop**: skip to step 11 (Generate Output), excluding unresolved/blocked nodes from task specs
    - On **Escalate**: for each blocked node, show what is blocking it and what information is needed. User resolves or defers.
 
-### 10. Generate Output
+### 11. Generate Output
 
 When all nodes are leaves or blocked:
 
@@ -90,11 +102,11 @@ When all nodes are leaves or blocked:
 3. Write ARCH.md with module map and interface contracts
 4. Save all artifacts to `.pipeline/`
 
-### 11. Transition to Sprinting
+### 12. Transition to Sprinting
 
 Use `lib/state-machine.transition()` to move from `decomposing` to `sprinting` (auto-advances to build).
 
-### 12. Report
+### 13. Report
 
 Show the user:
 - Decomposition summary (total nodes, leaves, blocked, waves taken)
