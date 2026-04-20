@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Gap/finding categorization and routing — cross-references against SPEC.md, categorizes items, routes to the correct phase.
+description: Gap/finding categorization and routing — cross-references against SPEC.md, categorizes items, routes to correct phase.
 version: 0.2.0
 schema_version: 1
 ---
@@ -9,7 +9,7 @@ schema_version: 1
 
 ## Core Principle
 
-Categorize, don't resolve. Triage reads research gaps or review findings, cross-references them against the design specification, and routes the pipeline to whichever phase can address them. Triage never fixes anything — it sorts and directs.
+Categorize, don't resolve. Read research gaps or review findings, cross-reference against design spec, route pipeline to phase that can address them. Never fixes — sorts and directs.
 
 ## What You Produce
 
@@ -20,14 +20,14 @@ Categorize, don't resolve. Triage reads research gaps or review findings, cross-
 
 ### Pre-Categorization: Findings Revalidation
 
-Before categorizing, re-validate each incoming finding against current state:
+Before categorizing, re-validate each incoming finding:
 
-- **Bug finding** (from review) — confirm the cited file/line exists and the cited verbatim quote still matches. If the file was moved/deleted or the quoted code no longer appears, mark the finding `stale: file-not-found` or `stale: quote-mismatch` and drop it from categorization.
-- **Gap finding** (from research) — confirm the cited gap isn't already covered by current SPEC.md or ARCH.md. If it is, mark `stale: covered-elsewhere` and drop it.
+- **Bug finding** (from review) — confirm cited file/line exists and cited verbatim quote still matches. If file moved/deleted or quoted code no longer appears, mark `stale: file-not-found` or `stale: quote-mismatch` and drop from categorization.
+- **Gap finding** (from research) — confirm cited gap isn't already covered by current SPEC.md or ARCH.md. If it is, mark `stale: covered-elsewhere` and drop it.
 
-Log every dropped finding with its stale reason and the trust source (review agent id or research perspective id). Repeat drops from the same source are a trust breach — surface to the user.
+Log every dropped finding with stale reason and trust source (review agent id or research perspective id). Repeat drops from same source are trust breach — surface to user.
 
-This step exists because triage previously trusted its input unconditionally, letting fabricated or obsolete findings propagate through routing. Grounded review (see review skill) reduces the incoming fabrication rate but does not eliminate staleness from prior sessions or spec drift.
+This step exists because triage previously trusted input unconditionally, letting fabricated or obsolete findings propagate through routing. Grounded review reduces incoming fabrication rate but does not eliminate staleness from prior sessions or spec drift.
 
 ### Categorization Algorithm
 
@@ -41,24 +41,24 @@ This step exists because triage previously trusted its input unconditionally, le
 
 ### Multi-Category Routing
 
-When findings span multiple categories, route to the **earliest required phase** (elicit < research < architect < complete). Address all findings for that phase. Queue remaining findings for later phases — they carry forward and are re-evaluated on the next triage pass.
+When findings span multiple categories, route to **earliest required phase** (elicit < research < architect < complete). Address all findings for that phase. Queue remaining findings for later phases — carry forward and re-evaluated on next triage pass.
 
 ### Input Detection
 
-Triage determines its input based on which artifact was most recently produced:
+Triage determines input based on most recently produced artifact:
 - After research: read `.pipeline/requirements/REQ.md`
 - After review: read latest `.pipeline/reviews/sprint-N/QA-REPORT.md`
 
 ## Increment 1 Behavior
 
-For the initial pipeline (before full categorization is implemented), triage defaults to routing all gaps as implementation tasks: `triaging -> requirements-ready`. This provides a functional pass-through while the full algorithm is built in Increment 2.
+For initial pipeline (before full categorization implemented), triage defaults to routing all gaps as implementation tasks: `triaging -> requirements-ready`. Functional pass-through while full algorithm built in Increment 2.
 
 ## Constraints
 
 - NEVER resolve or fix gaps — only categorize and route
 - NEVER drop findings — everything is either routed or queued
 - NEVER modify artifacts from other phases
-- When categorization is ambiguous, ALWAYS surface to the user with evidence
+- When categorization is ambiguous, ALWAYS surface to user with evidence
 
 ## Scripts
 

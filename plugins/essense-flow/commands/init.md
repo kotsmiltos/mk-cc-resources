@@ -1,6 +1,6 @@
 ---
 name: init
-description: Initialize the essense-flow pipeline in the current project.
+description: Initialize essense-flow pipeline in current project.
 arguments:
   - name: project-name
     description: Name for the project (defaults to directory name)
@@ -9,29 +9,29 @@ arguments:
 
 # /init
 
-Initialize the essense-flow pipeline for this project.
+Initialize essense-flow pipeline for this project.
 
 ## What it does
 
-1. Creates `.pipeline/` directory with subdirectories: requirements/, architecture/, sprints/, reviews/, decisions/
+1. Creates `.pipeline/` with subdirs: requirements/, architecture/, sprints/, reviews/, decisions/
 2. Copies default config (`config.yaml`) with project name and timestamp
 3. Creates initial state (`state.yaml`) at phase "idle"
 4. Creates empty rules, decisions index
 
 ## Instructions
 
-Run the init script:
+Run init script:
 
 ```bash
 node {{PLUGIN_ROOT}}/skills/context/scripts/init.js "{{project-name}}"
 ```
 
-After initialization, report:
+After init, report:
 - Pipeline directory created
 - Project name set
-- Next action: `/research`
+- Next: `/research`
 
 ## Constraints
 
-- Do NOT overwrite an existing pipeline — if `.pipeline/state.yaml` already exists, report and stop
+- Do NOT overwrite existing pipeline — if `.pipeline/state.yaml` exists, report and stop
 - Do NOT modify any files outside `.pipeline/`

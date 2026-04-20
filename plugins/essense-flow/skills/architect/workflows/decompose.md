@@ -10,7 +10,7 @@ phase_transitions: decomposing → decomposing | decomposing → sprinting
 
 ## Prerequisites
 
-- Decomposing phase active (initialized by the plan workflow)
+- Decomposing phase active (initialized by plan workflow)
 - DECOMPOSITION-STATE.yaml exists in `.pipeline/architecture/`
 
 ## Steps
@@ -18,22 +18,22 @@ phase_transitions: decomposing → decomposing | decomposing → sprinting
 ### 1. Load State
 
 Load DECOMPOSITION-STATE using `architect-runner.loadDecompositionState()`.
-If no state exists, this is an error — decomposition should have been initialized by the plan workflow.
+If no state exists, error — decomposition must be initialized by plan workflow.
 
 ### 2. Resume Context
 
-If resuming a session:
+If resuming:
 - Load exchange-log for "architecture" phase
 - Show last exchange (question asked + user answer)
 - Show convergence summary (nodes by state, resolution trend)
 
 ### 3. Process Wave
 
-Call `architect-runner.decomposeWave()` for the current wave.
+Call `architect-runner.decomposeWave()` for current wave.
 
 ### 4. Surface Design Questions
 
-For each question from the wave:
+For each question from wave:
 - Format via `architect-runner.createDesignQuestion()`
 - Present via AskUserQuestion
 - Apply answer via `architect-runner.applyAnswer()`

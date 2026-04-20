@@ -58,24 +58,24 @@ function getNextAction(state) {
     case "idle":
       return "/elicit or /research";
     case "eliciting":
-      return "/elicit (continue session)";
+      return "/elicit — continue session";
     case "research":
-      return "Auto-advancing to triage (in progress)";
+      return "Auto-advancing → triage";
     case "requirements-ready":
       return "/architect";
     case "architecture":
-      return "Continue architecture (in progress)";
+      return "Architecture in progress";
     case "decomposing":
-      return "Continue decomposition (in progress)";
+      return "Decomposition in progress";
     case "sprinting":
       return sprint !== null ? `/build sprint ${sprint}` : "/build";
     case "sprint-complete":
-      return "Auto-advancing to review";
+      return "Auto-advancing → review";
     case "triaging":
-      return "Auto-advancing — categorizing and routing";
+      return "Auto-advancing → triage";
     case "reviewing":
-      return "Auto-advancing to triage (review in progress)";
-    case "verifying": return "/verify — check spec compliance before completing";
+      return "Auto-advancing → triage (review in progress)";
+    case "verifying": return "/verify — check spec compliance";
     case "complete":
       return "/status — pipeline complete";
     default:
@@ -88,7 +88,7 @@ function getNextAction(state) {
  * Returns a structured text block under the configured token ceiling.
  */
 function formatStateForInjection(state, config) {
-  if (!state) return "[essense-flow] No pipeline state found. Run /init to start.";
+  if (!state) return "[essense-flow] No pipeline state. Run /init.";
 
   const summary = getPipelineSummary(state);
   const next = state.next_action || getNextAction(state);
@@ -196,7 +196,7 @@ function restorePauseContext(stateFilePath) {
  * Generate session orientation text — printed once when a new session starts.
  */
 function getSessionOrientation(state, config) {
-  if (!state) return "[essense-flow] No pipeline found. Run /init to initialize.";
+  if (!state) return "[essense-flow] No pipeline. Run /init.";
 
   const lines = [];
   lines.push("=== essense-flow pipeline ===");

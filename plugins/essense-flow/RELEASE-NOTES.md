@@ -1,11 +1,15 @@
 # essense-flow Release Notes
 
+## 0.3.3 (2026-04-21)
+
+Caveman pass across all 33 skill and command prompt files — drops articles, filler, verbose phrasing. All behavioral logic, constraints, tool names, and file paths preserved exactly. Also trims hook injection strings in `context-manager.js`.
+
 ## 0.3.2 (2026-04-20)
 
 Optimization and clarity sweep across hooks, lib, and skills. No new commands or skills.
 
 ### Packaging fix
-- `skills/build/` (SKILL.md, `build-runner.js`, `execute.md`) was silently gitignored in the marketplace repo by a generic Python-distribution `build/` rule and never shipped in prior releases. Plugin `.gitignore` now adds `!skills/build/` to override it. Users on 0.3.1 and earlier did not receive the build skill files alongside the `/build` command — 0.3.2 is the first release that actually ships the build skill.
+- `skills/build/` (SKILL.md, `build-runner.js`, `execute.md`) was silently gitignored in the marketplace repo by a generic Python-distribution `build/` rule and never shipped in prior releases. The marketplace plugin `.gitignore` now adds `!skills/build/` to override it. Users on 0.3.1 and earlier did not receive the build skill files alongside the `/build` command — 0.3.2 is the first release that actually ships the build skill.
 
 ### Fixes
 - `review-guard` path check now prefix-rooted against the pipeline parent directory — prevents a substring-traversal hole where an allowed filename fragment appearing mid-path would incorrectly permit writes.

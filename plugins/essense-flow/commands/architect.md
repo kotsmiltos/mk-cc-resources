@@ -1,27 +1,27 @@
 ---
 name: architect
-description: Run architecture planning or post-sprint review, auto-detected from pipeline state.
+description: Plan architecture from requirements or review completed sprint — auto-detected from state.
 ---
 
 # /architect
 
-Plan architecture from requirements or review a completed sprint. Action is auto-detected from pipeline state.
+Plan architecture or review sprint. Action auto-detected from pipeline state.
 
 ## What it does
 
-**Auto-routing based on state:**
-- `requirements-ready` → **plan workflow**: spawn architecture perspectives, synthesize, decompose into sprints, create task specs
-- `sprint-complete` → **review workflow**: spawn QA agents, categorize findings, produce QA-REPORT.md
-- Other phases → report current phase and suggest the correct command
+**Auto-routing:**
+- `requirements-ready` → **plan**: spawn perspective agents, synthesize, decompose into sprints, create task specs
+- `sprint-complete` → **review**: spawn QA agents, categorize findings, produce QA-REPORT.md
+- Other phases → report current phase, suggest correct command
 
 ## Instructions
 
-1. Read `.pipeline/state.yaml` to determine current phase
-2. Route to the appropriate workflow:
+1. Read `.pipeline/state.yaml`, determine phase
+2. Route:
 
 **If `requirements-ready` (plan):**
 - Read `.pipeline/requirements/REQ.md`
-- Also read `.pipeline/elicitation/SPEC.md` if it exists (primary design source — DEC-010)
+- Read `.pipeline/elicitation/SPEC.md` if exists (primary design source — DEC-010)
 - Use `skills/architect/scripts/architect-runner.js`:
   - `planArchitecture(requirements, pluginRoot, config)` — 4 perspective briefs
   - Dispatch perspective agents
@@ -30,17 +30,17 @@ Plan architecture from requirements or review a completed sprint. Action is auto
   - `createTaskSpecs(tasks, archContext, config)` — .md + .agent.md pairs
   - `writeArchitectureArtifacts(pipelineDir, archDoc, synthDoc)`
   - `writeTaskSpecs(pipelineDir, sprintNumber, specs)`
-- Transition state: `requirements-ready` → `architecture` → `sprinting`
-- Report: architecture complete, next action: `/build`
+- Transition: `requirements-ready` → `architecture` → `sprinting`
+- Report: architecture complete, next: `/build`
 
 **If `sprint-complete` (review):**
 - Use `runQAReview()` to assemble QA briefs, dispatch agents
 - Use `runReview(parsedOutputs, sprintNumber, pipelineDir, config)` to categorize and report
-- Transition state: `sprint-complete` → `reviewing`
+- Transition: `sprint-complete` → `reviewing`
 - Report: QA complete, findings summary, next action depends on result
 
 **Otherwise:**
-- Report current phase and suggest the correct next command
+- Report current phase, suggest correct next command
 
 ## Constraints
 

@@ -1,16 +1,16 @@
 ---
 name: next
-description: Suggest the next pipeline command based on current state.
+description: Suggest next pipeline command based on current state.
 ---
 
 # /next
 
-Suggest what to do next based on the current pipeline phase. Read-only — does not modify state.
+Suggest next action based on current pipeline phase. Read-only.
 
 ## What it does
 
 1. Reads `.pipeline/state.yaml`
-2. Maps current phase to the recommended next command
+2. Maps current phase to recommended next command
 
 ## Instructions
 
@@ -20,23 +20,23 @@ Suggest what to do next based on the current pipeline phase. Read-only — does 
 
 | Current Phase | Next Command | Explanation |
 |---------------|-------------|-------------|
-| `idle` | `/elicit` or `/research` | Start with elicitation to explore the idea, or research directly |
-| `eliciting` | `/elicit` | Continue design exploration session |
-| `research` | _(auto-advancing to triage)_ | Research in progress — auto-advances to triage |
-| `requirements-ready` | `/architect` | Requirements done — plan the architecture |
-| `architecture` | _(wait)_ | Architecture in progress — wait for completion |
-| `decomposing` | _(wait)_ | Decomposition in progress — wait for completion |
+| `idle` | `/elicit` or `/research` | Start with elicitation or research directly |
+| `eliciting` | `/elicit` | Continue design exploration |
+| `research` | _(auto-advancing to triage)_ | Research in progress |
+| `requirements-ready` | `/architect` | Requirements done — plan architecture |
+| `architecture` | _(wait)_ | Architecture in progress |
+| `decomposing` | _(wait)_ | Decomposition in progress |
 | `sprinting` | `/build` | Sprint ready — execute tasks |
-| `sprint-complete` | _(auto-advancing to review)_ | Sprint done — auto-advances to review |
-| `reviewing` | _(auto-advancing to triage)_ | Review in progress — auto-advances to triage |
-| `triaging` | _(auto-advancing to target phase)_ | Triage in progress — auto-categorizes and routes |
-| `verifying` | `/verify` | Run spec compliance check before completing |
+| `sprint-complete` | _(auto-advancing to review)_ | Sprint done |
+| `reviewing` | _(auto-advancing to triage)_ | Review in progress |
+| `triaging` | _(auto-advancing to target phase)_ | Triage in progress |
+| `verifying` | `/verify` | Run spec compliance check |
 | `complete` | "Pipeline complete" | All work done |
 
-4. Report the suggestion with a brief explanation
+4. Report suggestion with brief explanation
 
 ## Constraints
 
-- Do NOT modify `.pipeline/state.yaml` or any other file
+- Do NOT modify `.pipeline/state.yaml` or any file
 - Do NOT transition state
-- Do NOT auto-execute the suggested command — only suggest it
+- Do NOT auto-execute suggested command — only suggest

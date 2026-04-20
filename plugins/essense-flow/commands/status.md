@@ -5,7 +5,7 @@ description: Display current pipeline state — phase, sprint, last action, next
 
 # /status
 
-Show the current pipeline status. Read-only — does not modify state.
+Show current pipeline status. Read-only.
 
 ## What it does
 
@@ -16,7 +16,7 @@ Show the current pipeline status. Read-only — does not modify state.
 ## Instructions
 
 1. Read `.pipeline/state.yaml` using `lib/yaml-io.safeReadWithFallback()`
-2. If no state file exists, report: "Pipeline not initialized. Run `/init` first."
+2. If no state file, report: "Pipeline not initialized. Run `/init` first."
 3. Display:
    - **Phase:** current pipeline phase
    - **Sprint:** current sprint number (if applicable)
@@ -26,7 +26,7 @@ Show the current pipeline status. Read-only — does not modify state.
 
 ### Live Progress
 
-After showing pipeline state, check for active progress files:
+After showing state, check for active progress files:
 
 1. Call `lib/progress.readProgress(pipelineDir, currentPhase, sprintNumber)`
 2. If progress data exists, display:
@@ -40,10 +40,10 @@ After showing pipeline state, check for active progress files:
      research-scalability: complete (44s)
      Tasks: 1/4
    ```
-4. If no progress file exists, skip this section (phase not actively running)
+4. If no progress file, skip section
 
 ## Constraints
 
-- Do NOT modify `.pipeline/state.yaml` or any other file
+- Do NOT modify `.pipeline/state.yaml` or any file
 - Do NOT transition state
-- If state file is missing or corrupt, report the error clearly
+- If state file missing or corrupt, report error clearly

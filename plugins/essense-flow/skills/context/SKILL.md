@@ -7,13 +7,13 @@ schema_version: 1
 
 # Context Skill
 
-You manage the essense-flow pipeline's state and context. You are the single authority for pipeline position.
+Manage essense-flow pipeline state and context. Single authority for pipeline position.
 
 ## Core Responsibilities
 
-1. **State management** — Read and update `.pipeline/state.yaml` via lib/state-machine. All phase transitions go through you.
-2. **Context injection** — Format state + rules into a concise payload injected on every user message via hook.
-3. **Next-action suggestion** — Derive the exact command the user should run next based on pipeline position.
+1. **State management** — Read/update `.pipeline/state.yaml` via lib/state-machine. All phase transitions go through here.
+2. **Context injection** — Format state + rules into concise payload injected on every user message via hook.
+3. **Next-action suggestion** — Derive exact command user should run next based on pipeline position.
 4. **Pause/resume** — Save continuation context when pausing, restore when resuming.
 5. **Drift detection** — Compare claimed state against filesystem reality.
 
@@ -21,7 +21,7 @@ You manage the essense-flow pipeline's state and context. You are the single aut
 
 Single source of truth: `.pipeline/state.yaml` (D11).
 
-Read it with `lib/yaml-io.safeReadWithFallback()`. Write it with `lib/yaml-io.safeWrite()`. Validate transitions with `lib/state-machine.validateTransition()`.
+Read with `lib/yaml-io.safeReadWithFallback()`. Write with `lib/yaml-io.safeWrite()`. Validate transitions with `lib/state-machine.validateTransition()`.
 
 ## Phase Flow
 
@@ -29,7 +29,7 @@ Read it with `lib/yaml-io.safeReadWithFallback()`. Write it with `lib/yaml-io.sa
 idle → [eliciting →] research → triaging → requirements-ready → architecture → [decomposing →] sprinting → sprint-complete → reviewing → triaging → architecture|complete
 ```
 
-See `references/transitions.yaml` for the full transition table.
+See `references/transitions.yaml` for full transition table.
 
 ## Workflows
 
@@ -39,24 +39,24 @@ See `references/transitions.yaml` for the full transition table.
 
 ## Scripts
 
-- `scripts/context-manager.js` — formats `state.yaml` + rules into the per-turn injection payload; derives the next-action hint; backs the session-orient hook.
-- `scripts/drift-check.js` — compares claimed state against filesystem reality and reports divergences (used on pause/resume and in doctor-style checks).
-- `scripts/init.js` — initializes a fresh `.pipeline/` tree (state.yaml, config.yaml, rules.yaml) for a new project; invoked by `/init`.
+- `scripts/context-manager.js` — formats `state.yaml` + rules into per-turn injection payload; derives next-action hint; backs session-orient hook.
+- `scripts/drift-check.js` — compares claimed state against filesystem reality, reports divergences (used on pause/resume and doctor-style checks).
+- `scripts/init.js` — initializes fresh `.pipeline/` tree (state.yaml, config.yaml, rules.yaml) for new project; invoked by `/init`.
 
 ## Constraints
 
-- NEVER auto-approve transitions that require "user approval" (triaging phase — ambiguous items)
-- NEVER write state without going through the state machine transition validator
+- NEVER auto-approve transitions requiring "user approval" (triaging phase — ambiguous items)
+- NEVER write state without going through state machine transition validator
 - NEVER read another skill's internal files — use interface contracts only
 - Keep injection payload under `config.token_budgets.injection_ceiling`
 
 ## Pipeline Completion
 
-When the pipeline reaches `complete` state:
+When pipeline reaches `complete` state:
 
 1. Generate summary report using `lib/completion.generateSummaryReport(pipelineDir)`
 2. Write to `.pipeline/COMPLETION-REPORT.md`
 3. Offer user two options:
-   - **Archive and reset**: Archive `.pipeline/` to `.pipeline-archive/YYYY-MM-DD-name/`, then reset to initial state
+   - **Archive and reset**: Archive `.pipeline/` to `.pipeline-archive/YYYY-MM-DD-name/`, reset to initial state
    - **Keep as-is**: Leave `.pipeline/` intact for reference, transition `complete → idle`
-4. Execute the user's choice using `lib/completion.archivePipeline()` and/or `lib/completion.resetPipeline()`
+4. Execute user's choice using `lib/completion.archivePipeline()` and/or `lib/completion.resetPipeline()`

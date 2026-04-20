@@ -23,7 +23,7 @@ decisions_applied: []
 - [ ] {{CRITERION}}
 
 <!--
-Include the sections below ONLY when they carry load. Omit for mechanical edits
+Include sections below ONLY when they carry load. Omit for mechanical edits
 (rename, single-function change, typo fix) where they would be empty or duplicate
 the objective.
 
