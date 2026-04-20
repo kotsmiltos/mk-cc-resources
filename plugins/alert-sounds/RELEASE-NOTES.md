@@ -1,5 +1,9 @@
 # alert-sounds Release Notes
 
+## v1.1.1 (2026-04-21)
+
+- Trim skill prompt — caveman pass removes filler, articles, verbose phrasing; behavior unchanged
+
 ## v1.0.0 (2026-03-09)
 
 ### Initial Release
