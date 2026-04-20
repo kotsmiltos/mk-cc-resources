@@ -37,7 +37,7 @@ This step exists because triage previously trusted input unconditionally, lettin
 4. **Task spec exists, implementation diverges** → implementation bug → route to `/architect` (architect creates fix sprint)
 5. **Domain concern not in REQ.md** → missing analysis → route to `/research`
 6. **Ambiguous** → surface to user with candidate categories and evidence
-7. **Acceptable limitation** → route to complete with documented known issues
+7. **Acceptable limitation** → route to **verifying** with documented known issues
 
 ### Multi-Category Routing
 
@@ -76,4 +76,4 @@ For initial pipeline (before full categorization implemented), triage defaults t
 - `triaging -> requirements-ready` (all implementation tasks)
 - `triaging -> research` (missing domain analysis)
 - `triaging -> architecture` (design decisions or bugs)
-- `triaging -> complete` (all acceptable)
+- `triaging -> verifying` (all acceptable — spec compliance check required before pipeline can close)

@@ -72,7 +72,7 @@
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
       "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Adaptive perspectives, wave-based decomposition, adversarial QA, artifact integrity, and auto-advance.",
-      "version": "0.3.2"
+      "version": "0.3.4"
     },
     {
       "name": "thorough-mode",

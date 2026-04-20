@@ -231,6 +231,10 @@ transitions:
       - "pipeline.phase"
       - "last_updated"
 
+  # NOTE: triaging -> complete is NOT a valid transition.
+  # All-acceptable findings route triaging -> verifying first.
+  # Only verifying -> complete is allowed (requires zero CONFIRMED gaps).
+
   complete-to-idle:
     from: "complete"
     to: "idle"

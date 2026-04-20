@@ -31,9 +31,14 @@ Suggest next action based on current pipeline phase. Read-only.
 | `reviewing` | _(auto-advancing to triage)_ | Review in progress |
 | `triaging` | _(auto-advancing to target phase)_ | Triage in progress |
 | `verifying` | `/verify` | Run spec compliance check |
-| `complete` | "Pipeline complete" | All work done |
+| `complete` | See step 4 | Verify sprints exhausted before reporting done |
 
-4. Report suggestion with brief explanation
+4. **For `complete` phase only**: read `state.sprints`. If any sprint entry has `status` other than `complete`, output a warning:
+   > **Warning: pipeline closed prematurely.** Sprints [list] are not complete. Phase was set to `complete` before all sprints finished. Correct by manually setting `phase: sprinting` (or the appropriate resume phase) in `.pipeline/state.yaml`, then run `/build` to continue.
+   
+   If all sprints are `complete` (or `sprints` is empty and `phases_completed.architecture` is null), report: "Pipeline complete — all work done."
+
+5. Report suggestion with brief explanation
 
 ## Constraints
 

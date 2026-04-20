@@ -1,5 +1,13 @@
 # essense-flow Release Notes
 
+## 0.3.4 (2026-04-21)
+
+### Fixes
+
+- **triage SKILL.md**: algorithm step 7 and state-transitions section incorrectly said `triaging → complete` for all-acceptable findings. Corrected to `triaging → verifying` — matches `determineRoute()` behavior and the transitions table. Agents following the doc were skipping spec compliance verification and closing the pipeline prematurely.
+- **commands/next.md**: `complete` phase now checks `state.sprints` for non-complete entries before reporting "pipeline done". If stale sprints found, outputs recovery warning with exact fix instructions.
+- **references/transitions.yaml**: explicit comment blocking `triaging → complete` — the path is not registered and was never valid.
+
 ## 0.3.3 (2026-04-21)
 
 Caveman pass across all 33 skill and command prompt files — drops articles, filler, verbose phrasing. All behavioral logic, constraints, tool names, and file paths preserved exactly. Also trims hook injection strings in `context-manager.js`.
