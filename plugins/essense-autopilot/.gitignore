@@ -1,0 +1,2 @@
+# Override repo-level lib/ ignore — js-yaml has node_modules/js-yaml/lib subtree
+!node_modules/**/lib/

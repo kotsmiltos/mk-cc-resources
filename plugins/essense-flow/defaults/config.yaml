@@ -45,3 +45,27 @@ validation:
   yaml_validate_paths:              # Paths to validate on write (D6)
     - ".pipeline/"
     - "context/"
+
+# Autopilot — read by the essense-autopilot plugin (separate plugin, install
+# from the marketplace if you want it). Drives the pipeline through phases
+# without you having to type between steps. Halts at human gates, blockers,
+# iteration cap, and the configured context threshold.
+#
+# Default: disabled. Set enabled: true to opt in per project.
+autopilot:
+  enabled: false                    # Off by default. Flip to true to autopilot this project.
+  human_gates:                      # Phases requiring human dialogue/decision
+    - idle
+    - eliciting
+    - verifying
+  terminal:                         # Pipeline-done phases
+    - complete
+  max_iterations: 30                # Stuck-loop safety: halt after this many same-phase advances
+  context_threshold_pct: 60         # Halt if estimated context usage exceeds this %
+  flow:                             # Phase → command. Mirrors AUTO_ADVANCE_MAP. Override per project.
+    research: /triage
+    requirements-ready: /architect
+    architecture: /build
+    sprinting: /build
+    sprint-complete: /review
+    reviewing: /triage

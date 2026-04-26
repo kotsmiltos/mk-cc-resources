@@ -81,6 +81,12 @@
       "version": "1.3.2"
     },
     {
+      "name": "essense-autopilot",
+      "source": "./plugins/essense-autopilot",
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, and configurable context-usage threshold (default 60%). Opt-in per project via .pipeline/config.yaml.",
+      "version": "0.1.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",

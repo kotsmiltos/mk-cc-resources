@@ -1,0 +1,10 @@
+{
+  "name": "essense-autopilot",
+  "version": "0.1.0",
+  "description": "Stop-hook autopilot for essense-flow",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  }
+}
