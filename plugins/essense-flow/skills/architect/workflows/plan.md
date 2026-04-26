@@ -41,7 +41,12 @@ Before dispatching perspective agents, judge the plan:
 Record choice in `.pipeline/state.yaml` under `phases_completed.architecture.perspective_swarm: invoked|skipped` with one-line `rationale_decision` (e.g., DEC-NNN) so absence is auditable.
 
 ### 5. Assemble Perspective Briefs (swarm path only)
-If design-bearing, call `architect-runner.planArchitecture()` with requirements content (and SPEC.md if available). Produces 4 briefs (infrastructure, interface, testing, security). Token budget adapts when SPEC.md present.
+If design-bearing, call `architect-runner.planArchitecture(requirementsContent, pluginRoot, config, specContent, complexity)`.
+
+- `complexity` is the parsed block from SPEC.md frontmatter (returned from `loadSpec(pipelineDir)` as `spec.complexity`).
+- Produces 4 briefs (infrastructure, interface, testing, security). Token budget adapts when SPEC.md present.
+- Returns `{ ok, briefs, depthRecommendation }`. The `depthRecommendation` carries the scope-aware depth label (`flat | standard | high-care | full`) and is INJECTED into every brief so each perspective agent adapts its analysis to scope. Logged on stdout for visibility.
+- Use `depthRecommendation.depth` to inform your decomposition decisions in step 8 — `flat` scopes skip multi-wave; `full` scopes get the full decomposition tree.
 
 ### 6. Dispatch Perspective Agents (swarm path only)
 Spawn all 4 agents in parallel using Agent tool. Each gets assembled brief.
@@ -83,10 +88,14 @@ For each wave:
 4. Check `architect-runner.isDecompositionComplete(state)`:
    - Complete → proceed to step 11
    - Not complete → continue next wave
-5. **Convergence check**: After each wave, check `if (state.current_wave >= CONVERGENCE_CHECK_WAVE)`:
+5. **Convergence check**: derive the adaptive threshold from SPEC complexity:
+   - `const threshold = convergenceCheckWaveFor(spec.complexity)` — replaces the static `CONVERGENCE_CHECK_WAVE`
+   - Threshold scales with complexity assessment (bug-fix: 3, new-feature: 7, partial-rewrite: 10, new-project: 15; +3 for `touch_surface: broad`)
+   - When SPEC has no complexity block, falls back to default `CONVERGENCE_CHECK_WAVE` (10)
+   - After each wave, check `if (state.current_wave >= threshold)`:
    - Call `formatConvergenceSummary(getConvergenceSummary(state), state.current_wave)` and display
    - Present via AskUserQuestion with three options:
-     - **"Continue decomposition"** — proceed (next check at current_wave + 10)
+     - **"Continue decomposition"** — proceed (next check at current_wave + threshold-step)
      - **"Stop and create tasks from current leaves"** — end decomposition, generate task specs from resolved leaf nodes only, note skipped nodes in ARCH.md
      - **"Escalate blocked nodes"** — surface each blocked node with blocking reason, pause for user resolution
    - On **Continue**: next wave iteration

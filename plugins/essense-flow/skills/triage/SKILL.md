@@ -7,6 +7,15 @@ schema_version: 1
 
 # Triage Skill
 
+## Operating Contract
+
+Before producing any output: think it through.
+Before handing off TRIAGE-REPORT.md: verify it against `templates/triage-report.md` PASS criteria.
+Before routing: confirm the finding count from `blocks_advance_count` in QA-REPORT frontmatter — not from reading severity labels in prose.
+Before declaring "ambiguous routing": apply the deterministic rule from the template; surface to user only when the rule genuinely cannot resolve.
+
+This is not a checklist. It is how this skill operates.
+
 ## Core Principle
 
 Categorize, don't resolve. Read research gaps or review findings, cross-reference against design spec, route pipeline to phase that can address them. Never fixes — sorts and directs.
@@ -65,7 +74,10 @@ For initial pipeline (before full categorization implemented), triage defaults t
 - `skills/triage/scripts/triage-runner.js`
   - `revalidateFindings(items, pipelineDir)` — pre-categorization staleness check; returns `{ surviving, dropped }`
   - `categorizeItems(survivingItems, specContent)` — apply categorization algorithm to revalidated items only
-  - `determineRoute(categorized)` — select target phase from earliest-phase rule
+  - `routeFinal(qaReportPath, categorized)` — **PRIMARY ROUTING ENTRY POINT.** Reads `blocks_advance_count` from QA-REPORT frontmatter as deterministic primary signal; falls back to `determineRoute(categorized)` when count is `> 0` or QA-REPORT is absent. Returns `{ route, signal }` where `signal.source` is `blocks_advance | category | missing` — log for audit visibility.
+  - `routeByBlocksAdvance(qaReportPath)` — deterministic-only signal; returns `{ source, route, reason }`. Used internally by `routeFinal`.
+  - `readBlocksAdvanceCount(qaReportPath)` — read `blocks_advance_count` from QA-REPORT frontmatter; returns `null` if missing.
+  - `determineRoute(categorized)` — category-based routing fallback (earliest-phase rule). Used by `routeFinal` when deterministic signal is unavailable; can be called directly when no QA-REPORT exists (e.g. research-driven triage).
   - `writeTriage(pipelineDir, report, queued, dropped)` — write output artifacts including dropped stale findings
 
 ## State Transitions
@@ -77,3 +89,13 @@ For initial pipeline (before full categorization implemented), triage defaults t
 - `triaging -> research` (missing domain analysis)
 - `triaging -> architecture` (design decisions or bugs)
 - `triaging -> verifying` (all acceptable — spec compliance check required before pipeline can close)
+
+## Validator Round Integration
+
+Validator verdicts feed triage categorization after each review cycle:
+
+- **CONFIRMED criticals** — routed as critical findings; trigger triage investigation
+- **Unacknowledged NEEDS_CONTEXT criticals** — block PASS; appear in triage as implementation gaps
+- **FALSE_POSITIVEs** — discarded; do not enter triage queue; recorded in false-positives.yaml
+- **acknowledged.yaml** — human-authored acknowledgments for NC criticals; acknowledged items do not block PASS or generate triage items. The runner reads but never writes this file.
+- **confirmed-findings.yaml** — prior ledger passed to QA agents in re-review; enables FIND-ID matching across sprints

@@ -195,9 +195,9 @@ function stripFrontmatter(raw) {
  * @returns {string} — e.g. "VI-3f7a2b1c"
  */
 function computeItemId(section, text) {
-  const input = section + "|" + text.slice(0, 120);
+  const input = section + "|" + text;
   const hash = crypto.createHash("sha256").update(input).digest("hex");
-  return "VI-" + hash.slice(0, 8);
+  return "VI-" + hash.slice(0, 16);
 }
 
 /**
@@ -337,33 +337,38 @@ function preflight(pipelineDir, pluginRoot, config) {
       error: errors.formatError("E_LOCK_HELD", { timestamp: "(unknown)" }),
     };
   }
+  try {
+    // Step 5: Cache check — compare stored spec_hash to current (FR-021)
+    const extractedPath = path.join(pipelineDir, EXTRACTED_ITEMS_REL);
+    let cacheHit = false;
 
-  // Step 5: Cache check — compare stored spec_hash to current (FR-021)
-  const extractedPath = path.join(pipelineDir, EXTRACTED_ITEMS_REL);
-  let cacheHit = false;
-
-  if (fs.existsSync(extractedPath)) {
-    const cached = yamlIO.safeReadWithFallback(extractedPath);
-    if (cached && cached.spec_hash === specHash) {
-      cacheHit = true;
-      console.log("[verify] Cache hit: extracted-items.yaml spec_hash matches — extraction can be skipped.");
-    } else {
-      const cachedHash = cached && cached.spec_hash ? cached.spec_hash : "(none)";
-      console.log(
-        `[verify] Cache miss: spec_hash mismatch (cached: ${cachedHash.slice(0, 8)}…, current: ${specHash.slice(0, 8)}…) — will re-extract.`
-      );
+    if (fs.existsSync(extractedPath)) {
+      const cached = yamlIO.safeReadWithFallback(extractedPath);
+      if (cached && cached.spec_hash === specHash) {
+        cacheHit = true;
+        console.log("[verify] Cache hit: extracted-items.yaml spec_hash matches — extraction can be skipped.");
+      } else {
+        const cachedHash = cached && cached.spec_hash ? cached.spec_hash : "(none)";
+        console.log(
+          `[verify] Cache miss: spec_hash mismatch (cached: ${cachedHash.slice(0, 8)}…, current: ${specHash.slice(0, 8)}…) — will re-extract.`
+        );
+      }
     }
-  }
 
-  return {
-    ok: true,
-    specContent,
-    specHash,
-    fileTree,
-    fileTreeText,
-    decisions,
-    cacheHit,
-  };
+    return {
+      ok: true,
+      specContent,
+      specHash,
+      fileTree,
+      fileTreeText,
+      decisions,
+      cacheHit,
+      sessionId: lockResult.sessionId,
+    };
+  } catch (err) {
+    lockfile.releaseLock(pipelineDir, lockResult.sessionId);
+    return { ok: false, error: "Preflight failed after lock acquire: " + err.message };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -540,8 +545,8 @@ function processExtraction(rawOutput, specContent, specHash, pipelineDir) {
  * @returns {{ groups: Array<{ groupId: string, section: string, items: Object[] }> }}
  */
 function groupItems(items, config, specContent) {
-  const itemsPerGroup =
-    (config && config.verify && config.verify.items_per_group) || DEFAULT_ITEMS_PER_GROUP;
+  const rawVal = config?.verify?.items_per_group;
+  const itemsPerGroup = (typeof rawVal === 'number' && rawVal > 0) ? rawVal : DEFAULT_ITEMS_PER_GROUP;
 
   // Build section → items map, preserving insertion order within each section
   const sectionMap = new Map();
@@ -1312,7 +1317,17 @@ function writeReport(pipelineDir, report, mode) {
   // Write atomically via tmp file then rename (same pattern as yamlIO.safeWrite)
   const tmpPath = absPath + ".tmp";
   fs.writeFileSync(tmpPath, report, "utf8");
-  fs.renameSync(tmpPath, absPath);
+  try {
+    fs.renameSync(tmpPath, absPath);
+  } catch (e) {
+    if (e.code === 'EPERM') {
+      fs.copyFileSync(tmpPath, absPath);
+      try { fs.unlinkSync(tmpPath); } catch (_) {}
+    } else {
+      try { fs.unlinkSync(tmpPath); } catch (_) {}
+      throw e;
+    }
+  }
 
   if (mode === "gate") {
     // Store hash so downstream phases can detect tampering (NFR-002)
@@ -1375,6 +1390,7 @@ module.exports = {
   assembleReport,
   writeReport,
   writeExtractedItems,
+  computeItemId,
 };
 
 // ---------------------------------------------------------------------------
@@ -1614,6 +1630,7 @@ function checkLoopLimit(pipelineDir, config, currentGapCount) {
  * @param {number} currentGapCount — number of gap items in this cycle
  */
 function updateVerifyState(pipelineDir, target, gapItems, currentGapCount) {
+  const stateMachine = require("../../../lib/state-machine");
   const statePath = path.join(pipelineDir, STATE_YAML_REL);
   const state = yamlIO.safeReadWithFallback(statePath) || {};
 
@@ -1621,47 +1638,26 @@ function updateVerifyState(pipelineDir, target, gapItems, currentGapCount) {
     state.pipeline = {};
   }
 
+  let verify_cycle_count;
+  let verify_last_gap_count;
+  let verify_gap_items;
+
   if (target === "complete") {
-    // Successful completion resets the loop counter so the next verify cycle
-    // starts fresh — the loop guard is only about consecutive failures.
-    state.pipeline.verify_cycle_count = 0;
-    delete state.pipeline.verify_last_gap_count;
-    delete state.pipeline.verify_gap_items;
+    verify_cycle_count = 0;
   } else {
-    // Routing back to eliciting or architecture: increment cycle counter and
-    // snapshot the current gap count for comparison on the next cycle.
     const prevCount = typeof state.pipeline.verify_cycle_count === "number"
       ? state.pipeline.verify_cycle_count
       : 0;
-    state.pipeline.verify_cycle_count = prevCount + 1;
-    state.pipeline.verify_last_gap_count = currentGapCount;
-
-    // Store gap items so the downstream phase can target specific items (FR-020).
-    state.pipeline.verify_gap_items = gapItems;
+    verify_cycle_count = prevCount + 1;
+    verify_last_gap_count = currentGapCount;
+    verify_gap_items = gapItems;
   }
 
-  // Validate the phase transition against the state machine before committing.
-  // An invalid transition is logged but does not crash — a partial state write
-  // is worse than a warning.
-  const stateMachine = require("../../../lib/state-machine");
-  const transitionsPath = path.join(
-    path.dirname(pipelineDir),
-    TRANSITIONS_YAML_REL
-  );
-  const transitionMap = stateMachine.loadTransitions(transitionsPath);
-  const currentPhase = state.pipeline.phase || "verifying";
-  const transitionResult = stateMachine.transition(currentPhase, target, transitionMap);
-
-  if (!transitionResult.ok) {
-    console.error(
-      `[verify] State transition rejected (${currentPhase} → ${target}): ${transitionResult.error}. Phase field not updated.`
-    );
-  } else {
-    state.pipeline.phase = target;
+  const stateUpdates = { pipeline: { verify_cycle_count, verify_last_gap_count, verify_gap_items } };
+  const writeResult = stateMachine.writeState(pipelineDir, target, stateUpdates, { trigger: "verify-skill" });
+  if (!writeResult.ok) {
+    throw new Error("[verify] writeState failed: " + writeResult.error);
   }
-
-  state.last_updated = new Date().toISOString();
-  yamlIO.safeWrite(statePath, state);
 }
 
 // ---------------------------------------------------------------------------
@@ -1697,6 +1693,7 @@ async function runVerify({ pipelineDir, pluginRoot, config, mode, dispatchFn = n
   // whether a release is needed. preflight() both acquires the lock and does
   // all pre-dispatch validation — if it fails, no lock was taken.
   let lockAcquired = false;
+  let sessionId = null;
 
   try {
     // -----------------------------------------------------------------------
@@ -1707,6 +1704,7 @@ async function runVerify({ pipelineDir, pluginRoot, config, mode, dispatchFn = n
       return { ok: false, error: preflightResult.error };
     }
     lockAcquired = true;
+    sessionId = preflightResult.sessionId || null;
 
     const { specContent, specHash, fileTree, fileTreeText, decisions } =
       preflightResult;
@@ -1929,8 +1927,18 @@ async function runVerify({ pipelineDir, pluginRoot, config, mode, dispatchFn = n
       }
 
       // Commit phase transition + cycle counters to state.yaml.
-      updateVerifyState(pipelineDir, target, gapItems, gapCount);
-      routing = { target, gapItems };
+      let stateWriteOk = false;
+      try {
+        updateVerifyState(pipelineDir, target, gapItems, gapCount);
+        stateWriteOk = true;
+      } catch (err) {
+        // Lock intentionally NOT released — pipeline remains locked for manual recovery
+        lockAcquired = false;
+        return { ok: false, report, error: "State write failed after verify: " + err.message };
+      }
+      if (stateWriteOk) {
+        routing = { target, gapItems };
+      }
     } else {
       // On-demand: surface routing suggestions without writing any state.
       routing = determineRouting(mergedVerdicts, mode, completionStatus, extractedItemsMap);
@@ -1938,9 +1946,10 @@ async function runVerify({ pipelineDir, pluginRoot, config, mode, dispatchFn = n
 
     return { ok: true, report, routing };
   } finally {
-    // Step 12: Always release the lock — even on thrown errors (FR-017).
+    // Step 12: Release the lock on normal exit and thrown errors, but NOT when
+    // state write failed — pipeline remains locked for manual recovery (C-03).
     if (lockAcquired) {
-      const releaseResult = lockfile.releaseLock(pipelineDir);
+      const releaseResult = lockfile.releaseLock(pipelineDir, sessionId);
       if (!releaseResult.ok) {
         console.error(`[verify] Failed to release pipeline lock: ${releaseResult.error}`);
       }

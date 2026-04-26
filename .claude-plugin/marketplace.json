@@ -71,8 +71,8 @@
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Adaptive perspectives, wave-based decomposition, adversarial QA, artifact integrity, and auto-advance.",
-      "version": "0.3.4"
+      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, behavioral preambles in every skill.",
+      "version": "0.4.0"
     },
     {
       "name": "thorough-mode",

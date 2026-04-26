@@ -1,7 +1,16 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
 const { yamlIO, stateMachine, tokens } = require("../../../lib");
+const {
+  STATE_FILE,
+  CONTEXT_MAP_FILE,
+  SPEC_PATH,
+  REQ_PATH,
+  ARCH_PATH,
+  PHASE_INPUTS,
+} = require("../../../lib/constants");
 
 // Phase display labels for human-readable output
 const PHASE_LABELS = {
@@ -218,6 +227,158 @@ function getSessionOrientation(state, config) {
   return lines.join("\n");
 }
 
+/**
+ * Derive context map from actual .pipeline/ directory state.
+ * Generated fresh — never maintained. The map is the navigation index
+ * for what artifacts exist and which subset each phase needs.
+ *
+ * Returns a structured map; never throws on missing files.
+ */
+function deriveContextMap(pipelineDir) {
+  const exists = (rel) => fs.existsSync(path.join(pipelineDir, rel));
+  const mtime = (rel) => {
+    try {
+      return fs.statSync(path.join(pipelineDir, rel)).mtime.toISOString();
+    } catch (_e) {
+      return null;
+    }
+  };
+
+  const canonical = {
+    spec:          { path: `.pipeline/${SPEC_PATH}`, exists: exists(SPEC_PATH), produced_at: mtime(SPEC_PATH) },
+    requirements:  { path: `.pipeline/${REQ_PATH}`,  exists: exists(REQ_PATH),  produced_at: mtime(REQ_PATH) },
+    architecture:  { path: `.pipeline/${ARCH_PATH}`, exists: exists(ARCH_PATH), produced_at: mtime(ARCH_PATH) },
+  };
+
+  const state = yamlIO.safeReadWithFallback(path.join(pipelineDir, STATE_FILE));
+  const currentSprint = (state && state.pipeline && state.pipeline.sprint) || null;
+
+  // Archived sprints — all sprint-N dirs except current
+  let archivedSprints = [];
+  const sprintsDir = path.join(pipelineDir, "sprints");
+  if (fs.existsSync(sprintsDir)) {
+    archivedSprints = fs
+      .readdirSync(sprintsDir)
+      .filter((d) => /^sprint-\d+$/.test(d))
+      .map((d) => parseInt(d.replace("sprint-", ""), 10))
+      .filter((n) => Number.isFinite(n) && n !== currentSprint)
+      .sort((a, b) => a - b);
+  }
+
+  // Decision count — DEC-NNN.md files in decisions/
+  let decisionsCount = 0;
+  const decisionsDir = path.join(pipelineDir, "decisions");
+  if (fs.existsSync(decisionsDir)) {
+    decisionsCount = fs
+      .readdirSync(decisionsDir)
+      .filter((f) => /^DEC-\d+.*\.md$/.test(f)).length;
+  }
+
+  return {
+    schema_version: 1,
+    canonical,
+    current_sprint: currentSprint,
+    phase_inputs: PHASE_INPUTS,
+    archived: {
+      sprints: archivedSprints,
+      decisions_count: decisionsCount,
+    },
+    derived_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Write context map to .pipeline/context_map.yaml.
+ * Called by session-orient on SessionStart so context-inject can read it.
+ */
+function writeContextMap(pipelineDir) {
+  const map = deriveContextMap(pipelineDir);
+  const mapPath = path.join(pipelineDir, CONTEXT_MAP_FILE);
+  yamlIO.safeWrite(mapPath, map);
+  return map;
+}
+
+/**
+ * Read context map from disk. Returns null if absent — callers must handle.
+ */
+function readContextMap(pipelineDir) {
+  const mapPath = path.join(pipelineDir, CONTEXT_MAP_FILE);
+  return yamlIO.safeReadWithFallback(mapPath);
+}
+
+/**
+ * Format the phase-input slice for injection.
+ * Lists what artifacts the current phase needs to read.
+ */
+function formatPhaseInputsForInjection(map, phase) {
+  if (!map || !phase) return "";
+  const inputs = (map.phase_inputs && map.phase_inputs[phase]) || [];
+  if (inputs.length === 0) return "";
+
+  const parts = [];
+  const missing = [];
+
+  // Resolve each input key to a "label (path)" string. Push to `missing` when the
+  // declared input cannot be located — surfaces silent staleness instead of hiding it.
+  for (const key of inputs) {
+    if (key === "spec") {
+      if (map.canonical && map.canonical.spec && map.canonical.spec.exists) {
+        parts.push(`spec (${map.canonical.spec.path})`);
+      } else {
+        missing.push("spec");
+      }
+    } else if (key === "requirements") {
+      if (map.canonical && map.canonical.requirements && map.canonical.requirements.exists) {
+        parts.push(`requirements (${map.canonical.requirements.path})`);
+      } else {
+        missing.push("requirements");
+      }
+    } else if (key === "architecture") {
+      if (map.canonical && map.canonical.architecture && map.canonical.architecture.exists) {
+        parts.push(`architecture (${map.canonical.architecture.path})`);
+      } else {
+        missing.push("architecture");
+      }
+    } else if (key === "current_task") {
+      if (map.current_sprint != null) {
+        parts.push(`current_task (.pipeline/sprints/sprint-${map.current_sprint}/tasks/)`);
+      } else {
+        missing.push("current_task");
+      }
+    } else if (key === "current_sprint_findings") {
+      if (map.current_sprint != null) {
+        parts.push(`current_sprint_findings (.pipeline/reviews/sprint-${map.current_sprint}/QA-REPORT.md)`);
+      } else {
+        missing.push("current_sprint_findings");
+      }
+    } else if (key === "changed_files") {
+      if (map.current_sprint != null) {
+        parts.push(`changed_files (sprint-${map.current_sprint} working tree)`);
+      } else {
+        missing.push("changed_files");
+      }
+    } else if (key === "findings_summary") {
+      if (map.current_sprint != null) {
+        parts.push(`findings_summary (.pipeline/reviews/sprint-${map.current_sprint}/QA-REPORT.md frontmatter)`);
+      } else {
+        missing.push("findings_summary");
+      }
+    } else {
+      missing.push(key);
+    }
+  }
+
+  if (parts.length === 0 && missing.length === 0) return "";
+
+  let line = parts.length > 0
+    ? `Context for this phase: ${parts.join(", ")}`
+    : "Context for this phase: (no inputs available)";
+  if (missing.length > 0) {
+    line += ` [missing: ${missing.join(", ")}]`;
+  }
+  return line;
+}
+
 module.exports = {
   getPipelineSummary,
   getNextAction,
@@ -227,5 +388,9 @@ module.exports = {
   savePauseContext,
   restorePauseContext,
   getSessionOrientation,
+  deriveContextMap,
+  writeContextMap,
+  readContextMap,
+  formatPhaseInputsForInjection,
   PHASE_LABELS,
 };

@@ -65,6 +65,16 @@ transitions:
       - "phases_completed.research"
       - "last_updated"
 
+  research-to-requirements-ready:
+    from: "research"
+    to: "requirements-ready"
+    triggered_by: "research-skill"
+    requires: null
+    auto_advance: false
+    fields_changed:
+      - "pipeline.phase"
+      - "last_updated"
+
   triaging-to-eliciting:
     from: "triaging"
     to: "eliciting"

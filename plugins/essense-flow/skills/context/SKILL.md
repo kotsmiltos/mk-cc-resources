@@ -9,6 +9,15 @@ schema_version: 1
 
 Manage essense-flow pipeline state and context. Single authority for pipeline position.
 
+## Operating Contract
+
+Before producing any output: think it through.
+Before injecting state: verify the context_map matches actual `.pipeline/` state — not a stale snapshot.
+Before reporting the next action: trace it through state-machine transitions, not from memory.
+Before handing off: confirm `state.yaml` reflects what actually happened, not what was intended.
+
+This is not a checklist. It is how this skill operates.
+
 ## Core Responsibilities
 
 1. **State management** — Read/update `.pipeline/state.yaml` via lib/state-machine. All phase transitions go through here.

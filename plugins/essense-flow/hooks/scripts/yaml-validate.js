@@ -36,47 +36,51 @@ function shouldValidate(filePath, validatePaths, projectRoot) {
   return validatePaths.some((vp) => relative.startsWith(vp));
 }
 
-function main() {
-  // Read tool input from environment or stdin
-  let filePath = process.env.TOOL_FILE_PATH;
-
-  if (!filePath) {
-    // Try reading from stdin (JSON with file_path)
+function getFilePath(callback) {
+  const chunks = [];
+  process.stdin.on("data", (c) => chunks.push(c));
+  process.stdin.on("end", () => {
+    let filePath;
     try {
-      const input = fs.readFileSync(0, "utf8");
-      if (input) {
-        const parsed = JSON.parse(input);
-        filePath = parsed.file_path || parsed.filePath;
-      }
-    } catch (_e) {
-      // No input — nothing to validate
-      return;
+      const input = JSON.parse(chunks.join(""));
+      filePath = input.tool_input && input.tool_input.file_path;
+    } catch (_) {}
+    filePath = filePath || process.env.TOOL_FILE_PATH;
+    if (filePath) filePath = filePath.replace(/\\/g, "/");
+    callback(filePath);
+  });
+}
+
+function main() {
+  getFilePath((filePath) => {
+    if (!filePath) return;
+
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext !== ".yaml" && ext !== ".yml") {
+      process.exit(0);
     }
-  }
 
-  if (!filePath) return;
+    const cwd = process.cwd();
+    const pipelineDir = findPipelineDir(cwd);
+    if (!pipelineDir) return;
 
-  const cwd = process.cwd();
-  const pipelineDir = findPipelineDir(cwd);
-  if (!pipelineDir) return;
+    const projectRoot = path.dirname(pipelineDir);
+    const configFile = path.join(pipelineDir, "config.yaml");
+    const config = yamlIO.safeReadWithFallback(configFile);
+    const validatePaths = (config && config.validation && config.validation.yaml_validate_paths) || [
+      ".pipeline/",
+      "context/",
+    ];
 
-  const projectRoot = path.dirname(pipelineDir);
-  const configFile = path.join(pipelineDir, "config.yaml");
-  const config = yamlIO.safeReadWithFallback(configFile);
-  const validatePaths = (config && config.validation && config.validation.yaml_validate_paths) || [
-    ".pipeline/",
-    "context/",
-  ];
+    if (!shouldValidate(filePath, validatePaths, projectRoot)) return;
 
-  if (!shouldValidate(filePath, validatePaths, projectRoot)) return;
-
-  // Validate the YAML file
-  try {
-    yamlIO.safeRead(filePath);
-  } catch (err) {
-    process.stderr.write(`[essense-flow] YAML validation failed: ${err.message}\n`);
-    process.exit(1);
-  }
+    try {
+      yamlIO.safeRead(filePath);
+    } catch (err) {
+      process.stderr.write(`[essense-flow] YAML validation failed: ${err.message}\n`);
+      process.exit(1);
+    }
+  });
 }
 
 try {

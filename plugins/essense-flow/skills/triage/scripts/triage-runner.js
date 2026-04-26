@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const yamlIO = require("../../../lib/yaml-io");
 const paths = require("../../../lib/paths");
+const { computeDropSource } = require("../../../lib/triage-utils");
+const { GROUNDED_REREVIEW_THRESHOLD } = require("../../../lib/constants");
 
 // Phase priority for multi-category routing (lowest index = earliest phase)
 const PHASE_PRIORITY = ["eliciting", "research", "architecture", "verifying"];
@@ -286,6 +288,57 @@ function readReqContent(pipelineDir) {
 }
 
 /**
+ * Pre-categorization staleness check.
+ * Validates each incoming item before categorization runs:
+ * - Bug findings: confirms verbatim_quote still appears in the cited file.
+ *   If not, marks stale (file deleted or quote no longer present).
+ * - Gap findings: gap staleness (covered-elsewhere) is handled in categorizeItem
+ *   against SPEC.md — no additional check needed here.
+ *
+ * Returns surviving items (passed checks) and dropped items (stale, with reason).
+ *
+ * @param {Array<{ id: string, description: string, source: string, verbatim_quote?: string, file_path?: string }>} items
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @returns {{ surviving: Array, dropped: Array }}
+ */
+function revalidateFindings(items, pipelineDir) {
+  const surviving = [];
+  const dropped = [];
+
+  for (const item of items || []) {
+    // Only items with an explicit verbatim_quote and file_path can go stale this way
+    if (item.verbatim_quote && item.file_path && pipelineDir) {
+      const projectRoot = path.dirname(pipelineDir);
+      const absPath = path.join(projectRoot, item.file_path);
+
+      if (!fs.existsSync(absPath)) {
+        dropped.push({
+          ...item,
+          stale: "file-not-found",
+          stale_reason: `Cited file no longer exists: ${item.file_path}`,
+        });
+        continue;
+      }
+
+      const fileContent = fs.readFileSync(absPath, "utf8");
+      const quote = item.verbatim_quote.trim();
+      if (quote.length > 0 && !fileContent.includes(quote)) {
+        dropped.push({
+          ...item,
+          stale: "quote-mismatch",
+          stale_reason: `verbatim_quote not found in ${item.file_path}: "${quote.slice(0, 80)}"`,
+        });
+        continue;
+      }
+    }
+
+    surviving.push(item);
+  }
+
+  return { surviving, dropped };
+}
+
+/**
  * Categorize a single item and return its category with rationale.
  *
  * @param {Object} item — { id, description, source }
@@ -303,6 +356,24 @@ function categorizeItem(item, specContent, pipelineDir) {
       category: "acceptable",
       rationale: `Item explicitly marked as acceptable/known limitation. Matched phrases: ${acceptableResult.matchedPhrases.join(", ")}`,
     };
+  }
+
+  // Step 0: Grounded check — verify verbatim_quote exists in the referenced file.
+  // If a quote is supplied but cannot be found in the file, the finding is stale
+  // (file has changed since the finding was recorded) and must not proceed further.
+  if (item.verbatim_quote && item.file_path && pipelineDir) {
+    const projectRoot = path.dirname(pipelineDir);
+    const absPath = path.join(projectRoot, item.file_path);
+    if (fs.existsSync(absPath)) {
+      const fileContent = fs.readFileSync(absPath, "utf8");
+      const quote = item.verbatim_quote.trim();
+      if (quote.length > 0 && !fileContent.includes(quote)) {
+        return {
+          category: "stale:quote-mismatch",
+          rationale: `verbatim_quote not found in ${item.file_path}: "${quote.slice(0, 80)}"`,
+        };
+      }
+    }
   }
 
   // Step 1: Check SPEC.md coverage
@@ -443,9 +514,45 @@ function mergeWithQueued(newItems, queuedItems) {
 }
 
 /**
+ * Determine whether a categorization result is ambiguous.
+ * A result is ambiguous if it carries an explicit ambiguous flag or
+ * has multiple candidate routes with no single dominant one.
+ *
+ * @param {Object|null} result — categorizeItem result or a route descriptor
+ * @returns {boolean}
+ */
+function isAmbiguous(result) {
+  if (!result) return false;
+  if (result.ambiguous === true) return true;
+  if (Array.isArray(result.routes) && result.routes.length > 1) return true;
+  return false;
+}
+
+/**
+ * Emit a structured AMBIGUOUS_FINDING signal to stdout so the orchestrator
+ * can intercept and prompt for user input instead of auto-routing.
+ *
+ * @param {Object} item — the finding being categorized
+ * @param {string[]} routes — candidate route options
+ */
+function emitAmbiguousSignal(item, routes) {
+  const findingId = item.id || item.description || "unknown";
+  process.stdout.write(
+    JSON.stringify({
+      type: "AMBIGUOUS_FINDING",
+      finding_id: findingId,
+      options: routes.length > 0 ? routes : ["elicitation", "architecture", "defer"],
+      message: `Finding "${findingId}" has multiple candidate routes. Awaiting selection.`,
+    }) + "\n"
+  );
+}
+
+/**
  * Categorize all items against spec, architecture, and task coverage.
  * Automatically loads and merges queued findings from prior triage passes.
  * Falls back to Increment 1 pass-through when specContent is not provided.
+ * Emits AMBIGUOUS_FINDING signals for items that cannot be auto-routed.
+ * Every item receives a disposition — no silent skips.
  *
  * @param {Array<{ id: string, description: string, source: string }>} items — gaps or findings
  * @param {string|null} specContent — SPEC.md content for cross-referencing
@@ -476,9 +583,29 @@ function categorizeItems(items, specContent, pipelineDir) {
 
   // Full categorization (Increment 2)
   for (const item of allItems) {
-    const { category, rationale } = categorizeItem(item, specContent, pipelineDir);
-    const enrichedItem = { ...item, rationale };
-    categorized[category].push(enrichedItem);
+    const result = categorizeItem(item, specContent, pipelineDir);
+    const { category, rationale } = result;
+
+    // When the item lands in the ambiguous bucket, emit a structured signal
+    // so the orchestrator can surface it for user input instead of silently
+    // auto-routing. The item is still recorded in the report with a
+    // triage_route of "pending_user_input" so no finding is left undisposed.
+    if (category === "ambiguous" || isAmbiguous(result)) {
+      const candidateRoutes = Array.isArray(result.routes) ? result.routes : [];
+      emitAmbiguousSignal(item, candidateRoutes);
+      const enrichedItem = {
+        ...item,
+        rationale,
+        triage_route: "pending_user_input",
+        ambiguous_routes: candidateRoutes.length > 0
+          ? candidateRoutes
+          : ["elicitation", "architecture", "defer"],
+      };
+      categorized.ambiguous.push(enrichedItem);
+    } else {
+      const enrichedItem = { ...item, rationale };
+      categorized[category].push(enrichedItem);
+    }
   }
 
   return categorized;
@@ -502,6 +629,83 @@ function determineRoute(categorized) {
   }
   // Default: all gaps are implementation tasks, forward to architect
   return "requirements-ready";
+}
+
+/**
+ * Read blocks_advance_count from QA-REPORT.md frontmatter.
+ * Returns null if the file or field is missing — triage falls back to
+ * categorization-based routing in that case (legacy/old-schema compatibility).
+ */
+function readBlocksAdvanceCount(qaReportPath) {
+  if (!qaReportPath || !fs.existsSync(qaReportPath)) return null;
+  try {
+    const content = fs.readFileSync(qaReportPath, "utf8");
+    // Frontmatter is delimited by --- ... --- at top of file
+    const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    const fm = yamlIO.parseString ? yamlIO.parseString(match[1]) : null;
+    if (fm && typeof fm.blocks_advance_count === "number") {
+      return fm.blocks_advance_count;
+    }
+    // Fall back to regex if parser didn't catch it
+    const lineMatch = match[1].match(/^blocks_advance_count:\s*(\d+)/m);
+    if (lineMatch) return parseInt(lineMatch[1], 10);
+    return null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * Deterministic routing based on QA-REPORT blocks_advance_count.
+ * Returns a structured decision the caller can act on without further interpretation.
+ *
+ * Output shape:
+ *   { source: "blocks_advance" | "missing", route: string | null, reason: string }
+ *
+ * Routing semantics:
+ *   - count == 0 → { source: "blocks_advance", route: "verifying", reason: "no blockers" }
+ *   - count > 0  → { source: "blocks_advance", route: null,        reason: "N blockers; category routing applies" }
+ *   - count missing → { source: "missing",    route: null,        reason: "old QA-REPORT schema" }
+ *
+ * Caller pattern:
+ *   const decision = routeByBlocksAdvance(qaPath);
+ *   if (decision.route) return decision.route;
+ *   // count > 0 OR count missing — fall through to category-based determineRoute()
+ */
+function routeByBlocksAdvance(qaReportPath) {
+  const count = readBlocksAdvanceCount(qaReportPath);
+  if (count === null) {
+    return { source: "missing", route: null, reason: "QA-REPORT lacks blocks_advance_count (old schema)" };
+  }
+  if (count === 0) {
+    return { source: "blocks_advance", route: "verifying", reason: "no blockers — advance toward verify" };
+  }
+  return { source: "blocks_advance", route: null, reason: `${count} blocker(s) — category routing applies` };
+}
+
+/**
+ * Combined routing: deterministic blocks_advance signal first, category routing fallback.
+ * This is the function the runner should call — encapsulates the two-tier rule.
+ *
+ * @param {string} qaReportPath — path to QA-REPORT.md
+ * @param {object} categorized — output of categorizeItems(); used when blocks_advance is silent
+ * @returns {{ route: string, signal: object }} signal carries provenance for logging/triage report
+ */
+function routeFinal(qaReportPath, categorized) {
+  const blocksDecision = routeByBlocksAdvance(qaReportPath);
+  if (blocksDecision.route) {
+    return { route: blocksDecision.route, signal: blocksDecision };
+  }
+  const categoryRoute = determineRoute(categorized);
+  return {
+    route: categoryRoute,
+    signal: {
+      source: "category",
+      route: categoryRoute,
+      reason: `${blocksDecision.source}: ${blocksDecision.reason}; category routing chose ${categoryRoute}`,
+    },
+  };
 }
 
 /**
@@ -575,6 +779,16 @@ function generateReport(categorized, route, source) {
           lines.push(`_Rationale:_ ${item.rationale}`);
           lines.push("");
         }
+        // Surface pending disposition fields for ambiguous items so every
+        // finding has a fully recorded triage outcome in this report.
+        if (item.triage_route) {
+          lines.push(`_Triage route:_ \`${item.triage_route}\``);
+          lines.push("");
+        }
+        if (Array.isArray(item.ambiguous_routes) && item.ambiguous_routes.length > 0) {
+          lines.push(`_Candidate routes:_ ${item.ambiguous_routes.join(", ")}`);
+          lines.push("");
+        }
       }
     }
   }
@@ -588,8 +802,9 @@ function generateReport(categorized, route, source) {
  * @param {string} pipelineDir — absolute path to .pipeline/
  * @param {string} report — triage report markdown
  * @param {Array} queued — items queued for later phases
+ * @param {Array} [revalidateDrops=[]] — items dropped by revalidateFindings (stale)
  */
-function writeTriage(pipelineDir, report, queued) {
+function writeTriage(pipelineDir, report, queued, revalidateDrops) {
   const triageDir = path.join(pipelineDir, "triage");
   paths.ensureDir(triageDir);
 
@@ -597,11 +812,100 @@ function writeTriage(pipelineDir, report, queued) {
   fs.writeFileSync(reportPath, report, "utf8");
 
   const queuedPath = path.join(triageDir, "queued-findings.yaml");
+  const dropSource = computeDropSource("triage", [reportPath, queuedPath]);
+
+  // Validate required fields on every queued item before writing.
+  // Missing category or drop_source indicates upstream assembly gaps — warn and fill defaults
+  // so downstream consumers never receive structurally incomplete findings.
+  for (const item of (queued || [])) {
+    if (!item.category) {
+      console.warn(`[triage] queued item ${item.id ?? "(unknown id)"} missing category — assigning "uncategorized"`);
+      item.category = "uncategorized";
+    }
+    if (!item.drop_source) {
+      console.warn(`[triage] queued item ${item.id ?? "(unknown id)"} missing drop_source — assigning "unknown"`);
+      item.drop_source = "unknown";
+    }
+  }
+
   yamlIO.safeWrite(queuedPath, {
     schema_version: 1,
     generated_at: new Date().toISOString(),
+    drop_source: dropSource,
     items: queued || [],
   });
+
+  // Track stale:quote-mismatch drops across sprints.
+  // When a single drop_source accumulates GROUNDED_REREVIEW_THRESHOLD consecutive
+  // sprints with mismatched quotes, flag grounded_required on state.yaml so the
+  // architect QA pass will post-validate verbatim quotes next cycle.
+  const dropHistoryPath = path.join(pipelineDir, "triage", "drop-history.yaml");
+  const existingHistory = yamlIO.safeReadWithFallback(dropHistoryPath) || { schema_version: 1, entries: [] };
+  if (!Array.isArray(existingHistory.entries)) existingHistory.entries = [];
+
+  const sprintNum = (() => {
+    const statePath = path.join(pipelineDir, "state.yaml");
+    const s = yamlIO.safeReadWithFallback(statePath);
+    return s && s.pipeline ? s.pipeline.sprint : null;
+  })();
+
+  // Combine queued stale items and revalidateFindings drops to get ALL stale:quote-mismatch
+  // drops for this sprint. revalidateDrops are pre-categorization drops not in queued[].
+  const revalidateStale = (revalidateDrops || []).filter(i => i.stale === "quote-mismatch");
+  const staleMismatchItems = [
+    ...(queued || []).filter(i => i.category === "stale:quote-mismatch"),
+    ...revalidateStale,
+  ];
+  if (staleMismatchItems.length > 0) {
+    const bySource = {};
+    for (const item of staleMismatchItems) {
+      const src = item.drop_source || "unknown";
+      bySource[src] = (bySource[src] || 0) + 1;
+    }
+    existingHistory.entries.push({
+      sprint: sprintNum,
+      timestamp: new Date().toISOString(),
+      drops: Object.entries(bySource).map(([drop_source, count]) => ({ drop_source, count })),
+    });
+    yamlIO.safeWrite(dropHistoryPath, existingHistory);
+
+    // Check per-source consecutive-sprint streak; trigger grounded_required when
+    // any source crosses the threshold without interruption.
+    const allSources = {};
+    for (const [entryIndex, entry] of existingHistory.entries.entries()) {
+      // null sprint entries must not reset or increment the streak;
+      // coerce to a unique sentinel so they are excluded from Number.isFinite filtering below.
+      const safeSprint = entry.sprint ?? `null-${entryIndex}`;
+      for (const d of entry.drops || []) {
+        if (!allSources[d.drop_source]) allSources[d.drop_source] = [];
+        allSources[d.drop_source].push(safeSprint);
+      }
+    }
+    for (const [, sprints] of Object.entries(allSources)) {
+      // Filter out null-sentinel values — only finite sprint numbers participate in streak calc.
+      const sorted = sprints.filter(Number.isFinite).sort((a, b) => a - b);
+      let consecutive = 1;
+      for (let i = 1; i < sorted.length; i++) {
+        consecutive = sorted[i] === sorted[i - 1] + 1 ? consecutive + 1 : 1;
+        if (consecutive >= GROUNDED_REREVIEW_THRESHOLD) {
+          const currentStateData = yamlIO.safeReadWithFallback(path.join(pipelineDir, "state.yaml")) || {};
+          try {
+            yamlIO.safeWrite(path.join(pipelineDir, "state.yaml"), {
+              ...currentStateData,
+              grounded_required: true,
+              last_updated: new Date().toISOString(),
+            });
+          } catch (err) {
+            throw new Error(
+              `[triage] Failed to write grounded_required to state.yaml: ${err.message}. ` +
+              `Re-run /triage to retry. drop-history.yaml was written successfully.`
+            );
+          }
+          break;
+        }
+      }
+    }
+  }
 
   return { reportPath, queuedPath };
 }
@@ -613,6 +917,7 @@ module.exports = {
   ACCEPTABLE_INDICATORS,
   MIN_KEYWORD_LENGTH,
   MIN_KEYWORD_MATCHES,
+  revalidateFindings,
   categorizeItems,
   categorizeItem,
   determineRoute,
@@ -620,6 +925,9 @@ module.exports = {
   writeTriage,
   loadQueuedFindings,
   mergeWithQueued,
+  // Ambiguity detection helpers exported for testability
+  isAmbiguous,
+  emitAmbiguousSignal,
   // Helper functions exported for testability
   extractKeywords,
   hasSpecCoverage,
@@ -629,4 +937,9 @@ module.exports = {
   isDomainConcern,
   isAcceptableLimitation,
   readReqContent,
+  // blocks_advance routing — deterministic primary signal from QA-REPORT.md frontmatter.
+  // Triage uses this when present; falls back to category routing only when absent.
+  readBlocksAdvanceCount,
+  routeByBlocksAdvance,
+  routeFinal,
 };

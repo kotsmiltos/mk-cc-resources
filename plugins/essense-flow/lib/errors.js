@@ -6,8 +6,8 @@
  */
 const ERRORS = {
   E_PHASE_INVALID: {
-    message: "Cannot run {command} in phase {phase}. Expected: {expected}",
-    recovery: "Check current phase with /status. Run the expected command first, or use /init to reset.",
+    message: "Cannot run {command} in phase \"{phase}\". Expected phase(s): {expected}. Next valid command: {next_valid}. Run /help for all available commands.",
+    recovery: "Current phase is \"{phase}\". Next valid command: {next_valid}. Run /help for all available commands.",
   },
   E_ARTIFACT_MISSING: {
     message: "Required artifact not found: {path}",
@@ -64,6 +64,30 @@ const ERRORS = {
   E_VERIFY_LOOP_LIMIT: {
     message: "Verify-elicit loop limit reached: limit is {limit}, current count is {count}",
     recovery: "The pipeline has cycled between verify and elicit too many times. Review the VERIFICATION-REPORT.md and SPEC.md manually to resolve outstanding gaps before retrying.",
+  },
+  E_TERMINAL_STATE: {
+    message: "Cannot run {command} — pipeline is complete. Run /init to archive and reset.",
+    recovery: "Run /init to archive the completed pipeline and start fresh.",
+  },
+  E_SCHEMA_MISMATCH: {
+    message: "state.yaml schema_version {found} does not match expected {expected}. Fields may be missing.",
+    recovery: "Run /repair to diagnose and fix schema issues.",
+  },
+  E_MANIFEST_INCOMPLETE: {
+    message: "Artifact {artifact} is incomplete: {completed}/{required} {type} recorded.",
+    recovery: "Re-run {phase} to complete the missing perspectives/passes.",
+  },
+  E_CONCURRENCY_CAP: {
+    message: "Agent dispatch cap ({cap}) exceeded. Tasks queued in sub-groups.",
+    recovery: "No action needed — orchestrator handles queuing automatically.",
+  },
+  E_CYCLE_DETECTED: {
+    message: "Circular dependency detected in task graph: {cycle}.",
+    recovery: "Fix the depends_on fields in task specs to remove the cycle.",
+  },
+  E_NOT_INITIALIZED: {
+    message: "Pipeline not initialized. Run `/init` first — creates .pipeline/ directory, writes initial state.yaml, configures hooks.",
+    recovery: "Run /init to create the .pipeline/ directory structure and initial state.yaml.",
   },
 };
 

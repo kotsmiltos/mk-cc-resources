@@ -11,16 +11,7 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/yaml-validate.sh\""
-          }
-        ]
-      },
+    "PreToolUse": [
       {
         "matcher": "Write|Edit|Bash",
         "hooks": [
@@ -31,7 +22,18 @@
         ]
       }
     ],
-    "Notification": [
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/yaml-validate.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
       {
         "matcher": "",
         "hooks": [

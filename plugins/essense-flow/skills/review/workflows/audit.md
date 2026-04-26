@@ -108,7 +108,11 @@ After transitioning to `triaging`, immediately run triage without waiting for us
 1. Read QA-REPORT.md just produced
 2. Read SPEC.md if exists
 3. Call `triage-runner.categorizeItems()` with review findings
-4. Call `triage-runner.determineRoute()` to get target phase
+4. Call `triage-runner.routeFinal(qaReportPath, categorized)` to determine target phase.
+   - `routeFinal` reads `blocks_advance_count` from QA-REPORT.md frontmatter as the deterministic primary signal:
+     - `count === 0` → routes directly to `verifying` (no blockers)
+     - `count > 0` or count missing → falls back to `determineRoute(categorized)` for category-based routing
+   - The returned `{ route, signal }` includes the provenance (`source: blocks_advance | category | missing`) — log this for audit visibility.
 5. Call `triage-runner.generateReport()` and `triage-runner.writeTriage()` to persist
 6. Transition from `triaging` to determined target phase
 7. If target is interactive (eliciting, architecture, requirements-ready): stop and report. User runs next command.

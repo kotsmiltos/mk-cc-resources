@@ -1,8 +1,6 @@
 "use strict";
 
-// Approximate tokens per character ratio (conservative estimate for English text).
-// Claude tokenizer averages ~4 characters per token; we use 3.5 for safety margin.
-const CHARS_PER_TOKEN = 3.5;
+const { CHARS_PER_TOKEN, AGENT_BRIEF_OVERHEAD_TOKENS } = require("./constants");
 
 /**
  * Estimate token count for a string.
@@ -99,9 +97,7 @@ function adaptiveBriefCeiling(specContent, config) {
   }
 
   const specTokens = countTokens(specContent);
-  // Spec tokens + 2000 for agent identity, instructions, and output overhead
-  const AGENT_OVERHEAD = 2000;
-  return Math.min(Math.max(defaultCeiling, specTokens + AGENT_OVERHEAD), maxCeiling);
+  return Math.min(Math.max(defaultCeiling, specTokens + AGENT_BRIEF_OVERHEAD_TOKENS), maxCeiling);
 }
 
 module.exports = { countTokens, checkBudget, adaptiveBriefCeiling };

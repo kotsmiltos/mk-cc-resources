@@ -1,5 +1,54 @@
 # essense-flow Release Notes
 
+## 0.4.0 (2026-04-26)
+
+Major redesign focused on **verification discipline and propagating contracts**. The pipeline now enforces six design principles in code, not just in documentation: scope-adaptive depth, auto-advance, phase-aware context, artifact contracts, importance declared at production, deterministic-before-LLM gates.
+
+### New — Foundation
+
+- **Context map** (`lib/constants.js` `PHASE_INPUTS`, `skills/context/scripts/context-manager.js` `deriveContextMap`/`writeContextMap`/`readContextMap`/`formatPhaseInputsForInjection`). `session-orient` writes a fresh `.pipeline/context_map.yaml` on SessionStart by scanning actual `.pipeline/` state — never maintained, always derived. `context-inject` reads the map and injects only `phase_inputs[currentPhase]` — replaces full state dump with phase-relevant slice. Missing artifacts surfaced as `[missing: ...]` rather than silently dropped.
+- **Canonical path constants** (`SPEC_PATH`, `REQ_PATH`, `ARCH_PATH`, `CONTEXT_MAP_FILE`) replace hardcoded path strings across architect-runner, elicit-runner, research-runner, next-runner.
+- **`AUTO_ADVANCE_DESCRIPTIONS`** co-located with `AUTO_ADVANCE_MAP`. Parity assertion at module load — a new auto-advance phase without a description fails fast.
+- **`reviewing → /triage`** added to `AUTO_ADVANCE_MAP`. The review-complete handoff is now mechanical.
+
+### New — Quality gates
+
+- **`lib/importance.js`** — `shouldBlockAdvance(severity, verdict)` rule, named and grep-able. Replaces post-hoc keyword inference.
+- **`lib/deterministic-gate.js`** — `runGate(projectRoot, options)` runs `npm test` + `npm run lint` via `spawnSync` with timeout/error/signal handling. `failuresToFindings(failures, sprint)` converts gate failures into `blocks_advance: yes` findings. Never throws — structured result.
+- **`preReviewGate(projectRoot, pipelineDir, sprintNumber)`** in `review-runner.js` — runs the gate, writes a minimal QA-REPORT directly when failed, returns `{ ok: false, qaReportPath }`. SKILL.md "Step 0" mandates this before any QA agent dispatch.
+- **`preBuildGate(projectRoot)`** in `build-runner.js` — equivalent for the build phase. Tests fail before build → halt sprint.
+- **`blocks_advance` field** declared at production in `categorizeFindings` via `importance.blocksAdvanceLabel`. QA-REPORT frontmatter now includes `blocks_advance_count` and `findings_total`. Schema bumped to v2.
+- **`routeFinal(qaReportPath, categorized)`** in `triage-runner.js` — primary triage entry point. Reads `blocks_advance_count` as deterministic primary signal; falls back to `determineRoute(categorized)` for category-based routing when count > 0 or the field is missing. Returns `{ route, signal }` with provenance.
+
+### New — Adaptive depth
+
+- **`complexity` frontmatter block** in SPEC.md (`assessment` ∈ {bug-fix, new-feature, partial-rewrite, new-project}; `touch_surface` ∈ {narrow, moderate, broad}; `unknown_count`; `notes`). Validated by `elicit-runner.parseComplexityBlock` / `validateComplexityBlock`.
+- **`recommendDecompositionDepth(complexity)`** in `architect-runner.js` — derives depth label (flat / standard / high-care / full) and notes. Logged at planning time and **injected into every perspective-agent brief** as a "Scope Context" section so each agent adapts to scale.
+- **`convergenceCheckWaveFor(complexity)`** — adaptive wave threshold per assessment (3 / 7 / 10 / 15, +3 for broad surface). Replaces the hardcoded `CONVERGENCE_CHECK_WAVE = 10` for callers with the signal.
+
+### New — Artifact contracts
+
+- **Templates with full contract sections** — every output template now includes: required inputs, must-not-contain, per-section purpose/PASS/FAIL/if-stuck, size signal, completion check.
+- New: `skills/build/templates/build-report.md`, `skills/elicit/templates/spec.md`, `skills/triage/templates/triage-report.md`.
+- Extended: `skills/review/templates/qa-report.md` (moved from architect), `skills/architect/templates/task-spec.md`, `skills/architect/templates/architecture.md`, `skills/architect/templates/decision-record.md`, `skills/research/templates/requirements.md`.
+
+### New — Behavioral contract
+
+- **`Operating Contract` preamble** in every SKILL.md. Skill-specific surfacing language: review verifies on-disk quotes; triage routes by `blocks_advance_count`; elicit confirms user approval; etc. Propagation principle — rules live in artifacts, not just the builder's head.
+
+### Hook architecture
+
+- **`review-guard` moved from PostToolUse → PreToolUse**. Blocks bad writes before they happen instead of detecting after.
+
+### Cleanup
+
+- Removed dead code: `caveman/`, `edge-test*.js`, `audit-replay/` skill cluster (`lib/audit-ledger.js`, `scripts/audit-harness.js`, `scripts/audit-summarize.js`, `commands/audit-replay.md`, related test files), `lib/lockfile-heartbeat.js` and its Test 6 block in `tests/lock.test.js`.
+- `.gitignore` updated: `.pipeline-archive/`, `tests/__tmp_*/`.
+
+### Tests
+
+- 33 test files; 538 tests passing. Coverage extended for: gate behavior, context map round-trip, blocks_advance computation, complexity parsing, AUTO_ADVANCE parity assertion, route determination.
+
 ## 0.3.4 (2026-04-21)
 
 ### Fixes

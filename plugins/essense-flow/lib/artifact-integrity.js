@@ -3,9 +3,14 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const yaml = require("js-yaml");
 const yamlIO = require("./yaml-io");
+const { HASH_STORE_FILE, YAML_DUMP_OPTS } = require("./constants");
+const { formatError } = require("./errors");
 
-const HASH_STORE_FILE = ".hashes.yaml";
+// Frontmatter delimiter used in Markdown artifact files
+const FRONTMATTER_DELIMITER = "---\n";
+
 const SCHEMA_VERSION = 1;
 
 /**
@@ -114,12 +119,134 @@ function hashOnWrite(pipelineDir, relativePath, content) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, content, typeof content === "string" ? "utf8" : undefined);
+  const tmpPath = filePath + ".tmp";
+  fs.writeFileSync(tmpPath, content, typeof content === "string" ? "utf8" : undefined);
+  fs.renameSync(tmpPath, filePath);
 
   const hash = computeHashFromContent(content);
-  storeHash(pipelineDir, relativePath, hash);
+  try {
+    storeHash(pipelineDir, relativePath, hash);
+  } catch (e) {
+    return { ok: false, hash: null, error: e.message };
+  }
 
   return { ok: true, hash };
 }
 
-module.exports = { computeHash, computeHashFromContent, storeHash, verifyHash, hashOnWrite };
+/**
+ * Validate a Markdown artifact's frontmatter for completion fields.
+ *
+ * Reads the file (if it exists), extracts the YAML frontmatter block between
+ * the first and second `---\n` delimiters, and checks whether required
+ * perspectives or passes have been completed.
+ *
+ * @param {string} filePath — absolute path to the artifact file
+ * @returns {{ ok: boolean, error?: string }}
+ */
+function validateManifest(filePath) {
+  // Missing file is not an error — the artifact may not yet exist
+  if (!fs.existsSync(filePath)) {
+    return { ok: true };
+  }
+
+  const content = fs.readFileSync(filePath, "utf8");
+
+  // Extract frontmatter: find block between first and second FRONTMATTER_DELIMITER
+  const firstDelimIdx = content.indexOf(FRONTMATTER_DELIMITER);
+  if (firstDelimIdx === -1) {
+    return { ok: true };
+  }
+
+  const frontmatterStart = firstDelimIdx + FRONTMATTER_DELIMITER.length;
+  const secondDelimIdx = content.indexOf(FRONTMATTER_DELIMITER, frontmatterStart);
+  if (secondDelimIdx === -1) {
+    return { ok: true };
+  }
+
+  const frontmatterBlock = content.slice(frontmatterStart, secondDelimIdx);
+  const frontmatter = yaml.load(frontmatterBlock);
+
+  if (!frontmatter || typeof frontmatter !== "object") {
+    return { ok: true };
+  }
+
+  const {
+    perspectives_required,
+    perspectives_completed,
+    passes_required,
+    passes_completed,
+  } = frontmatter;
+
+  // Check perspectives completion
+  if (
+    perspectives_required !== undefined &&
+    perspectives_completed !== undefined &&
+    perspectives_required > perspectives_completed
+  ) {
+    return {
+      ok: false,
+      error: formatError("E_MANIFEST_INCOMPLETE", {
+        artifact: path.basename(filePath),
+        completed: perspectives_completed,
+        required: perspectives_required,
+        type: "perspectives",
+        phase: "research",
+      }),
+    };
+  }
+
+  // Check passes completion
+  if (
+    passes_required !== undefined &&
+    passes_completed !== undefined &&
+    passes_required > passes_completed
+  ) {
+    return {
+      ok: false,
+      error: formatError("E_MANIFEST_INCOMPLETE", {
+        artifact: path.basename(filePath),
+        completed: passes_completed,
+        required: passes_required,
+        type: "passes",
+        phase: "reviewing",
+      }),
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Write a YAML data object to a pipeline-relative path and store its hash.
+ *
+ * Combines yamlIO.safeWrite with hash tracking so callers get a single
+ * atomic operation that keeps the hash store in sync.
+ *
+ * @param {string} pipelineDir — absolute path to the .pipeline directory
+ * @param {string} relPath — path relative to pipelineDir (e.g. "elicitation/SPEC.yaml")
+ * @param {Object} data — data to serialize and write
+ * @returns {{ ok: boolean, hash?: string, error?: unknown }}
+ */
+function hashOnYamlWrite(pipelineDir, relPath, data) {
+  try {
+    const absPath = path.join(pipelineDir, relPath);
+    const serialized = yaml.dump(data, YAML_DUMP_OPTS);
+    const hash = computeHashFromContent(serialized);
+    yamlIO.safeWrite(absPath, data);
+    storeHash(pipelineDir, relPath, hash);
+
+    return { ok: true, hash };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+module.exports = {
+  computeHash,
+  computeHashFromContent,
+  storeHash,
+  verifyHash,
+  hashOnWrite,
+  validateManifest,
+  hashOnYamlWrite,
+};

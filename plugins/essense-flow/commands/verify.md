@@ -14,7 +14,7 @@ Spec compliance check. Available from any pipeline state. Compares implementatio
 3. Dispatches one extraction agent to parse every discrete claim from SPEC.md into structured item list
 4. Groups items by spec section, dispatches one verification agent per group (parallel)
 5. Merges verdicts across groups using worst-verdict-wins
-6. Writes `VERIFICATION-REPORT.md` with scorecard summary and per-section item verdicts
+6. Gate mode: writes `VERIFICATION-REPORT.md` with scorecard summary and per-section item verdicts; on-demand mode: writes `VERIFICATION-REPORT-ondemand.md` to `.pipeline/` — does NOT modify `state.yaml`
 7. Gate mode only: routes directly based on CONFIRMED gaps — no triage round-trip
 
 ## Instructions

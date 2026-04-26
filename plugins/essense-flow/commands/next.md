@@ -14,31 +14,10 @@ Suggest next action based on current pipeline phase. Read-only.
 
 ## Instructions
 
-1. Read `.pipeline/state.yaml` using `lib/yaml-io.safeReadWithFallback()`
-2. If no state file exists, suggest: `/init`
-3. Map phase to next action:
+Run `node skills/context/scripts/next-runner.js [--json]` from project root.
 
-| Current Phase | Next Command | Explanation |
-|---------------|-------------|-------------|
-| `idle` | `/elicit` or `/research` | Start with elicitation or research directly |
-| `eliciting` | `/elicit` | Continue design exploration |
-| `research` | _(auto-advancing to triage)_ | Research in progress |
-| `requirements-ready` | `/architect` | Requirements done — plan architecture |
-| `architecture` | _(wait)_ | Architecture in progress |
-| `decomposing` | _(wait)_ | Decomposition in progress |
-| `sprinting` | `/build` | Sprint ready — execute tasks |
-| `sprint-complete` | _(auto-advancing to review)_ | Sprint done |
-| `reviewing` | _(auto-advancing to triage)_ | Review in progress |
-| `triaging` | _(auto-advancing to target phase)_ | Triage in progress |
-| `verifying` | `/verify` | Run spec compliance check |
-| `complete` | See step 4 | Verify sprints exhausted before reporting done |
-
-4. **For `complete` phase only**: read `state.sprints`. If any sprint entry has `status` other than `complete`, output a warning:
-   > **Warning: pipeline closed prematurely.** Sprints [list] are not complete. Phase was set to `complete` before all sprints finished. Correct by manually setting `phase: sprinting` (or the appropriate resume phase) in `.pipeline/state.yaml`, then run `/build` to continue.
-   
-   If all sprints are `complete` (or `sprints` is empty and `phases_completed.architecture` is null), report: "Pipeline complete — all work done."
-
-5. Report suggestion with brief explanation
+Flags:
+- `--json`: emit JSON with `next_command`, `why`, `prerequisites`, `scope` fields
 
 ## Constraints
 

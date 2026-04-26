@@ -2,11 +2,23 @@
 
 const fs = require("fs");
 const path = require("path");
+const jsYaml = require("js-yaml");
 const yamlIO = require("../../../lib/yaml-io");
 const briefAssembly = require("../../../lib/brief-assembly");
 const agentOutput = require("../../../lib/agent-output");
 const tokens = require("../../../lib/tokens");
 const paths = require("../../../lib/paths");
+const lockfile = require("../../../lib/lockfile");
+const ledger = require("../../../lib/ledger");
+const importance = require("../../../lib/importance");
+const deterministicGate = require("../../../lib/deterministic-gate");
+const {
+  VALIDATOR_TIMEOUT_MS,
+  HEARTBEAT_INTERVAL_MS,
+  PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS,
+  PASS_REQUIRES_ZERO_UNACKNOWLEDGED_NC_CRITICALS,
+  MIN_PATH_EVIDENCE_QUOTE_CHARS,
+} = require("../../../lib/constants");
 
 // Maximum review-build cycles per sprint before escalation to earlier phases
 const MAX_REVIEW_CYCLES = 3;
@@ -75,7 +87,7 @@ function generateBriefId(perspectiveId) {
  * @param {Object} config — pipeline config
  * @returns {{ ok: boolean, briefs?: Array<{ perspectiveId: string, agentId: string, briefId: string, brief: string }>, error?: string }}
  */
-function assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config) {
+function assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config, ledgerPath) {
   if (!Array.isArray(taskSpecPaths) || taskSpecPaths.length === 0) {
     return { ok: false, error: "taskSpecPaths must be a non-empty array of file paths" };
   }
@@ -110,6 +122,9 @@ function assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths
       COMPLETION_RECORD_PATHS: completionRecordList,
       BUILT_FILES: builtFiles,
       SPEC_PATH: specPath || "(no SPEC.md available)",
+      CONFIRMED_FINDINGS_PATH: (ledgerPath && fs.existsSync(ledgerPath))
+        ? ledgerPath
+        : "(no prior confirmed-findings.yaml — first review)",
       SPRINT_NUMBER: String(sprintNumber),
       SANDBOX_PATH: `.pipeline/reviews/sprint-${String(sprintNumber).padStart(2, "0")}/tests/`,
       BRIEF_ID: briefId,
@@ -307,6 +322,9 @@ function categorizeFindings(parsedOutputs) {
           text: item,
           confidence,
           severity,
+          // blocks_advance declared at production via the rule in lib/importance.js —
+          // never inferred post-hoc by consumers (triage uses this declared value).
+          blocks_advance: importance.blocksAdvanceLabel(severity, confidence),
           source: agentId,
           perspective: perspectiveId,
           section,
@@ -348,7 +366,8 @@ function categorizeFindings(parsedOutputs) {
 function applySuspectedCap(categorized) {
   const confirmedCount = categorized.confirmed ? categorized.confirmed.length : 0;
   const suspectedList = categorized.suspected || [];
-  const cap = confirmedCount * SUSPECTED_CAP_RATIO;
+  // Floor: never cap to zero on first pass (no confirmed findings yet)
+  const cap = confirmedCount > 0 ? confirmedCount * SUSPECTED_CAP_RATIO : suspectedList.length;
 
   if (suspectedList.length <= cap) {
     return { categorized, suppressedCount: 0 };
@@ -368,64 +387,180 @@ function applySuspectedCap(categorized) {
 }
 
 /**
+ * Build validator manifest rows for the report.
+ *
+ * Throws BEFORE any file is written if a perspective has no entry in validatorResults.
+ * This enforces the invariant that every dispatched validator is accounted for.
+ *
+ * @param {Array<{ id: string }>} perspectives — review perspectives used in this run
+ * @param {Array<{ perspectiveId: string, status: string, findingsCount: number, failReason?: string }>} validatorResults
+ * @returns {string[]} — array of markdown table row strings (one per validator)
+ */
+function buildValidatorManifestRows(perspectives, validatorResults) {
+  return perspectives.map((p) => {
+    const result = validatorResults.find((r) => r.perspectiveId === p.id);
+    if (!result) {
+      throw new Error(
+        `[essense-flow] Validator manifest: missing entry for ${p.id} — report generation aborted`
+      );
+    }
+    const findingsCol = result.failReason
+      ? `${result.findingsCount} (${result.failReason})`
+      : String(result.findingsCount);
+    return `| ${p.id} | ${result.status} | ${findingsCol} |`;
+  });
+}
+
+/**
+ * Build validator results summary from raw validator verdicts and all findings.
+ * Converts the flat validatorVerdicts array into per-perspective result objects
+ * expected by buildValidatorManifestRows.
+ *
+ * @param {Array<{ id: string }>} perspectives
+ * @param {Array<Object>} validatorVerdicts — collected validator verdict objects
+ * @param {Array<Object>} allFindings — all qa findings (with .id assigned)
+ * @returns {Array<{ perspectiveId: string, status: string, findingsCount: number, failReason?: string }>}
+ */
+function buildValidatorResults(perspectives, validatorVerdicts, allFindings) {
+  return perspectives.map((p) => {
+    // Verdicts attributed to this perspective
+    const perspectiveVerdicts = validatorVerdicts.filter(
+      (v) => v.validator_perspective === p.id
+    );
+
+    // Detect timeout/parse failure from synthetic NEEDS_CONTEXT verdicts
+    const syntheticFail = perspectiveVerdicts.find(
+      (v) => v.verdict === "NEEDS_CONTEXT" && (
+        v.reason === "validator-timeout" ||
+        v.reason === "validator-parse-failure" ||
+        v.reason === "validator-unknown-verdict"
+      )
+    );
+
+    const status = syntheticFail ? "failed" : "completed";
+    const failReason = syntheticFail ? syntheticFail.reason : undefined;
+
+    // Count findings processed by this validator (non-synthetic verdicts)
+    const findingsCount = syntheticFail
+      ? allFindings.filter((f) => f.perspective === p.id).length
+      : perspectiveVerdicts.length;
+
+    return { perspectiveId: p.id, status, findingsCount, failReason };
+  });
+}
+
+/**
+ * Look up the original QA finding text by finding ID from qa-run-output data.
+ *
+ * @param {string} findingId — e.g. "qa-finding-001"
+ * @param {Array<Object>} allFindings — all qa findings with .id and .text
+ * @returns {string} — original text or fallback string
+ */
+function lookupOriginalFindingText(findingId, allFindings) {
+  const match = allFindings.find((f) => f.id === findingId);
+  return match ? match.text : "(original finding not found)";
+}
+
+/**
  * Generate QA-REPORT.md content from categorized findings.
  *
- * Verdict logic: FAIL if any CONFIRMED critical findings exist, otherwise PASS.
+ * Summary section (## QA Summary) is placed within the first 20 lines so verdict
+ * and confirmed-critical count are immediately visible.
+ *
+ * Throws before writing if any perspective is missing from validatorResults
+ * (enforced via buildValidatorManifestRows).
  *
  * @param {number} sprintNumber — completed sprint number
  * @param {{ confirmed: Array, likely: Array, suspected: Array, bySeverity: Object }} categorized
  * @param {Array<{ agentId: string, perspectiveId: string }>} parsedOutputs — for attribution
  * @param {number} [suppressedCount=0] — number of SUSPECTED findings suppressed by cap
+ * @param {Array<{ id: string }>} [perspectives] — review perspectives (defaults to DEFAULT_REVIEW_PERSPECTIVES)
+ * @param {Array<Object>} [validatorVerdicts] — collected validator verdict objects
+ * @param {Array<Object>} [allFindings] — all qa findings with .id assigned (for FALSE_POSITIVE lookup)
  * @returns {string} — full QA-REPORT.md markdown content
  */
-function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCount) {
-  // Verdict: FAIL only if CONFIRMED critical findings exist
-  const confirmedCritical = categorized.confirmed.filter((f) => f.severity === "critical");
-  const verdict = confirmedCritical.length > 0 ? "FAIL" : "PASS";
+function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCount, perspectives, validatorVerdicts, allFindings) {
+  const usePerspectives = perspectives || DEFAULT_REVIEW_PERSPECTIVES;
+  const useVerdicts = validatorVerdicts || [];
+  const useAllFindings = allFindings || [
+    ...categorized.confirmed,
+    ...categorized.likely,
+    ...categorized.suspected,
+  ];
 
-  const totalFindings =
-    categorized.confirmed.length +
-    categorized.likely.length +
-    categorized.suspected.length;
+  // Compute verdict counts from ledger-backed data when available.
+  // Here we derive from categorized findings for the summary header.
+  const confirmedCriticalCount = categorized.confirmed.filter((f) => f.severity === "critical").length;
+
+  // blocks_advance_count is the routing signal triage reads.
+  // Each finding has blocks_advance declared at production (see categorizeFindings).
+  // Count "yes" across confirmed findings only — confidence tier matters per the rule.
+  const blocksAdvanceCount = categorized.confirmed.filter((f) => f.blocks_advance === "yes").length;
+
+  const verdict = blocksAdvanceCount > 0 ? "FAIL" : "PASS";
+  const findingsTotal =
+    (categorized.confirmed.length || 0) +
+    (categorized.likely.length || 0) +
+    (categorized.suspected.length || 0);
+
+  // Tally validator verdict categories for summary line
+  const fpCount = useVerdicts.filter((v) => v.verdict === "FALSE_POSITIVE").length;
+  const ncCount = useVerdicts.filter((v) => v.verdict === "NEEDS_CONTEXT").length;
+  const errCount = useVerdicts.filter((v) =>
+    v.verdict === "NEEDS_CONTEXT" && (
+      v.reason === "validator-timeout" ||
+      v.reason === "validator-parse-failure" ||
+      v.reason === "validator-unknown-verdict"
+    )
+  ).length;
+  // confirmed = verdicts that are not false-positive, not needs-context, and not errors
+  const confirmedVerdictCount = useVerdicts.filter(
+    (v) => v.verdict === "CONFIRMED" || v.verdict === "FIXED" ||
+           v.verdict === "REGRESSED" || v.verdict === "STILL_CONFIRMED"
+  ).length;
 
   const lines = [];
 
-  // YAML frontmatter
+  // --- YAML frontmatter: lines 1-9 ---
+  // blocks_advance_count is the deterministic routing signal triage uses.
+  // findings_total + verdict + blocks_advance_count must agree (template contract).
   lines.push("---");
   lines.push("artifact: qa-report");
-  lines.push("schema_version: 1");
+  lines.push("schema_version: 2");
+  lines.push("produced_by: /review");
+  lines.push("read_by: /triage");
   lines.push(`sprint: ${sprintNumber}`);
   lines.push(`verdict: ${verdict}`);
+  lines.push(`blocks_advance_count: ${blocksAdvanceCount}`);
+  lines.push(`findings_total: ${findingsTotal}`);
   lines.push(`generated_at: ${new Date().toISOString()}`);
   lines.push("---");
   lines.push("");
 
-  // Title and summary
+  // --- QA Summary: lines 9-14 (verdict on line 11, confirmed-criticals on line 12) ---
+  // Target: summary section fully within first 20 lines.
   lines.push(`# Sprint ${sprintNumber} QA Report`);
   lines.push("");
-  lines.push(`**Verdict:** ${verdict}`);
-  lines.push(`**Date:** ${new Date().toISOString().slice(0, 10)}`);
-  lines.push(`**Total findings:** ${totalFindings}`);
+  lines.push("## QA Summary");
+  lines.push(`Verdict: ${verdict}`);
+  lines.push(`Confirmed criticals: ${confirmedCriticalCount}`);
+  lines.push(`Total findings: confirmed=${confirmedVerdictCount}, false-positive=${fpCount}, needs-context=${ncCount}, errors=${errCount}`);
   lines.push("");
 
-  // Summary table
-  lines.push("## Summary");
+  // --- Validator Manifest: build rows (throws if any validator missing) ---
+  const validatorResults = buildValidatorResults(usePerspectives, useVerdicts, useAllFindings);
+  const manifestRows = buildValidatorManifestRows(usePerspectives, validatorResults);
+
+  lines.push("## Validator Manifest");
   lines.push("");
-  lines.push("### By Confidence Tier");
-  lines.push("");
-  lines.push(`- **CONFIRMED:** ${categorized.confirmed.length}`);
-  lines.push(`- **LIKELY:** ${categorized.likely.length}`);
-  lines.push(`- **SUSPECTED:** ${categorized.suspected.length}`);
-  lines.push("");
-  lines.push("### By Severity");
-  lines.push("");
-  lines.push(`- **Critical:** ${categorized.bySeverity.critical.length}`);
-  lines.push(`- **High:** ${categorized.bySeverity.high.length}`);
-  lines.push(`- **Medium:** ${categorized.bySeverity.medium.length}`);
-  lines.push(`- **Low:** ${categorized.bySeverity.low.length}`);
+  lines.push("| Validator | Status | Findings Processed |");
+  lines.push("|-----------|--------|-------------------|");
+  for (const row of manifestRows) {
+    lines.push(row);
+  }
   lines.push("");
 
-  // Confirmed Findings
+  // --- Confirmed Findings ---
   lines.push("## Confirmed Findings");
   lines.push("");
   if (categorized.confirmed.length === 0) {
@@ -436,6 +571,7 @@ function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCo
       lines.push("");
       lines.push(`- **Confidence:** CONFIRMED`);
       lines.push(`- **Severity:** ${finding.severity}`);
+      lines.push(`- **blocks_advance:** ${finding.blocks_advance || importance.blocksAdvanceLabel(finding.severity, "CONFIRMED")}`);
       lines.push(`- **Source:** ${finding.source} (${finding.perspective})`);
       lines.push(`- **Detail:** ${finding.text}`);
       lines.push("");
@@ -443,7 +579,7 @@ function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCo
   }
   lines.push("");
 
-  // Likely Findings
+  // --- Likely Findings ---
   lines.push("## Likely Findings");
   lines.push("");
   if (categorized.likely.length === 0) {
@@ -455,7 +591,7 @@ function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCo
   }
   lines.push("");
 
-  // Suspected Findings
+  // --- Suspected Findings ---
   lines.push("## Suspected Findings");
   lines.push("");
   if (categorized.suspected.length === 0) {
@@ -472,12 +608,27 @@ function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCo
     lines.push("");
   }
 
-  // Per-Perspective Attribution
+  // --- Discarded Findings (FALSE_POSITIVE) ---
+  // Each entry includes both original claim and counter-evidence in a single block.
+  const falsePositiveVerdicts = useVerdicts.filter((v) => v.verdict === "FALSE_POSITIVE");
+  if (falsePositiveVerdicts.length > 0) {
+    lines.push("## Discarded Findings");
+    lines.push("");
+    for (const v of falsePositiveVerdicts) {
+      const originalText = lookupOriginalFindingText(v.finding_id, useAllFindings);
+      lines.push(`### [${v.finding_id}] FALSE_POSITIVE`);
+      lines.push(`**Original claim:** ${originalText}`);
+      lines.push(`**Counter-evidence:** ${v.counter_evidence || "(no counter-evidence provided)"}`);
+      lines.push("");
+    }
+  }
+
+  // --- Per-Perspective Attribution ---
   lines.push("## Per-Perspective Attribution");
   lines.push("");
   const byPerspective = {};
-  const allFindings = [...categorized.confirmed, ...categorized.likely, ...categorized.suspected];
-  for (const finding of allFindings) {
+  const allFindingsForAttr = [...categorized.confirmed, ...categorized.likely, ...categorized.suspected];
+  for (const finding of allFindingsForAttr) {
     const key = finding.perspective || finding.source;
     if (!byPerspective[key]) {
       byPerspective[key] = { confirmed: 0, likely: 0, suspected: 0 };
@@ -496,7 +647,7 @@ function generateQAReport(sprintNumber, categorized, parsedOutputs, suppressedCo
   }
   lines.push("");
 
-  // Source Perspectives
+  // --- Source Perspectives ---
   lines.push("## Source Perspectives");
   lines.push("");
   for (const output of parsedOutputs) {
@@ -681,7 +832,690 @@ function incrementReviewCycle(pipelineDir, sprintNumber) {
   yamlIO.safeWrite(stateFile, state);
 }
 
+/**
+ * Write qa-run-output.yaml after the barrier sync (all QA agents complete).
+ * This file is the structured handoff to the validator stage.
+ *
+ * Must be called before any validator dispatch so validators can reference
+ * finding IDs (qa-finding-NNN) that are stable and pre-assigned.
+ *
+ * @param {string} sprintReviewDir — absolute path to .pipeline/reviews/sprint-NN/
+ * @param {number} sprintNumber — completed sprint number
+ * @param {Array<Object>} parsedQaFindings — flat finding objects from categorizeFindings output
+ * @returns {string} — absolute path to written qa-run-output.yaml
+ */
+function writeQaRunOutput(sprintReviewDir, sprintNumber, parsedQaFindings) {
+  const qaRunOutputPath = path.join(sprintReviewDir, "qa-run-output.yaml");
+  const qaRunOutput = {
+    schema_version: 1,
+    sprint: sprintNumber,
+    generated_at: new Date().toISOString(),
+    findings: parsedQaFindings.map((f, idx) => ({
+      id: `qa-finding-${String(idx + 1).padStart(3, "0")}`,
+      source_perspective: f.perspective,
+      severity: f.severity,
+      confidence: f.confidence,
+      text: f.text,
+      file_refs: f.fileRefs || [],
+      line_refs: f.lineRefs || [],
+      prior_find_id: f.priorFindId || null,
+    })),
+  };
+  yamlIO.safeWrite(qaRunOutputPath, qaRunOutput);
+  return qaRunOutputPath;
+}
+
+/**
+ * Count verdicts by category from a validator output or array of outputs.
+ * Used for progress signals after each validator completes.
+ *
+ * @param {Object|Array<Object>} outputs — single verdict object or array of them
+ * @returns {{ confirmed: number, fp: number, nc: number }}
+ */
+function countVerdicts(outputs) {
+  const arr = Array.isArray(outputs) ? outputs : [outputs];
+  return {
+    confirmed: arr.filter(v => v.verdict === "CONFIRMED" || v.verdict === "STILL_CONFIRMED" || v.verdict === "REGRESSED").length,
+    fp: arr.filter(v => v.verdict === "FALSE_POSITIVE").length,
+    nc: arr.filter(v => v.verdict === "NEEDS_CONTEXT" || v.verdict === "FIXED").length,
+  };
+}
+
+// Valid verdict values for validator output.
+// FIXED/REGRESSED/STILL_CONFIRMED are re-review verdicts — they update an existing
+// ledger entry status and must never create new FIND-IDs.
+const VALID_VALIDATOR_VERDICTS = new Set([
+  "CONFIRMED",
+  "FALSE_POSITIVE",
+  "NEEDS_CONTEXT",
+  "FIXED",
+  "REGRESSED",
+  "STILL_CONFIRMED",
+]);
+
+/**
+ * Parse raw validator agent output and validate it against the validator output schema.
+ *
+ * Severity check comes first — it is structurally prohibited in validator output
+ * (validators assess confidence, not severity; severity lives in QA findings only).
+ *
+ * @param {string} raw — raw string output from a validator agent
+ * @returns {{ ok: boolean, verdict?: Object, error?: string }}
+ */
+function parseValidatorOutput(raw) {
+  if (!raw || typeof raw !== "string") return { ok: false, error: "empty input" };
+
+  const allFenceMatches = [...raw.matchAll(/```yaml\n([\s\S]*?)```/g)];
+  if (allFenceMatches.length === 0) return { ok: false, error: "no YAML fenced block found" };
+  if (allFenceMatches.length > 1) {
+    return { ok: false, error: `multiple YAML fenced blocks found (${allFenceMatches.length}) — ambiguous output` };
+  }
+  const fenceMatch = allFenceMatches[0];
+
+  let verdict;
+  try {
+    verdict = jsYaml.load(fenceMatch[1]);
+  } catch (e) {
+    return { ok: false, error: `YAML parse error: ${e.message}` };
+  }
+
+  // severity field is structurally prohibited — check before all other validation
+  if ("severity" in verdict) {
+    return { ok: false, error: "severity field prohibited in validator output" };
+  }
+
+  if (!verdict.schema_version || verdict.schema_version !== 1) {
+    return { ok: false, error: `schema_version must be 1, found ${verdict.schema_version}` };
+  }
+
+  if (!verdict.finding_id) return { ok: false, error: "finding_id required" };
+
+  if (!VALID_VALIDATOR_VERDICTS.has(verdict.verdict)) {
+    return { ok: false, error: `verdict must be one of ${[...VALID_VALIDATOR_VERDICTS].join(", ")}` };
+  }
+
+  if (verdict.verdict === "CONFIRMED" && !verdict.path_evidence) {
+    return { ok: false, error: "path_evidence required for CONFIRMED verdict" };
+  }
+  if (verdict.verdict === "FALSE_POSITIVE" && !verdict.counter_evidence) {
+    return { ok: false, error: "counter_evidence required for FALSE_POSITIVE verdict" };
+  }
+  if (verdict.verdict === "NEEDS_CONTEXT" && !verdict.reason) {
+    return { ok: false, error: "reason required for NEEDS_CONTEXT verdict" };
+  }
+
+  const RE_REVIEW_VERDICTS = new Set(["FIXED", "REGRESSED", "STILL_CONFIRMED"]);
+  if (RE_REVIEW_VERDICTS.has(verdict.verdict) && !verdict.prior_find_id) {
+    return { ok: false, error: "prior_find_id required for re-review verdicts (FIXED/REGRESSED/STILL_CONFIRMED)" };
+  }
+
+  if (!verdict.validated_at) {
+    return { ok: false, error: "validated_at required" };
+  }
+
+  return { ok: true, verdict };
+}
+
+/**
+ * Validate that a CONFIRMED verdict's path_evidence references a real file with
+ * a real verbatim quote. Pure — no side effects, returns new object, never mutates.
+ *
+ * Only called when grounded_required === true in pipeline state. When the file
+ * or quote cannot be verified, the verdict is downgraded to NEEDS_CONTEXT so
+ * fabricated evidence cannot enter the confirmed ledger.
+ *
+ * @param {Object} verdict — parsed validator verdict object
+ * @param {string} projectRoot — absolute path to project root (parent of .pipeline/)
+ * @returns {Object} — original verdict or downgraded copy; never mutates input
+ */
+function validatePathEvidence(verdict, projectRoot) {
+  if (verdict.verdict !== "CONFIRMED") return verdict;
+
+  const evidence = verdict.path_evidence;
+  if (!evidence || typeof evidence !== "string") {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-unparseable" };
+  }
+
+  // Parse: "path/to/file.js:42 — some code" or "path/to/file.js — some code"
+  const colonMatch = evidence.match(/^([^:—\n]+?)(?::(\d+))?\s*[—-]\s*(.+)$/s);
+  if (!colonMatch) {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-unparseable" };
+  }
+
+  const [, filePath, , quote] = colonMatch;
+  const absPath = path.isAbsolute(filePath.trim())
+    ? filePath.trim()
+    : path.join(projectRoot, filePath.trim());
+
+  // Reject path traversal — evidence must reference a file inside the project
+  if (!path.resolve(absPath).startsWith(path.resolve(projectRoot) + path.sep) &&
+      path.resolve(absPath) !== path.resolve(projectRoot)) {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-outside-project" };
+  }
+
+  if (!fs.existsSync(absPath)) {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-not-found" };
+  }
+
+  let content;
+  try { content = fs.readFileSync(absPath, "utf8"); }
+  catch (_e) { return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-not-found" }; }
+
+  const trimmedQuote = quote.trim();
+
+  if (trimmedQuote.length < MIN_PATH_EVIDENCE_QUOTE_CHARS) {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-too-short" };
+  }
+
+  if (!content.includes(trimmedQuote)) {
+    return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "fabricated-path-evidence" };
+  }
+
+  return verdict;
+}
+
+/**
+ * Write false-positives.yaml for the sprint review directory.
+ *
+ * Called after all validator outputs are collected. FALSE_POSITIVE entries
+ * are written here and must NEVER appear in confirmed-findings.yaml.
+ *
+ * @param {string} sprintReviewDir — absolute path to .pipeline/reviews/sprint-NN/
+ * @param {number} sprintNumber — sprint number
+ * @param {Array<Object>} validatorOutputs — array of parsed validator verdict objects
+ * @returns {string} — absolute path to written false-positives.yaml
+ */
+function writeFalsePositives(sprintReviewDir, sprintNumber, validatorOutputs) {
+  const falsePositives = validatorOutputs.filter((v) => v.verdict === "FALSE_POSITIVE");
+  const fpPath = path.join(sprintReviewDir, "false-positives.yaml");
+  yamlIO.safeWrite(fpPath, {
+    schema_version: 1,
+    sprint: sprintNumber,
+    generated_at: new Date().toISOString(),
+    false_positives: falsePositives.map((v) => ({
+      finding_id: v.finding_id,
+      counter_evidence: v.counter_evidence,
+      validator_perspective: v.validator_perspective,
+      validated_at: v.validated_at,
+    })),
+  });
+  return fpPath;
+}
+
+/**
+ * Halt if this is a re-review but confirmed-findings.yaml is absent.
+ *
+ * Must be called BEFORE any QA agents are dispatched. A re-review is detected
+ * by the presence of qa-run-output.yaml from a prior run. If that file exists
+ * but the ledger (confirmed-findings.yaml) is missing, the pipeline is in an
+ * inconsistent state and review cannot proceed safely.
+ *
+ * Calls process.exit(1) on halt — does NOT write QA-REPORT.md.
+ *
+ * @param {string} sprintReviewDir — absolute path to .pipeline/reviews/sprint-NN/
+ */
+function checkMissingLedger(sprintReviewDir) {
+  const priorQaOutput = path.join(sprintReviewDir, "qa-run-output.yaml");
+  const isRereview = fs.existsSync(priorQaOutput);
+  const ledgerPath = path.join(sprintReviewDir, "confirmed-findings.yaml");
+
+  if (isRereview && !fs.existsSync(ledgerPath)) {
+    console.error(
+      `[essense-flow] Re-review halted: confirmed-findings.yaml not found.\nExpected at: ${ledgerPath}`
+    );
+    process.exit(1);
+  }
+}
+
+/**
+ * Wrap a validator function call with a wall-clock timeout.
+ * Rejects with Error("validator-timeout") if timeoutMs elapses first.
+ *
+ * @param {Function} validatorFn — zero-arg async function returning validator result
+ * @param {number} timeoutMs — milliseconds before timeout rejection
+ * @returns {Promise<*>}
+ */
+function dispatchValidatorWithTimeout(validatorFn, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("validator-timeout")), timeoutMs);
+    validatorFn().then(
+      (result) => { clearTimeout(timer); resolve(result); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
+/**
+ * Map a validator dispatch error to a synthetic NEEDS_CONTEXT verdict for every
+ * finding owned by that validator perspective.
+ *
+ * @param {Error} err — the caught error from dispatchValidatorWithTimeout
+ * @param {string} perspectiveId — validator's perspective ID
+ * @param {Array<Object>} allFindings — all qa findings (from categorizeFindings output)
+ * @returns {Array<Object>} synthetic verdict objects for affected findings
+ */
+function buildTimeoutVerdicts(err, perspectiveId, allFindings) {
+  // Determine reason string from error message
+  let reason;
+  if (err.message === "validator-timeout") {
+    reason = "validator-timeout";
+  } else if (err.message && err.message.startsWith("YAML parse error")) {
+    reason = "validator-parse-failure";
+  } else {
+    reason = "validator-unknown-verdict";
+  }
+
+  const affected = allFindings.filter((f) => f.perspective === perspectiveId);
+
+  // When no findings are attributed to this perspective, return single synthetic entry
+  if (affected.length === 0) {
+    return [{ verdict: "NEEDS_CONTEXT", finding_id: `${perspectiveId}-timeout`, reason, validator_perspective: perspectiveId }];
+  }
+
+  return affected.map((f) => ({
+    verdict: "NEEDS_CONTEXT",
+    finding_id: f.id || `${perspectiveId}-unknown`,
+    reason,
+    validator_perspective: perspectiveId,
+  }));
+}
+
+/**
+ * Read human acknowledgment records from acknowledged.yaml.
+ * Returns only entries where acknowledged_by === "human" with a find_id and rationale.
+ * Read-only — never writes the file.
+ *
+ * @param {string} ackPath — absolute path to acknowledged.yaml
+ * @returns {Array<{ find_id: string, acknowledged_by: string, rationale: string }>}
+ */
+function readAcknowledgments(ackPath) {
+  if (!fs.existsSync(ackPath)) return [];
+  const data = yamlIO.safeRead(ackPath);
+  if (!data || !Array.isArray(data.acknowledgments)) return [];
+  return data.acknowledgments.filter(
+    (a) =>
+      a.acknowledged_by === "human" &&
+      typeof a.find_id === "string" &&
+      a.find_id.length > 0 &&
+      a.rationale
+  );
+}
+
+/**
+ * Compute PASS/FAIL verdict from a confirmed-findings ledger and acknowledgment records.
+ *
+ * Two independent gates controlled by named constants:
+ *   - PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS: any CONFIRMED critical → FAIL
+ *   - PASS_REQUIRES_ZERO_UNACKNOWLEDGED_NC_CRITICALS: NEEDS_CONTEXT critical without
+ *     a human acknowledgment → FAIL
+ *
+ * @param {{ findings?: Array<Object> }|null} ledger — confirmed-findings ledger object
+ * @param {Array<{ find_id: string, acknowledged_by: string, rationale: string }>} ackRecords
+ * @returns {{ verdict: "PASS"|"FAIL", confirmed_criticals: number, unacknowledged_nc_criticals: number }}
+ */
+function computeVerdict(ledger, ackRecords) {
+  const findings = (ledger && ledger.findings) || [];
+  // Only human acknowledgments count — auto-generated acks are not trusted
+  const humanAcks = (ackRecords || []).filter((a) => a.acknowledged_by === "human");
+  const ackSet = new Set(humanAcks.map((a) => a.find_id));
+
+  const confirmedCriticals = findings.filter(
+    (f) => f.status === "CONFIRMED" && f.severity === "critical"
+  ).length;
+
+  const unacknowledgedNcCriticals = findings.filter(
+    (f) => f.status === "NEEDS_CONTEXT" && f.severity === "critical" && !ackSet.has(f.id)
+  ).length;
+
+  const pass =
+    (PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS ? confirmedCriticals === 0 : true) &&
+    (PASS_REQUIRES_ZERO_UNACKNOWLEDGED_NC_CRITICALS ? unacknowledgedNcCriticals === 0 : true);
+
+  return {
+    verdict: pass ? "PASS" : "FAIL",
+    confirmed_criticals: confirmedCriticals,
+    unacknowledged_nc_criticals: unacknowledgedNcCriticals,
+  };
+}
+
+/**
+ * Orchestrate the full review pipeline for a sprint:
+ *   1. Barrier sync: collect all QA findings (caller provides parsedOutputs — already complete)
+ *   2. Write qa-run-output.yaml (stable finding IDs before any validator sees them)
+ *   3. Write validator-checkpoint.yaml
+ *   4. Dispatch all validators as a second wave, with per-validator timeout
+ *   5. Heartbeat lockfile throughout the validator wait
+ *   6. Update checkpoint after each validator completes (n-1 quorum — one failure allowed)
+ *   7. Write false-positives.yaml
+ *   8. Write QA-REPORT.md
+ *
+ * Validator wave is a second wave AFTER all QA agents complete — never triggered
+ * per-QA-completion (barrier sync enforced by function signature: caller must have
+ * already awaited all QA agents and assembled parsedOutputs before calling runReview).
+ *
+ * @param {Array<Object>} parsedOutputs — parsed QA agent outputs from parseReviewOutputs
+ * @param {number} sprintNumber — completed sprint number
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {Object} config — pipeline config
+ * @param {Array<Function>} [validatorFns] — optional array of per-perspective async validator functions;
+ *   each function must return a raw string (validator agent output). When omitted (normal pipeline
+ *   operation) validators are dispatched externally and outputs passed via validatorRawOutputs.
+ * @param {Array<{ perspectiveId: string, rawOutput: string }>} [validatorRawOutputs] — pre-collected
+ *   raw validator outputs when dispatched externally (alternative to validatorFns).
+ * @returns {Promise<{ ok: boolean, reportPath: string, validatorVerdicts: Array<Object>, summary: Object }>}
+ */
+async function runReview(parsedOutputs, sprintNumber, pipelineDir, config, validatorFns, validatorRawOutputs) {
+  const sprintPad = String(sprintNumber).padStart(2, "0");
+  const sprintReviewDir = path.join(pipelineDir, "reviews", `sprint-${sprintPad}`);
+  paths.ensureDir(sprintReviewDir);
+  checkMissingLedger(sprintReviewDir);
+
+  // --- Step 1: Categorize all QA findings (barrier sync already enforced by caller) ---
+  const categorized = categorizeFindings(parsedOutputs);
+  const { categorized: capped, suppressedCount } = applySuspectedCap(categorized);
+  const allFindings = [
+    ...capped.confirmed,
+    ...capped.likely,
+    ...capped.suspected,
+  ];
+
+  // --- Step 2: Write qa-run-output.yaml BEFORE any validator dispatch ---
+  // Assigns stable qa-finding-NNN IDs that validators reference.
+  const qaRunOutputPath = writeQaRunOutput(sprintReviewDir, sprintNumber, allFindings);
+
+  // Attach IDs back onto allFindings so buildTimeoutVerdicts can reference them
+  allFindings.forEach((f, idx) => {
+    f.id = `qa-finding-${String(idx + 1).padStart(3, "0")}`;
+  });
+
+  // --- Step 3: Write validator-checkpoint.yaml before first dispatch ---
+  const checkpointPath = path.join(sprintReviewDir, "validator-checkpoint.yaml");
+  const perspectives = DEFAULT_REVIEW_PERSPECTIVES;
+  const checkpoint = {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    validators_dispatched: perspectives.map((p) => p.id),
+    validators_completed: [],
+  };
+  yamlIO.safeWrite(checkpointPath, checkpoint);
+
+  // Determine if path-evidence grounding check is required for this run.
+  // Read state once here — grounded_required is a pipeline-level flag.
+  const statePath = path.join(pipelineDir, "state.yaml");
+  const pipelineState = yamlIO.safeReadWithFallback(statePath);
+  const groundedRequired = pipelineState && pipelineState.grounded_required === true;
+  const projectRoot = path.resolve(pipelineDir, "..");
+
+  // --- Steps 4 + 5: Dispatch validators (second wave) with timeout + heartbeat ---
+  const validatorVerdicts = [];
+
+  const heartbeat = setInterval(
+    () => Promise.resolve(lockfile.updateHeartbeat(pipelineDir)).catch(() => {}),
+    HEARTBEAT_INTERVAL_MS
+  );
+  // Must not prevent process exit if the event loop would otherwise drain
+  heartbeat.unref();
+
+  try {
+    if (validatorFns && validatorFns.length > 0) {
+      // Programmatic mode: caller supplies async validator functions (one per perspective)
+      const validatorPromises = perspectives.map(async (perspective, i) => {
+        const fn = validatorFns[i];
+        const findingCount = allFindings.filter(f => f.perspective === perspective.id).length;
+
+        if (!fn) {
+          // No function for this perspective — treat as NEEDS_CONTEXT
+          const synthetic = buildTimeoutVerdicts(
+            new Error("validator-unknown-verdict"),
+            perspective.id,
+            allFindings
+          );
+          synthetic.forEach((v) => validatorVerdicts.push(v));
+          console.log(`[validator] ${perspective.id}: parse failure — ${findingCount} findings marked NEEDS_CONTEXT`);
+          return;
+        }
+
+        console.log(`[validator] ${perspective.id}: processing ${findingCount} findings...`);
+
+        let rawOutput;
+        try {
+          rawOutput = await dispatchValidatorWithTimeout(fn, VALIDATOR_TIMEOUT_MS);
+        } catch (err) {
+          // n-1 quorum: one failed validator must not fail the whole review
+          const synthetic = buildTimeoutVerdicts(err, perspective.id, allFindings);
+          synthetic.forEach((v) => validatorVerdicts.push(v));
+          if (err.message === "validator-timeout") {
+            console.log(`[validator] ${perspective.id}: timed out after ${VALIDATOR_TIMEOUT_MS / 1000}s (${findingCount} findings marked NEEDS_CONTEXT)`);
+          } else {
+            console.log(`[validator] ${perspective.id}: parse failure — ${findingCount} findings marked NEEDS_CONTEXT`);
+          }
+          // Update checkpoint even on failure
+          checkpoint.validators_completed.push(perspective.id);
+          yamlIO.safeWrite(checkpointPath, checkpoint);
+          return;
+        }
+
+        const parsed = parseValidatorOutput(rawOutput);
+        if (!parsed.ok) {
+          const synthetic = buildTimeoutVerdicts(
+            new Error(`YAML parse error: ${parsed.error}`),
+            perspective.id,
+            allFindings
+          );
+          synthetic.forEach((v) => validatorVerdicts.push(v));
+          console.log(`[validator] ${perspective.id}: parse failure — ${findingCount} findings marked NEEDS_CONTEXT`);
+        } else {
+          const v = groundedRequired ? validatePathEvidence(parsed.verdict, projectRoot) : parsed.verdict;
+          validatorVerdicts.push(v);
+          const counts = countVerdicts(v);
+          console.log(`[validator] ${perspective.id}: completed (${counts.confirmed} confirmed, ${counts.fp} false-positive, ${counts.nc} needs-context)`);
+        }
+
+        // Update checkpoint after each validator completes
+        checkpoint.validators_completed.push(perspective.id);
+        yamlIO.safeWrite(checkpointPath, checkpoint);
+      });
+
+      // Await all validators concurrently — barrier sync already done (QA wave is complete)
+      await Promise.all(validatorPromises);
+
+    } else if (validatorRawOutputs && validatorRawOutputs.length > 0) {
+      // External dispatch mode: raw outputs provided (agent dispatch already done externally)
+      for (const { perspectiveId, rawOutput } of validatorRawOutputs) {
+        const findingCount = allFindings.filter(f => f.perspective === perspectiveId).length;
+        console.log(`[validator] ${perspectiveId}: processing ${findingCount} findings...`);
+
+        const parsed = parseValidatorOutput(rawOutput);
+        if (!parsed.ok) {
+          const synthetic = buildTimeoutVerdicts(
+            new Error(`YAML parse error: ${parsed.error}`),
+            perspectiveId,
+            allFindings
+          );
+          synthetic.forEach((v) => validatorVerdicts.push(v));
+          console.log(`[validator] ${perspectiveId}: parse failure — ${findingCount} findings marked NEEDS_CONTEXT`);
+        } else {
+          const v = groundedRequired ? validatePathEvidence(parsed.verdict, projectRoot) : parsed.verdict;
+          validatorVerdicts.push(v);
+          const counts = countVerdicts(v);
+          console.log(`[validator] ${perspectiveId}: completed (${counts.confirmed} confirmed, ${counts.fp} false-positive, ${counts.nc} needs-context)`);
+        }
+
+        checkpoint.validators_completed.push(perspectiveId);
+        yamlIO.safeWrite(checkpointPath, checkpoint);
+      }
+    }
+    // If neither validatorFns nor validatorRawOutputs provided, proceed with no verdicts
+    // (pipeline continues — n-1 quorum allows all validators to be absent)
+
+  } finally {
+    clearInterval(heartbeat);
+    // Clear grounded_required — this run consumed it (DEC-035)
+    if (groundedRequired) {
+      const currentState = yamlIO.safeReadWithFallback(statePath) || {};
+      yamlIO.safeWrite(statePath, {
+        ...currentState,
+        grounded_required: false,
+        last_updated: new Date().toISOString(),
+      });
+    }
+  }
+
+  // --- Step 5b: Write confirmed-findings.yaml (DEC-039) ---
+  const ledgerPath = path.join(sprintReviewDir, "confirmed-findings.yaml");
+  const existingLedger = ledger.initLedger(ledgerPath);
+
+  const newConfirmed = validatorVerdicts.filter(v => v.verdict === "CONFIRMED");
+  if (newConfirmed.length > 0) {
+    const { updated, nextId } = ledger.assignFindIds(newConfirmed, existingLedger.next_id);
+    existingLedger.findings.push(...updated.map(v => ({
+      id: v.id,
+      finding_id: v.finding_id,
+      verdict: "CONFIRMED",
+      severity: (allFindings.find(f => f.id === v.finding_id) || {}).severity || "unknown",
+      status: "CONFIRMED",
+      path_evidence: v.path_evidence,
+      validator_perspective: v.validator_perspective,
+      confirmed_at: v.validated_at || new Date().toISOString(),
+    })));
+    existingLedger.next_id = nextId;
+  }
+
+  for (const v of validatorVerdicts.filter(v =>
+    v.verdict === "FIXED" || v.verdict === "REGRESSED" || v.verdict === "STILL_CONFIRMED"
+  )) {
+    const entry = existingLedger.findings.find(f => f.id === v.prior_find_id);
+    if (entry) {
+      entry.status = v.verdict;
+      entry.updated_at = v.validated_at || new Date().toISOString();
+    }
+  }
+
+  ledger.writeLedger(ledgerPath, existingLedger);
+
+  // --- Step 6: Write false-positives.yaml ---
+  writeFalsePositives(sprintReviewDir, sprintNumber, validatorVerdicts);
+
+  // --- Step 7: Compute verdict using ledger + acknowledgments ---
+  // ledgerPath already defined in Step 5b above
+  const confirmedLedger = fs.existsSync(ledgerPath) ? yamlIO.safeRead(ledgerPath) : null;
+
+  // Read human acknowledgments (read-only — never written here)
+  const ackPath = path.join(sprintReviewDir, "acknowledged.yaml");
+  const ackRecords = readAcknowledgments(ackPath);
+
+  const { verdict, confirmed_criticals, unacknowledged_nc_criticals } = computeVerdict(confirmedLedger, ackRecords);
+
+  // --- Step 8: Generate and write QA-REPORT.md ---
+  // Pass perspectives, validatorVerdicts, and allFindings so the report can:
+  //   - validate the manifest (throws before write if any perspective missing)
+  //   - render FALSE_POSITIVE juxtaposition blocks with original claim text
+  const report = generateQAReport(sprintNumber, capped, parsedOutputs, suppressedCount, perspectives, validatorVerdicts, allFindings);
+  const reportPath = writeQAReport(pipelineDir, sprintNumber, report);
+
+  const summary = {
+    totalFindings: allFindings.length,
+    confirmed: capped.confirmed.length,
+    likely: capped.likely.length,
+    suspected: capped.suspected.length,
+    suppressedCount,
+    validatorVerdictCount: validatorVerdicts.length,
+    falsePositiveCount: validatorVerdicts.filter((v) => v.verdict === "FALSE_POSITIVE").length,
+    verdict,
+    confirmed_criticals,
+    unacknowledged_nc_criticals,
+    // Legacy boolean for callers that check summary.pass directly
+    pass: verdict === "PASS",
+  };
+
+  return { ok: true, reportPath, qaRunOutputPath, validatorVerdicts, summary };
+}
+
+/**
+ * Build a minimal QA-REPORT.md from deterministic gate failures.
+ * Used when the gate fails and LLM review is skipped — failures ARE the findings.
+ */
+function buildGateFailureReport(sprintNumber, gateFindings) {
+  const lines = [];
+  const blocksAdvanceCount = gateFindings.filter((f) => f.blocks_advance === "yes").length;
+  const findingsTotal = gateFindings.length;
+  const verdict = blocksAdvanceCount > 0 ? "FAIL" : "PASS";
+
+  lines.push("---");
+  lines.push("artifact: qa-report");
+  lines.push("schema_version: 2");
+  lines.push("produced_by: /review");
+  lines.push("read_by: /triage");
+  lines.push(`sprint: ${sprintNumber}`);
+  lines.push(`verdict: ${verdict}`);
+  lines.push(`blocks_advance_count: ${blocksAdvanceCount}`);
+  lines.push(`findings_total: ${findingsTotal}`);
+  lines.push("source: deterministic-gate");
+  lines.push(`generated_at: ${new Date().toISOString()}`);
+  lines.push("---");
+  lines.push("");
+  lines.push(`# Sprint ${sprintNumber} QA Report`);
+  lines.push("");
+  lines.push("## QA Summary");
+  lines.push("Source: deterministic gate (npm test / lint).");
+  lines.push("LLM review skipped — fix deterministic failures before re-running review.");
+  lines.push(`Verdict: ${verdict}`);
+  lines.push(`blocks_advance_count: ${blocksAdvanceCount}`);
+  lines.push(`Total findings: ${findingsTotal}`);
+  lines.push("");
+  lines.push("## Confirmed Findings");
+  lines.push("");
+  for (const f of gateFindings) {
+    lines.push(`### [${(f.severity || "critical").toUpperCase()}] ${f.id}: ${f.type || f.category} failure`);
+    lines.push("");
+    lines.push(`- **Confidence:** CONFIRMED`);
+    lines.push(`- **Severity:** ${f.severity}`);
+    lines.push(`- **blocks_advance:** ${f.blocks_advance}`);
+    lines.push(`- **Source:** ${f.file}`);
+    lines.push(`- **Reproduction:** \`${f.reproduction}\``);
+    lines.push(`- **Detail:** ${f.reason}`);
+    if (f.output) {
+      const truncated = String(f.output).slice(0, 4000);
+      lines.push("");
+      lines.push("```");
+      lines.push(truncated);
+      if (String(f.output).length > 4000) lines.push("... (truncated)");
+      lines.push("```");
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Run deterministic gate, write QA-REPORT directly if it fails.
+ * SKILL.md instructs the review skill to call this BEFORE dispatching QA agents:
+ *   - gate.ok = false → QA-REPORT is already written; do NOT dispatch agents; return.
+ *   - gate.ok = true → proceed with normal LLM review (assemble briefs, dispatch, runReview).
+ *
+ * This is the "deterministic before LLM" enforcement point. Tests/lint failures are
+ * findings the LLM does not need to re-discover.
+ */
+function preReviewGate(projectRoot, pipelineDir, sprintNumber, options = {}) {
+  const gate = deterministicGate.runGate(projectRoot, options);
+  if (gate.ok) {
+    return { ok: true, gateRan: true, gateResult: gate };
+  }
+  const findings = deterministicGate.failuresToFindings(gate.failures, sprintNumber);
+  const reportContent = buildGateFailureReport(sprintNumber, findings);
+  const reportPath = writeQAReport(pipelineDir, sprintNumber, reportContent);
+  return {
+    ok: false,
+    gateRan: true,
+    gateResult: gate,
+    qaReportPath: reportPath,
+    findings,
+    reason: "deterministic gate failed — fix before re-running review",
+  };
+}
+
 module.exports = {
+  countVerdicts,
   DEFAULT_REVIEW_PERSPECTIVES,
   CONFIDENCE_TIERS,
   SEVERITY_LEVELS,
@@ -696,6 +1530,9 @@ module.exports = {
   inferSeverity,
   categorizeFindings,
   applySuspectedCap,
+  buildValidatorManifestRows,
+  buildValidatorResults,
+  lookupOriginalFindingText,
   generateQAReport,
   extractFindingName,
   writeQAReport,
@@ -707,4 +1544,22 @@ module.exports = {
   MAX_REVIEW_CYCLES,
   checkReviewCycleLimit,
   incrementReviewCycle,
+  writeQaRunOutput,
+  VALID_VALIDATOR_VERDICTS,
+  parseValidatorOutput,
+  writeFalsePositives,
+  checkMissingLedger,
+  dispatchValidatorWithTimeout,
+  buildTimeoutVerdicts,
+  validatePathEvidence,
+  runReview,
+  readAcknowledgments,
+  computeVerdict,
+  // Deterministic gate — call BEFORE dispatching QA agents.
+  // preReviewGate runs the gate AND writes QA-REPORT directly if failures occur.
+  // SKILL.md uses this as the entry point — when ok:false, do NOT dispatch agents.
+  preReviewGate,
+  buildGateFailureReport,
+  runDeterministicGate: (projectRoot, options) => deterministicGate.runGate(projectRoot, options),
+  gateFailuresToFindings: (failures, sprint) => deterministicGate.failuresToFindings(failures, sprint),
 };

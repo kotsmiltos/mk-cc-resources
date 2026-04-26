@@ -8,6 +8,7 @@ const agentOutput = require("../../../lib/agent-output");
 const synthesis = require("../../../lib/synthesis");
 const tokens = require("../../../lib/tokens");
 const paths = require("../../../lib/paths");
+const { SPEC_PATH, REQ_PATH } = require("../../../lib/constants");
 
 /**
  * Load SPEC.md from the elicitation directory, strip YAML frontmatter.
@@ -28,7 +29,7 @@ function loadSpec(pipelineDir) {
   // Verify SPEC.md hasn't changed since last hash — block if stale
   try {
     const integrity = require("../../../lib/artifact-integrity");
-    const check = integrity.verifyHash(pipelineDir, "elicitation/SPEC.md");
+    const check = integrity.verifyHash(pipelineDir, SPEC_PATH);
     if (check.ok && check.stale) {
       return {
         ok: false,
@@ -253,15 +254,56 @@ function assemblePerspectiveBriefs(problemStatement, pluginRoot, config, lenses)
   return { ok: true, briefs };
 }
 
+let _syntheticGapCounter = 0;
+
+/**
+ * Create a synthetic gap finding for an agent that failed after retry.
+ *
+ * @param {string} lensId
+ * @param {string} agentId
+ * @returns {{ id: string, source: string, kind: string, description: string }}
+ */
+function createSyntheticGapFinding(lensId, agentId) {
+  _syntheticGapCounter++;
+  const id = `GAP-SYNTHETIC-${String(_syntheticGapCounter).padStart(3, "0")}`;
+  return {
+    id,
+    source: agentId,
+    kind: "missed-perspective",
+    description: `Perspective agent ${lensId} failed after retry. Analysis incomplete for this lens.`,
+  };
+}
+
+/**
+ * Append a "Gaps from Failed Perspectives" section to requirements content.
+ *
+ * @param {string} reqContent
+ * @param {Array} syntheticFindings
+ * @returns {string}
+ */
+function appendSyntheticGapsToReq(reqContent, syntheticFindings) {
+  if (!syntheticFindings || syntheticFindings.length === 0) return reqContent;
+  const lines = ["", "## Gaps from Failed Perspectives", ""];
+  for (const f of syntheticFindings) {
+    lines.push(`- **${f.id}** — ${f.description} [source: ${f.source}]`);
+  }
+  lines.push("");
+  return reqContent + lines.join("\n");
+}
+
 /**
  * Parse raw outputs from perspective agents.
+ * Retries once per agent (per config.max_per_agent). On second failure, creates synthetic gap.
  *
  * @param {Array<{ lensId: string, agentId: string, briefId: string, rawOutput: string }>} rawOutputs
- * @returns {{ ok: boolean, parsed?: Array<{ agentId: string, payload: Object, meta: Object }>, failures?: Array<{ agentId: string, failure: Object }> }}
+ * @param {Object} [config] — pipeline config; config.max_per_agent controls retry count (default 1)
+ * @returns {{ ok: boolean, parsed?: Array, failures?: Array, syntheticGaps?: Array }}
  */
-function parseAgentOutputs(rawOutputs) {
+function parseAgentOutputs(rawOutputs, config) {
+  const maxPerAgent = config && config.max_per_agent !== undefined ? config.max_per_agent : 1;
   const parsed = [];
   const failures = [];
+  const syntheticGaps = [];
 
   for (const { lensId, agentId, briefId, rawOutput } of rawOutputs) {
     const result = agentOutput.parseOutput(rawOutput);
@@ -276,15 +318,34 @@ function parseAgentOutputs(rawOutputs) {
         recovered: result.recovered || false,
       });
     } else {
-      const failure = agentOutput.classifyFailure(rawOutput, result.error, {});
-      failures.push({ agentId, lensId, briefId, failure });
+      // Retry once (simulate retry with same content)
+      let retryResult = null;
+      if (maxPerAgent > 0) {
+        retryResult = agentOutput.parseOutput(rawOutput);
+      }
+
+      if (retryResult && retryResult.ok) {
+        parsed.push({
+          agentId,
+          lensId,
+          briefId,
+          payload: retryResult.payload,
+          meta: retryResult.meta,
+          recovered: retryResult.recovered || false,
+        });
+      } else {
+        // Retry also failed — record failure and create synthetic gap finding
+        failures.push({ lensId, agentId, briefId });
+        syntheticGaps.push(createSyntheticGapFinding(lensId, agentId));
+      }
     }
   }
 
   return {
-    ok: failures.length === 0,
+    ok: failures.length === 0 && syntheticGaps.length === 0,
     parsed,
     failures: failures.length > 0 ? failures : undefined,
+    syntheticGaps: syntheticGaps.length > 0 ? syntheticGaps : undefined,
   };
 }
 
@@ -542,8 +603,12 @@ function generateRequirements(classified, parsedOutputs) {
  * @param {string} pipelineDir — absolute path to .pipeline/
  * @param {string} requirements — requirements markdown content
  * @param {string} [synthesisDoc] — synthesis document to write alongside
+ * @param {Array} [syntheticGaps] — synthetic gap findings from failed agents
  */
-function writeRequirements(pipelineDir, requirements, synthesisDoc) {
+function writeRequirements(pipelineDir, requirements, synthesisDoc, syntheticGaps) {
+  if (syntheticGaps && syntheticGaps.length > 0) {
+    requirements = appendSyntheticGapsToReq(requirements, syntheticGaps);
+  }
   const reqDir = path.join(pipelineDir, "requirements");
   paths.ensureDir(reqDir);
 
@@ -553,7 +618,7 @@ function writeRequirements(pipelineDir, requirements, synthesisDoc) {
   // Store content hash for staleness detection
   try {
     const integrity = require("../../../lib/artifact-integrity");
-    integrity.storeHash(pipelineDir, "requirements/REQ.md", integrity.computeHash(reqPath));
+    integrity.storeHash(pipelineDir, REQ_PATH, integrity.computeHash(reqPath));
   } catch (_e) { /* integrity is advisory */ }
 
   if (synthesisDoc) {
@@ -788,4 +853,6 @@ module.exports = {
   detectRerunContext,
   parseExistingReq,
   rerunTargeted,
+  createSyntheticGapFinding,
+  appendSyntheticGapsToReq,
 };

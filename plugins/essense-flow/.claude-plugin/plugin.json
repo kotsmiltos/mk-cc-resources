@@ -1,7 +1,7 @@
 {
   "name": "essense-flow",
-  "version": "0.3.3",
-  "description": "Multi-phase AI development pipeline: Elicit, Research, Triage, Architecture, Build, Review, Verify — 11 commands, 8 skills",
+  "version": "0.4.0",
+  "description": "Multi-phase AI development pipeline with verification discipline: context map, deterministic gate, blocks_advance routing, scope-adaptive depth, propagating artifact contracts.",
   "author": {
     "name": "mkots"
   }

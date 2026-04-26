@@ -11,9 +11,40 @@ const consistency = require("../../../lib/consistency");
 const transformLib = require("../../../lib/transform");
 const tokens = require("../../../lib/tokens");
 const paths = require("../../../lib/paths");
+const { SPEC_PATH, ARCH_PATH } = require("../../../lib/constants");
 
 // Architecture perspective brief template path
 const ARCH_BRIEF_TEMPLATE_REL = "skills/architect/templates/architecture-brief.md";
+
+// Directories excluded from project file search
+const SEARCH_EXCLUDED_DIRS = new Set(["node_modules", ".git", ".pipeline"]);
+
+/**
+ * Recursively collect all .js/.ts/.md/.yaml/.yml/.json files under projectRoot,
+ * skipping excluded directories.
+ *
+ * @param {string} projectRoot — absolute path to project root
+ * @returns {string[]} absolute file paths
+ */
+function collectProjectFiles(projectRoot) {
+  const results = [];
+  function walk(dir) {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_e) { return; }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (!SEARCH_EXCLUDED_DIRS.has(entry.name)) walk(path.join(dir, entry.name));
+      } else if (/\.(js|ts|md|yaml|yml|json)$/.test(entry.name)) {
+        results.push(path.join(dir, entry.name));
+      }
+    }
+  }
+  walk(projectRoot);
+  return results;
+}
+
+// Case-insensitive global regex to extract file references from finding text
+const FILE_REF_PATTERN = /\b([\w./\\-]+\.(?:js|ts|md|yaml|yml|json))\b/gi;
 
 // Architecture perspective lenses
 const ARCHITECTURE_LENSES = [
@@ -41,13 +72,59 @@ function loadSpec(pipelineDir) {
   // Verify SPEC.md hasn't changed since last hash
   try {
     const integrity = require("../../../lib/artifact-integrity");
-    const check = integrity.verifyHash(pipelineDir, "elicitation/SPEC.md");
+    const check = integrity.verifyHash(pipelineDir, SPEC_PATH);
     if (check.ok && check.stale) {
       console.error("[essense-flow] WARNING: SPEC.md changed since last hashed. Downstream artifacts may be stale.");
     }
   } catch (_e) { /* integrity is advisory */ }
 
-  return { content: stripped, tokenCount: tokens.countTokens(stripped) };
+  // Parse complexity block from frontmatter — drives decomposition depth.
+  // Missing block returns null; architect treats it as standard depth.
+  let complexity = null;
+  try {
+    const elicitRunner = require("../../elicit/scripts/elicit-runner");
+    complexity = elicitRunner.parseComplexityBlock(raw);
+  } catch (_e) { /* complexity is advisory */ }
+
+  return { content: stripped, tokenCount: tokens.countTokens(stripped), complexity };
+}
+
+/**
+ * Recommend decomposition depth from complexity signal.
+ * Returns a structured recommendation — architect honors as guidance, not as
+ * a hard cap. The actual wave count is set by Claude's judgment informed by this.
+ *
+ *   bug-fix         → flat (single-wave decomposition where possible)
+ *   new-feature     → standard (multi-wave when shared modules touched)
+ *   partial-rewrite → high-care (track cross-cutting concerns; what touches changed code)
+ *   new-project     → full (multi-perspective, full decomposition tree)
+ *
+ * touch_surface:broad escalates depth one level. unknown_count > 2 signals research first.
+ */
+function recommendDecompositionDepth(complexity) {
+  if (!complexity || !complexity.assessment) {
+    return { depth: "standard", notes: ["no complexity block in SPEC.md — defaulting to standard depth"] };
+  }
+  const notes = [];
+  let depth;
+  switch (complexity.assessment) {
+    case "bug-fix":         depth = "flat"; break;
+    case "new-feature":     depth = "standard"; break;
+    case "partial-rewrite": depth = "high-care"; break;
+    case "new-project":     depth = "full"; break;
+    default:                depth = "standard";
+  }
+  if (complexity.touch_surface === "broad" && depth === "flat") {
+    depth = "standard";
+    notes.push("touch_surface:broad escalated depth: flat → standard");
+  } else if (complexity.touch_surface === "broad" && depth === "standard") {
+    depth = "high-care";
+    notes.push("touch_surface:broad escalated depth: standard → high-care");
+  }
+  if (Number.isFinite(complexity.unknown_count) && complexity.unknown_count > 2) {
+    notes.push(`unknown_count=${complexity.unknown_count} > 2 — research phase should resolve unknowns first`);
+  }
+  return { depth, notes, source: complexity };
 }
 
 /**
@@ -60,7 +137,7 @@ function loadSpec(pipelineDir) {
  * @param {string} [specContent] — SPEC.md content (primary, when present)
  * @returns {{ ok: boolean, briefs?: Array, error?: string }}
  */
-function planArchitecture(requirementsContent, pluginRoot, config, specContent) {
+function planArchitecture(requirementsContent, pluginRoot, config, specContent, complexity) {
   if (!requirementsContent || !requirementsContent.trim()) {
     return { ok: false, error: "Requirements content is required" };
   }
@@ -73,6 +150,20 @@ function planArchitecture(requirementsContent, pluginRoot, config, specContent) 
       ...config.token_budgets,
       brief_ceiling: adaptiveCeiling,
     };
+  }
+
+  // Scope-aware depth signal — derived from SPEC complexity block.
+  // Logged here so the decomposition depth recommendation is visible at planning time;
+  // injected into each brief so perspective agents adapt their analysis to the scale.
+  const depthRecommendation = recommendDecompositionDepth(complexity);
+  if (depthRecommendation && depthRecommendation.depth) {
+    const sourceNote = (depthRecommendation.source && depthRecommendation.source.assessment)
+      ? ` (assessment=${depthRecommendation.source.assessment}, touch_surface=${depthRecommendation.source.touch_surface || "n/a"})`
+      : "";
+    console.log(`[architect] decomposition depth: ${depthRecommendation.depth}${sourceNote}`);
+    for (const note of depthRecommendation.notes || []) {
+      console.log(`[architect]   note: ${note}`);
+    }
   }
 
   const briefs = [];
@@ -116,6 +207,23 @@ function planArchitecture(requirementsContent, pluginRoot, config, specContent) 
 
     briefParts.push(`Focus on: ${lens.focus}.`);
     briefParts.push("");
+
+    // Inject scope context so each perspective adapts depth to spec complexity.
+    if (depthRecommendation && depthRecommendation.depth) {
+      briefParts.push("## Scope Context");
+      briefParts.push("");
+      briefParts.push(`Decomposition depth recommendation: **${depthRecommendation.depth}**.`);
+      if (depthRecommendation.source && depthRecommendation.source.assessment) {
+        briefParts.push(`Source: SPEC complexity block — assessment=${depthRecommendation.source.assessment}, touch_surface=${depthRecommendation.source.touch_surface || "n/a"}, unknown_count=${depthRecommendation.source.unknown_count != null ? depthRecommendation.source.unknown_count : "n/a"}.`);
+      }
+      for (const note of depthRecommendation.notes || []) {
+        briefParts.push(`- ${note}`);
+      }
+      briefParts.push("");
+      briefParts.push("Adapt your analysis to this scope — flat scopes do not need deep decomposition; high-care scopes do.");
+      briefParts.push("");
+    }
+
     briefParts.push("Return your analysis with sections for your perspective's concerns,");
     briefParts.push("cross-perspective flags, and specific recommendations.");
     briefParts.push("");
@@ -145,7 +253,7 @@ function planArchitecture(requirementsContent, pluginRoot, config, specContent) 
     });
   }
 
-  return { ok: true, briefs };
+  return { ok: true, briefs, depthRecommendation };
 }
 
 /**
@@ -365,7 +473,7 @@ function writeArchitectureArtifacts(pipelineDir, archDoc, synthDoc) {
   // Store content hash for staleness detection
   try {
     const integrity = require("../../../lib/artifact-integrity");
-    integrity.storeHash(pipelineDir, "architecture/ARCH.md", integrity.computeHash(path.join(pipelineDir, "architecture", "ARCH.md")));
+    integrity.storeHash(pipelineDir, ARCH_PATH, integrity.computeHash(path.join(pipelineDir, ARCH_PATH)));
   } catch (_e) { /* integrity is advisory */ }
 
   if (synthDoc) {
@@ -641,6 +749,69 @@ function runReview(parsedQAOutputs, sprintNumber, pipelineDir, config) {
   const reviewDir = path.join(pipelineDir, "reviews", `sprint-${sprintNumber}`);
   paths.ensureDir(reviewDir);
   fs.writeFileSync(path.join(reviewDir, "QA-REPORT.md"), report, "utf8");
+
+  // Grounded post-validation pass — when state.yaml has grounded_required: true,
+  // drop any finding whose backtick snippet cannot be found verbatim in the
+  // referenced source file. Findings without an extractable snippet or file ref
+  // are left untouched (per constraint: never drop un-parseable findings).
+  const stateData = yamlIO.safeReadWithFallback(path.join(pipelineDir, "state.yaml")) || {};
+  if (stateData.grounded_required === true) {
+    const projectRoot = path.dirname(pipelineDir);
+    const allFiles = collectProjectFiles(projectRoot);
+    let groundedDropCount = 0;
+
+    for (const severity of ["critical", "high", "medium", "low"]) {
+      if (!findings[severity]) continue;
+      findings[severity] = findings[severity].filter(finding => {
+        const snippetMatch = finding.text.match(/`([^`]{4,})`/);
+        const fileRefs = Array.from(finding.text.matchAll(FILE_REF_PATTERN), m => m[1]);
+        // No parseable snippet or file ref — keep the finding (never drop un-parseable)
+        if (!snippetMatch || fileRefs.length === 0) return true;
+
+        const verbatimQuote = snippetMatch[1];
+
+        // Check every file ref extracted from the finding text
+        const isGrounded = fileRefs.some(fileRef => {
+          const refBasename = path.basename(fileRef).toLowerCase();
+          const candidates = allFiles.filter(f => path.basename(f).toLowerCase() === refBasename);
+          // No matching file found — cannot verify this ref, treat as unverifiable (grounded)
+          if (candidates.length === 0) return true;
+          return candidates.some(candidatePath => {
+            try {
+              const content = fs.readFileSync(candidatePath, "utf8");
+              return content.includes(verbatimQuote);
+            } catch (_e) { return false; }
+          });
+        });
+
+        if (!isGrounded) {
+          process.stderr.write(`[grounded-drop] fabricated: ${finding.text.slice(0, 120)}\n`);
+          groundedDropCount++;
+          return false;
+        }
+        return true;
+      });
+    }
+
+    if (groundedDropCount > 0) {
+      const reportPath = path.join(reviewDir, "QA-REPORT.md");
+      if (fs.existsSync(reportPath)) {
+        const existingReport = fs.readFileSync(reportPath, "utf8");
+        fs.writeFileSync(
+          reportPath,
+          existingReport + `\n## Grounded Review\n\nDropped ${groundedDropCount} finding(s) with unverifiable verbatim quotes.\n`,
+          "utf8"
+        );
+      }
+    }
+
+    // Clear the grounded_required flag so the next sprint starts clean
+    yamlIO.safeWrite(path.join(pipelineDir, "state.yaml"), {
+      ...stateData,
+      grounded_required: false,
+      last_updated: new Date().toISOString(),
+    });
+  }
 
   const summary = {
     totalFindings:
@@ -950,8 +1121,37 @@ function generateTreeMd(state) {
   return lines.join("\n");
 }
 
-// Convergence check threshold — show summary and ask user after this many waves
+// Convergence check threshold — default depth before architect prompts user.
+// Used as a fallback when SPEC.md has no complexity block. Adaptive callers
+// should prefer convergenceCheckWaveFor(complexity) which scales to scope.
 const CONVERGENCE_CHECK_WAVE = 10;
+
+// Per-complexity convergence depth. Smaller scopes converge sooner — "bug-fix"
+// rarely needs 10 waves of decomposition; "new-project" may need more leeway.
+const CONVERGENCE_CHECK_WAVE_BY_COMPLEXITY = {
+  "bug-fix":         3,
+  "new-feature":     7,
+  "partial-rewrite": 10,
+  "new-project":     15,
+};
+
+/**
+ * Adaptive convergence threshold derived from SPEC complexity signal.
+ * Falls back to CONVERGENCE_CHECK_WAVE when complexity is missing/invalid.
+ *
+ * @param {object|null} complexity — output of parseComplexityBlock()
+ * @returns {number} wave count after which architect should check convergence
+ */
+function convergenceCheckWaveFor(complexity) {
+  if (!complexity || !complexity.assessment) return CONVERGENCE_CHECK_WAVE;
+  const v = CONVERGENCE_CHECK_WAVE_BY_COMPLEXITY[complexity.assessment];
+  if (typeof v !== "number") return CONVERGENCE_CHECK_WAVE;
+  // touch_surface:broad escalates one tier — adds care without removing the cap
+  if (complexity.touch_surface === "broad") {
+    return v + 3;
+  }
+  return v;
+}
 
 /**
  * Process one wave of decomposition.
@@ -1206,4 +1406,11 @@ module.exports = {
   applyAnswer,
   isDecompositionComplete,
   detectSpecGap,
+  // Scope-aware depth recommendation — adapts decomposition to spec complexity.
+  // Architect logs the recommendation; Claude uses it to inform wave depth, not as a hard cap.
+  recommendDecompositionDepth,
+  // Adaptive convergence threshold — scales with complexity assessment.
+  // Replaces the static CONVERGENCE_CHECK_WAVE for callers that have read SPEC complexity.
+  convergenceCheckWaveFor,
+  CONVERGENCE_CHECK_WAVE_BY_COMPLEXITY,
 };

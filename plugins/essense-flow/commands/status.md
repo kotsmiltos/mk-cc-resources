@@ -15,32 +15,11 @@ Show current pipeline status. Read-only.
 
 ## Instructions
 
-1. Read `.pipeline/state.yaml` using `lib/yaml-io.safeReadWithFallback()`
-2. If no state file, report: "Pipeline not initialized. Run `/init` first."
-3. Display:
-   - **Phase:** current pipeline phase
-   - **Sprint:** current sprint number (if applicable)
-   - **Last updated:** timestamp
-   - **Completion evidence:** path (if applicable)
-   - **Next action:** derived from phase (see `/next` mapping)
+Run `node skills/context/scripts/status-runner.js [--json] [--history]` from project root.
 
-### Live Progress
-
-After showing state, check for active progress files:
-
-1. Call `lib/progress.readProgress(pipelineDir, currentPhase, sprintNumber)`
-2. If progress data exists, display:
-   - Phase name and elapsed time
-   - Agent statuses (running/complete/failed) with timing
-   - Task completion count (tasks_complete/tasks_total)
-3. Format as compact summary:
-   ```
-   Live: research (2m 14s)
-     research-security: running (1m 30s)
-     research-scalability: complete (44s)
-     Tasks: 1/4
-   ```
-4. If no progress file, skip section
+Flags:
+- `--json`: emit full JSON output
+- `--history`: include last 10 state transitions in output
 
 ## Constraints
 
