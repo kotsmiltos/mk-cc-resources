@@ -42,15 +42,22 @@ const DEFAULT_CONFIG = {
   terminal: ["complete"],
   max_iterations: 30,
   context_threshold_pct: 60,
-  // Phase → command map. Mirrors essense-flow AUTO_ADVANCE_MAP but lives in
-  // project config so any pipeline can override per project.
+  // Phase → command map. Reflects essense-flow state-machine semantics
+  // (references/transitions.yaml). Project config can override per project.
+  //
+  // Phases ending in `-ing` mean "skill mid-flight" — map to the same skill
+  // to resume. Phases without that suffix are milestone-reached states that
+  // advance to the next skill. Active phases that require dialogue
+  // (eliciting, verifying) live in human_gates instead.
   flow: {
     research: "/triage",
+    triaging: "/triage",
     "requirements-ready": "/architect",
-    architecture: "/build",
+    architecture: "/architect",
+    decomposing: "/architect",
     sprinting: "/build",
     "sprint-complete": "/review",
-    reviewing: "/triage",
+    reviewing: "/review",
   },
 };
 
@@ -122,8 +129,12 @@ function estimateContextPct(transcriptPath) {
   }
 }
 
-function allowStop() {
-  // Default action — exit cleanly, Claude proceeds with stop.
+function allowStop(reason) {
+  // Default action — exit cleanly, Claude proceeds with stop. When `reason`
+  // is provided, log it to stderr so the user can diagnose silent halts.
+  if (reason) {
+    process.stderr.write(`[essense-autopilot] halt: ${reason}\n`);
+  }
   process.exit(0);
 }
 
@@ -139,7 +150,9 @@ async function main() {
   const cwd = process.cwd();
 
   const pipelineDir = findPipelineDir(cwd);
-  if (!pipelineDir) return allowStop();
+  if (!pipelineDir) {
+    return allowStop(`no .pipeline/ directory found from cwd ${cwd}`);
+  }
 
   // Merge project config over defaults
   const projectConfig = readYamlSafe(path.join(pipelineDir, "config.yaml")) || {};
@@ -152,21 +165,52 @@ async function main() {
     terminal: userAutopilot.terminal || DEFAULT_CONFIG.terminal,
   };
 
-  if (!cfg.enabled) return allowStop();
+  if (!cfg.enabled) {
+    return allowStop(`autopilot disabled (set autopilot.enabled: true in ${path.join(pipelineDir, "config.yaml")})`);
+  }
 
   const statePath = path.join(pipelineDir, "state.yaml");
   const state = readYamlSafe(statePath);
-  if (!state || !state.pipeline) return allowStop();
+  if (!state || !state.pipeline) {
+    return allowStop(`state.yaml missing or has no pipeline block at ${statePath}`);
+  }
 
   const phase = state.pipeline.phase;
   const blocker = state.blocked_on;
 
-  if (blocker) return allowStop();
-  if (cfg.terminal.includes(phase)) return allowStop();
-  if (cfg.human_gates.includes(phase)) return allowStop();
+  if (blocker) {
+    return allowStop(`pipeline blocked: ${typeof blocker === "string" ? blocker : JSON.stringify(blocker)}`);
+  }
+  if (cfg.terminal.includes(phase)) {
+    return allowStop(`phase '${phase}' is terminal (${cfg.terminal.join(", ")}) — pipeline complete`);
+  }
+  if (cfg.human_gates.includes(phase)) {
+    return allowStop(`phase '${phase}' is a human gate (${cfg.human_gates.join(", ")}) — needs dialogue`);
+  }
 
   const advanceCmd = cfg.flow[phase];
-  if (!advanceCmd) return allowStop();
+  if (!advanceCmd) {
+    const mapped = Object.keys(cfg.flow).join(", ");
+    return allowStop(`phase '${phase}' has no flow mapping (mapped phases: ${mapped})`);
+  }
+
+  // Readiness gate for build-fires: phase=sprinting expects current sprint
+  // to have task specs decomposed. If the sprint entry has empty tasks,
+  // running /build will fail — halt and route the user to /architect.
+  if (advanceCmd === "/build") {
+    const sprintNum = state.pipeline.sprint;
+    if (sprintNum != null) {
+      const sprintKey = `sprint-${sprintNum}`;
+      const sprintEntry = state.sprints && state.sprints[sprintKey];
+      const tasks = (sprintEntry && sprintEntry.tasks) || [];
+      const tasksTotal = (sprintEntry && sprintEntry.tasks_total) || tasks.length || 0;
+      if (tasksTotal === 0) {
+        return allowStop(
+          `phase '${phase}' but ${sprintKey} has no tasks decomposed — run /architect first`
+        );
+      }
+    }
+  }
 
   // Iteration counter — reset when phase changes
   state.session = state.session || {};
@@ -178,19 +222,17 @@ async function main() {
   iters += 1;
 
   if (iters > cfg.max_iterations) {
-    process.stderr.write(
-      `[essense-autopilot] iteration cap (${cfg.max_iterations}) reached at phase '${phase}'. Halting — investigate stuck pipeline.\n`
+    return allowStop(
+      `iteration cap (${cfg.max_iterations}) reached at phase '${phase}' — investigate stuck pipeline`
     );
-    return allowStop();
   }
 
   // Context threshold check
   const ctxPct = estimateContextPct(payload.transcript_path);
   if (ctxPct !== null && ctxPct > cfg.context_threshold_pct) {
-    process.stderr.write(
-      `[essense-autopilot] context ~${ctxPct.toFixed(0)}% > ${cfg.context_threshold_pct}% threshold. Halting to preserve context for human work.\n`
+    return allowStop(
+      `context ~${ctxPct.toFixed(0)}% > ${cfg.context_threshold_pct}% threshold — preserving context for human work`
     );
-    return allowStop();
   }
 
   // Persist iteration counter (best-effort; failure non-fatal)
