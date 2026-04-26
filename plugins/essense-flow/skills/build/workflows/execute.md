@@ -71,6 +71,16 @@ Record chosen mode in completion record under `execution_mode: inline|dispatch`.
 
 ### 5. Execute Waves
 
+**Single-invocation contract.** ALL waves of the sprint complete in this one
+`/build` invocation. Do NOT pause between waves to await human re-invocation.
+Per-wave verification (step 5b below) gates progress; pause only when that
+gate fails. The user's general "verify after each substantive change" rule
+is satisfied by running tests at the wave boundary, not by halting build.
+
+This is a skill-specific rule that overrides any general "run small batches
+and pause between them" guidance — within `/build`, batches are waves and
+the orchestration is automatic.
+
 For each wave (sequential across waves, parallel within each wave):
 
 **If execution_mode = inline:**
@@ -94,6 +104,31 @@ Either path calls `build-runner.recordCompletion()` with:
 - `reason`: (if failed) which criteria not met
 
 Wait for all tasks in current wave before proceeding to next wave.
+
+### 5b. Wave Gate (test suite)
+
+After every wave (except the last) and before starting the next, call
+`build-runner.runWaveGate(projectRoot, waveIndex)`. This invokes the
+deterministic gate (`npm test` + `npm run lint`) over the project so any
+behavior regression introduced by the wave fails fast.
+
+Returns `{ ok, failures }`:
+
+- **`ok: true`** — proceed to the next wave immediately. Do NOT report or
+  pause. Continue execution.
+- **`ok: false`** — wave introduced a regression. Halt build with the
+  following protocol:
+  1. Persist `failures` into the wave completion record so reviewers can
+     see exactly what broke.
+  2. Set `state.blocked_on` to a one-line summary
+     (e.g. `"wave-N test gate failed: <first-failure-summary>"`).
+  3. Leave `pipeline.phase` as `sprinting` — sprint is incomplete.
+  4. Skip steps 6–8. Jump to step 9 (Report) and surface the failures
+     plus the diagnostic `blocked_on`.
+
+Skip this gate for the final wave — step 6 handles end-of-sprint summary.
+Skip entirely if no test or lint script is configured (gate returns
+`{ ok: true, skipped: true }`).
 
 ### 6. Sprint Summary
 

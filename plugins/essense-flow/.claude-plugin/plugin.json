@@ -1,6 +1,6 @@
 {
   "name": "essense-flow",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Multi-phase AI development pipeline with verification discipline: context map, deterministic gate, blocks_advance routing, scope-adaptive depth, propagating artifact contracts.",
   "author": {
     "name": "mkots"

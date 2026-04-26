@@ -1,5 +1,18 @@
 # essense-flow Release Notes
 
+## 0.4.2 (2026-04-27)
+
+Build skill — single-invocation wave contract.
+
+### Fix
+
+- **`/build` no longer pauses between waves.** Previously, `/build` finished wave-0, ran tests, and stopped — the orchestrator interpreted "verify after each substantive change" (general guidance) as "halt and let user re-invoke between waves". Multi-wave sprints required N manual re-invocations of `/build`.
+- **New rule (`SKILL.md` constraint + `workflows/execute.md` step 5b):** ALL waves of a sprint complete in one `/build` invocation. Per-wave test gate (`build-runner.runWaveGate`) gates progress; halt only when that gate fails. Skill-specific rule overrides any general "small batches, pause between" guidance.
+
+### New
+
+- **`build-runner.runWaveGate(projectRoot, waveIndex, options)`** — wave-boundary gate. Wraps the existing `lib/deterministic-gate.runGate` (`npm test` + `npm run lint`) with wave context. Returns `{ ok, gateRan, waveIndex, skipped, skipReasons, failures, blockedOn }`. On failure, `blockedOn` is a single-line summary suitable for direct write into `state.blocked_on`. Tests in `tests/wave-gate.test.js` cover passing, failing, fully-skipped, partially-skipped, and blockedOn-format scenarios.
+
 ## 0.4.1 (2026-04-27)
 
 Bug fixes and observability improvements driven by autopilot-pairing discovery: pipelines could land in invalid phase values (`"triaged"`) or stall mid-skill (`architecture` with empty tasks) without diagnostic surface.

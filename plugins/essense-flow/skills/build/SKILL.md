@@ -74,6 +74,7 @@ Building on top of failing tests compounds the problem. If the gate fails, fix t
 - NEVER modify files in `.pipeline/` except completion records in `.pipeline/sprints/sprint-N/completion/`
 - NEVER skip acceptance criteria verification — every criterion in task spec must be checked
 - NEVER proceed to next wave until all tasks in current wave are resolved (complete, blocked, or failed)
+- NEVER pause between waves to await human re-invocation. ALL waves of the sprint complete in one `/build` invocation. Per-wave test gate (`runWaveGate`) gates progress; halt only when that gate fails. This rule overrides any general "run small batches and pause between them" guidance.
 
 ## Scripts
 
@@ -83,6 +84,7 @@ Building on top of failing tests compounds the problem. If the gate fails, fix t
   - `buildWaves(tasks)` — constructs dependency-ordered execution waves
   - `recordCompletion(pipelineDir, sprintNumber, taskId, evidence)` — writes completion YAML
   - `getSprintSummary(pipelineDir, sprintNumber)` — aggregates completion records
+  - `runWaveGate(projectRoot, waveIndex)` — runs `npm test` + `npm run lint` after a wave completes. Returns `{ ok, failures, skipped }`. Halts build on failure (sets `state.blocked_on`, leaves phase as `sprinting`).
 
 ## Workflows
 

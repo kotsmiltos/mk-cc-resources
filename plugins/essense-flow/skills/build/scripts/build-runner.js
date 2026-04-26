@@ -918,6 +918,70 @@ function preBuildGate(projectRoot, options = {}) {
   };
 }
 
+/**
+ * Wave-boundary test gate. Called between waves so a regression introduced
+ * by wave N is caught before wave N+1 starts. Wraps the same deterministic
+ * gate (`npm test` + `npm run lint`) used by preBuildGate, but tagged with
+ * wave context so the failure record can be persisted into the wave's
+ * completion evidence.
+ *
+ * Returns:
+ *   { ok: true,  gateRan: true,  waveIndex, skipped: false } — proceed to next wave
+ *   { ok: true,  gateRan: false, waveIndex, skipped: true  } — no test/lint script configured
+ *   { ok: false, gateRan: true,  waveIndex, failures, blockedOn } — halt build
+ *
+ * The orchestrator (build workflow step 5b) must:
+ *   - on ok:true → continue to next wave immediately, no pause
+ *   - on ok:false → set state.blocked_on = blockedOn, leave phase as 'sprinting',
+ *     skip remaining waves, jump to step 9 (Report)
+ *
+ * @param {string} projectRoot — absolute path to the project (parent of .pipeline/)
+ * @param {number} waveIndex — 0-based index of the wave that just completed
+ * @param {object} [options] — passed through to deterministicGate.runGate
+ * @returns {{ ok: boolean, gateRan: boolean, waveIndex: number, skipped?: boolean, failures?: object, blockedOn?: string }}
+ */
+function runWaveGate(projectRoot, waveIndex, options = {}) {
+  const gateResult = deterministicGate.runGate(projectRoot, options);
+
+  // deterministicGate.runGate returns { ok, failures, skipped }, where
+  // `skipped` is an array of reasons explaining which gate steps did not
+  // run (e.g., no test script in package.json). A "fully skipped" gate
+  // — both test and lint absent — passes ok:true with two skip reasons
+  // and zero failures. Surface that explicitly so the workflow can tell
+  // "gate passed" from "no gate configured".
+  const skippedReasons = Array.isArray(gateResult.skipped) ? gateResult.skipped : [];
+  const fullySkipped = gateResult.ok && (gateResult.failures || []).length === 0 && skippedReasons.length >= 2;
+
+  if (gateResult.ok) {
+    return {
+      ok: true,
+      gateRan: !fullySkipped,
+      waveIndex,
+      skipped: fullySkipped,
+      skipReasons: skippedReasons,
+      gateResult,
+    };
+  }
+
+  // Compose a one-line blocker summary from the first failure for state.blocked_on.
+  const first = (gateResult.failures || [])[0] || {};
+  const firstSummary =
+    first.type
+      ? `${first.type} step failed (exit ${first.exitCode})`
+      : "wave gate failed";
+
+  return {
+    ok: false,
+    gateRan: true,
+    waveIndex,
+    skipped: false,
+    skipReasons: skippedReasons,
+    failures: gateResult.failures || [],
+    gateResult,
+    blockedOn: `wave-${waveIndex} test gate failed: ${firstSummary}`,
+  };
+}
+
 module.exports = {
   // Constants
   AMBIGUITY_PATTERNS,
@@ -949,5 +1013,6 @@ module.exports = {
   // and halt the sprint with the gate failure as the blocker.
   // Rationale: building on top of failing tests/lint compounds the problem.
   preBuildGate,
+  runWaveGate,
   runDeterministicGate: (projectRoot, options) => deterministicGate.runGate(projectRoot, options),
 };
