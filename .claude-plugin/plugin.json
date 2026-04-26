@@ -1,7 +1,7 @@
 {
   "name": "mk-cc-all",
-  "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",
-  "version": "1.22.0",
+  "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, and project-note-tracker. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins are preserved on the archive/benched-plugins branch.",
+  "version": "2.0.0",
   "author": {
     "name": "kotsmiltos"
   },
@@ -9,28 +9,20 @@
   "repository": "https://github.com/kotsmiltos/mk-cc-resources",
   "license": "MIT",
   "skills": [
+    "./plugins/essense-flow/skills/",
     "./plugins/schema-scout/skills/",
-    "./plugins/miltiaze/skills/",
-    "./plugins/ladder-build/skills/",
-    "./plugins/architect/skills/",
-    "./plugins/project-structure/skills/",
-    "./plugins/repo-audit/skills/",
-    "./plugins/project-note-tracker/skills/",
-    "./plugins/safe-commit/skills/"
+    "./plugins/thorough-mode/skills/",
+    "./plugins/project-note-tracker/skills/"
   ],
   "keywords": [
     "skills",
+    "essense-flow",
+    "pipeline",
     "schema",
     "data-exploration",
-    "research",
-    "build-pipeline",
-    "milestones",
-    "audit",
-    "amendment-protocol",
+    "thorough-mode",
+    "prompt-modifiers",
     "question-tracker",
-    "meeting-agenda",
-    "safe-commit",
-    "secret-scanning",
-    "commit-safety"
+    "meeting-agenda"
   ]
 }

@@ -5,7 +5,11 @@
 # Exits 1 if any drift is detected or a mirror is missing.
 #
 # Excludes: __pycache__ directories and *.pyc files (build artifacts).
-# Excluded plugins: mk-flow, alert-sounds (hook-bearing, not mirrored).
+# Excluded plugins: alert-sounds, essense-flow, essense-autopilot, thorough-mode
+# (hook-bearing, not mirrored). Benched plugins (preserved on
+# archive/benched-plugins branch and removed from main as of 2.0.0):
+# miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit,
+# mk-flow.
 
 set -euo pipefail
 
@@ -17,17 +21,12 @@ SKILLS_DIR="${REPO_ROOT}/skills"
 
 # One-way mirror mapping: mirror_name -> source path relative to plugins/
 declare -A SKILL_MAP
-SKILL_MAP["architect"]="architect/skills/architect"
-SKILL_MAP["ladder-build"]="ladder-build/skills/ladder-build"
-SKILL_MAP["miltiaze"]="miltiaze/skills/miltiaze"
 SKILL_MAP["note"]="project-note-tracker/skills/note"
-SKILL_MAP["project-structure"]="project-structure/skills/project-structure"
-SKILL_MAP["repo-audit"]="repo-audit/skills/repo-audit"
-SKILL_MAP["safe-commit"]="safe-commit/skills/safe-commit"
 SKILL_MAP["schema-scout"]="schema-scout/skills/schema-scout"
 
-# Plugins intentionally excluded from mirroring (hook-bearing, installed separately).
-EXCLUDED_PLUGINS=("mk-flow" "alert-sounds")
+# Plugins intentionally excluded from mirroring (hook-bearing or composite
+# pipelines installed separately, not mirrored as flat skills).
+EXCLUDED_PLUGINS=("alert-sounds" "essense-flow" "essense-autopilot" "thorough-mode")
 
 DRIFT_FOUND=0
 

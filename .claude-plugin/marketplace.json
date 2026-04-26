@@ -4,10 +4,22 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins — data exploration, multi-dimensional research, incremental build pipelines, repo auditing, project question tracking, and cross-platform alerts.",
-    "version": "1.19.0"
+    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
+    "version": "2.0.0"
   },
   "plugins": [
+    {
+      "name": "essense-flow",
+      "source": "./plugins/essense-flow",
+      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, single-invocation wave contract for /build.",
+      "version": "0.4.2"
+    },
+    {
+      "name": "essense-autopilot",
+      "source": "./plugins/essense-autopilot",
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
+      "version": "0.2.0"
+    },
     {
       "name": "schema-scout",
       "source": "./plugins/schema-scout",
@@ -15,28 +27,10 @@
       "version": "1.2.1"
     },
     {
-      "name": "miltiaze",
-      "source": "./plugins/miltiaze",
-      "description": "Multi-dimensional idea exploration and requirements generation — decomposes concepts into research angles, investigates each thoroughly with verified sources, presents multiple solutions with honest tradeoffs. Requirements mode produces architect-ready documents with acceptance criteria.",
-      "version": "1.3.0"
-    },
-    {
-      "name": "ladder-build",
-      "source": "./plugins/ladder-build",
-      "description": "Incremental build pipeline — decomposes projects into small verifiable milestones, or executes architect-planned sprints with parallel task execution. Build, test, verify each rung before climbing to the next.",
-      "version": "1.4.0"
-    },
-    {
-      "name": "project-structure",
-      "source": "./plugins/project-structure",
-      "description": "Generate and maintain a live annotated project structure map in CLAUDE.md with purpose annotations and quick-lookup tables.",
-      "version": "1.1.0"
-    },
-    {
-      "name": "repo-audit",
-      "source": "./plugins/repo-audit",
-      "description": "Repo audit and cross-cutting amendment protocol — read-only codebase analysis plus enforced change workflow requiring snapshot and pattern lookup consultation before any code change.",
-      "version": "1.2.0"
+      "name": "thorough-mode",
+      "source": "./plugins/thorough-mode",
+      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present) that inject behavioral rules for thoroughness, documentation checks, interactive questions, and more. Smart hints suggest modifiers when you describe the intent without the keyword.",
+      "version": "1.3.2"
     },
     {
       "name": "project-note-tracker",
@@ -51,46 +45,10 @@
       "version": "1.1.0"
     },
     {
-      "name": "safe-commit",
-      "source": "./plugins/safe-commit",
-      "description": "Commit safety layer — secret scanning, identity verification, and commit hygiene enforcement. Blocks commits containing secrets, sensitive files, hardcoded paths, or merge conflict markers.",
-      "version": "1.0.1"
-    },
-    {
-      "name": "mk-flow",
-      "source": "./plugins/mk-flow",
-      "description": "Unified workflow system — automatic intent detection, dense input decomposition, per-project state tracking, session continuity, pipeline-aware routing, and seamless mode switching. Connects miltiaze, architect, ladder-build, and note-tracker into a unified flow.",
-      "version": "0.11.0"
-    },
-    {
-      "name": "architect",
-      "source": "./plugins/architect",
-      "description": "Multi-agent technical leadership — spawns perspective agents to design architecture, produce sprint plans with task specs, run adversarial QA, audit existing codebases, and escalate decisions. The tech lead between research and execution.",
-      "version": "0.4.0"
-    },
-    {
-      "name": "essense-flow",
-      "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, behavioral preambles in every skill.",
-      "version": "0.4.0"
-    },
-    {
-      "name": "thorough-mode",
-      "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present) that inject behavioral rules for thoroughness, documentation checks, interactive questions, and more. Smart hints suggest modifiers when you describe the intent without the keyword.",
-      "version": "1.3.2"
-    },
-    {
-      "name": "essense-autopilot",
-      "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, and configurable context-usage threshold (default 60%). Opt-in per project via .pipeline/config.yaml.",
-      "version": "0.1.0"
-    },
-    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All mk-cc-resources skills in one install: Schema Scout, Miltiaze, Ladder Build, Architect, Project Structure, Repo Audit, Project Note Tracker, and Safe Commit. mk-flow and Alert Sounds have hooks and must be installed separately.",
-      "version": "1.19.0"
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "version": "2.0.0"
     }
   ]
 }
