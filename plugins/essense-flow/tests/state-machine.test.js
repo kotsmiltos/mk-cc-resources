@@ -179,6 +179,56 @@ describe("writeState — idle → research happy path", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Test 3.1 — Phase-enum guard: writeState rejects non-canonical phase values
+//
+// Prevents state corruption from typos / external writers landing values like
+// "triaged" (which is not a real phase) into pipeline.phase.
+// ---------------------------------------------------------------------------
+
+describe("writeState — phase-enum guard rejects unknown target phase", () => {
+  let tmpRoot;
+  let pipelineDir;
+
+  before(() => {
+    tmpRoot = makeTmpDir("t31");
+    pipelineDir = setupPipelineDir(tmpRoot, "research", true);
+  });
+
+  after(() => {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it("returns {ok:false} for invalid phase 'triaged'", (t) => {
+    if (!fs.existsSync(PROJECT_TRANSITIONS_YAML)) {
+      t.skip("transitions.yaml not found");
+      return;
+    }
+    const result = writeState(pipelineDir, "triaged", {}, { command: "test" });
+    assert.equal(result.ok, false, "expected ok:false for unknown phase 'triaged'");
+    assert.ok(/Unknown phase/i.test(result.error), `error must mention 'Unknown phase'; got: ${result.error}`);
+    assert.ok(result.error.includes("triaged"), "error must include the rejected phase value");
+  });
+
+  it("error lists valid canonical phases", (t) => {
+    if (!fs.existsSync(PROJECT_TRANSITIONS_YAML)) {
+      t.skip("transitions.yaml not found");
+      return;
+    }
+    const result = writeState(pipelineDir, "nonexistent-phase", {}, { command: "test" });
+    assert.equal(result.ok, false);
+    // Spot-check that the error advertises the canonical phase set
+    assert.ok(result.error.includes("triaging"), "error must list 'triaging' as a valid phase");
+    assert.ok(result.error.includes("architecture"), "error must list 'architecture' as a valid phase");
+  });
+
+  it("state.yaml unchanged after rejected write", () => {
+    const statePath = path.join(pipelineDir, STATE_FILE);
+    const state = yaml.load(fs.readFileSync(statePath, "utf8"));
+    assert.equal(state.pipeline.phase, "research", "phase must remain 'research' — rejected write must not mutate state");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Test 4 — validateManifest: incomplete perspectives returns {ok:false}
 // ---------------------------------------------------------------------------
 

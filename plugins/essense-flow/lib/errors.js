@@ -89,6 +89,10 @@ const ERRORS = {
     message: "Pipeline not initialized. Run `/init` first — creates .pipeline/ directory, writes initial state.yaml, configures hooks.",
     recovery: "Run /init to create the .pipeline/ directory structure and initial state.yaml.",
   },
+  E_PHASE_UNKNOWN: {
+    message: "Unknown phase \"{phase}\" — not a valid pipeline phase. Valid phases: {valid}.",
+    recovery: "Check references/transitions.yaml for the canonical phase set. Run /repair to diagnose state corruption.",
+  },
 };
 
 /**

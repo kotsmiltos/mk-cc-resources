@@ -8,6 +8,7 @@ const path = require("path");
 const { yamlIO } = require("../../lib");
 const { findPipelineDir } = require("../../lib/paths");
 const contextManager = require("../../skills/context/scripts/context-manager");
+const { runDriftCheck } = require("../../skills/context/scripts/drift-check");
 
 function main() {
   const cwd = process.cwd();
@@ -43,6 +44,23 @@ function main() {
   if (orientation) {
     process.stdout.write(orientation + "\n");
   }
+
+  // Drift surface: surface state corruption (e.g., invalid phase values like
+  // "triaged") at session start so the user sees it before any skill consumes
+  // the bad state. Read-only — repair is left to /repair.
+  try {
+    const result = runDriftCheck(pipelineDir);
+    if (result && result.status === "DRIFT" && Array.isArray(result.findings)) {
+      const driftFindings = result.findings.filter((f) => f.result === "DRIFT" || f.result === "MISSING");
+      if (driftFindings.length > 0) {
+        const lines = driftFindings.map((f) => `  - [${f.check}] ${f.detail}`);
+        process.stdout.write(
+          `[essense-flow] state drift detected — run /repair to diagnose:\n${lines.join("\n")}\n`
+        );
+      }
+    }
+  } catch (_e) { /* advisory — drift surface must never block session start */ }
+
   clearTimeout(TO);
 }
 

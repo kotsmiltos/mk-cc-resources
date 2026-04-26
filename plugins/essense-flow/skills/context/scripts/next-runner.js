@@ -9,19 +9,64 @@ const { PIPELINE_DIR_NAME, SPEC_PATH, REQ_PATH, ARCH_PATH } = require("../../../
 const PIPELINE_REQ = `${PIPELINE_DIR_NAME}/${REQ_PATH}`;
 const PIPELINE_ARCH = `${PIPELINE_DIR_NAME}/${ARCH_PATH}`;
 
-const PHASE_NEXT = {
-  idle:                 { cmd: "/elicit",    why: "Pipeline initialized — elicitation captures requirements before any other phase." },
-  eliciting:            { cmd: "/elicit",    why: "Elicitation in progress — complete the elicitation session." },
-  research:             { cmd: "/triage",    why: "Research complete — triage routes findings before architecture." },
-  triaging:             { cmd: "/triage",    why: "Triage in progress — complete triage session." },
-  "requirements-ready": { cmd: "/architect", why: "Requirements finalized — architect translates them into a build plan." },
-  architecture:         { cmd: "/build",     why: "Architecture ready — build executes the sprint plan." },
-  sprinting:            { cmd: "/build",     why: "Sprint in progress — continue building." },
-  "sprint-complete":    { cmd: "/review",    why: "Sprint done — review gates quality before marking complete." },
-  reviewing:            { cmd: "/review",    why: "Review in progress — complete the review session." },
-  verifying:            { cmd: "/verify",    why: "Verification in progress." },
-  complete:             { cmd: "/status",    why: "Pipeline complete — use /status to inspect final state." },
+// Per-phase rationale strings — paired with the canonical phase→command map
+// loaded from references/phase-command-map.yaml at module init.
+const PHASE_WHY = {
+  idle:                 "Pipeline initialized — elicitation captures requirements before any other phase.",
+  eliciting:            "Elicitation in progress — complete the elicitation session.",
+  research:             "Research complete — triage routes findings before architecture.",
+  triaging:             "Triage in progress — complete triage session.",
+  "requirements-ready": "Requirements finalized — architect translates them into a build plan.",
+  architecture:         "Architecture phase active — re-invoke /architect to resume decomposition. Phase advances to sprinting once task specs are written.",
+  decomposing:          "Decomposition in progress — continue /architect.",
+  sprinting:            "Sprint in progress — continue building.",
+  "sprint-complete":    "Sprint done — review gates quality before marking complete.",
+  reviewing:            "Review in progress — complete the review session.",
+  verifying:            "Verification in progress.",
+  complete:             "Pipeline complete — use /status to inspect final state.",
 };
+
+// Hardcoded fallback if references/phase-command-map.yaml is missing.
+// Keep in sync with that YAML — the cross-check test enforces parity.
+const PHASE_NEXT_FALLBACK = {
+  idle:                 { cmd: "/elicit",    why: PHASE_WHY.idle },
+  eliciting:            { cmd: "/elicit",    why: PHASE_WHY.eliciting },
+  research:             { cmd: "/triage",    why: PHASE_WHY.research },
+  triaging:             { cmd: "/triage",    why: PHASE_WHY.triaging },
+  "requirements-ready": { cmd: "/architect", why: PHASE_WHY["requirements-ready"] },
+  architecture:         { cmd: "/architect", why: PHASE_WHY.architecture },
+  decomposing:          { cmd: "/architect", why: PHASE_WHY.decomposing },
+  sprinting:            { cmd: "/build",     why: PHASE_WHY.sprinting },
+  "sprint-complete":    { cmd: "/review",    why: PHASE_WHY["sprint-complete"] },
+  reviewing:            { cmd: "/review",    why: PHASE_WHY.reviewing },
+  verifying:            { cmd: "/verify",    why: PHASE_WHY.verifying },
+  complete:             { cmd: "/status",    why: PHASE_WHY.complete },
+};
+
+/**
+ * Load PHASE_NEXT from references/phase-command-map.yaml (canonical source).
+ * Falls back to PHASE_NEXT_FALLBACK if the YAML is missing or malformed —
+ * this keeps next-runner functional in environments where references/ is
+ * not present alongside the plugin lib.
+ *
+ * @returns {Object<string, {cmd: string, why: string}>}
+ */
+function loadPhaseNext() {
+  const pluginRoot = path.resolve(__dirname, "..", "..", "..");
+  const yamlPath = path.join(pluginRoot, "references", "phase-command-map.yaml");
+  const data = yamlIO.safeRead(yamlPath);
+  if (!data || !data.phase_command || typeof data.phase_command !== "object") {
+    return PHASE_NEXT_FALLBACK;
+  }
+  const out = {};
+  for (const [phase, cmd] of Object.entries(data.phase_command)) {
+    if (typeof cmd !== "string") continue;
+    out[phase] = { cmd, why: PHASE_WHY[phase] || `Phase '${phase}'.` };
+  }
+  return Object.keys(out).length > 0 ? out : PHASE_NEXT_FALLBACK;
+}
+
+const PHASE_NEXT = loadPhaseNext();
 
 const PHASE_PREREQS = {
   "requirements-ready": [PIPELINE_REQ],

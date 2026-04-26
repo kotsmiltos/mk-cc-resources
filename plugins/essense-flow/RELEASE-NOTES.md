@@ -1,5 +1,23 @@
 # essense-flow Release Notes
 
+## 0.4.1 (2026-04-27)
+
+Bug fixes and observability improvements driven by autopilot-pairing discovery: pipelines could land in invalid phase values (`"triaged"`) or stall mid-skill (`architecture` with empty tasks) without diagnostic surface.
+
+### Fixes
+
+- **Phase-enum guard in `writeState`** (`lib/state-machine.js`). Rejects writes of phase values outside the canonical set derived from `references/transitions.yaml`. Prevents future state corruption from typos / external writers landing values like `"triaged"` (which is not a valid phase). Returns `E_PHASE_UNKNOWN` with the canonical phase list. Existing corruption is detected separately via the new SessionStart drift surface.
+- **`next-runner.js` `architecture: /architect`** (was `/build`). Phase `architecture` means the architect skill is mid-flight (synthesis done, decomposition not started). Running `/build` against an un-decomposed sprint fails. `/architect` resumes decomposition until phase auto-advances to `sprinting`. Same pattern applied to new `decomposing: /architect` mapping.
+
+### New
+
+- **`references/phase-command-map.yaml`** — canonical phase→command source. Consumed by `next-runner.js` (with hardcoded fallback). Mirrors essense-autopilot's flow map. Cross-check tests in `tests/phase-command-map.test.js` enforce parity with `transitions.yaml` and (when reachable) with the autopilot source — preventing future map divergence.
+- **SessionStart drift surface** — `hooks/scripts/session-orient.js` now invokes `runDriftCheck` after orientation. Surfaces drift findings (e.g., unknown phase) as a visible banner so corrupt state is caught before any skill consumes it.
+
+### Notes
+
+- Issues observed in autopilot pairing (project A: `architecture` + empty tasks; project B: `triaged` phase) are addressed by the combined fixes — phase-enum guard prevents new corruption, drift surface makes existing corruption visible, autopilot's flow map (separate plugin, see `essense-autopilot` 0.2.0) maps `architecture` to `/architect` instead of `/build`.
+
 ## 0.4.0 (2026-04-26)
 
 Major redesign focused on **verification discipline and propagating contracts**. The pipeline now enforces six design principles in code, not just in documentation: scope-adaptive depth, auto-advance, phase-aware context, artifact contracts, importance declared at production, deterministic-before-LLM gates.

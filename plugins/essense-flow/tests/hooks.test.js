@@ -71,6 +71,42 @@ test("FR-004: missing state.yaml emits [HOOK WARNING to stdout", () => {
   }
 });
 
+test("session-orient surfaces state drift on invalid phase value (issue B repro)", () => {
+  // Repro of project B's actual state corruption: phase: "triaged" lands in
+  // state.yaml (not a canonical phase). Session-orient should surface this
+  // visibly so the user sees it before any skill consumes the bad state.
+  const { dir, pipelineDir, cleanup } = createTmpPipeline({ phase: "triaged" });
+  try {
+    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
+      cwd: dir,
+      timeout: 5100,
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0, "must exit 0");
+    assert.ok(result.stdout.includes("state drift detected"), `stdout must include drift banner; got: ${result.stdout}`);
+    assert.ok(result.stdout.includes("phase-valid"), "stdout must cite phase-valid finding");
+    assert.ok(result.stdout.includes("triaged"), "stdout must include the corrupt phase value");
+  } finally {
+    cleanup();
+  }
+});
+
+test("session-orient does NOT print drift banner on clean state", () => {
+  // Negative — drift banner must not fire when state is canonical.
+  const { dir, cleanup } = createTmpPipeline({ phase: "idle" });
+  try {
+    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
+      cwd: dir,
+      timeout: 5100,
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0);
+    assert.ok(!result.stdout.includes("state drift detected"), `clean state must not surface drift banner; got: ${result.stdout}`);
+  } finally {
+    cleanup();
+  }
+});
+
 test("FR-005: CLAUDE_SESSION_TYPE=subagent → empty stdout", { skip: process.env.SKIP_SUBAGENT_TEST === "1" }, () => {
   const { dir, cleanup } = createTmpPipeline();
   try {

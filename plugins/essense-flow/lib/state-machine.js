@@ -46,6 +46,26 @@ function loadTransitions(filePath) {
 }
 
 /**
+ * Derive the canonical phase set from a transition map. Includes both
+ * source phases (map keys) and target phases (each entry's `to` field).
+ * Used to validate phase values at write time so invalid values like
+ * "triaged" cannot land in state.yaml via writeState().
+ *
+ * @param {Object<string, Array<{ to: string }>>} transitionMap
+ * @returns {Set<string>}
+ */
+function validPhasesFrom(transitionMap) {
+  const phases = new Set();
+  for (const [from, list] of Object.entries(transitionMap)) {
+    phases.add(from);
+    for (const def of list) {
+      if (def && def.to) phases.add(def.to);
+    }
+  }
+  return phases;
+}
+
+/**
  * Validate whether a transition from currentPhase to targetPhase is allowed.
  *
  * @param {string} currentPhase — current pipeline phase
@@ -142,6 +162,21 @@ function writeState(pipelineDir, targetPhase, stateUpdates, options = {}) {
 
   const transitionsPath = path.join(path.dirname(pipelineDir), TRANSITIONS_YAML_REL);
   const transitionMap = loadTransitions(transitionsPath);
+
+  // Phase-enum guard: reject targetPhase values that are not in the canonical
+  // phase set. Prevents state corruption from typos or external writers
+  // landing values like "triaged" (which is not a real phase) into state.yaml.
+  const validPhases = validPhasesFrom(transitionMap);
+  if (validPhases.size > 0 && !validPhases.has(targetPhase)) {
+    return {
+      ok: false,
+      error: errors.formatError("E_PHASE_UNKNOWN", {
+        phase: targetPhase,
+        valid: Array.from(validPhases).sort().join(", "),
+      }),
+    };
+  }
+
   const transitionResult = transition(fromState, targetPhase, transitionMap);
 
   if (!transitionResult.ok) {
@@ -209,4 +244,4 @@ function validateTransition(currentPhase, targetPhase, transitionMap) {
   return { ok: true, valid: true, transition: match };
 }
 
-module.exports = { loadTransitions, transition, validateTransition, writeState };
+module.exports = { loadTransitions, validPhasesFrom, transition, validateTransition, writeState };

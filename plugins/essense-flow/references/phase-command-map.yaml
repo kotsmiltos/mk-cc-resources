@@ -1,0 +1,52 @@
+# essense-flow phase → command map (canonical reference)
+#
+# Single source of truth describing which command should run for each
+# pipeline phase. Two consumers exist with slightly different semantics:
+#
+#   - skills/context/scripts/next-runner.js — informational ("what command
+#     should I run next given phase X?"). Includes human-gate phases
+#     (eliciting, verifying) that need dialogue.
+#
+#   - essense-autopilot plugin (autopilot.js DEFAULT_CONFIG.flow) — operational
+#     ("what command should I auto-fire when phase X persists at stop?").
+#     EXCLUDES human-gate phases (those live in autopilot.human_gates) and
+#     terminal phases (autopilot.terminal). Otherwise mirrors this file.
+#
+# Phases ending in `-ing` are skill-mid-flight states — re-invoke the same
+# skill to resume. Other phases are milestones — advance to the next skill.
+#
+# When adding a new phase to references/transitions.yaml, you MUST also add
+# a corresponding entry here AND in the consumers above (or place it in
+# autopilot.human_gates / autopilot.terminal as appropriate). The cross-check
+# test in tests/phase-command-map.test.js will fail if you don't.
+
+schema_version: 1
+
+# phase → command. Used by next-runner verbatim and by autopilot for
+# non-gated, non-terminal phases.
+phase_command:
+  idle:                 "/elicit"
+  eliciting:            "/elicit"
+  research:             "/triage"
+  triaging:             "/triage"
+  "requirements-ready": "/architect"
+  architecture:         "/architect"
+  decomposing:          "/architect"
+  sprinting:            "/build"
+  "sprint-complete":    "/review"
+  reviewing:            "/review"
+  verifying:            "/verify"
+  complete:             "/status"
+
+# Phases that must NOT be auto-advanced by essense-autopilot — they need
+# human input. autopilot.human_gates in DEFAULT_CONFIG.flow MUST mirror
+# this list (autopilot is an opt-in separate plugin, so duplication is
+# unavoidable; cross-check test enforces parity in dev).
+autopilot_human_gates:
+  - idle
+  - eliciting
+  - verifying
+
+# Pipeline-done phases. autopilot.terminal MUST mirror.
+autopilot_terminal:
+  - complete
