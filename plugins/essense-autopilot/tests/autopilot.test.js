@@ -168,11 +168,41 @@ test("flow: sprint-complete maps to /review", () => {
   assert.match(r.decision.reason, /\/review/);
 });
 
-test("flow: reviewing maps to /review (resume; review-skill auto-advances to triaging on done)", () => {
-  const root = makeProject("pipeline:\n  phase: reviewing\n", ENABLED);
+test("flow: reviewing maps to /triage when QA-REPORT.md exists (post-review hand-off)", () => {
+  // Simulate the common case: /review wrote QA-REPORT then orchestrator stopped
+  // before firing the reviewing → triaging transition. Autopilot must NOT loop
+  // /review (QA already done); it must advance to /triage.
+  const root = makeProject(
+    "pipeline:\n  phase: reviewing\n  sprint: 2\n",
+    ENABLED
+  );
+  // Seed the QA-REPORT so the readiness gate sees it
+  const fsMod = require("node:fs");
+  const pathMod = require("node:path");
+  const qaDir = pathMod.join(root, ".pipeline", "reviews", "sprint-2");
+  fsMod.mkdirSync(qaDir, { recursive: true });
+  fsMod.writeFileSync(pathMod.join(qaDir, "QA-REPORT.md"), "# QA stub\n");
+
   const r = runHook(root);
-  assert.match(r.decision.reason, /\/review/);
-  assert.doesNotMatch(r.decision.reason, /\/triage/);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision, `expected JSON decision; stderr: ${r.stderr}`);
+  assert.match(r.decision.reason, /\/triage/);
+  assert.doesNotMatch(r.decision.reason, /\/review/);
+});
+
+test("gate: reviewing without QA-REPORT halts with /review hint (review still mid-flight)", () => {
+  // Defense: if reviewing persists but QA-REPORT was never written, /triage
+  // would fail — the gate halts and routes user to /review.
+  const root = makeProject(
+    "pipeline:\n  phase: reviewing\n  sprint: 2\n",
+    ENABLED
+  );
+  // Intentionally do not create QA-REPORT.md
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "");
+  assert.match(r.stderr, /QA-REPORT\.md missing/);
+  assert.match(r.stderr, /run \/review first/);
 });
 
 // ── Tasks-empty gate (fix #6) ──────────────────────────────────────────────

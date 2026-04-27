@@ -57,7 +57,14 @@ const DEFAULT_CONFIG = {
     decomposing: "/architect",
     sprinting: "/build",
     "sprint-complete": "/review",
-    reviewing: "/review",
+    // reviewing → /triage is the post-review hand-off. Phase=reviewing
+    // typically persists when /review wrote QA-REPORT.md but the orchestrator
+    // stopped before firing the reviewing → triaging transition. Mapping to
+    // /review would loop (QA-REPORT already exists). Mapping to /triage
+    // advances correctly. The "no QA-REPORT yet" mid-flight case is handled
+    // by the readiness gate below — phase=reviewing without QA-REPORT halts
+    // with diagnostic instead of looping.
+    reviewing: "/triage",
   },
 };
 
@@ -207,6 +214,30 @@ async function main() {
       if (tasksTotal === 0) {
         return allowStop(
           `phase '${phase}' but ${sprintKey} has no tasks decomposed — run /architect first`
+        );
+      }
+    }
+  }
+
+  // Readiness gate for reviewing: phase=reviewing maps to /triage on the
+  // assumption that /review already wrote QA-REPORT.md and the orchestrator
+  // stopped before firing the reviewing → triaging transition. If the QA
+  // report does NOT exist, /triage has nothing to consume — the genuine
+  // state is "review mid-flight" and the right action is /review (resume).
+  // Halt here with a diagnostic so the user knows to run /review, rather
+  // than letting autopilot fire /triage against a missing artifact.
+  if (phase === "reviewing" && advanceCmd === "/triage") {
+    const sprintNum = state.pipeline.sprint;
+    if (sprintNum != null) {
+      const qaPath = path.join(
+        pipelineDir,
+        "reviews",
+        `sprint-${sprintNum}`,
+        "QA-REPORT.md"
+      );
+      if (!fs.existsSync(qaPath)) {
+        return allowStop(
+          `phase 'reviewing' but QA-REPORT.md missing at ${qaPath} — run /review first to produce it`
         );
       }
     }
