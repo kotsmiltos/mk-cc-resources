@@ -1,5 +1,18 @@
 # essense-flow Release Notes
 
+## 0.4.3 (2026-04-28)
+
+Fix `reviewing` phase mapping regression introduced in 0.4.2.
+
+### Fix
+
+- **`reviewing → /triage` (revert).** v0.4.2 changed `reviewing` mapping to `/review` based on the assumption that phase=reviewing means "review-skill mid-flight, /review resumes." In practice, phase=reviewing typically persists *after* `/review` writes QA-REPORT.md but the orchestrator stops before firing the `reviewing → triaging` transition (per `transitions.yaml:234-242`, that transition is `auto_advance: true triggered_by: review-skill` — but `auto_advance` is descriptive intent, not enforcement). With the `/review` mapping, autopilot loops `/review` against an already-existing QA-REPORT. Reverted to `/triage` so the post-review hand-off advances correctly. Affects `references/phase-command-map.yaml` and `skills/context/scripts/next-runner.js`.
+- **Companion change in essense-autopilot 0.2.1** adds a readiness gate for the genuine mid-flight case: phase=reviewing without QA-REPORT.md halts with a diagnostic pointing to `/review`, instead of letting autopilot fire `/triage` against a missing artifact.
+
+### Notes
+
+- Underlying root cause (B2) — `/review` workflow's step 9 (transition) and step 10 (inline triage) don't reliably execute — is tracked separately. This release is the surface fix; the structural fix lands later.
+
 ## 0.4.2 (2026-04-27)
 
 Build skill — single-invocation wave contract.

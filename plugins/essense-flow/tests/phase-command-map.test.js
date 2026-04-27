@@ -104,7 +104,7 @@ test("next-runner.js loads phase-command-map.yaml and exposes correct mappings",
   assert.equal(map.phase_command.architecture, "/architect", "architecture must map to /architect (was /build pre-fix)");
   assert.equal(map.phase_command.decomposing, "/architect", "decomposing must map to /architect");
   assert.equal(map.phase_command.triaging, "/triage", "triaging must map to /triage");
-  assert.equal(map.phase_command.reviewing, "/review", "reviewing must map to /review (resume; review-skill auto-advances to triaging on completion)");
+  assert.equal(map.phase_command.reviewing, "/triage", "reviewing must map to /triage (post-review hand-off; readiness gate halts when QA-REPORT.md missing)");
   assert.equal(map.phase_command.sprinting, "/build", "sprinting must map to /build");
 });
 

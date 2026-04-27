@@ -34,7 +34,7 @@ phase_command:
   decomposing:          "/architect"
   sprinting:            "/build"
   "sprint-complete":    "/review"
-  reviewing:            "/review"
+  reviewing:            "/triage"
   verifying:            "/verify"
   complete:             "/status"
 

@@ -21,7 +21,7 @@ const PHASE_WHY = {
   decomposing:          "Decomposition in progress — continue /architect.",
   sprinting:            "Sprint in progress — continue building.",
   "sprint-complete":    "Sprint done — review gates quality before marking complete.",
-  reviewing:            "Review in progress — complete the review session.",
+  reviewing:            "Review wrote QA-REPORT — /triage routes findings. (If QA-REPORT missing, /review still mid-flight — run /review.)",
   verifying:            "Verification in progress.",
   complete:             "Pipeline complete — use /status to inspect final state.",
 };
@@ -38,7 +38,7 @@ const PHASE_NEXT_FALLBACK = {
   decomposing:          { cmd: "/architect", why: PHASE_WHY.decomposing },
   sprinting:            { cmd: "/build",     why: PHASE_WHY.sprinting },
   "sprint-complete":    { cmd: "/review",    why: PHASE_WHY["sprint-complete"] },
-  reviewing:            { cmd: "/review",    why: PHASE_WHY.reviewing },
+  reviewing:            { cmd: "/triage",    why: PHASE_WHY.reviewing },
   verifying:            { cmd: "/verify",    why: PHASE_WHY.verifying },
   complete:             { cmd: "/status",    why: PHASE_WHY.complete },
 };
