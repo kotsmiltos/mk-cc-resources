@@ -1,6 +1,6 @@
 {
   "name": "essense-autopilot",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Stop-hook autopilot for essense-flow pipelines. Reads .pipeline/state.yaml + .pipeline/config.yaml; auto-advances through phases without user prompts. Halts at human gates, blockers, iteration cap, or above configured context threshold. Opt-in per project.",
   "author": {
     "name": "mkots"
