@@ -952,6 +952,61 @@ function finalizeReview(pipelineDir, sprintNumber, reportContent) {
 }
 
 /**
+ * Atomic entry transition for /review: sprint-complete → reviewing.
+ *
+ * Closes the last open B-class boundary (B5). Without this helper the
+ * /review orchestrator did the entry transition + later side effects
+ * (validator dispatch, QA-REPORT.md write) as separate steps; if /review
+ * exited between the transition and write, phase=reviewing persisted
+ * with no QA-REPORT (existing autopilot readiness gate handles that
+ * case). If /review exited BEFORE the transition, phase=sprint-complete
+ * persisted and autopilot would re-fire /review on every Stop hook —
+ * the spam pattern the user observed.
+ *
+ * Behaviour:
+ * - phase = "sprint-complete"  → transitions to "reviewing", returns
+ *   {ok:true, transitioned:true}
+ * - phase = "reviewing"        → idempotent no-op, returns
+ *   {ok:true, transitioned:false, alreadyEntered:true}
+ *   (resume-after-crash: review can pick up where it left off)
+ * - any other phase            → returns {ok:false, error:...},
+ *   does NOT transition
+ *
+ * @param {string} pipelineDir
+ * @param {number|string|null} sprintNumber — for the audit-log artifact field
+ * @returns {{ ok: boolean, transitioned?: boolean, alreadyEntered?: boolean, error?: string }}
+ */
+function enterReview(pipelineDir, sprintNumber) {
+  const yamlIO = require("../../../lib/yaml-io");
+  const statePath = path.join(pipelineDir, "state.yaml");
+  const state = yamlIO.safeReadWithFallback(statePath, {});
+  const phase = state && state.pipeline && state.pipeline.phase;
+
+  if (phase === "reviewing") {
+    return { ok: true, transitioned: false, alreadyEntered: true };
+  }
+  if (phase !== "sprint-complete") {
+    return {
+      ok: false,
+      transitioned: false,
+      error: `enterReview requires phase='sprint-complete' (got '${phase}')`,
+    };
+  }
+
+  const stateMachine = require("../../../lib/state-machine");
+  const sprintTag = sprintNumber != null ? `sprint-${sprintNumber}` : null;
+  const r = stateMachine.writeState(pipelineDir, "reviewing", {}, {
+    command: "/review",
+    trigger: "review-skill-entry",
+    artifact: sprintTag,
+  });
+  if (!r.ok) {
+    return { ok: false, transitioned: false, error: r.error };
+  }
+  return { ok: true, transitioned: true };
+}
+
+/**
  * Load SPEC.md from the elicitation directory, strip YAML frontmatter.
  * Returns null if no SPEC.md exists.
  *
@@ -1831,6 +1886,7 @@ module.exports = {
   extractFindingName,
   writeQAReport,
   finalizeReview,
+  enterReview,
   loadSpecPath,
   loadRequirements,
   loadTaskSpecPaths,

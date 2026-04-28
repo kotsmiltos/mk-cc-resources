@@ -1,5 +1,51 @@
 # essense-flow Release Notes
 
+## 0.6.0 (2026-04-28)
+
+Self-heal release. Closes the **stuck-pipeline** failure mode where `state.pipeline.phase` falls behind on-disk artifacts (e.g. QA-REPORT.md + TRIAGE-REPORT.md exist on disk but phase still says `sprint-complete`), and autopilot loops by re-firing the now-no-op command. Adds a pure phase-from-artifacts inference module, an interactive `/heal` command for forward-walk recovery via legal transitions, a scripted `/repair --apply` Case 6 covering the same forward-walk shape, autopilot stuck-state detection that halts and suggests `/heal` instead of spamming, and an `enterReview` helper that closes the last B-class split surface (the `/review` skill-entry transition). Pairs with **essense-autopilot 0.2.2** (separate plugin) which adds the stuck-state halt + forward-detect for `sprint-complete` + QA-REPORT.
+
+### `lib/phase-inference.js` (new — pure module)
+
+- **`inferPhaseFromArtifacts(pipelineDir) → { current_phase, inferred_phase, evidence, walk, ambiguous, reason }`** — single-pass scan of `.pipeline/` artifacts against 11 inference rules (priority-ordered; first match wins). No I/O outside `pipelineDir`. No state writes. Pure module — full coverage by `tests/phase-inference.test.js` (28 assertions across helper functions, every rule, adversarial cases including hotfix sprint, ambiguous evidence, schema stability).
+- Computes `walk` via BFS on `references/transitions.yaml`. Pipeline graph is intentionally cyclic (triaging → architecture → … → reviewing → triaging again), so `isForwardWalk` is pure reachability — every step in the returned walk is a legal transition by construction.
+- Foundation for both `/heal` and `/repair --apply` Case 6.
+
+### `/heal` (new — interactive forward-walk)
+
+- **`commands/heal.md`** + **`skills/heal/`** + **`skills/heal/scripts/heal-runner.js`** — interactive self-heal command. When `inferred_phase !== current_phase` and a legal walk exists, presents the proposal via `AskUserQuestion` (per `@present` rule, three options: "Apply walk-forward" / "Investigate first" / "Leave alone"). On confirmation, walks each leg via `lib/state-machine.writeState` (atomic, audit-logged with `trigger: "heal-walk-forward"`).
+- **Injection-seam pattern** — `runHeal({pipelineDir, askFn, applyDirectly})` mirrors `runArchitectPlan`/`runVerify`. Production mode (`askFn=null`) returns `{status:"proposal", proposal}` so `commands/heal.md` drives the actual `AskUserQuestion` loop. Tests inject stub `askFn` to validate every status path. Cli mode supports `--apply` for scripted use.
+- **Multi-status return**: `no-heal-needed | ambiguous | no-walk | proposal | applied | partial | user-declined | missing-pipeline-dir`.
+- **Refuses to walk** when `inference.ambiguous === true` or `walk` is null/empty — surfaces the inference reason and suggests manual investigation or `/repair --apply`.
+- **`tests/heal.test.js`** — 14 assertions covering all 7 documented statuses + `applyDirectly` bypass + missing-pipelineDir guards + exports.
+- **`skills/heal/workflows/heal.md`** declares `status: dynamic` in frontmatter — the workflow walks any legal transition at runtime, so the standard `phase_transitions` from→to chain doesn't apply. `tests/workflow-transitions.test.js` extended to skip workflows marked `dynamic` (alongside existing `archived`).
+
+### `/repair` Case 6 (new — scripted forward-walk)
+
+- **`skills/context/scripts/repair-runner.js`** — adds Case 6 (phase-behind-artifacts forward-walk) before existing Case 5. Reuses `phase-inference.inferPhaseFromArtifacts`. Same forward-walk shape as `/heal` but scripted (no AskUserQuestion); writes `repair/REPAIR-REPORT.md` and walks via `state-machine.writeState` with `trigger: "repair-walk-forward"`. Skipped when `inference.ambiguous` or no legal walk.
+- Symmetric with `/heal`: `/repair` is the FULLY-SCRIPTED forward-walker (CI-friendly, dry-run by default, `--apply` to execute); `/heal` is the INTERACTIVE one (orchestrator-driven, AskUserQuestion confirmation). Both share the same inference engine.
+- **`tests/repair-walk-forward.test.js`** — 6 assertions covering dry-run, `--apply` walking 3 legs, current===inferred no-op, ambiguous skipped, short walks.
+
+### `enterReview` (new — closes B5 split surface)
+
+- **`review-runner.enterReview(pipelineDir, sprintNumber)`** — atomic phase-entry helper for `/review`. Single function transitions `sprint-complete → reviewing` via `state-machine.writeState` (audit-logged). Idempotent if already at `reviewing`. Refuses if phase is anything else.
+- **`commands/review.md`** step 1 rewritten as MANDATORY single call to `enterReview`. Closes the last B-class split surface (skill-entry split between artifact write and phase transition). Same B-class hazard family addressed in v0.4.4 (review-finalize), v0.4.7 (triage), v0.4.8 (research/decompose/build/verify), v0.5.0 (architect lightweight + heavyweight).
+- **`tests/review-enter.test.js`** — 12 assertions covering success transition, idempotent re-entry, wrong-phase refusal, audit-log verification.
+
+### Static-analysis: workflow-transitions extended
+
+- **`tests/workflow-transitions.test.js`** — adds `status: dynamic` to the skip list. Documents the difference: `archived` (intentionally non-canonical, not invoked) vs `dynamic` (walks any legal transition at runtime — cannot declare a fixed from→to chain). Used by `skills/heal/workflows/heal.md`.
+
+### Tests
+
+- Full suite: 862/862 pass (843 v0.5.0 baseline + 1 from v0.5.x + ~18 new across the modules above).
+- All 5 modules verified one-at-a-time per the verification-discipline rule (M1 phase-inference 28/28, M2 repair-walk-forward 6/6, M3 heal 14/14, M4 autopilot 19→28, M5 review-enter 12/12).
+
+### essense-autopilot 0.2.2 (companion plugin — separate version)
+
+- **`stuck_phase_threshold`** — new config knob, default 5. When `state.pipeline.phase` persists 5 iterations without state change, autopilot halts and prints `phase persisted N iterations without state change — run /heal` to stderr instead of looping the command. Earlier than the iteration cap (30); catches the stuck-pipeline failure mode before it wastes iterations.
+- **Forward-detect** — when phase is `sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` already exists on disk, autopilot halts at iteration 1 with `QA-REPORT.md already exists — pipeline likely stuck` and suggests `/heal`. Catches the most common stuck-state shape immediately.
+- 9 new tests (`tests/autopilot.test.js`): 19 → 28 assertions.
+
 ## 0.5.0 (2026-04-28)
 
 Architectural change. The `/architect` slash command becomes a **dispatcher** that routes between two genuine flows based on SPEC.md complexity. Closes the last B-class split surface (lightweight architect flow). Wires the heavyweight wave-based decomposition flow live for the first time — it had been documented but dormant since v0.2. Adds an injection-seam runner (`runArchitectPlan`) that lets us test the orchestrator-driven dispatch + AskUserQuestion loops deterministically, mirroring the `verify-runner.runVerify` pattern. Adds static-analysis tests over the architect workflow markdown so the orchestrator-instruction text can't silently drift. Surfaces and fixes a latent bug in `NODE_STATES` that left every design-keyword node stuck at `in-progress` because `pending-user-decision` was missing from the `in-progress` allowed-transition list.

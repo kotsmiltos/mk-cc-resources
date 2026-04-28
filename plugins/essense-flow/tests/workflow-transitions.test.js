@@ -16,6 +16,12 @@
  *
  * Workflows with `status: archived` in frontmatter are skipped — archived
  * workflows are intentionally non-canonical and not invoked.
+ *
+ * Workflows with `status: dynamic` in frontmatter are also skipped — they
+ * walk any legal transition at runtime (e.g., /heal walks forward through
+ * any path in transitions.yaml from current_phase to inferred_phase) and
+ * therefore cannot declare a fixed from→to chain. The transitions are
+ * still validated at runtime via lib/state-machine.writeState.
  */
 
 const { describe, it } = require("node:test");
@@ -133,8 +139,9 @@ describe("workflow phase_transitions match references/transitions.yaml", () => {
       });
       continue;
     }
-    if (fm.status === "archived") {
-      // Skip archived workflows — intentionally non-canonical.
+    if (fm.status === "archived" || fm.status === "dynamic") {
+      // Skip archived (non-canonical, not invoked) and dynamic (walks any
+      // legal transition at runtime) workflows.
       continue;
     }
     const pairs = parsePhaseTransitions(fm.phase_transitions || "");

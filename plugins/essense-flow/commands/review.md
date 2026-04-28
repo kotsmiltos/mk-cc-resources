@@ -9,22 +9,23 @@ Post-sprint QA review. Alternative to `/architect` auto-routing when triggering 
 
 ## What it does
 
-1. Verifies pipeline is in `sprint-complete` phase
+1. Verifies pipeline is in `sprint-complete` phase, atomically transitions to `reviewing`
 2. Gathers task specs and built files from completed sprint
 3. Spawns 4 QA perspective agents (compliance, alignment, fitness, adversarial)
 4. Categorizes findings by severity
 5. Writes QA-REPORT.md
-6. Transitions: `sprint-complete` → `reviewing`
+6. Transitions: `reviewing` → `triaging` (atomic via `finalizeReview`)
 
 ## Instructions
 
-1. Read `.pipeline/state.yaml`, verify phase is `sprint-complete`
-2. Get sprint number from `state.pipeline.sprint`
+1. Read `.pipeline/state.yaml`, verify phase is `sprint-complete` OR `reviewing` (resume after crash). Get sprint number from `state.pipeline.sprint`. **Atomic entry transition (MANDATORY single call):** `review-runner.enterReview(pipelineDir, sprintNumber)`. Phase=sprint-complete advances to reviewing + state-history audit; phase=reviewing returns `alreadyEntered:true` (idempotent resume). If `!ok`, abort and report — do not run validators against an inconsistent state. Closes the last open B-class boundary (B5): without atomic entry, an early /review crash left phase=sprint-complete and autopilot would re-fire /review on every Stop.
+2. (entry transition handled in step 1 — proceed)
 3. Gather inputs:
    - Task spec paths from `.pipeline/sprints/sprint-N/tasks/*.md`
    - Built file paths from completion records in `.pipeline/sprints/sprint-N/completion/`
    - Requirements path: `.pipeline/requirements/REQ.md`
 4. Use `skills/review/scripts/review-runner.js` (canonical /review path):
+   - `enterReview(pipelineDir, sprintNumber)` — atomic entry transition `sprint-complete → reviewing` (idempotent on resume). MANDATORY single call before any validator dispatch.
    - `assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config)` — assemble adversarial briefs
    - Dispatch QA agents in parallel via the Agent tool
    - `parseReviewOutputs(rawOutputs)` — parse + classify per-agent output
@@ -37,6 +38,6 @@ Note: the legacy `skills/architect/scripts/architect-runner.runReview` is a sepa
 
 ## Constraints
 
-- Do NOT run if not in `sprint-complete` phase — report and stop
+- Do NOT run if not in `sprint-complete` OR `reviewing` phase — report and stop
 - Do NOT modify sprint artifacts — only write to `.pipeline/reviews/`
 - All QA briefs under `BRIEF_TOKEN_CEILING`

@@ -153,6 +153,63 @@ if (fs.existsSync(lockPath)) {
   }
 }
 
+// ── Case 6: phase behind on-disk artifacts (forward-walk healing) ────────────
+// The user-reported failure pattern: state.pipeline.phase = "sprint-complete"
+// but reviews/sprint-N/QA-REPORT.md, triage/TRIAGE-REPORT.md, and downstream
+// hotfix sprints already exist on disk. /repair Cases 1-5 only revert on
+// MISSING artifacts; they cannot detect "phase is BEHIND on-disk reality".
+//
+// Case 6 fills that gap. Uses lib/phase-inference to scan disk and propose
+// a forward walk through legal transitions in references/transitions.yaml.
+// --apply walks via state-machine.writeState (each step audited as
+// trigger="repair-walk-forward" in state-history.yaml).
+//
+// Conservative: skipped when ambiguous=true or walk=null. User must use
+// /heal (interactive) for ambiguous cases.
+const phaseInference = require("../../../lib/phase-inference");
+const inference = phaseInference.inferPhaseFromArtifacts(pipelineDir);
+if (
+  !inference.ambiguous &&
+  Array.isArray(inference.walk) &&
+  inference.walk.length > 0 &&
+  inference.inferred_phase !== inference.current_phase
+) {
+  const issue = {
+    case: 6,
+    description: `Phase '${inference.current_phase}' is behind on-disk artifacts (inferred: '${inference.inferred_phase}'). Walk: ${inference.walk.join(" → ")}. Evidence: ${inference.evidence.length} artifact(s).`,
+    action: applyFix
+      ? `Walking forward through ${inference.walk.length} transition(s) via state-machine.writeState (audited as trigger='repair-walk-forward')`
+      : `Would walk forward through ${inference.walk.length} transition(s)`,
+  };
+  issues.push(issue);
+
+  if (applyFix) {
+    const stateMachine = require("../../../lib/state-machine");
+    const completedSteps = [];
+    for (const targetPhase of inference.walk) {
+      const r = stateMachine.writeState(pipelineDir, targetPhase, {}, {
+        command: "/repair",
+        trigger: "repair-walk-forward",
+      });
+      if (!r.ok) {
+        issue.partial = true;
+        issue.error = r.error;
+        issue.stopped_at = targetPhase;
+        issue.completed_steps = completedSteps;
+        break;
+      }
+      completedSteps.push(targetPhase);
+    }
+    if (!issue.partial) {
+      issue.completed_steps = completedSteps;
+      // Reload state for any subsequent checks (none currently after Case 6,
+      // but defensive in case more cases are added later).
+      state = yamlIO.safeReadWithFallback(statePath, {});
+      Object.assign(pipeline, (state && state.pipeline) || {});
+    }
+  }
+}
+
 // ── Case 5: building sprint with all tasks complete ───────────────────────────
 // Sprint N shows status "building" but every completion record has status:complete
 // and the count matches tasks_total — the phase stuck on "building" without
