@@ -13,6 +13,25 @@ function block(reason) {
   process.exit(0);
 }
 
+// Resolve a path so that any symlinks in its chain are followed, even when
+// the target itself does not yet exist (typical case for Write-to-new-file).
+// realpathSync throws ENOENT for non-existent targets; falling straight back
+// to path.resolve does NOT follow symlinks, leaving a containment-bypass
+// window. Resolving the parent directory's realpath then appending the
+// basename closes that window without changing behavior for existing files.
+function resolveSymlinkAware(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch (_e) {
+    const dir = path.dirname(p);
+    try {
+      return path.join(fs.realpathSync(dir), path.basename(p));
+    } catch (_e2) {
+      return path.resolve(p);
+    }
+  }
+}
+
 const timeoutHandle = setTimeout(() => {
   process.stdout.write(JSON.stringify({ decision: "allow" }) + "\n");
   process.exit(0);
@@ -67,18 +86,8 @@ process.stdin.on("end", () => {
 
   if (phase === "reviewing" && (toolName === "Write" || toolName === "Edit")) {
     const toolFilePath = toolInput.file_path || "";
-    let resolvedTarget;
-    try {
-      resolvedTarget = fs.realpathSync(toolFilePath);
-    } catch (_e) {
-      resolvedTarget = path.resolve(toolFilePath);
-    }
-    let resolvedPipelineDir;
-    try {
-      resolvedPipelineDir = fs.realpathSync(pipelineDir);
-    } catch (_e) {
-      resolvedPipelineDir = path.resolve(pipelineDir);
-    }
+    const resolvedTarget = resolveSymlinkAware(toolFilePath);
+    const resolvedPipelineDir = resolveSymlinkAware(pipelineDir);
     const resolvedReviews = path.resolve(resolvedPipelineDir, "reviews");
     // FR-054: validator artifacts (confirmed-findings.yaml, false-positives.yaml,
     // qa-run-output.yaml, acknowledged.yaml, validator-checkpoint.yaml) permitted
@@ -97,12 +106,7 @@ process.stdin.on("end", () => {
 
   if (phase === "verifying" && (toolName === "Write" || toolName === "Edit")) {
     const filePath = toolInput.file_path || "";
-    let resolvedTarget;
-    try {
-      resolvedTarget = fs.realpathSync(filePath);
-    } catch (_e) {
-      resolvedTarget = path.resolve(filePath);
-    }
+    const resolvedTarget = resolveSymlinkAware(filePath);
     const pipelineParent = path.dirname(pipelineDir);
     const VERIFY_ALLOWED_DIRS = [
       path.resolve(pipelineParent, ".pipeline", "verify"),

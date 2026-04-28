@@ -2,8 +2,8 @@
 workflow: architect-plan
 skill: architect
 trigger: /architect
-phase_requires: requirements-ready
-phase_transitions: requirements-ready → architecture → decomposing → sprinting
+phase_requires: requirements-ready | architecture
+phase_transitions: requirements-ready → architecture → decomposing → sprinting | architecture (resume) → decomposing → sprinting
 ---
 
 # Architecture Planning Workflow
@@ -12,16 +12,20 @@ phase_transitions: requirements-ready → architecture → decomposing → sprin
 
 - Pipeline initialized with `.pipeline/state.yaml`
 - Research complete: `.pipeline/requirements/REQ.md` exists
-- State phase is `requirements-ready`
+- State phase is `requirements-ready` (canonical fresh start) **or** `architecture` (resume — phase already set by triage routing, verify routing back, or interrupted prior run)
 - Optional: `.pipeline/elicitation/SPEC.md` exists
 
 ## Steps
 
 ### 1. Validate State
-Read `.pipeline/state.yaml`. Verify phase is `requirements-ready`. If not, report current phase.
+Read `.pipeline/state.yaml`. Accept phase `requirements-ready` (canonical fresh start) OR `architecture` (resume — happens when /triage routed via `triaging → architecture`, /verify routed back via `verifying → architecture`, or a prior /architect run was interrupted before transitioning to decomposing).
 
-### 2. Transition to Architecture
-Use `lib/state-machine.transition()` to move from `requirements-ready` to `architecture`.
+If phase is anything else, report current phase and exit.
+
+### 2. Transition to Architecture (skip if already there)
+If current phase is `requirements-ready`, use `lib/state-machine.transition()` to move from `requirements-ready` to `architecture`.
+
+If current phase is `architecture`, skip the transition (already at target — the state machine has no `architecture → architecture` self-loop, so a redundant transition would fail and stall the pipeline).
 
 ### 3. Read Input Sources
 
@@ -63,9 +67,11 @@ Either path produces:
 - Synthesis document (skip for mechanical path if already implicit in ARCH.md)
 - Consistency verification result
 
-### 9. Begin Wave-Based Decomposition
+### 9. Finalize architecture → decomposing (atomic write + transition)
 
-Transition from `architecture` to `decomposing`.
+**MANDATORY single call:** `architect-runner.finalizeArchitecture(pipelineDir, archDoc, synthDoc, "decomposing")`. Atomically persists the prelim ARCH.md (+ synthesis.md) AND transitions `architecture → decomposing`. Do NOT split into separate `writeArchitectureArtifacts` + `transition` steps — same B2 failure family closed for the lightweight flow in `commands/architect.md`.
+
+The prelim ARCH.md persisted here is overwritten by `finalizeDecompose` at step 11 with the final decomposition-aware ARCH.md. Persisting at this boundary lets a crashed orchestrator resume from disk instead of re-running the perspective swarm.
 
 Initialize DECOMPOSITION-STATE using `architect-runner.initDecompositionState()`.
 
@@ -102,20 +108,17 @@ For each wave:
    - On **Stop**: skip to step 11, excluding unresolved/blocked nodes from task specs
    - On **Escalate**: show each blocked node, what blocks it, what info is needed. User resolves or defers.
 
-### 11. Generate Output
+### 11. Generate Output and Finalize
 
 When all nodes are leaves or blocked:
 
 1. Generate TREE.md from DECOMPOSITION-STATE using `architect-runner.generateTreeMd()`
 2. Create task specs for all leaf nodes (TASK-NNN.md + TASK-NNN.agent.md)
-3. Write ARCH.md with module map and interface contracts
-4. Save all artifacts to `.pipeline/`
+3. Compose final ARCH.md with module map and interface contracts
 
-### 12. Transition to Sprinting
+**MANDATORY single call:** `architect-runner.finalizeDecompose(pipelineDir, sprintNumber, specs, treeMd, archDoc, synthDoc, "sprinting")`. Atomically writes task specs + TREE.md + final ARCH.md AND transitions `decomposing → sprinting`. Do NOT split into separate `writeTaskSpecs` + `transition` steps — phase=decomposing must not persist after task specs have been produced, otherwise autopilot loops /architect against an existing decomposition (same failure mode B2 closed for /review).
 
-Use `lib/state-machine.transition()` to move from `decomposing` to `sprinting`.
-
-### 13. Report
+### 12. Report
 
 Show user:
 - Decomposition summary (total nodes, leaves, blocked, waves taken)

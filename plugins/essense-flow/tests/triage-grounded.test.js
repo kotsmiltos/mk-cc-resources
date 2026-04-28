@@ -628,5 +628,17 @@ describe("Part C: writeTriage throws on grounded_required state.yaml write failu
     assert.ok(threw, "writeTriage must throw when state.yaml grounded_required write fails");
     assert.ok(errorMsg.includes("grounded_required"), "error must mention grounded_required");
     assert.ok(errorMsg.includes("Re-run /triage"), "error must include recovery instruction");
+
+    // Transactional ordering: state.yaml is written FIRST. When that write
+    // fails, drop-history.yaml MUST NOT have been touched — otherwise the
+    // next /triage run would see a duplicate entry on retry.
+    const dropHistoryPath = path.join(pipelineDir, "triage", "drop-history.yaml");
+    const dropHistory = yaml.load(fs.readFileSync(dropHistoryPath, "utf8"));
+    const sprint2Entries = dropHistory.entries.filter((e) => e.sprint === 2);
+    assert.equal(
+      sprint2Entries.length,
+      0,
+      "drop-history.yaml must NOT contain sprint-2 entry when state.yaml write failed (transactional rollback)"
+    );
   });
 });

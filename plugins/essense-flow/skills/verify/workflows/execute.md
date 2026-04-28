@@ -165,16 +165,9 @@ Call `verify-runner.assembleReport(extractedItems, mergedVerdicts, specHash, mod
 - **Per-section breakdown**: mirrors SPEC.md's section order; each section lists items with verdict, confidence, evidence, and decision override reference (if DEVIATED)
 - **Routing section**: gate mode shows routing decisions; on-demand mode shows routing suggestions
 
-### 14. Write Report
+### 14. Routing (Gate Mode)
 
-Call `verify-runner.writeReport(pipelineDir, report, mode)`. Output paths:
-
-- Gate mode: `.pipeline/VERIFICATION-REPORT.md`
-- On-demand mode: `.pipeline/VERIFICATION-REPORT-ondemand.md`
-
-### 15. Routing and State Transition (Gate Mode Only)
-
-Skip in on-demand mode.
+Skip in on-demand mode (proceed directly to step 15 with `mode === "on-demand"`).
 
 Call `verify-runner.determineRouting(mergedVerdicts, mode, report)` to classify CONFIRMED gaps:
 
@@ -184,12 +177,14 @@ Call `verify-runner.determineRouting(mergedVerdicts, mode, report)` to classify 
 
 Call `verify-runner.checkLoopLimit(pipelineDir, config, currentGapCount)` to check whether pipeline cycled through verify → elicit/architecture too many times. If loop limit reached, halt and escalate to user.
 
-Call `verify-runner.updateVerifyState(pipelineDir, target, gapItems, currentGapCount)` to write routing target and gap summary to `state.yaml`.
+### 15. Finalize (atomic write + transition)
 
-Transition phase using `lib/state-machine.transition()`:
-- `verifying -> complete`: auto-advance
-- `verifying -> eliciting`: stop — user runs `/elicit`
-- `verifying -> architecture`: stop — user runs `/architect`
+**MANDATORY single call:** `verify-runner.finalizeVerify(pipelineDir, report, mode, target, gapItems, currentGapCount)`. Atomically writes the verification report AND, in gate mode, transitions `verifying → <target>` via `state-machine.writeState`. Do NOT split into separate `writeReport` + `updateVerifyState` steps — phase=verifying must not persist after a verification report has been produced, otherwise autopilot loops /verify against an existing report (same failure mode B2 closed for /review).
+
+Output paths:
+
+- Gate mode: `.pipeline/VERIFICATION-REPORT.md` (+ state transition; auto-advance only when target is `complete`, otherwise stop and surface routing target to the user)
+- On-demand mode: `.pipeline/VERIFICATION-REPORT-ondemand.md` (no state transition — NFR-004)
 
 ### 16. Report
 

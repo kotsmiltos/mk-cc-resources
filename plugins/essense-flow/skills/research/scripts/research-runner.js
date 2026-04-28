@@ -635,6 +635,58 @@ function writeRequirements(pipelineDir, requirements, synthesisDoc, syntheticGap
   return reqPath;
 }
 
+// Valid post-research transitions per references/transitions.yaml.
+// `triaging` is canonical; `requirements-ready` is a legacy shortcut kept
+// for Increment 1 compatibility (skip triage when no categorization needed).
+const VALID_RESEARCH_ROUTES = ["triaging", "requirements-ready"];
+
+/**
+ * Atomic post-research hand-off: write REQ.md (+ synthesis.md, +
+ * synthetic gaps if any) AND transition `research → <route>` in a single
+ * call. Mirrors the B2 finalizeReview / finalizeTriage pattern: prevents
+ * the orchestrator from stopping between artifact production and state
+ * transition, which would leave phase=research with REQ.md already
+ * present and trick autopilot into looping /research against an existing
+ * report.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {string} requirements — REQ.md markdown content
+ * @param {string} [synthesisDoc] — optional synthesis.md content
+ * @param {Array} [syntheticGaps] — synthetic gap findings from failed agents
+ * @param {string} [route] — target phase (defaults to "triaging")
+ * @returns {{ ok: boolean, reqPath?: string, transitioned: boolean,
+ *            targetPhase?: string, error?: string }}
+ */
+function finalizeResearch(pipelineDir, requirements, synthesisDoc, syntheticGaps, route) {
+  const targetRoute = route || "triaging";
+  if (!VALID_RESEARCH_ROUTES.includes(targetRoute)) {
+    return {
+      ok: false,
+      transitioned: false,
+      error: `invalid route '${targetRoute}' — must be one of: ${VALID_RESEARCH_ROUTES.join(", ")}`,
+    };
+  }
+
+  let reqPath;
+  try {
+    reqPath = writeRequirements(pipelineDir, requirements, synthesisDoc, syntheticGaps);
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `writeRequirements failed: ${err.message}` };
+  }
+
+  const stateMachine = require("../../../lib/state-machine");
+  const transition = stateMachine.writeState(pipelineDir, targetRoute, {}, {
+    command: "/research",
+    trigger: "research-skill",
+    artifact: reqPath,
+  });
+
+  if (!transition.ok) {
+    return { ok: false, reqPath, transitioned: false, error: transition.error };
+  }
+  return { ok: true, reqPath, transitioned: true, targetPhase: targetRoute };
+}
+
 /**
  * Load vocabulary from pipeline dir (project-level) or plugin defaults.
  *
@@ -849,6 +901,8 @@ module.exports = {
   synthesizeAndGenerate,
   generateRequirements,
   writeRequirements,
+  finalizeResearch,
+  VALID_RESEARCH_ROUTES,
   loadVocabulary,
   detectRerunContext,
   parseExistingReq,

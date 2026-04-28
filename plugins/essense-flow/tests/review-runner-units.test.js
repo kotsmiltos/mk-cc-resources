@@ -55,31 +55,16 @@ describe("FIX-039: runReview halts before dispatch when confirmed-findings.yaml 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("calls process.exit(1) before dispatch when re-review missing confirmed-findings.yaml", async () => {
-    const origExit = process.exit;
-    let capturedCode = null;
-
-    process.exit = (code) => {
-      capturedCode = code;
-      throw new Error("process.exit");
-    };
-
-    let threw = false;
+  it("rejects with ERR_MISSING_LEDGER before dispatch when re-review missing confirmed-findings.yaml", async () => {
+    let captured = null;
     try {
       await runReview([], 1, pipelineDir, MINIMAL_CONFIG);
     } catch (err) {
-      if (err.message === "process.exit") {
-        threw = true;
-      } else {
-        process.exit = origExit;
-        throw err;
-      }
-    } finally {
-      process.exit = origExit;
+      captured = err;
     }
-
-    assert.ok(threw, "runReview must call process.exit on missing ledger during re-review");
-    assert.equal(capturedCode, 1, "process.exit must be called with code 1");
+    assert.ok(captured, "runReview must reject when re-review ledger is missing");
+    assert.equal(captured.code, "ERR_MISSING_LEDGER", "error must carry ERR_MISSING_LEDGER code");
+    assert.match(captured.message, /confirmed-findings\.yaml not found/);
   });
 });
 
@@ -114,6 +99,31 @@ describe("FIX-041: dispatchValidatorWithTimeout timer cleanup", () => {
       caughtMsg = err.message;
     }
     assert.equal(caughtMsg, "validator-timeout");
+  });
+
+  // Sprint-8 review claim: a validatorFn that throws synchronously or
+  // returns a non-Promise causes .then() to throw inside the executor —
+  // timer is never cleared and leaks for the full timeout. Fix: wrap call
+  // in Promise.resolve().then(() => validatorFn()).
+
+  it("rejects (and clears timer) when validatorFn throws synchronously", async () => {
+    const fn = () => { throw new Error("sync-throw"); };
+    const start = Date.now();
+    let caughtMsg = null;
+    try {
+      await dispatchValidatorWithTimeout(fn, 5000);
+    } catch (err) {
+      caughtMsg = err.message;
+    }
+    const elapsed = Date.now() - start;
+    assert.equal(caughtMsg, "sync-throw");
+    assert.ok(elapsed < 1000, `must reject quickly, not wait full timeout (got ${elapsed}ms)`);
+  });
+
+  it("resolves when validatorFn returns a non-Promise plain value", async () => {
+    const fn = () => "plain-result";
+    const result = await dispatchValidatorWithTimeout(fn, 5000);
+    assert.equal(result, "plain-result");
   });
 });
 
@@ -161,6 +171,40 @@ describe("FIX-047: readAcknowledgments excludes non-string find_id", () => {
     const results = readAcknowledgments(ackPath);
     const hasEmpty = results.some(a => a.find_id === "");
     assert.ok(!hasEmpty, "empty string find_id must be excluded");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CRLF parsing — parseValidatorOutput accepts Windows-style line endings
+// ---------------------------------------------------------------------------
+
+describe("parseValidatorOutput accepts CRLF YAML fence", () => {
+  it("parses CRLF-separated YAML fenced block (Windows agent output)", () => {
+    const raw =
+      "```yaml\r\n" +
+      "schema_version: 1\r\n" +
+      "finding_id: qa-001\r\n" +
+      "verdict: NEEDS_CONTEXT\r\n" +
+      "reason: needs more info\r\n" +
+      "validated_at: '2026-04-28T00:00:00.000Z'\r\n" +
+      "```\r\n";
+    const result = parseValidatorOutput(raw);
+    assert.equal(result.ok, true, `expected ok, got: ${JSON.stringify(result)}`);
+    assert.equal(result.verdict.finding_id, "qa-001");
+  });
+
+  it("parses LF-separated YAML fenced block (Unix agent output) unchanged", () => {
+    const raw =
+      "```yaml\n" +
+      "schema_version: 1\n" +
+      "finding_id: qa-002\n" +
+      "verdict: NEEDS_CONTEXT\n" +
+      "reason: needs more info\n" +
+      "validated_at: '2026-04-28T00:00:00.000Z'\n" +
+      "```\n";
+    const result = parseValidatorOutput(raw);
+    assert.equal(result.ok, true);
+    assert.equal(result.verdict.finding_id, "qa-002");
   });
 });
 

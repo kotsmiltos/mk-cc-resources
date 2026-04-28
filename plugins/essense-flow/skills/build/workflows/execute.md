@@ -134,15 +134,15 @@ Skip entirely if no test or lint script is configured (gate returns
 
 Call `build-runner.getSprintSummary(pipelineDir, sprintNumber)` to aggregate all completion records.
 
-### 7. Transition State
+### 7. Finalize (atomic write + transition)
 
-Use `lib/state-machine.transition()` to move from `sprinting` to `sprint-complete`.
+**MANDATORY single call:** `build-runner.finalizeBuild(pipelineDir, sprintNumber, completions, config, projectRoot)` (alias of `completeSprintExecution`). Atomically writes `completion-report.md` AND transitions `sprinting → sprint-complete` via `state-machine.writeState`. Do NOT split into separate `generateCompletionReport` + `transition` steps — phase=sprinting must not persist after a completion-report has been produced, otherwise autopilot loops /build against an existing report (same failure mode B2 closed for /review).
+
+If any task in `completions` has `status === FAILED`, `finalizeBuild` short-circuits and returns `{ ok: false, reason }` without transitioning — the report is not written for failed sprints.
 
 ### 8. Auto-Advance: Review
 
-After transitioning to `sprint-complete`, immediately transition to `reviewing` and report that review will begin. Review workflow handles actual QA dispatch.
-
-Note: build does NOT run full review workflow inline — it transitions state and reports. Review is separate phase execution.
+After `finalizeBuild` returns ok with phase=`sprint-complete`, the review workflow handles actual QA dispatch. Build does NOT run full review workflow inline — it finalizes state and reports.
 
 ### 9. Report
 

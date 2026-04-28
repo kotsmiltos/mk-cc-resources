@@ -733,10 +733,12 @@ function generateCompletionReport(pipelineDir, sprintNumber, completions) {
  * @param {string} projectRoot — root dir containing pipeline state
  * @returns {{ ok: boolean, nextAction?: string, reason?: string }}
  */
-function completeSprintExecution(pipelineDir, sprintNumber, completions, _config, projectRoot) {
+// Valid post-sprint transitions per references/transitions.yaml.
+// `sprint-complete` is the only canonical exit from sprinting.
+const VALID_BUILD_ROUTES = ["sprint-complete"];
+
+function completeSprintExecution(pipelineDir, sprintNumber, completions, _config, _projectRoot) {
   const stateMachine = require("../../../lib/state-machine");
-  const yamlIO = require("../../../lib/yaml-io");
-  const path = require("path");
 
   // Reject if any tasks failed
   const failures = completions.filter((c) => c.status === "FAILED" || c.status === COMPLETION_STATUS.FAILED);
@@ -747,40 +749,56 @@ function completeSprintExecution(pipelineDir, sprintNumber, completions, _config
     };
   }
 
-  // Generate completion report
-  const report = generateCompletionReport(pipelineDir, sprintNumber, completions);
-
-  // Transition state
-  const statePath = path.join(pipelineDir, "state.yaml");
-  const stateData = yamlIO.safeRead(statePath);
-  const currentPhase = stateData && stateData.pipeline && stateData.pipeline.phase;
-
-  // Load transitions
-  const transitionsPath = path.join(projectRoot, "references", "transitions.yaml");
-  let transitionMap = {};
-  if (require("fs").existsSync(transitionsPath)) {
-    transitionMap = stateMachine.loadTransitions(transitionsPath);
+  // Generate completion report — written before the transition. If the
+  // transition fails the report is preserved (work isn't lost) but the
+  // phase stays at `sprinting`, mirroring the finalize* pattern.
+  // Wrapped so disk failure during the writeFileSync inside
+  // generateCompletionReport surfaces as {ok:false} instead of escaping
+  // as a raw exception (matches finalizeReview/Research/Triage/Verify
+  // contract).
+  let report;
+  try {
+    report = generateCompletionReport(pipelineDir, sprintNumber, completions);
+  } catch (err) {
+    return { ok: false, reason: `generateCompletionReport failed: ${err.message}` };
   }
 
-  const result = stateMachine.transition(currentPhase, "sprint-complete", transitionMap);
-  if (!result.ok) {
-    throw new Error(`Invalid transition from ${currentPhase} to sprint-complete: ${result.error}`);
-  }
-
-  // Write new state
-  const newState = {
-    ...stateData,
-    pipeline: {
-      ...((stateData && stateData.pipeline) || {}),
-      phase: "sprint-complete",
-      completion_evidence: report.reportPath,
-      sprint: sprintNumber,
-      updated_at: new Date().toISOString(),
+  // Atomic transition via state-machine.writeState — handles validation,
+  // state-history.yaml audit append, and terminal-state guard. Replaces
+  // the older raw transition + safeWrite path which bypassed audit logs.
+  const transitionResult = stateMachine.writeState(
+    pipelineDir,
+    "sprint-complete",
+    {
+      pipeline: {
+        completion_evidence: report.reportPath,
+        sprint: sprintNumber,
+      },
     },
-  };
-  yamlIO.safeWrite(statePath, newState);
+    {
+      command: "/build",
+      trigger: "build-skill",
+      artifact: report.reportPath,
+    },
+  );
 
-  return { ok: true, nextAction: "/architect review", report };
+  if (!transitionResult.ok) {
+    return { ok: false, reason: transitionResult.error, report };
+  }
+
+  return { ok: true, nextAction: "/review", report };
+}
+
+/**
+ * Atomic post-build hand-off: alias for completeSprintExecution under the
+ * canonical finalize* naming used by other skills (finalizeReview,
+ * finalizeTriage, finalizeResearch, finalizeDecompose). Same atomic
+ * write+transition behaviour: completion-report.md and state transition
+ * `sprinting → sprint-complete` are produced together so phase=sprinting
+ * never persists with a completion report already written.
+ */
+function finalizeBuild(pipelineDir, sprintNumber, completions, config, projectRoot) {
+  return completeSprintExecution(pipelineDir, sprintNumber, completions, config, projectRoot);
 }
 
 /**
@@ -1005,6 +1023,8 @@ module.exports = {
   recordCompletion,
   generateCompletionReport,
   completeSprintExecution,
+  finalizeBuild,
+  VALID_BUILD_ROUTES,
   dispatchVerifier,
   handleVerifierResult,
   injectWarningsIntoBriefs,

@@ -2,8 +2,8 @@
 workflow: research-execute
 skill: research
 trigger: /research
-phase_requires: idle
-phase_transitions: idle → research → triaging → [routing]
+phase_requires: idle | research
+phase_transitions: idle → research → triaging → [routing] | research (resume) → triaging → [routing]
 ---
 
 # Research Execution Workflow
@@ -11,18 +11,22 @@ phase_transitions: idle → research → triaging → [routing]
 ## Prerequisites
 
 - Pipeline initialized (`.pipeline/state.yaml` exists)
-- State phase is `idle`
+- State phase is `idle` (fresh start) **or** `research` (resume — phase already set by triage routing or interrupted prior run)
 - Problem statement provided by user, `.pipeline/elicitation/SPEC.md`, or `.pipeline/problem.md`
 
 ## Steps
 
 ### 1. Validate State
 
-Read `.pipeline/state.yaml`. Verify phase is `idle`. If not, report current phase and exit.
+Read `.pipeline/state.yaml`. Accept phase `idle` (canonical fresh start) OR `research` (resume — happens when /triage routed here via `triaging → research`, or a prior /research run was interrupted before transitioning to triaging).
 
-### 2. Transition to Research
+If phase is anything else, report current phase and exit.
 
-Use `lib/state-machine.transition()` to move from `idle` to `research`.
+### 2. Transition to Research (skip if already there)
+
+If current phase is `idle`, use `lib/state-machine.transition()` to move from `idle` to `research`.
+
+If current phase is `research`, skip the transition (already at target — pipeline stalls if a redundant transition is attempted because the state machine has no `research → research` self-loop).
 
 ### 3. Read Input and Determine Mode
 
@@ -80,17 +84,11 @@ Call `research-runner.synthesizeAndGenerate()` to:
 - Compose synthesis document
 - Generate REQ.md
 
-### 9. Write Output
+### 9. Finalize (atomic write + transition)
 
-Call `research-runner.writeRequirements()` to write:
-- `.pipeline/requirements/REQ.md` — structured requirements
-- `.pipeline/requirements/synthesis.md` — full synthesis (for reference)
+**MANDATORY single call:** `research-runner.finalizeResearch(pipelineDir, requirements, synthesisDoc, syntheticGaps, "triaging")`. Atomically writes `REQ.md` (+ `synthesis.md`) AND transitions `research → triaging`. Do NOT split into separate `writeRequirements` + `transition` steps — phase=research must not persist after `REQ.md` has been produced, otherwise autopilot loops /research against an existing report (same failure mode B2 closed for /review).
 
-### 10. Transition to Triaging
-
-Use `lib/state-machine.transition()` to move from `research` to `triaging`. Auto-advances — triage runs immediately.
-
-For Increment 1, triage defaults to routing all gaps as implementation tasks → `triaging -> requirements-ready`. Full categorization is Increment 2.
+For Increment 1, the legacy shortcut `research → requirements-ready` is still accepted by `finalizeResearch` (pass `"requirements-ready"` as the route) but the canonical path is via `triaging`.
 
 ### 11. Auto-Advance: Triage
 

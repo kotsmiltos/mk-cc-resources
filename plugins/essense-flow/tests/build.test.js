@@ -330,8 +330,30 @@ describe("executeWave bounds checking", () => {
 // --- completeSprintExecution ---
 
 describe("completeSprintExecution", () => {
-  before(() => fs.mkdirSync(TMP_DIR, { recursive: true }));
-  after(() => fs.rmSync(TMP_DIR, { recursive: true, force: true }));
+  // state-machine.writeState resolves transitions.yaml relative to the
+  // *parent* of pipelineDir (it expects pipelineDir to be `<root>/.pipeline`).
+  // Mirror references/transitions.yaml to TMP_DIR's parent so writeState
+  // can find canonical transitions during the sprinting → sprint-complete
+  // transition.
+  const refsDir = path.join(path.dirname(TMP_DIR), "references");
+  const refsTransitions = path.join(refsDir, "transitions.yaml");
+  const sourceTransitions = path.join(PLUGIN_ROOT, "references", "transitions.yaml");
+  let mirroredRefs = false;
+
+  before(() => {
+    fs.mkdirSync(TMP_DIR, { recursive: true });
+    if (!fs.existsSync(refsTransitions)) {
+      fs.mkdirSync(refsDir, { recursive: true });
+      fs.copyFileSync(sourceTransitions, refsTransitions);
+      mirroredRefs = true;
+    }
+  });
+  after(() => {
+    fs.rmSync(TMP_DIR, { recursive: true, force: true });
+    if (mirroredRefs) {
+      fs.rmSync(refsDir, { recursive: true, force: true });
+    }
+  });
 
   it("transitions state to sprint-complete on success via state machine", () => {
     // Pre-set state to sprinting (valid source for sprint-complete transition)
@@ -342,7 +364,7 @@ describe("completeSprintExecution", () => {
     ];
     const result = buildRunner.completeSprintExecution(TMP_DIR, 1, completions, CONFIG, PLUGIN_ROOT);
     assert.equal(result.ok, true);
-    assert.equal(result.nextAction, "/architect review");
+    assert.equal(result.nextAction, "/review");
 
     const state = yamlIO.safeRead(path.join(TMP_DIR, "state.yaml"));
     assert.equal(state.pipeline.phase, "sprint-complete");
@@ -371,9 +393,15 @@ describe("completeSprintExecution", () => {
       { task_id: "TASK-A", sprint: 1, status: "COMPLETE", files_written: "", deviations: "none", verification: "", completed_at: new Date().toISOString() },
     ];
 
-    assert.throws(() => {
-      buildRunner.completeSprintExecution(TMP_DIR, 1, completions, CONFIG, PLUGIN_ROOT);
-    }, /Invalid transition/);
+    // Refactored to use state-machine.writeState — returns { ok: false }
+    // instead of throwing. Preserves the legacy report (work isn't lost)
+    // but blocks the bad transition.
+    const result = buildRunner.completeSprintExecution(TMP_DIR, 1, completions, CONFIG, PLUGIN_ROOT);
+    assert.equal(result.ok, false);
+    assert.ok(typeof result.reason === "string" && result.reason.length > 0);
+
+    const state = yamlIO.safeRead(path.join(TMP_DIR, "state.yaml"));
+    assert.equal(state.pipeline.phase, "idle");
   });
 });
 

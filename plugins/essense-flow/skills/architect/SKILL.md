@@ -76,9 +76,16 @@ If user's answer reveals spec gap, surface it: "This looks like a spec gap, not 
 
 ## Workflows
 
-- **plan** — Read inputs → perspective analysis → synthesize → begin wave-based decomposition
-- **review** — Spawn QA agents → synthesize findings → update plan → spec next sprint
-- **decompose** — Wave-based iterative decomposition with user interaction
+- **plan** — Read inputs → perspective analysis → synthesize → finalizeArchitecture(decomposing) → enter wave-based decomposition. Heavyweight path; canonical entry for design-bearing or full-depth projects.
+- **decompose** — Wave-based iterative decomposition with user interaction → finalizeDecompose(sprinting). Resumes from `phase: decomposing`.
+- **review** — Archived; post-sprint QA is owned by `/review` skill (`skills/review/workflows/audit.md`).
+
+The slash command `/architect` is a **dispatcher** (`commands/architect.md`). It reads `SPEC.md` complexity and routes to either:
+
+- **Lightweight inline flow** — `flat` depth or `mechanical` classification. DAG-based wave construction (`decomposeIntoSprints`), `finalizeArchitecture(sprinting)`, skip the `decomposing` phase entirely.
+- **Heavyweight workflow** — anything else. Follows `plan.md` end-to-end (perspective swarm → finalizeArchitecture(decomposing) → decompose.md → finalizeDecompose(sprinting)).
+
+Routing is deterministic via `architect-runner.chooseArchitectFlow(complexity)`.
 
 ## Scripts
 
@@ -93,10 +100,12 @@ When both exist, SPEC.md is primary source for decomposition. REQ.md is suppleme
 
 ## State Transitions
 
-- `requirements-ready → architecture` — start planning
-- `architecture → decomposing` — large modules need recursive breakdown
-- `architecture → sprinting` — first sprint ready
-- `sprint-complete → reviewing` — sprint done, trigger QA
+- `requirements-ready → architecture` — start planning (both flows)
+- `architecture → decomposing` — heavyweight flow only; via `finalizeArchitecture(decomposing)`
+- `architecture → sprinting` — lightweight flow only; via `finalizeArchitecture(sprinting)`
+- `decomposing → decomposing` — heavyweight wave self-loop (during decompose.md wave processing)
+- `decomposing → sprinting` — heavyweight flow exit; via `finalizeDecompose(sprinting)`
+- `sprint-complete → reviewing` — owned by `/review`, not `/architect`
 
 ## Constraints
 

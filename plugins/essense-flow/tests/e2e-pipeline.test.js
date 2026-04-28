@@ -39,6 +39,14 @@ describe("End-to-End Pipeline", () => {
   before(() => {
     fs.mkdirSync(PIPELINE_DIR, { recursive: true });
 
+    // state-machine.writeState resolves transitions.yaml relative to
+    // path.dirname(pipelineDir) — i.e. TMP_PROJECT/references/transitions.yaml.
+    // Mirror the canonical file there so build-runner.completeSprintExecution
+    // (and any other writeState callers) find a valid transition map.
+    const refsDir = path.join(TMP_PROJECT, "references");
+    fs.mkdirSync(refsDir, { recursive: true });
+    fs.copyFileSync(TRANSITIONS_PATH, path.join(refsDir, "transitions.yaml"));
+
     // Initialize pipeline state
     yamlIO.safeWrite(STATE_FILE, {
       schema_version: 1,

@@ -29,8 +29,8 @@ Categorize gaps or findings and route pipeline to correct phase. Runs automatica
    - Coming from review: read latest `.pipeline/reviews/sprint-N/QA-REPORT.md`
 3. Read `.pipeline/elicitation/SPEC.md` if exists (for cross-referencing)
 4. Apply categorization algorithm from triage skill
-5. Write results to `.pipeline/triage/TRIAGE-REPORT.md` and `.pipeline/triage/queued-findings.yaml`
-6. Transition to target phase based on routing decision
+5. Determine route via `triage-runner.routeFinal(qaReportPath, categorized)` — returns `{ route, signal }`. Log `signal.source` (`blocks_advance | category | missing`) for audit visibility.
+6. **MANDATORY single call:** `triage-runner.finalizeTriage(pipelineDir, report, queued, revalidateDrops, route)`. Atomically writes TRIAGE-REPORT.md + queued-findings.yaml AND transitions `triaging → <route>`. Do NOT split into separate write + transition steps — phase=triaging must not persist after TRIAGE-REPORT.md has been produced, otherwise autopilot loops /triage against an existing report (same failure mode B2 closed for /review).
 7. Report: categorization summary, routing decision, queued items count
 
 ## Constraints

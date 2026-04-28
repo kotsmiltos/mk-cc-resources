@@ -1,52 +1,23 @@
 ---
 workflow: architect-review
 skill: architect
-trigger: post-sprint
-phase_requires: sprint-complete
-phase_transitions: sprint-complete → reviewing → sprinting|complete
+status: archived
+archived_in: 0.4.7
+replaced_by: skills/review/workflows/audit.md
 ---
 
-# Post-Sprint Review Workflow
+# Archived — Post-Sprint Review Workflow
 
-## Prerequisites
+This workflow is **archived** and not invoked by any current trigger.
 
-- Sprint complete: `.pipeline/state.yaml` phase is `sprint-complete`
-- Task specs exist for completed sprint
-- Built artifacts exist (files created/modified during sprint)
+## Why archived
 
-## Steps
+- The earlier `phase_transitions` (`sprint-complete → reviewing → sprinting|complete`) declared transitions that do not exist in `references/transitions.yaml`. The canonical post-review transition is `reviewing → triaging`, handled by the /review skill.
+- The `trigger: post-sprint` value is not a Claude Code trigger; nothing fires this workflow.
+- The /review skill now owns post-sprint QA review end-to-end via `skills/review/workflows/audit.md`, with the validator round (`review-runner.runReview` async) and atomic `finalizeReview` write+transition.
 
-### 1. Gather Sprint Output
-Read task specs, built files, and original requirements. Assemble PLANNED vs BUILT.
+## Canonical replacement
 
-### 2. Spawn QA Agents
-Launch 4 QA agents in parallel:
-- **Task Spec Compliance:** Check each acceptance criterion against built code
-- **Requirements Alignment:** Verify sprint output serves original requirements
-- **Fitness Function Verification:** Check architectural properties preserved
-- **Adversarial Edge Cases:** Try to break built code
+Use `skills/review/workflows/audit.md` (trigger: `/review`).
 
-### 3. Synthesize QA Results
-Categorize findings by severity:
-- **Critical:** Must fix before proceeding
-- **High:** Fix in next sprint
-- **Medium:** Add to Refactor Requests
-- **Low:** Refinement queue
-
-### 4. Apply Autonomous Fixes
-For small, unambiguous, non-interface-changing fixes: apply and document.
-
-### 5. Write QA Report
-Save to `.pipeline/reviews/sprint-N/QA-REPORT.md`.
-
-### 6. Update Plan
-Update ARCH.md change log, risk register, refactor requests, fitness functions.
-
-### 7. Plan Next Sprint
-If more sprints remain: create task specs for next sprint. Otherwise: verify all requirements addressed.
-
-### 8. Transition State
-Move to next sprint phase or `complete`.
-
-### 9. Report
-Show user: QA result, issues found, fixes applied, next sprint summary.
+The /architect skill retains a separate **grounded review pass** through `architect-runner.runReview` (sync), invoked only when `state.grounded_required === true`. That mechanism is documented in `skills/architect/SKILL.md`, not here.

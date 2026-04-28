@@ -209,13 +209,27 @@ function writeState(pipelineDir, targetPhase, stateUpdates, options = {}) {
     return { ok: false, error: `State write failed: ${err.message}` };
   }
 
-  stateHistory.appendTransition(pipelineDir, {
-    fromState,
-    toState: targetPhase,
-    trigger: options.trigger || "manual",
-    triggeringArtifact: options.artifact || null,
-    sprint: state && state.pipeline ? state.pipeline.sprint || null : null,
-  });
+  // Audit append. state.yaml is already written; if appendTransition
+  // throws (disk full, permission), the transition is real but the
+  // history is incomplete. Surface as ok:false so the caller can decide
+  // whether to retry — without the wrap the throw escapes writeState's
+  // {ok,error} contract and any caller that branches on `.ok` will
+  // mis-handle it. Same family as the finalize* try/catch wraps.
+  try {
+    stateHistory.appendTransition(pipelineDir, {
+      fromState,
+      toState: targetPhase,
+      trigger: options.trigger || "manual",
+      triggeringArtifact: options.artifact || null,
+      sprint: state && state.pipeline ? state.pipeline.sprint || null : null,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: `State written to ${targetPhase} but audit log append failed: ${err.message}`,
+      stateWritten: true,
+    };
+  }
 
   return { ok: true };
 }

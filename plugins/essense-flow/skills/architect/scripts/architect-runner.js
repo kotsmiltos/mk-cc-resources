@@ -128,6 +128,62 @@ function recommendDecompositionDepth(complexity) {
 }
 
 /**
+ * Choose lightweight vs heavyweight architect flow from SPEC.md complexity.
+ *
+ * The /architect dispatcher uses this to decide whether to run the
+ * lightweight DAG-based path (skip decomposing phase) or the heavyweight
+ * wave-based path (enter decomposing phase). Decision is deterministic
+ * from the SPEC.md frontmatter `complexity` block.
+ *
+ * Routing rules (in order):
+ *   1. complexity.classification === "mechanical" → lightweight (override)
+ *      Rationale: re-plans of pre-specced tasks, fix sprints, cited-bug
+ *      patches have nothing for wave-based decomposition to discover —
+ *      running it produces no design signal at LLM-decomposition cost.
+ *   2. depth === "flat" (i.e. complexity.assessment === "bug-fix" with
+ *      narrow touch_surface) → lightweight
+ *   3. anything else (incl. missing complexity block) → heavyweight
+ *
+ * Missing complexity defaults to heavyweight because the safer choice
+ * for an unknown project is full design rigor — explicit complexity
+ * declaration is required to opt into the cheaper lightweight path.
+ *
+ * @param {Object|null} complexity — SPEC.md complexity block, or null
+ * @returns {{ flow: "lightweight"|"heavyweight",
+ *            depth: string, classification: string|null, reason: string }}
+ */
+function chooseArchitectFlow(complexity) {
+  const depthRec = recommendDecompositionDepth(complexity);
+  const depth = depthRec.depth;
+  const classification = (complexity && complexity.classification) || null;
+
+  if (classification === "mechanical") {
+    return {
+      flow: "lightweight",
+      depth,
+      classification,
+      reason: "mechanical override — wave-based decomposition skipped",
+    };
+  }
+  if (depth === "flat") {
+    return {
+      flow: "lightweight",
+      depth,
+      classification,
+      reason: "depth=flat — DAG-based wave construction sufficient",
+    };
+  }
+  return {
+    flow: "heavyweight",
+    depth,
+    classification,
+    reason: classification
+      ? `depth=${depth}, classification=${classification} — wave-based decomposition`
+      : `depth=${depth} — wave-based decomposition (no classification override)`,
+  };
+}
+
+/**
  * Assemble perspective briefs for architecture analysis.
  * SPEC.md is the primary design source when present; REQ.md is supplementary.
  *
@@ -600,6 +656,517 @@ function writeTaskSpecs(pipelineDir, sprintNumber, specs) {
   }
 }
 
+// Valid post-decompose transitions per references/transitions.yaml.
+// `decomposing → decomposing` is the mid-wave self-loop and is NOT a
+// finalize target — it's handled by saveDecompositionState during waves.
+const VALID_DECOMPOSE_ROUTES = ["sprinting"];
+
+/**
+ * Atomic post-decompose hand-off: write task specs (+ TREE.md, + final
+ * ARCH.md) AND transition `decomposing → sprinting` in a single call.
+ * Mirrors the B2 finalizeReview / finalizeTriage pattern: prevents the
+ * orchestrator from stopping between artifact production and state
+ * transition, which would leave phase=decomposing with TASK-NNN files
+ * already present and trick autopilot into looping /architect against
+ * an existing decomposition.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {number} sprintNumber — sprint number for task spec dir
+ * @param {Array<{id:string, md:string, agentMd:string}>} specs — task specs
+ * @param {string} [treeMd] — optional TREE.md content to persist alongside
+ * @param {string} [archDoc] — optional final ARCH.md (overwrites prelim)
+ * @param {string} [synthDoc] — optional synthesis.md
+ * @param {string} [route] — target phase (defaults to "sprinting")
+ * @returns {{ ok: boolean, sprintDir?: string, transitioned: boolean,
+ *            targetPhase?: string, error?: string }}
+ */
+function finalizeDecompose(pipelineDir, sprintNumber, specs, treeMd, archDoc, synthDoc, route) {
+  const targetRoute = route || "sprinting";
+  if (!VALID_DECOMPOSE_ROUTES.includes(targetRoute)) {
+    return {
+      ok: false,
+      transitioned: false,
+      error: `invalid route '${targetRoute}' — must be one of: ${VALID_DECOMPOSE_ROUTES.join(", ")}`,
+    };
+  }
+
+  let sprintDir;
+  try {
+    writeTaskSpecs(pipelineDir, sprintNumber, specs);
+    sprintDir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`, "tasks");
+
+    if (treeMd) {
+      const archDir = path.join(pipelineDir, "architecture");
+      paths.ensureDir(archDir);
+      fs.writeFileSync(path.join(archDir, "TREE.md"), treeMd, "utf8");
+    }
+
+    if (archDoc) {
+      writeArchitectureArtifacts(pipelineDir, archDoc, synthDoc);
+    }
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `decompose write failed: ${err.message}` };
+  }
+
+  const stateMachine = require("../../../lib/state-machine");
+  const transition = stateMachine.writeState(pipelineDir, targetRoute, {}, {
+    command: "/architect",
+    trigger: "architect-decompose",
+    artifact: sprintDir,
+  });
+
+  if (!transition.ok) {
+    return { ok: false, sprintDir, transitioned: false, error: transition.error };
+  }
+  return { ok: true, sprintDir, transitioned: true, targetPhase: targetRoute };
+}
+
+// Valid post-architecture transitions per references/transitions.yaml.
+// Architecture has two real exits:
+//   - `sprinting`: lightweight flow — writeArchitectureArtifacts +
+//     writeTaskSpecs + transition (skip decomposing phase). Used for
+//     mechanical work and bug-fix-tier complexity (`flat` depth).
+//   - `decomposing`: heavyweight flow — write prelim ARCH.md + transition
+//     into the wave-based decomposition phase. Final ARCH.md is later
+//     produced by finalizeDecompose.
+const VALID_ARCHITECTURE_ROUTES = ["sprinting", "decomposing"];
+
+/**
+ * Atomic post-architecture hand-off: write architecture artifacts AND
+ * transition `architecture → <route>` in a single call. Closes the
+ * B-class split that previously existed between
+ * writeArchitectureArtifacts → writeTaskSpecs → manual transition in
+ * the lightweight /architect flow.
+ *
+ * Side effects per route:
+ *   route = "sprinting"   — writes ARCH.md, synthesis.md, TASK-NNN.md
+ *                            (plus .agent.md pairs) for sprintMeta.specs,
+ *                            then transitions architecture → sprinting.
+ *                            Used by the lightweight (skip-decomposing)
+ *                            flow described in commands/architect.md.
+ *   route = "decomposing" — writes prelim ARCH.md + synthesis.md, then
+ *                            transitions architecture → decomposing. No
+ *                            task specs at this boundary; finalizeDecompose
+ *                            later writes the final ARCH.md and task specs.
+ *                            Used by the heavyweight (wave-based) flow
+ *                            described in skills/architect/workflows/plan.md.
+ *
+ * Either route preserves the artifact on transition failure (ARCH.md +
+ * any task specs written before the writeState call stay on disk so the
+ * orchestrator can recover; only state.yaml is left unchanged).
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {string} archDoc — ARCH.md markdown content (required)
+ * @param {string} [synthDoc] — synthesis.md markdown content (optional)
+ * @param {string} route — target phase (one of VALID_ARCHITECTURE_ROUTES)
+ * @param {{ sprintNumber:number, specs:Array<{id:string,md:string,agentMd:string}> }} [sprintMeta]
+ *   Required when route === "sprinting"; ignored otherwise.
+ * @returns {{ ok: boolean, archPath?: string, sprintDir?: string,
+ *            transitioned: boolean, targetPhase?: string, error?: string }}
+ */
+function finalizeArchitecture(pipelineDir, archDoc, synthDoc, route, sprintMeta) {
+  if (!VALID_ARCHITECTURE_ROUTES.includes(route)) {
+    return {
+      ok: false,
+      transitioned: false,
+      error: `invalid route '${route}' — must be one of: ${VALID_ARCHITECTURE_ROUTES.join(", ")}`,
+    };
+  }
+  if (!archDoc || typeof archDoc !== "string") {
+    return {
+      ok: false,
+      transitioned: false,
+      error: "archDoc is required and must be a string",
+    };
+  }
+  if (route === "sprinting") {
+    if (!sprintMeta || typeof sprintMeta.sprintNumber !== "number" || !Array.isArray(sprintMeta.specs)) {
+      return {
+        ok: false,
+        transitioned: false,
+        error: "route=sprinting requires sprintMeta = { sprintNumber:number, specs:Array }",
+      };
+    }
+  }
+
+  let archPath, sprintDir;
+  try {
+    writeArchitectureArtifacts(pipelineDir, archDoc, synthDoc);
+    archPath = path.join(pipelineDir, "architecture", "ARCH.md");
+
+    if (route === "sprinting") {
+      writeTaskSpecs(pipelineDir, sprintMeta.sprintNumber, sprintMeta.specs);
+      sprintDir = path.join(pipelineDir, "sprints", `sprint-${sprintMeta.sprintNumber}`, "tasks");
+    }
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `architecture write failed: ${err.message}` };
+  }
+
+  const stateMachine = require("../../../lib/state-machine");
+  const transition = stateMachine.writeState(pipelineDir, route, {}, {
+    command: "/architect",
+    trigger: "architect-plan",
+    artifact: archPath,
+  });
+
+  if (!transition.ok) {
+    return { ok: false, archPath, sprintDir, transitioned: false, error: transition.error };
+  }
+  return { ok: true, archPath, sprintDir, transitioned: true, targetPhase: route };
+}
+
+// ---------------------------------------------------------------------------
+// runArchitectPlan — orchestrator with injection seams (dispatchFn + askFn)
+//
+// Mirrors the verify-runner.runVerify pattern (DEC-A004 injectable seam):
+//   - dispatchFn === null: production mode — return briefs to caller, let
+//     SKILL.md drive the perspective-agent dispatch.
+//   - dispatchFn provided: test mode (or future automation) — runner
+//     dispatches all 4 briefs in parallel, parses raw outputs, runs
+//     synthesis end-to-end.
+//   - askFn === null: production mode — when heavyweight wave surfaces
+//     design questions, pause and return them so SKILL.md can drive
+//     AskUserQuestion. Caller resumes by applying answers and re-invoking.
+//   - askFn provided: test mode — runner calls askFn for each surfaced
+//     question and applies the answer via applyAnswer.
+//
+// The runner is opt-in: existing /architect orchestrator-driven flow in
+// commands/architect.md continues to work without runArchitectPlan. The
+// runner exists primarily as a deterministic test harness for the
+// dispatch + question loop, and as a foundation for future automation.
+// ---------------------------------------------------------------------------
+
+const ARCHITECT_PLAN_PHASES = ["requirements-ready", "architecture", "decomposing"];
+
+/**
+ * Default task-spec builder used when wave loop completes and the caller
+ * did not supply a custom builder. Generates one TASK-NNN per leaf node
+ * with a minimal acceptance criterion. Production callers will typically
+ * override this with an LLM-driven task synthesis pass that produces
+ * richer specs informed by ARCH.md context.
+ *
+ * @param {Object} state — DECOMPOSITION-STATE
+ * @returns {Array<{ id: string, spec: string }>}
+ */
+function _defaultTasksFromLeafNodes(state) {
+  const leafEntries = Object.entries(state.nodes).filter(([_, n]) => n.state === "leaf");
+  return leafEntries.map(([_, node], i) => ({
+    id: `TASK-${String(i + 1).padStart(3, "0")}`,
+    spec: [
+      "---",
+      "depends_on: None",
+      "---",
+      "## Goal",
+      "",
+      node.name,
+      "",
+      "## Acceptance Criteria",
+      "",
+      `- [ ] ${node.name} implemented per ARCH.md module contract`,
+      "",
+    ].join("\n"),
+  }));
+}
+
+/**
+ * Heavyweight wave loop. Drives decomposeWave + applyAnswer + detectSpecGap
+ * + isDecompositionComplete + finalizeDecompose. Pauses when
+ * questionsToSurface is non-empty AND askFn is null, so the orchestrator
+ * (SKILL.md) can drive AskUserQuestion. Caller resumes by applying
+ * answers (calling applyAnswer + saveDecompositionState) then re-invoking
+ * runArchitectPlan from phase=decomposing.
+ *
+ * @returns {Promise<{ ok, status, ... }>}
+ */
+async function _runDecomposeLoop({ pipelineDir, config, askFn, sprintNumber, taskSpecBuilder, maxWaves }) {
+  const reqPath = path.join(pipelineDir, "requirements", "REQ.md");
+  const reqContent = fs.existsSync(reqPath) ? fs.readFileSync(reqPath, "utf8") : null;
+  const spec = loadSpec(pipelineDir);
+  const specContent = spec ? spec.content : null;
+
+  const builder = taskSpecBuilder || _defaultTasksFromLeafNodes;
+  const limit = Number.isFinite(maxWaves) && maxWaves > 0 ? maxWaves : 50;
+
+  const stateP = path.join(pipelineDir, "architecture", "DECOMPOSITION-STATE.yaml");
+
+  let waveCount = 0;
+  while (waveCount < limit) {
+    if (!fs.existsSync(stateP)) {
+      return { ok: false, status: "missing-decomposition-state", error: `DECOMPOSITION-STATE.yaml absent at ${stateP}` };
+    }
+    const state = yamlIO.safeRead(stateP);
+    if (!state) {
+      return { ok: false, status: "missing-decomposition-state", error: "DECOMPOSITION-STATE.yaml unreadable" };
+    }
+
+    // Convergence check before processing more waves — unresolved=0 AND
+    // pending=0 means every node is leaf, blocked, or resolved.
+    const completion = isDecompositionComplete(state);
+    if (completion.complete) {
+      const treeMd = generateTreeMd(state);
+      const tasks = builder(state);
+      const specsResult = createTaskSpecs(tasks, "", config);
+      if (!specsResult || !specsResult.specs) {
+        return { ok: false, status: "task-specs-failed", error: "createTaskSpecs returned no specs" };
+      }
+      const fdec = finalizeDecompose(
+        pipelineDir, sprintNumber, specsResult.specs, treeMd, null, null, "sprinting",
+      );
+      if (!fdec.ok) {
+        return { ok: false, status: "finalize-decompose-failed", error: fdec.error };
+      }
+      return {
+        ok: true,
+        status: "complete",
+        targetPhase: "sprinting",
+        waveCount,
+        leafCount: completion.summary.leafCount,
+        sprintDir: fdec.sprintDir,
+      };
+    }
+
+    // Process one wave
+    const waveResult = decomposeWave(state, specContent, reqContent, config);
+    if (!waveResult.ok) {
+      return { ok: false, status: "wave-failed", error: waveResult.error };
+    }
+    waveCount++;
+    state.current_wave = waveCount;
+
+    // Surface design questions
+    if (waveResult.questionsToSurface.length > 0) {
+      if (askFn === null) {
+        // SKILL.md-driven mode: persist state and return for orchestrator
+        // to call AskUserQuestion. Caller resumes by applying answers
+        // (applyAnswer + saveDecompositionState) and re-invoking the runner.
+        saveDecompositionState(pipelineDir, state);
+        return {
+          ok: true,
+          status: "questions-pending",
+          questions: waveResult.questionsToSurface,
+          waveCount,
+          state,
+        };
+      }
+      for (const q of waveResult.questionsToSurface) {
+        const answer = await askFn(q.question, q.options);
+        const applyResult = applyAnswer(state, q.nodeId, answer, { decision: answer });
+        if (!applyResult.ok) {
+          saveDecompositionState(pipelineDir, state);
+          return { ok: false, status: "apply-answer-failed", error: applyResult.error, nodeId: q.nodeId, waveCount, state };
+        }
+        const gap = detectSpecGap(answer, q.nodeName);
+        if (gap.isSpecGap) {
+          saveDecompositionState(pipelineDir, state);
+          return { ok: true, status: "spec-gap", gap, waveCount, state };
+        }
+      }
+    }
+
+    saveDecompositionState(pipelineDir, state);
+  }
+
+  // Hit the max-waves guard without converging.
+  const state = yamlIO.safeRead(stateP);
+  return {
+    ok: true,
+    status: "max-waves-reached",
+    waveCount,
+    summary: state ? getConvergenceSummary(state) : null,
+    state,
+  };
+}
+
+/**
+ * Drive the architect plan flow with injection seams for perspective
+ * dispatch and design-question surfacing.
+ *
+ * Multi-status return shape (caller dispatches on `status`):
+ *   - "phase-rejected"      — current phase isn't supported
+ *   - "missing-input"       — REQ.md not found
+ *   - "transition-failed"   — state-machine.writeState rejected the entry transition
+ *   - "plan-failed"         — planArchitecture rejected (budget, missing input)
+ *   - "briefs-pending"      — dispatchFn=null; caller dispatches via SKILL.md
+ *   - "parse-failed"        — every dispatched output failed to parse
+ *   - "synthesis-failed"    — synthesizeArchitecture quorum/error
+ *   - "synthesis-ready"     — synthesis complete; lightweight: caller extracts
+ *                             tasks + calls finalizeArchitecture(sprinting).
+ *                             heavyweight: caller seeds nodes + re-invokes
+ *                             (re-entry sees phase=decomposing → wave loop).
+ *   - "missing-decomposition-state" — heavyweight resume with no state.yaml
+ *   - "questions-pending"   — heavyweight wave produced questions; askFn=null
+ *   - "spec-gap"            — design question revealed a SPEC.md gap
+ *   - "max-waves-reached"   — exceeded maxWaves without converging
+ *   - "complete"            — heavyweight finalizeDecompose called; phase=sprinting
+ *
+ * @param {Object} opts
+ * @param {string} opts.pipelineDir
+ * @param {string} opts.pluginRoot
+ * @param {Object} opts.config
+ * @param {Function|null} [opts.dispatchFn] — async (brief) => rawOutput
+ * @param {Function|null} [opts.askFn] — async (question, options) => answer
+ * @param {number} [opts.sprintNumber] — sprint number for finalizeDecompose (heavyweight)
+ * @param {Function} [opts.taskSpecBuilder] — (state) => Array<{id, spec}>
+ * @param {number} [opts.maxWaves] — convergence guard (default 50)
+ * @returns {Promise<Object>}
+ */
+async function runArchitectPlan({
+  pipelineDir,
+  pluginRoot,
+  config,
+  dispatchFn = null,
+  askFn = null,
+  sprintNumber = 1,
+  taskSpecBuilder = null,
+  maxWaves = 50,
+}) {
+  const stateMachine = require("../../../lib/state-machine");
+  const agentOutput = require("../../../lib/agent-output");
+
+  const statePath = path.join(pipelineDir, "state.yaml");
+  const pipelineState = yamlIO.safeRead(statePath) || {};
+  const phase = pipelineState.pipeline && pipelineState.pipeline.phase;
+
+  if (!ARCHITECT_PLAN_PHASES.includes(phase)) {
+    return {
+      ok: false,
+      status: "phase-rejected",
+      error: `phase '${phase}' not supported by runArchitectPlan; expected one of: ${ARCHITECT_PLAN_PHASES.join(", ")}`,
+    };
+  }
+
+  // phase=decomposing → resume directly into wave loop
+  if (phase === "decomposing") {
+    return await _runDecomposeLoop({
+      pipelineDir, config, askFn, sprintNumber, taskSpecBuilder, maxWaves,
+    });
+  }
+
+  // Read inputs
+  const reqPath = path.join(pipelineDir, "requirements", "REQ.md");
+  if (!fs.existsSync(reqPath)) {
+    return { ok: false, status: "missing-input", error: `REQ.md not found at ${reqPath}` };
+  }
+  const reqContent = fs.readFileSync(reqPath, "utf8");
+  const spec = loadSpec(pipelineDir);
+  const specContent = spec ? spec.content : null;
+  const complexity = spec ? spec.complexity : null;
+
+  // Routing decision
+  const decision = chooseArchitectFlow(complexity);
+
+  // Transition requirements-ready → architecture if needed (no-op when
+  // already at architecture phase, e.g. resume after interrupted plan run)
+  if (phase === "requirements-ready") {
+    const trans = stateMachine.writeState(pipelineDir, "architecture", {}, {
+      command: "/architect",
+      trigger: "architect-plan-entry",
+    });
+    if (!trans.ok) {
+      return { ok: false, status: "transition-failed", error: trans.error };
+    }
+  }
+
+  // Plan architecture briefs
+  const planResult = planArchitecture(reqContent, pluginRoot, config, specContent, complexity);
+  if (!planResult.ok) {
+    return { ok: false, status: "plan-failed", error: planResult.error };
+  }
+
+  // Production mode (dispatchFn=null): hand briefs back to SKILL.md
+  if (dispatchFn === null) {
+    return {
+      ok: true,
+      status: "briefs-pending",
+      flow: decision.flow,
+      decision,
+      briefs: planResult.briefs,
+      depthRecommendation: planResult.depthRecommendation,
+    };
+  }
+
+  // Test/automation mode: dispatch all briefs in parallel and parse outputs
+  const rawResults = await Promise.all(
+    planResult.briefs.map(async (b) => ({
+      lensId: b.lensId,
+      agentId: b.agentId,
+      briefId: b.briefId,
+      rawOutput: await dispatchFn(b),
+    })),
+  );
+
+  const parsedOutputs = [];
+  const parseFailures = [];
+  for (const r of rawResults) {
+    const parsed = agentOutput.parseOutput(r.rawOutput);
+    if (parsed.ok) {
+      parsedOutputs.push({
+        agentId: r.agentId,
+        lensId: r.lensId,
+        briefId: r.briefId,
+        payload: parsed.payload,
+        meta: parsed.meta,
+      });
+    } else {
+      parseFailures.push({ agentId: r.agentId, error: parsed.error || "parse failed" });
+    }
+  }
+  if (parsedOutputs.length === 0) {
+    return {
+      ok: false,
+      status: "parse-failed",
+      error: "all dispatched perspective outputs failed to parse",
+      failures: parseFailures,
+    };
+  }
+
+  // Synthesize
+  const synthResult = synthesizeArchitecture(parsedOutputs, reqContent, config);
+  if (!synthResult.ok) {
+    return { ok: false, status: "synthesis-failed", error: synthResult.error };
+  }
+
+  // Branch on flow. Both branches return synthesis-ready — for lightweight
+  // the caller extracts tasks from archDoc and invokes finalizeArchitecture
+  // (sprinting). For heavyweight we additionally finalize architecture
+  // (decomposing) + initialize decomposition state, then return synthesis-
+  // ready with the note that the caller must seed initial nodes (per
+  // plan.md step 9 — "Create initial nodes from synthesized architecture
+  // — one node per top-level module/system from step 8") before re-
+  // invoking runArchitectPlan, which will then enter the wave loop.
+  if (decision.flow === "lightweight") {
+    return {
+      ok: true,
+      status: "synthesis-ready",
+      flow: "lightweight",
+      decision,
+      archDoc: synthResult.architecture,
+      synthDoc: synthResult.synthesis,
+      consistency: synthResult.consistency,
+    };
+  }
+
+  // Heavyweight
+  const finalizeArch = finalizeArchitecture(
+    pipelineDir, synthResult.architecture, synthResult.synthesis, "decomposing",
+  );
+  if (!finalizeArch.ok) {
+    return { ok: false, status: "finalize-arch-failed", error: finalizeArch.error };
+  }
+  initDecompositionState(pipelineDir);
+
+  return {
+    ok: true,
+    status: "synthesis-ready",
+    flow: "heavyweight",
+    decision,
+    archDoc: synthResult.architecture,
+    synthDoc: synthResult.synthesis,
+    consistency: synthResult.consistency,
+    note: "Heavyweight: phase is now 'decomposing' and DECOMPOSITION-STATE.yaml is initialized. Seed initial nodes via addNode for each top-level module from ARCH.md, then re-invoke runArchitectPlan to drive the wave loop.",
+  };
+}
+
 // Severity keyword maps for QA finding categorization
 const SEVERITY_KEYWORDS = {
   critical: ["critical", "must fix", "blocks", "crash", "data loss"],
@@ -733,7 +1300,18 @@ function generateQAReport(sprintNumber, findings, parsedQAOutputs) {
 }
 
 /**
- * Run the full QA review: categorize findings, generate report, write to disk.
+ * LEGACY runReview — sync, single-pass.
+ *
+ * Scope: retained ONLY for the /architect skill's grounded review path
+ * (clears state.grounded_required after a snippet-in-file substring check).
+ * /review production code uses `skills/review/scripts/review-runner.runReview`
+ * which is async and runs the full validator round with path-evidence
+ * line-proximity check. Do NOT use this from /review — it bypasses the
+ * validator round and returns a different shape.
+ *
+ * Sprint-7 review correctly flagged the dual implementation as a state
+ * inconsistency risk; the root cause was a stale `commands/review.md`
+ * pointing here instead of at review-runner. Doc fix lands in 0.4.6.
  *
  * @param {Array<{ agentId: string, payload: Object }>} parsedQAOutputs — parsed QA agent outputs
  * @param {number} sprintNumber — completed sprint number
@@ -833,10 +1411,21 @@ function runReview(parsedQAOutputs, sprintNumber, pipelineDir, config) {
 // DECOMPOSITION-STATE tracking
 // ---------------------------------------------------------------------------
 
-// Valid node states and their allowed transitions
+// Valid node states and their allowed transitions.
+//
+// `in-progress` represents a node currently being evaluated by decomposeWave.
+// After evaluateNode classifies it, the wave moves the node into one of:
+//   - `resolved`   (technical detail — architect resolves)
+//   - `leaf`       (small enough — no further decomposition)
+//   - `blocked`    (cannot proceed — surfaced to user)
+//   - `pending-user-decision` (design choice — surfaced via AskUserQuestion)
+// Bug fix (v0.5.0 / 3b): `pending-user-decision` was missing from the
+// in-progress allowed list, which silently dropped the state-transition in
+// updateNodeState (return value was unchecked) and left every design-
+// keyword node stuck at `in-progress`.
 const NODE_STATES = {
   unresolved: ["in-progress", "pending-user-decision"],
-  "in-progress": ["resolved", "leaf", "blocked"],
+  "in-progress": ["resolved", "leaf", "blocked", "pending-user-decision"],
   resolved: ["unresolved"], // can re-open if further decomposition needed
   leaf: [], // terminal — no transitions out
   blocked: ["unresolved"], // can unblock
@@ -947,6 +1536,12 @@ function updateNodeState(state, nodeId, newState, metadata) {
  * @returns {{ ok: boolean }}
  */
 function addNode(state, nodeId, nodeData) {
+  if (state.nodes[nodeId]) {
+    // Duplicate guard — re-adding would silently overwrite the existing
+    // node and orphan its children references in the parent. Wave loop
+    // re-entries (resume after crash, replay) must not stomp prior state.
+    return { ok: false, error: `node "${nodeId}" already exists` };
+  }
   state.nodes[nodeId] = {
     name: nodeData.name,
     state: nodeData.state || "unresolved",
@@ -1178,20 +1773,34 @@ function decomposeWave(state, specContent, reqContent, config) {
   for (const [nodeId, node] of unresolvedNodes) {
     nodesProcessed++;
 
-    // First transition to in-progress
-    updateNodeState(state, nodeId, "in-progress");
+    // First transition to in-progress. updateNodeState returns
+    // {ok:false} on illegal transitions — bail with the error so the
+    // wave loop surfaces the problem instead of silently corrupting
+    // state (latent bug class: NODE_STATES["in-progress"] previously
+    // missed "pending-user-decision" and the unchecked return swallowed
+    // the rejection, leaving nodes stuck in "in-progress").
+    let r = updateNodeState(state, nodeId, "in-progress");
+    if (!r.ok) {
+      return { ok: false, error: `decomposeWave: ${r.error}`, nodeId, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+    }
 
     const evaluation = evaluateNode(node, specContent);
 
     if (evaluation.isLeaf) {
       // Small enough, no design choices — mark as leaf
-      updateNodeState(state, nodeId, "leaf");
+      r = updateNodeState(state, nodeId, "leaf");
+      if (!r.ok) {
+        return { ok: false, error: `decomposeWave: ${r.error}`, nodeId, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+      }
       nodesResolved++;
     } else if (evaluation.hasDesignChoice) {
       // Design question — needs user input
-      updateNodeState(state, nodeId, "pending-user-decision", {
+      r = updateNodeState(state, nodeId, "pending-user-decision", {
         design_question: evaluation.question,
       });
+      if (!r.ok) {
+        return { ok: false, error: `decomposeWave: ${r.error}`, nodeId, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+      }
       questionsToSurface.push({
         nodeId,
         nodeName: node.name,
@@ -1201,22 +1810,28 @@ function decomposeWave(state, specContent, reqContent, config) {
       nodesPending++;
     } else {
       // Technical detail — architect resolves, create children for further decomposition
-      updateNodeState(state, nodeId, "resolved", {
+      r = updateNodeState(state, nodeId, "resolved", {
         wave_resolved: state.current_wave,
       });
+      if (!r.ok) {
+        return { ok: false, error: `decomposeWave: ${r.error}`, nodeId, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+      }
       nodesResolved++;
 
       // If the node can be decomposed further, add child nodes
       if (evaluation.children && evaluation.children.length > 0) {
         for (const child of evaluation.children) {
           const childId = `${nodeId}-${child.id}`;
-          addNode(state, childId, {
+          const addRes = addNode(state, childId, {
             name: child.name,
             state: "unresolved",
             depth: node.depth + 1,
             parent_id: nodeId,
             children: [],
           });
+          if (!addRes.ok) {
+            return { ok: false, error: `decomposeWave: ${addRes.error}`, nodeId: childId, nodesProcessed, nodesResolved, nodesPending, questionsToSurface };
+          }
           // Update parent's children list
           if (!node.children) node.children = [];
           node.children.push(childId);
@@ -1388,6 +2003,12 @@ module.exports = {
   createTaskSpecs,
   writeArchitectureArtifacts,
   writeTaskSpecs,
+  finalizeDecompose,
+  VALID_DECOMPOSE_ROUTES,
+  finalizeArchitecture,
+  VALID_ARCHITECTURE_ROUTES,
+  runArchitectPlan,
+  ARCHITECT_PLAN_PHASES,
   categorizeFindings,
   generateQAReport,
   runReview,
@@ -1409,6 +2030,7 @@ module.exports = {
   // Scope-aware depth recommendation — adapts decomposition to spec complexity.
   // Architect logs the recommendation; Claude uses it to inform wave depth, not as a hard cap.
   recommendDecompositionDepth,
+  chooseArchitectFlow,
   // Adaptive convergence threshold — scales with complexity assessment.
   // Replaces the static CONVERGENCE_CHECK_WAVE for callers that have read SPEC complexity.
   convergenceCheckWaveFor,

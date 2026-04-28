@@ -31,11 +31,27 @@ function readLedger(ledgerPath) {
       `confirmed-findings.yaml: expected schema_version ${LEDGER_SCHEMA_VERSION}, found ${ledger.schema_version}`
     );
   }
+  // Recover next_id when the persisted value is missing/invalid. A corrupt
+  // next_id silently produced "FIND-NaN" IDs in earlier versions; recovering
+  // from the existing findings keeps assignFindIds total over its input.
+  if (!Number.isFinite(ledger.next_id) || ledger.next_id < 1) {
+    ledger.next_id = recoverNextId(ledger.findings || []);
+  }
   return ledger;
 }
 
 // Pure — assigns FIND-IDs to an array of findings in memory, no file writes.
+// Precondition: currentNextId is a positive finite integer. Callers go
+// through readLedger / initLedger which guarantee this; passing undefined
+// or NaN here is a programming error and is rejected loudly so corrupt
+// ledger writes (FIND-NaN) cannot escape unnoticed.
 function assignFindIds(findings, currentNextId) {
+  if (!Number.isFinite(currentNextId) || currentNextId < 1) {
+    throw new Error(
+      `assignFindIds: currentNextId must be a positive finite integer, got ${currentNextId}. ` +
+      `Use recoverNextId(existingFindings) to derive a valid value from a corrupt ledger.`
+    );
+  }
   let id = currentNextId;
   const updated = findings.map(f => ({ ...f, id: formatFindId(id++) }));
   return { updated, nextId: id };

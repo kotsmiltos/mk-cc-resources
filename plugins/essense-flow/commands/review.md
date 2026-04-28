@@ -24,11 +24,16 @@ Post-sprint QA review. Alternative to `/architect` auto-routing when triggering 
    - Task spec paths from `.pipeline/sprints/sprint-N/tasks/*.md`
    - Built file paths from completion records in `.pipeline/sprints/sprint-N/completion/`
    - Requirements path: `.pipeline/requirements/REQ.md`
-4. Use `skills/architect/scripts/architect-runner.js`:
-   - `runQAReview(sprintNumber, taskSpecPaths, builtFilePaths, requirementsPath, pluginRoot, config)` — assemble QA briefs
-   - Dispatch QA agents
-   - `runReview(parsedOutputs, sprintNumber, pipelineDir, config)` — categorize and write report
+4. Use `skills/review/scripts/review-runner.js` (canonical /review path):
+   - `assembleReviewBriefs(sprintNumber, taskSpecPaths, completionRecordPaths, specPath, pluginRoot, config)` — assemble adversarial briefs
+   - Dispatch QA agents in parallel via the Agent tool
+   - `parseReviewOutputs(rawOutputs)` — parse + classify per-agent output
+   - `categorizeFindings(parsedOutputs)` — Phase A noise filter + tier into confidence/severity buckets
+   - `runReview(parsedOutputs, sprintNumber, pipelineDir, config, validatorFns?, validatorRawOutputs?)` — full pipeline including validator round when raw outputs provided
+   - `finalizeReview(pipelineDir, sprintNumber, reportContent)` — atomic QA-REPORT write + state transition `reviewing → triaging`
 5. Report: QA results summary, findings by severity, next action based on result
+
+Note: the legacy `skills/architect/scripts/architect-runner.runReview` is a separate sync implementation retained for the /architect skill's grounded review path and historical tests. Do not invoke it from /review — it bypasses the validator round and produces a different return shape.
 
 ## Constraints
 

@@ -18,6 +18,7 @@ const {
   PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS,
   PASS_REQUIRES_ZERO_UNACKNOWLEDGED_NC_CRITICALS,
   MIN_PATH_EVIDENCE_QUOTE_CHARS,
+  PATH_EVIDENCE_LINE_TOLERANCE,
 } = require("../../../lib/constants");
 
 // Maximum review-build cycles per sprint before escalation to earlier phases
@@ -270,6 +271,178 @@ function inferSeverity(text) {
   return "medium";
 }
 
+// ---------------------------------------------------------------------------
+// Phase A noise filter — drop fabricated/restated/non-finding bullets before
+// they enter QA-REPORT.md. Three modes:
+//   1. positive confirmations ("FR-NNN met", "tests passing") — not findings
+//   2. fix recommendations ("Add X check", "Wrap Y in try/catch") — actions,
+//      not findings; collapse with their parent finding
+//   3. cross-perspective restatements — same bug × N agents
+// Empirical motivation: sprint-6/7/8 reviews showed ~80% noise rate at the
+// critical tier; routing then treats positives/restatements as blockers.
+// ---------------------------------------------------------------------------
+
+const SEVERITY_PREFIX_RE = /^\s*(critical|high|medium|low)\s*:\s*/i;
+
+const POSITIVE_KEYWORDS = ["met", "passing", "verified", "confirmed", "preserved", "implemented"];
+
+// If any of these appears, the bullet is describing a gap/bug — not a positive.
+const NEGATIVE_INDICATORS = [
+  "not met", "missing", "absent", "fail", " gap", "broken", "never",
+  "silent", "leak", "crash", "fabric", "bypass", "invalid", "incorrect",
+  "wrong", "stale", "corrupt", "skip", "fragile",
+  "edge case", "should fix", "must fix", "needs to", "consider ",
+  "violates", "premature", "not implemented", "not enforced",
+  "no test", "no coverage", "untested", "uncovered", "ambiguous",
+  "important:", "critical:", "high:", "medium:", "low:",
+];
+
+const FIX_REC_VERBS = [
+  "Add", "Remove", "Update", "Plan", "Extend", "Fix", "Wrap", "Replace",
+  "Use", "Call", "Change", "Move", "Improve", "Enhance", "Rewrite",
+  "Consider", "Convert", "Refactor", "Switch", "Apply", "Implement",
+  "Strip", "Tighten", "Loosen", "Combine", "Split", "Inline", "Extract",
+  "Cache", "Note", "Modify", "Adjust", "Restore", "Reduce", "Increase",
+  "Enable", "Disable", "Drop", "MUST FIX", "Should",
+];
+const FIX_REC_RE = new RegExp(`^(${FIX_REC_VERBS.join("|")})\\b`);
+
+/**
+ * Extract a leading "CRITICAL:"-style severity tag, returning the canonical
+ * severity and the text with the tag stripped. Authoritative over keyword
+ * infer — fixes severity inflation where reviewers tag `HIGH:` and group it
+ * under the `## Critical` section.
+ *
+ * @param {string} text
+ * @returns {{ severity: string|null, stripped: string, hadPrefix: boolean }}
+ */
+function extractSeverityPrefix(text) {
+  const m = text.match(SEVERITY_PREFIX_RE);
+  if (!m) return { severity: null, stripped: text, hadPrefix: false };
+  return {
+    severity: m[1].toLowerCase(),
+    stripped: text.slice(m[0].length).trim(),
+    hadPrefix: true,
+  };
+}
+
+/**
+ * True when the bullet is confirming something works (not reporting a gap).
+ * Requires (a) positive keyword present AND (b) no negative indicator.
+ *
+ * @param {string} stripped — text with severity prefix already removed
+ * @returns {boolean}
+ */
+function isPositiveConfirmation(stripped) {
+  const lower = stripped.toLowerCase();
+  const hasPositive = POSITIVE_KEYWORDS.some((kw) =>
+    new RegExp(`\\b${kw}\\b`, "i").test(lower)
+  );
+  if (!hasPositive) return false;
+  const hasNegation = NEGATIVE_INDICATORS.some((kw) => lower.includes(kw));
+  return !hasNegation;
+}
+
+/**
+ * True when the bullet is a fix recommendation rather than a finding.
+ * Pattern: starts with imperative verb (Add, Wrap, Replace, …).
+ *
+ * @param {string} stripped — text with severity prefix already removed
+ * @returns {boolean}
+ */
+function isFixRecommendation(stripped) {
+  return FIX_REC_RE.test(stripped.trim());
+}
+
+/**
+ * Compute a stable dedup key from a finding so cross-perspective
+ * restatements collapse to a single entry. Uses identifier-set signature:
+ * camelCase / snake_case identifiers plus file refs, deduped and sorted.
+ * This is rephrasing-invariant — "path traversal in validatePathEvidence
+ * at review-runner.js:1026" and "path traversal vulnerability in
+ * validatePathEvidence (review-runner.js)" produce the same signature.
+ *
+ * Bullets with no identifying info return a unique passthrough sentinel.
+ *
+ * @param {string} stripped
+ * @returns {string}
+ */
+function findingDedupKey(stripped) {
+  // Prefer camelCase identifier — high-signal anchor for "this is the
+  // function/symbol the finding is about". Two paraphrasings of the same bug
+  // almost always cite the same camelCase function name; falling back to
+  // file ref / snake_case for findings that lack a function anchor.
+  const camelRe = /\b([a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*)\b/g;
+  const camelHits = stripped.match(camelRe) || [];
+  if (camelHits.length > 0) return `ident:${camelHits[0]}`;
+
+  const fileRe = /[\w\-/.]+\.(?:js|ts|md|yaml|json)\b/g;
+  const fileHits = stripped.match(fileRe) || [];
+  if (fileHits.length > 0) return `file:${fileHits[0]}`;
+
+  const snakeRe = /\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/g;
+  const snakeHits = stripped.match(snakeRe) || [];
+  if (snakeHits.length > 0) return `snake:${snakeHits[0]}`;
+
+  return `__unique__${stripped.slice(0, 80)}`;
+}
+
+/**
+ * Collapse cross-perspective restatements. Keep first occurrence (preserving
+ * original perspective attribution); subsequent matches are dropped.
+ *
+ * @param {Array<{ stripped: string }>} items
+ * @returns {Array}
+ */
+function dedupFindings(items) {
+  const seen = new Set();
+  const kept = [];
+  for (const item of items) {
+    const key = findingDedupKey(item.stripped);
+    if (key.startsWith("__unique__")) {
+      kept.push(item);
+      continue;
+    }
+    if (!seen.has(key)) {
+      seen.add(key);
+      kept.push(item);
+    }
+  }
+  return kept;
+}
+
+/**
+ * Apply the full Phase A filter pipeline: positives drop, fix-recs drop,
+ * dedup. Returns kept items annotated with severity-prefix info plus a
+ * count of drops by reason for QA-REPORT footer / observability.
+ *
+ * @param {Array<{ text: string, source: string, perspective: string, section: string }>} rawItems
+ * @returns {{ kept: Array, dropped: { positives: number, fixRecs: number, dupes: number } }}
+ */
+function filterFindings(rawItems) {
+  const enriched = [];
+  let positivesCount = 0;
+  let fixRecsCount = 0;
+  for (const raw of rawItems) {
+    const { severity, stripped, hadPrefix } = extractSeverityPrefix(raw.text);
+    if (isPositiveConfirmation(stripped)) {
+      positivesCount++;
+      continue;
+    }
+    if (isFixRecommendation(stripped)) {
+      fixRecsCount++;
+      continue;
+    }
+    enriched.push({ ...raw, severity, stripped, hadPrefix });
+  }
+  const before = enriched.length;
+  const deduped = dedupFindings(enriched);
+  return {
+    kept: deduped,
+    dropped: { positives: positivesCount, fixRecs: fixRecsCount, dupes: before - deduped.length },
+  };
+}
+
 /**
  * Categorize findings from parsed review outputs by confidence tier and severity.
  *
@@ -280,14 +453,13 @@ function inferSeverity(text) {
  * @returns {{ confirmed: Array, likely: Array, suspected: Array, bySeverity: { critical: Array, high: Array, medium: Array, low: Array } }}
  */
 function categorizeFindings(parsedOutputs) {
-  const byConfidence = { confirmed: [], likely: [], suspected: [] };
-  const bySeverity = { critical: [], high: [], medium: [], low: [] };
-
+  // Phase 1: collect raw items across all perspectives + sections so dedup
+  // can see cross-perspective restatements.
+  const rawItems = [];
   for (const output of parsedOutputs) {
     const { agentId, perspectiveId, payload } = output;
     if (!payload) continue;
 
-    // Walk all payload sections and extract individual findings
     const findingSections = ["findings", "confirmed_findings", "likely_findings", "suspected_findings",
       "analysis", "risks", "issues", "bugs", "edge_cases", "compliance_gaps", "integration_issues"];
 
@@ -295,7 +467,6 @@ function categorizeFindings(parsedOutputs) {
       const content = payload[section];
       if (!content || typeof content !== "string") continue;
 
-      // Split into individual items
       const items = content
         .split(/\n/)
         .map((line) => line.trim())
@@ -304,47 +475,58 @@ function categorizeFindings(parsedOutputs) {
         .filter((line) => line.length > 0);
 
       for (const item of items) {
-        // Determine confidence — section name may hint at it
-        let confidence;
-        if (section.includes("confirmed")) {
-          confidence = "CONFIRMED";
-        } else if (section.includes("likely")) {
-          confidence = "LIKELY";
-        } else if (section.includes("suspected")) {
-          confidence = "SUSPECTED";
-        } else {
-          confidence = inferConfidence(item);
-        }
-
-        const severity = inferSeverity(item);
-
-        const finding = {
-          text: item,
-          confidence,
-          severity,
-          // blocks_advance declared at production via the rule in lib/importance.js —
-          // never inferred post-hoc by consumers (triage uses this declared value).
-          blocks_advance: importance.blocksAdvanceLabel(severity, confidence),
-          source: agentId,
-          perspective: perspectiveId,
-          section,
-        };
-
-        // File into confidence tier
-        const tierKey = confidence.toLowerCase();
-        if (byConfidence[tierKey]) {
-          byConfidence[tierKey].push(finding);
-        } else {
-          byConfidence.suspected.push(finding);
-        }
-
-        // File into severity bucket
-        if (bySeverity[severity]) {
-          bySeverity[severity].push(finding);
-        } else {
-          bySeverity.medium.push(finding);
-        }
+        rawItems.push({ text: item, source: agentId, perspective: perspectiveId, section });
       }
+    }
+  }
+
+  // Phase 2: noise filter (positives, fix-recs, dedup).
+  const { kept, dropped } = filterFindings(rawItems);
+
+  // Phase 3: tier into confidence + severity buckets.
+  const byConfidence = { confirmed: [], likely: [], suspected: [] };
+  const bySeverity = { critical: [], high: [], medium: [], low: [] };
+
+  for (const enriched of kept) {
+    const { text, source, perspective, section, severity: prefixSeverity, stripped } = enriched;
+
+    let confidence;
+    if (section.includes("confirmed")) {
+      confidence = "CONFIRMED";
+    } else if (section.includes("likely")) {
+      confidence = "LIKELY";
+    } else if (section.includes("suspected")) {
+      confidence = "SUSPECTED";
+    } else {
+      confidence = inferConfidence(stripped);
+    }
+
+    // Prefix wins. Keyword infer only when no leading severity tag was present.
+    const severity = prefixSeverity || inferSeverity(stripped);
+
+    const finding = {
+      text,
+      confidence,
+      severity,
+      // blocks_advance declared at production via the rule in lib/importance.js —
+      // never inferred post-hoc by consumers (triage uses this declared value).
+      blocks_advance: importance.blocksAdvanceLabel(severity, confidence),
+      source,
+      perspective,
+      section,
+    };
+
+    const tierKey = confidence.toLowerCase();
+    if (byConfidence[tierKey]) {
+      byConfidence[tierKey].push(finding);
+    } else {
+      byConfidence.suspected.push(finding);
+    }
+
+    if (bySeverity[severity]) {
+      bySeverity[severity].push(finding);
+    } else {
+      bySeverity.medium.push(finding);
     }
   }
 
@@ -353,6 +535,7 @@ function categorizeFindings(parsedOutputs) {
     likely: byConfidence.likely,
     suspected: byConfidence.suspected,
     bySeverity,
+    droppedCounts: dropped,
   };
 }
 
@@ -706,6 +889,69 @@ function writeQAReport(pipelineDir, sprintNumber, report) {
 }
 
 /**
+ * Atomic post-review finalization. Combines QA-REPORT write with the
+ * reviewing → triaging state transition into one call so the orchestrator
+ * cannot stop between writing the report and advancing the phase.
+ *
+ * Background: prior to this helper, the review workflow had separate steps
+ * for "write QA-REPORT" (step 10) and "transition reviewing → triaging"
+ * (step 11). In practice the orchestrator stopped after step 10, leaving
+ * phase=reviewing with QA-REPORT.md present — autopilot then either looped
+ * /review (pre-fix) or had to halt waiting for /triage.
+ *
+ * Atomic flow:
+ *   1. Write QA-REPORT.md
+ *   2. Transition state.yaml: reviewing → triaging (state-machine.writeState)
+ *
+ * If transition fails (e.g. phase no longer 'reviewing', transitions.yaml
+ * missing), QA-REPORT is preserved on disk but transition is reported as
+ * failed — caller decides recovery.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {number} sprintNumber — sprint being reviewed
+ * @param {string} reportContent — full QA-REPORT.md content (output of generateQAReport)
+ * @returns {{ ok: boolean, qaReportPath: string, transitioned: boolean, error?: string }}
+ */
+function finalizeReview(pipelineDir, sprintNumber, reportContent) {
+  // Step 1 — write QA-REPORT. Wrapped to match the {ok,error} contract
+  // honoured by every other finalize* helper (research/triage/verify/
+  // architecture/decompose). Without the wrap a disk failure raises a
+  // raw exception and callers that branch on `result.ok` mis-handle it.
+  let qaReportPath;
+  try {
+    qaReportPath = writeQAReport(pipelineDir, sprintNumber, reportContent);
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `writeQAReport failed: ${err.message}` };
+  }
+
+  // Step 2 — transition reviewing → triaging atomically. We use the
+  // state-machine writeState which validates the transition against
+  // transitions.yaml and rejects if the source phase is not 'reviewing'.
+  const stateMachine = require("../../../lib/state-machine");
+  const transition = stateMachine.writeState(
+    pipelineDir,
+    "triaging",
+    {},
+    {
+      command: "/review",
+      trigger: "review-skill",
+      artifact: qaReportPath,
+    }
+  );
+
+  if (!transition.ok) {
+    return {
+      ok: false,
+      qaReportPath,
+      transitioned: false,
+      error: transition.error || "writeState returned no error message",
+    };
+  }
+
+  return { ok: true, qaReportPath, transitioned: true };
+}
+
+/**
  * Load SPEC.md from the elicitation directory, strip YAML frontmatter.
  * Returns null if no SPEC.md exists.
  *
@@ -905,7 +1151,8 @@ const VALID_VALIDATOR_VERDICTS = new Set([
 function parseValidatorOutput(raw) {
   if (!raw || typeof raw !== "string") return { ok: false, error: "empty input" };
 
-  const allFenceMatches = [...raw.matchAll(/```yaml\n([\s\S]*?)```/g)];
+  // \r?\n so CRLF agent output (Windows) parses identically to LF.
+  const allFenceMatches = [...raw.matchAll(/```yaml\r?\n([\s\S]*?)```/g)];
   if (allFenceMatches.length === 0) return { ok: false, error: "no YAML fenced block found" };
   if (allFenceMatches.length > 1) {
     return { ok: false, error: `multiple YAML fenced blocks found (${allFenceMatches.length}) — ambiguous output` };
@@ -977,12 +1224,14 @@ function validatePathEvidence(verdict, projectRoot) {
   }
 
   // Parse: "path/to/file.js:42 — some code" or "path/to/file.js — some code"
-  const colonMatch = evidence.match(/^([^:—\n]+?)(?::(\d+))?\s*[—-]\s*(.+)$/s);
+  // Em-dash with whitespace boundary is mandatory; hyphen is not a separator,
+  // so hyphenated filenames like "review-runner.js" parse correctly.
+  const colonMatch = evidence.match(/^([^:—\n]+?)(?::(\d+))?\s+—\s+(.+)$/s);
   if (!colonMatch) {
     return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-unparseable" };
   }
 
-  const [, filePath, , quote] = colonMatch;
+  const [, filePath, citedLineRaw, quote] = colonMatch;
   const absPath = path.isAbsolute(filePath.trim())
     ? filePath.trim()
     : path.join(projectRoot, filePath.trim());
@@ -1009,6 +1258,24 @@ function validatePathEvidence(verdict, projectRoot) {
 
   if (!content.includes(trimmedQuote)) {
     return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "fabricated-path-evidence" };
+  }
+
+  // When the validator cited a specific line, require the verbatim quote
+  // to appear within PATH_EVIDENCE_LINE_TOLERANCE lines of it. A quote that
+  // exists "somewhere in the file" but nowhere near the cited line is a
+  // strong fabrication signal — the agent likely picked plausible-sounding
+  // line numbers that do not correspond to the code it described.
+  if (citedLineRaw) {
+    const citedLine = parseInt(citedLineRaw, 10);
+    if (Number.isFinite(citedLine) && citedLine > 0) {
+      const lines = content.split(/\r?\n/);
+      const windowStart = Math.max(0, citedLine - 1 - PATH_EVIDENCE_LINE_TOLERANCE);
+      const windowEnd = Math.min(lines.length, citedLine - 1 + PATH_EVIDENCE_LINE_TOLERANCE + 1);
+      const windowText = lines.slice(windowStart, windowEnd).join("\n");
+      if (!windowText.includes(trimmedQuote)) {
+        return { ...verdict, verdict: "NEEDS_CONTEXT", reason: "path-evidence-line-mismatch" };
+      }
+    }
   }
 
   return verdict;
@@ -1060,10 +1327,14 @@ function checkMissingLedger(sprintReviewDir) {
   const ledgerPath = path.join(sprintReviewDir, "confirmed-findings.yaml");
 
   if (isRereview && !fs.existsSync(ledgerPath)) {
-    console.error(
-      `[essense-flow] Re-review halted: confirmed-findings.yaml not found.\nExpected at: ${ledgerPath}`
+    // Throw rather than process.exit so the rejection is observable in the
+    // async runReview Promise chain — earlier process.exit(1) here bypassed
+    // caller try/catch and made the path untestable.
+    const err = new Error(
+      `Re-review halted: confirmed-findings.yaml not found.\nExpected at: ${ledgerPath}`
     );
-    process.exit(1);
+    err.code = "ERR_MISSING_LEDGER";
+    throw err;
   }
 }
 
@@ -1078,10 +1349,17 @@ function checkMissingLedger(sprintReviewDir) {
 function dispatchValidatorWithTimeout(validatorFn, timeoutMs) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("validator-timeout")), timeoutMs);
-    validatorFn().then(
-      (result) => { clearTimeout(timer); resolve(result); },
-      (err) => { clearTimeout(timer); reject(err); }
-    );
+    // Wrap in Promise.resolve().then so that sync throws and non-Promise
+    // returns are funnelled through the same error path. Without this,
+    // a validatorFn that throws synchronously (or returns undefined / a
+    // plain value) caused an unhandled TypeError inside the executor and
+    // the timer was never cleared — leaking for the full timeout window.
+    Promise.resolve()
+      .then(() => validatorFn())
+      .then(
+        (result) => { clearTimeout(timer); resolve(result); },
+        (err) => { clearTimeout(timer); reject(err); }
+      );
   });
 }
 
@@ -1388,6 +1666,16 @@ async function runReview(parsedOutputs, sprintNumber, pipelineDir, config, valid
     if (entry) {
       entry.status = v.verdict;
       entry.updated_at = v.validated_at || new Date().toISOString();
+    } else {
+      // prior_find_id supplied but not matched — surface this loudly. A
+      // re-review verdict referencing a missing FIND-NNN ID is a contract
+      // violation between the validator and the ledger; silently skipping
+      // would lose the verdict signal and produce stale "CONFIRMED" status
+      // on the next gate evaluation.
+      process.stderr.write(
+        `[essense-flow] WARNING: re-review verdict ${v.verdict} references prior_find_id ` +
+        `${v.prior_find_id} which is not in the ledger; verdict ignored.\n`
+      );
     }
   }
 
@@ -1528,6 +1816,12 @@ module.exports = {
   parseReviewOutputs,
   inferConfidence,
   inferSeverity,
+  extractSeverityPrefix,
+  isPositiveConfirmation,
+  isFixRecommendation,
+  findingDedupKey,
+  dedupFindings,
+  filterFindings,
   categorizeFindings,
   applySuspectedCap,
   buildValidatorManifestRows,
@@ -1536,6 +1830,7 @@ module.exports = {
   generateQAReport,
   extractFindingName,
   writeQAReport,
+  finalizeReview,
   loadSpecPath,
   loadRequirements,
   loadTaskSpecPaths,

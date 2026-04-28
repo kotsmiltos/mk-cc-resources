@@ -78,6 +78,14 @@ const VALIDATOR_TIMEOUT_MS = 90_000;
 // Minimum verbatim quote length for path_evidence validation — DEC-037
 const MIN_PATH_EVIDENCE_QUOTE_CHARS = 20;
 
+// When path_evidence cites a line number, the verbatim quote must appear
+// within ±N lines of the cited line. Closes the gap where a fabricated
+// finding could cite line X with a quote that exists elsewhere in the file
+// (sprint-8 path-traversal regression: claim cited L953-964, quote was at
+// L1046). Tolerance accommodates minor pre/post-edit drift without admitting
+// arbitrary cross-file citations.
+const PATH_EVIDENCE_LINE_TOLERANCE = 10;
+
 // Verdict gate thresholds — controls which finding states block PASS
 // Any CONFIRMED critical finding is a hard blocker regardless of acknowledgments
 const PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS = true;
@@ -153,6 +161,7 @@ module.exports = {
   GROUNDED_REREVIEW_THRESHOLD,
   VALIDATOR_TIMEOUT_MS,
   MIN_PATH_EVIDENCE_QUOTE_CHARS,
+  PATH_EVIDENCE_LINE_TOLERANCE,
   PASS_REQUIRES_ZERO_CONFIRMED_CRITICALS,
   PASS_REQUIRES_ZERO_UNACKNOWLEDGED_NC_CRITICALS,
   STATE_SCHEMA_VERSION,

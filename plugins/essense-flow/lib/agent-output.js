@@ -108,9 +108,10 @@ function parseOutput(rawOutput) {
     return { ok: true, meta: {}, payload: loose, selfAssessment: {}, recovered: true };
   }
 
-  // Fallback: try YAML/JSON code blocks
-  const yamlBlockPattern = /```(?:yaml|yml)\n([\s\S]*?)```/g;
-  const jsonBlockPattern = /```(?:json)\n([\s\S]*?)```/g;
+  // Fallback: try YAML/JSON code blocks. \r?\n so CRLF agent output
+  // (Windows) parses identically to LF.
+  const yamlBlockPattern = /```(?:yaml|yml)\r?\n([\s\S]*?)```/g;
+  const jsonBlockPattern = /```(?:json)\r?\n([\s\S]*?)```/g;
   let blockPayload = null;
 
   const yamlMatches = [...rawOutput.matchAll(yamlBlockPattern)];

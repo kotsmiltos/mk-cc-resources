@@ -69,6 +69,10 @@ const REPAIR_ACTIONS = {
       const defaultConfig = path.join(pluginRoot, "defaults", "config.yaml");
       if (fs.existsSync(defaultConfig)) {
         const config = yamlIO.safeRead(defaultConfig);
+        // Null guard — safeRead returns null on parse error / read failure.
+        // defaults/config.yaml is bundled so corruption is unlikely, but
+        // crashing here would mask the actual repair failure with a NPE.
+        if (!config || !config.pipeline) return;
         config.pipeline.created_at = new Date().toISOString();
         yamlIO.safeWrite(path.join(pipelineDir, "config.yaml"), config);
       }

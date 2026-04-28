@@ -2,7 +2,7 @@
 workflow: architect-decompose
 skill: architect
 trigger: module-too-large
-phase_requires: architecture
+phase_requires: decomposing
 phase_transitions: decomposing → decomposing | decomposing → sprinting
 ---
 
@@ -47,6 +47,6 @@ Call `architect-runner.saveDecompositionState()` after processing.
 ### 6. Check Completion
 
 Call `architect-runner.isDecompositionComplete()`:
-- **Complete**: Generate output (TREE.md, task specs), transition `decomposing → sprinting`
-- **Not complete**: Continue to next wave (self-loop `decomposing → decomposing`)
+- **Complete**: Generate TREE.md via `architect-runner.generateTreeMd()` and create task specs from leaf nodes. Then **MANDATORY single call:** `architect-runner.finalizeDecompose(pipelineDir, sprintNumber, specs, treeMd, archDoc, synthDoc, "sprinting")`. Atomically writes task specs + TREE.md (+ optional final ARCH.md) AND transitions `decomposing → sprinting`. Do NOT split into separate `writeTaskSpecs` + `transition` steps — phase=decomposing must not persist after task specs have been produced, otherwise autopilot loops /architect against an existing decomposition (same failure mode B2 closed for /review).
+- **Not complete**: Continue to next wave (self-loop `decomposing → decomposing`, handled by `saveDecompositionState` — NOT by `finalizeDecompose`)
 - **After 10 waves**: Show convergence summary, ask user to continue or stop

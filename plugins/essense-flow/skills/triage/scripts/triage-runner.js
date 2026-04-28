@@ -862,17 +862,22 @@ function writeTriage(pipelineDir, report, queued, revalidateDrops) {
       const src = item.drop_source || "unknown";
       bySource[src] = (bySource[src] || 0) + 1;
     }
-    existingHistory.entries.push({
+
+    // Build prospective history in memory only; the streak decision must
+    // not depend on whether drop-history.yaml has been flushed yet.
+    const candidateEntry = {
       sprint: sprintNum,
       timestamp: new Date().toISOString(),
       drops: Object.entries(bySource).map(([drop_source, count]) => ({ drop_source, count })),
-    });
-    yamlIO.safeWrite(dropHistoryPath, existingHistory);
+    };
+    const prospectiveHistory = {
+      ...existingHistory,
+      entries: [...existingHistory.entries, candidateEntry],
+    };
 
-    // Check per-source consecutive-sprint streak; trigger grounded_required when
-    // any source crosses the threshold without interruption.
+    // Per-source consecutive-sprint streak check on the prospective history.
     const allSources = {};
-    for (const [entryIndex, entry] of existingHistory.entries.entries()) {
+    for (const [entryIndex, entry] of prospectiveHistory.entries.entries()) {
       // null sprint entries must not reset or increment the streak;
       // coerce to a unique sentinel so they are excluded from Number.isFinite filtering below.
       const safeSprint = entry.sprint ?? `null-${entryIndex}`;
@@ -881,6 +886,7 @@ function writeTriage(pipelineDir, report, queued, revalidateDrops) {
         allSources[d.drop_source].push(safeSprint);
       }
     }
+    let thresholdCrossed = false;
     for (const [, sprints] of Object.entries(allSources)) {
       // Filter out null-sentinel values — only finite sprint numbers participate in streak calc.
       const sorted = sprints.filter(Number.isFinite).sort((a, b) => a - b);
@@ -888,26 +894,103 @@ function writeTriage(pipelineDir, report, queued, revalidateDrops) {
       for (let i = 1; i < sorted.length; i++) {
         consecutive = sorted[i] === sorted[i - 1] + 1 ? consecutive + 1 : 1;
         if (consecutive >= GROUNDED_REREVIEW_THRESHOLD) {
-          const currentStateData = yamlIO.safeReadWithFallback(path.join(pipelineDir, "state.yaml")) || {};
-          try {
-            yamlIO.safeWrite(path.join(pipelineDir, "state.yaml"), {
-              ...currentStateData,
-              grounded_required: true,
-              last_updated: new Date().toISOString(),
-            });
-          } catch (err) {
-            throw new Error(
-              `[triage] Failed to write grounded_required to state.yaml: ${err.message}. ` +
-              `Re-run /triage to retry. drop-history.yaml was written successfully.`
-            );
-          }
+          thresholdCrossed = true;
           break;
         }
       }
+      if (thresholdCrossed) break;
     }
+
+    // Transactional ordering: write the durable signal first, audit log
+    // second. If state.yaml grounded_required write fails when the
+    // threshold has crossed, abort before drop-history.yaml is touched —
+    // next /triage run computes the same streak from unchanged input data
+    // and retries. If drop-history.yaml write fails after state.yaml
+    // succeeds, the grounded flag is already set so next sprint behaves
+    // correctly; the audit log lags by one sprint (acceptable —
+    // grounded-required is idempotent).
+    if (thresholdCrossed) {
+      const currentStateData = yamlIO.safeReadWithFallback(path.join(pipelineDir, "state.yaml")) || {};
+      try {
+        yamlIO.safeWrite(path.join(pipelineDir, "state.yaml"), {
+          ...currentStateData,
+          grounded_required: true,
+          last_updated: new Date().toISOString(),
+        });
+      } catch (err) {
+        throw new Error(
+          `[triage] Failed to write grounded_required to state.yaml: ${err.message}. ` +
+          `No state mutated; Re-run /triage to retry.`
+        );
+      }
+    }
+    yamlIO.safeWrite(dropHistoryPath, prospectiveHistory);
   }
 
   return { reportPath, queuedPath };
+}
+
+// Valid target phases the triage skill can route to. Mirrors the from:
+// "triaging" entries in references/transitions.yaml.
+const VALID_TRIAGE_ROUTES = ["eliciting", "research", "architecture", "verifying", "requirements-ready"];
+
+/**
+ * Atomic post-triage hand-off — write triage artifacts AND transition
+ * `triaging → <route>` in a single call.
+ *
+ * Background (B-class): the previous /triage workflow had separate steps
+ * for "write TRIAGE-REPORT.md" and "transition to target phase". The
+ * orchestrator could legitimately stop between them, leaving phase=triaging
+ * with TRIAGE-REPORT.md present — autopilot then loops /triage against an
+ * existing report. Same failure mode as B2's reviewing→triaging gap.
+ *
+ * `finalizeTriage` combines both into one call so the orchestrator cannot
+ * stop mid-chain. Phase guard rejects starting phase ≠ "triaging" with a
+ * structured error; on guard failure the triage artifacts are still
+ * written so the user can recover manually.
+ *
+ * @param {string} pipelineDir
+ * @param {string} report — TRIAGE-REPORT.md content
+ * @param {Array} queued — queued findings
+ * @param {Array} revalidateDrops — pre-categorization drops
+ * @param {string} route — target phase (one of VALID_TRIAGE_ROUTES)
+ * @returns {{ ok: boolean, reportPath?: string, queuedPath?: string, transitioned: boolean, targetPhase?: string, error?: string }}
+ */
+function finalizeTriage(pipelineDir, report, queued, revalidateDrops, route) {
+  if (!VALID_TRIAGE_ROUTES.includes(route)) {
+    return {
+      ok: false,
+      transitioned: false,
+      error: `invalid route '${route}'; must be one of ${VALID_TRIAGE_ROUTES.join(", ")}`,
+    };
+  }
+
+  let reportPath, queuedPath;
+  try {
+    ({ reportPath, queuedPath } = writeTriage(pipelineDir, report, queued, revalidateDrops));
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `writeTriage failed: ${err.message}` };
+  }
+
+  const stateMachine = require("../../../lib/state-machine");
+  const transition = stateMachine.writeState(
+    pipelineDir,
+    route,
+    {},
+    { command: "/triage", trigger: "triage-skill", artifact: reportPath }
+  );
+
+  if (!transition.ok) {
+    return {
+      ok: false,
+      reportPath,
+      queuedPath,
+      transitioned: false,
+      error: transition.error || "writeState returned no error message",
+    };
+  }
+
+  return { ok: true, reportPath, queuedPath, transitioned: true, targetPhase: route };
 }
 
 module.exports = {
@@ -942,4 +1025,6 @@ module.exports = {
   readBlocksAdvanceCount,
   routeByBlocksAdvance,
   routeFinal,
+  finalizeTriage,
+  VALID_TRIAGE_ROUTES,
 };

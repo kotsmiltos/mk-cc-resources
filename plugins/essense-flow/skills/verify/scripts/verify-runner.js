@@ -1965,3 +1965,70 @@ module.exports.determineRouting = determineRouting;
 module.exports.checkLoopLimit = checkLoopLimit;
 module.exports.updateVerifyState = updateVerifyState;
 module.exports.runVerify = runVerify;
+
+// Valid post-verify transitions per references/transitions.yaml.
+// Verify can route to complete (success), eliciting (spec drift), or
+// architecture (missing implementation).
+const VALID_VERIFY_ROUTES = ["complete", "eliciting", "architecture"];
+
+/**
+ * Atomic post-verify hand-off: write VERIFICATION-REPORT(-ondemand).md
+ * AND transition `verifying → <target>` in a single call. Mirrors the B2
+ * finalizeReview / finalizeTriage / finalizeBuild pattern.
+ *
+ * In gate mode, both writeReport and updateVerifyState are invoked.
+ * In on-demand mode, only writeReport runs (NFR-004 — on-demand never
+ * touches state.yaml). The atomicity guarantee is therefore conditional
+ * on `mode === "gate"`.
+ *
+ * Mid-flight `runVerify` already sequences these two calls internally;
+ * `finalizeVerify` exposes the same atomic pair as a standalone helper
+ * for parity with the other skills, and lets the verify workflow doc
+ * mandate a single call instead of two consecutive steps the orchestrator
+ * could split across stop boundaries.
+ *
+ * @param {string} pipelineDir — absolute path to .pipeline/
+ * @param {string} report — assembled VERIFICATION-REPORT markdown
+ * @param {"gate"|"on-demand"} mode — run mode
+ * @param {string} [target] — routing target (gate mode only)
+ * @param {Array} [gapItems] — gap routing payload (gate mode only)
+ * @param {number} [currentGapCount] — gap count for cycle counter (gate mode only)
+ * @returns {{ ok: boolean, transitioned: boolean, targetPhase?: string, error?: string }}
+ */
+function finalizeVerify(pipelineDir, report, mode, target, gapItems, currentGapCount) {
+  if (mode !== "gate" && mode !== "on-demand") {
+    return { ok: false, transitioned: false, error: `invalid mode '${mode}' — must be 'gate' or 'on-demand'` };
+  }
+
+  if (mode === "gate") {
+    if (!VALID_VERIFY_ROUTES.includes(target)) {
+      return {
+        ok: false,
+        transitioned: false,
+        error: `invalid route '${target}' — must be one of: ${VALID_VERIFY_ROUTES.join(", ")}`,
+      };
+    }
+  }
+
+  try {
+    writeReport(pipelineDir, report, mode);
+  } catch (err) {
+    return { ok: false, transitioned: false, error: `writeReport failed: ${err.message}` };
+  }
+
+  if (mode === "on-demand") {
+    // NFR-004: on-demand never writes state. Atomic guarantee is just the report.
+    return { ok: true, transitioned: false };
+  }
+
+  try {
+    updateVerifyState(pipelineDir, target, gapItems || [], typeof currentGapCount === "number" ? currentGapCount : 0);
+  } catch (err) {
+    return { ok: false, transitioned: false, error: err.message };
+  }
+
+  return { ok: true, transitioned: true, targetPhase: target };
+}
+
+module.exports.finalizeVerify = finalizeVerify;
+module.exports.VALID_VERIFY_ROUTES = VALID_VERIFY_ROUTES;

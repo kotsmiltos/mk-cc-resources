@@ -233,12 +233,19 @@ function parseComplexityBlock(specContent) {
   const touchSurface = get("touch_surface");
   const unknownCountRaw = get("unknown_count");
   const notes = get("notes");
+  // classification is an optional override read by chooseArchitectFlow:
+  // value `mechanical` forces the lightweight /architect path regardless
+  // of depth. Wired into the SPEC.md frontmatter contract in v0.5.0 so
+  // a fix sprint can override the project-level depth without changing
+  // assessment.
+  const classification = get("classification");
 
   return {
     assessment,
     touch_surface: touchSurface,
     unknown_count: unknownCountRaw == null ? null : parseInt(unknownCountRaw, 10),
     notes,
+    classification,
     valid: COMPLEXITY_ASSESSMENTS.includes(assessment) &&
            COMPLEXITY_TOUCH_SURFACES.includes(touchSurface) &&
            Number.isFinite(parseInt(unknownCountRaw, 10)),

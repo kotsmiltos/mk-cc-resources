@@ -88,18 +88,26 @@ Call `review-runner.generateQAReport()` to produce full QA-REPORT.md content:
 - Sections: Summary, Confirmed Findings, Likely Findings, Suspected Findings
 - Per-Perspective Attribution table
 
-### 10. Write Report
+### 10. Finalize Review (Atomic — Write Report + Transition to Triaging)
 
-Call `review-runner.writeQAReport()` to write:
-- `.pipeline/reviews/sprint-NN/QA-REPORT.md`
+**MANDATORY single call.** Do not split. Do not stop between writing the
+report and transitioning state — phase=reviewing must not persist after
+QA-REPORT.md has been produced, otherwise autopilot will not know whether
+to fire /review (resume) or /triage (advance).
 
-### 11. Transition to Triaging
+Call `review-runner.finalizeReview(pipelineDir, sprintNumber, reportContent)`.
+This:
 
-Use `lib/state-machine.transition()` to move from `reviewing` to `triaging`.
+1. Writes `.pipeline/reviews/sprint-NN/QA-REPORT.md` (same as `writeQAReport`).
+2. Calls `lib/state-machine.writeState` to transition `reviewing → triaging`
+   atomically. The transition is recorded in `state-history.yaml` with
+   trigger `review-skill` and the QA-REPORT path as the triggering artifact.
 
-Auto-advances — triage runs immediately to determine next action based on QA verdict:
-- **PASS**: route to next sprint or completion
-- **FAIL**: route back to build with confirmed critical findings as fix tasks
+Returns `{ ok, qaReportPath, transitioned, error? }`:
+- `ok: true` → continue to step 12 (auto-advance triage)
+- `ok: false` → QA-REPORT was written but state transition failed (e.g.
+  phase was not `reviewing`). Surface the error to the user and stop;
+  do not proceed to step 12 against unknown state.
 
 ### 12. Auto-Advance: Triage
 
