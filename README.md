@@ -6,7 +6,7 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 
 | Plugin | Version | What it does |
 |---|---|---|
-| **essense-flow** | 0.4.2 | Multi-phase AI development pipeline. State machine, phase-aware context map, deterministic-before-LLM gate, single-invocation wave contract for `/build`, propagating artifact contracts. |
+| **essense-flow** | 0.5.0 | Multi-phase AI development pipeline. `/architect` dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition) flows by SPEC complexity. Atomic `finalize*` helpers across every phase-producing skill close the B-class autopilot loop hazard family. State machine, phase-aware context map, deterministic-before-LLM gate, propagating artifact contracts. |
 | **essense-autopilot** | 0.2.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold, unplanned sprints. Diagnostic stderr on every halt. Opt-in per project. |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
 | **thorough-mode** | 1.3.2 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`. Inject behavioral rules for thoroughness, doc checks, interactive questions. |
@@ -75,7 +75,7 @@ Then in any project:
 | Elicit | `/elicit` | Collaborative ideation — produces SPEC.md from a project pitch |
 | Research | `/research` | Multi-perspective research — produces REQ.md with testable acceptance criteria |
 | Triage | `/triage` | Categorizes findings, routes to the correct phase |
-| Architecture | `/architect` | 4 perspective agents design architecture, decompose into sprint task specs |
+| Architecture | `/architect` | Dispatcher routes by SPEC complexity. **Lightweight** (bug-fix / mechanical): 4-perspective swarm → DAG-based decomposition → sprint task specs. **Heavyweight** (new-feature / partial-rewrite / new-project): swarm → wave-based decomposition with `AskUserQuestion` design questions and convergence check, then sprint task specs. |
 | Build | `/build` | Executes task specs in dependency-ordered waves with per-wave test gate |
 | Review | `/review` | Adversarial QA agents validate built code against specs |
 | Verify | `/verify` | Top-down spec compliance check before marking complete |

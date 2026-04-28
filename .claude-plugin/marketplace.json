@@ -11,8 +11,8 @@
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, single-invocation wave contract for /build.",
-      "version": "0.4.2"
+      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, single-invocation wave contract for /build.",
+      "version": "0.5.0"
     },
     {
       "name": "essense-autopilot",

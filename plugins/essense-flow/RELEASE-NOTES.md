@@ -61,7 +61,25 @@ Closes the failure mode where `commands/architect.md` previously ran `writeArchi
 - `tests/architecture-finalize.test.js` — 23 assertions across both routes (sprinting + decomposing), invalid route, sprintMeta validation, archDoc required, phase guard, exports check.
 - `tests/architect-flow-router.test.js` — 11 assertions for `chooseArchitectFlow`: mechanical override priority, depth=flat shortcut, non-flat assessments, missing-complexity default, non-empty reason field.
 - `tests/architect-heavyweight-e2e.test.js` — 14 assertions stepping through the full heavyweight flow: dispatcher → architecture transition → synthesizeArchitecture (stubbed perspective outputs) → finalizeArchitecture(decomposing) → initDecompositionState → addNode (leaf-indicator nodes) → decomposeWave (no questions surfaced) → isDecompositionComplete → generateTreeMd → createTaskSpecs → finalizeDecompose(sprinting). Asserts state.yaml progression `requirements-ready → architecture → decomposing → sprinting` and that ARCH.md, synthesis.md, TREE.md, DECOMPOSITION-STATE.yaml, TASK-NNN.md/.agent.md pairs all land on disk. Does **not** exercise real perspective-agent dispatch or the AskUserQuestion design-question loop — those are orchestrator-driven and require live LLM execution.
-- Full suite: 788/788 pass.
+- Full suite: 798/798 pass (788 v0.5.0 baseline + 10 from the audit-fix sweep below).
+
+### Dormant-path audit fixes (post-wiring sweep)
+
+Activating the heavyweight architect flow surfaced four latent bugs in code paths that had been dormant since v0.2 — they only fire when the heavyweight loop runs. All four were fixed in the same release; tests now pin the contracts.
+
+- **G1 — `_runDecomposeLoop` checked the wrong field on `detectSpecGap`.** Code branched on `gap.detected` but `detectSpecGap` returns `{isSpecGap, reason}`. The spec-gap escalation path was effectively dead. Fixed: branch on `gap.isSpecGap`. `tests/runArchitectPlan.test.js` "spec-gap" assertion tightened from `status === "spec-gap" || "complete" || "max-waves-reached"` to `status === "spec-gap"` exact.
+- **G2 — `decomposeWave` called `updateNodeState` four times with unchecked returns.** Same class as the NODE_STATES bug above: bad transitions silently corrupted state. All 4 calls now check `.ok` and bail with the error. `tests/decompose-wave-units.test.js` covers the rejection path.
+- **G3 — `_runDecomposeLoop` called `applyAnswer` without checking the return.** Silent failure if a node was no longer in `pending-user-decision`. Now returns `{ok:false, status:"apply-answer-failed"}`.
+- **G4 — `addNode` silently overwrote existing nodes.** Wave re-entry could stomp `parent.children` references. Now returns `{ok:false, error:"node \"X\" already exists"}`. Test asserts second add preserves the original.
+
+Plus four contract-consistency fixes propagated across the rest of the pipeline:
+
+- **G5 — `finalizeReview` now wraps `writeQAReport` in try/catch.** Was the only `finalize*` helper that escaped disk failures as raw exceptions instead of `{ok:false, error}`. Aligned with the pattern in `finalizeResearch`/`finalizeTriage`/`finalizeVerify`/`finalizeArchitecture`/`finalizeDecompose`.
+- **G6 — `drift-check.js` null guard on `safeRead(defaultConfig)`.** Bundled config so corruption is unlikely, but the prior `config.pipeline...` access would NPE rather than report.
+- **G7 — `state-machine.writeState` wraps `appendTransition` in try/catch.** Without the wrap, an audit-log write failure after the state.yaml had already landed escaped as a raw exception, breaking the `{ok, error}` contract. On failure now returns `{ok:false, stateWritten:true, error}` so the caller can decide whether to retry.
+- **G8 — `completeSprintExecution` wraps `generateCompletionReport` in try/catch.** Disk failures during the completion-report write now surface as `{ok:false}` rather than escape.
+
+`tests/decompose-wave-units.test.js` (10 assertions) was added to pin the four heavyweight contracts; `tests/runArchitectPlan.test.js` "spec-gap" case was tightened.
 
 ### Migration
 
