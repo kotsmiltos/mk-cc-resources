@@ -291,3 +291,171 @@ describe("enterReview — idempotent reviewing skips readiness gate", () => {
     assert.equal(r.alreadyEntered, true);
   });
 });
+
+// ── Auto-synthesize from SPRINT-REPORT.md / completion-report.md ──────────
+//
+// When the build phase improvises (writes a top-level summary instead of
+// per-task completion records), enterReview synthesizes records from the
+// task spec list + the source report, marks them synthetic:true, and
+// proceeds. Closes the most reproducible failure mode of the v0.6.x
+// build/review boundary (sprint-3.4, sprint-4 across two projects).
+
+const reviewRunner = require("../skills/review/scripts/review-runner");
+
+function seedTaskSpec(pipelineDir, sprintNumber, taskId) {
+  const dir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`, "tasks");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, `${taskId}.md`),
+    `# ${taskId}\n\nTask spec for ${taskId}.\n`,
+    "utf8"
+  );
+}
+
+function seedReport(pipelineDir, sprintNumber, name, body) {
+  const dir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, name), body || `# Sprint ${sprintNumber} report\n`, "utf8");
+}
+
+function readCompletionRecord(pipelineDir, sprintNumber, taskId) {
+  const p = path.join(
+    pipelineDir,
+    "sprints",
+    `sprint-${sprintNumber}`,
+    "completion",
+    `${taskId}.completion.yaml`
+  );
+  if (!fs.existsSync(p)) return null;
+  return yaml.load(fs.readFileSync(p, "utf8"));
+}
+
+describe("enterReview — auto-synthesizes completion records from SPRINT-REPORT.md", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 10));
+    seedTaskSpec(pipelineDir, 10, "TASK-001");
+    seedTaskSpec(pipelineDir, 10, "TASK-002");
+    seedReport(pipelineDir, 10, "SPRINT-REPORT.md");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("transitions to reviewing", () => {
+    const r = enterReview(pipelineDir, 10);
+    assert.equal(r.ok, true, `enterReview failed: ${JSON.stringify(r)}`);
+    assert.equal(r.transitioned, true);
+    const state = readState(pipelineDir);
+    assert.equal(state.pipeline.phase, "reviewing");
+  });
+
+  it("created one synthetic completion record per task spec", () => {
+    const completionDir = path.join(pipelineDir, "sprints", "sprint-10", "completion");
+    const records = fs.readdirSync(completionDir).filter((f) => f.endsWith(".completion.yaml"));
+    assert.equal(records.length, 2);
+  });
+
+  it("records carry synthetic:true and reference the source report", () => {
+    const rec = readCompletionRecord(pipelineDir, 10, "TASK-001");
+    assert.ok(rec, "TASK-001.completion.yaml should exist");
+    assert.equal(rec.synthetic, true);
+    assert.equal(rec.task_id, "TASK-001");
+    assert.equal(rec.status, "COMPLETE");
+    assert.match(rec.synthesis_source, /SPRINT-REPORT\.md/);
+  });
+});
+
+describe("enterReview — auto-synthesizes from completion-report.md (canonical name)", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 11));
+    seedTaskSpec(pipelineDir, 11, "TASK-A");
+    seedReport(pipelineDir, 11, "completion-report.md");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("transitions and creates a synthetic record", () => {
+    const r = enterReview(pipelineDir, 11);
+    assert.equal(r.ok, true);
+    assert.equal(r.transitioned, true);
+    const rec = readCompletionRecord(pipelineDir, 11, "TASK-A");
+    assert.ok(rec);
+    assert.equal(rec.synthetic, true);
+  });
+});
+
+describe("enterReview — synthesis still refuses when no report exists", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 12));
+    // task specs but NO report — synthesis has nothing to anchor to
+    seedTaskSpec(pipelineDir, 12, "TASK-A");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("returns ok:false with missing-completion-records", () => {
+    const r = enterReview(pipelineDir, 12);
+    assert.equal(r.ok, false);
+    assert.equal(r.status, "missing-completion-records");
+  });
+});
+
+describe("enterReview — synthesis refuses when no task specs exist", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 13));
+    // report but no task specs — synthesis can't enumerate task IDs
+    seedReport(pipelineDir, 13, "SPRINT-REPORT.md");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("returns ok:false with missing-completion-records", () => {
+    const r = enterReview(pipelineDir, 13);
+    assert.equal(r.ok, false);
+    assert.equal(r.status, "missing-completion-records");
+  });
+});
+
+describe("enterReview — synthesis ignores .agent.md sibling spec files", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 14));
+    seedTaskSpec(pipelineDir, 14, "TASK-A");
+    // also create a .agent.md sibling — must NOT generate a separate record
+    const dir = path.join(pipelineDir, "sprints", "sprint-14", "tasks");
+    fs.writeFileSync(path.join(dir, "TASK-A.agent.md"), "# agent variant\n");
+    seedReport(pipelineDir, 14, "SPRINT-REPORT.md");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("creates exactly one synthetic record (one task), not two", () => {
+    const r = enterReview(pipelineDir, 14);
+    assert.equal(r.ok, true);
+    const completionDir = path.join(pipelineDir, "sprints", "sprint-14", "completion");
+    const records = fs.readdirSync(completionDir).filter((f) => f.endsWith(".completion.yaml"));
+    assert.equal(records.length, 1);
+  });
+});
+
+describe("synthesizeCompletionRecordsFromReport — direct unit test", () => {
+  let tmpRoot, pipelineDir;
+  before(() => {
+    ({ tmpRoot, pipelineDir } = makeProject("sprint-complete", 15));
+    seedTaskSpec(pipelineDir, 15, "TASK-X");
+    seedTaskSpec(pipelineDir, 15, "TASK-Y");
+    seedReport(pipelineDir, 15, "SPRINT-REPORT.md");
+  });
+  after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+  it("returns {ok:true, created:N} with N == number of task specs", () => {
+    const r = reviewRunner.synthesizeCompletionRecordsFromReport(pipelineDir, 15);
+    assert.equal(r.ok, true);
+    assert.equal(r.created, 2);
+    assert.match(r.source, /SPRINT-REPORT\.md/);
+  });
+
+  it("is idempotent on re-run (does not overwrite existing records)", () => {
+    const r2 = reviewRunner.synthesizeCompletionRecordsFromReport(pipelineDir, 15);
+    assert.equal(r2.ok, true);
+    assert.equal(r2.created, 0); // already exists
+  });
+});

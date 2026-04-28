@@ -58,8 +58,6 @@ const AGENT_BRIEF_OVERHEAD_TOKENS = 2000;
 // Agent dispatch
 // Hard cap on simultaneous sub-agent dispatches per wave (DEC-105); 4 = balances API rate limits vs. parallelism benefit
 const MAX_CONCURRENT_AGENTS = 4;
-// Maximum command string length before bash-guard rejects — prevents ReDoS and memory exhaustion in regex evaluation
-const MAX_COMMAND_LENGTH = 16384;
 const MIN_WAVE_CAP = 1;
 
 // Grounded rereview
@@ -156,7 +154,6 @@ module.exports = {
   CHARS_PER_TOKEN,
   AGENT_BRIEF_OVERHEAD_TOKENS,
   MAX_CONCURRENT_AGENTS,
-  MAX_COMMAND_LENGTH,
   MIN_WAVE_CAP,
   GROUNDED_REREVIEW_THRESHOLD,
   VALIDATOR_TIMEOUT_MS,

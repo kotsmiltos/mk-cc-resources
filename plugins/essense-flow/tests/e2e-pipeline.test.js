@@ -100,8 +100,8 @@ describe("End-to-End Pipeline", () => {
     // 6. Transition state: idle -> research -> requirements-ready
     // These transitions have no file requirements, so use state machine
     const transitionMap = stateMachine.loadTransitions(TRANSITIONS_PATH);
-    stateMachine.transition(STATE_FILE, "research", transitionMap, TMP_PROJECT);
-    stateMachine.transition(STATE_FILE, "requirements-ready", transitionMap, TMP_PROJECT);
+    stateMachine.writeState(PIPELINE_DIR, "research", {}, { trigger: "test" });
+    stateMachine.writeState(PIPELINE_DIR, "requirements-ready", {}, { trigger: "test" });
 
     const state = yamlIO.safeRead(STATE_FILE);
     assert.equal(state.pipeline.phase, "requirements-ready");
@@ -157,8 +157,8 @@ describe("End-to-End Pipeline", () => {
     // The architecture transition has file requirements that reference .pipeline/
     // relative to project root. Use transition with TMP_PROJECT as pipelineDir.
     const transitionMap = stateMachine.loadTransitions(TRANSITIONS_PATH);
-    stateMachine.transition(STATE_FILE, "architecture", transitionMap, TMP_PROJECT);
-    stateMachine.transition(STATE_FILE, "sprinting", transitionMap, TMP_PROJECT);
+    stateMachine.writeState(PIPELINE_DIR, "architecture", {}, { trigger: "test" });
+    stateMachine.writeState(PIPELINE_DIR, "sprinting", {}, { trigger: "test" });
 
     const state = yamlIO.safeRead(STATE_FILE);
     assert.equal(state.pipeline.phase, "sprinting");

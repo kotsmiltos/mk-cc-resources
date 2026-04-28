@@ -39,8 +39,8 @@ Combine both into context provided to perspective agents.
 
 Before dispatching perspective agents, judge the plan:
 
-- **Design-bearing** — input has open design decisions: new architecture, novel module boundaries, multiple viable approaches. Run full 4-perspective swarm.
-- **Mechanical** — input is fix sprint for cited bugs, re-plan of already-specced tasks, or spec-addendum cleanup. Structure is prescribed; nothing for 4 perspectives to disagree about. Skip swarm; run synthesis inline.
+- **Design-bearing** — input has open design decisions: new architecture, novel module boundaries, multiple viable approaches. Run full perspective swarm.
+- **Mechanical** — input is fix sprint for cited bugs, re-plan of already-specced tasks, or spec-addendum cleanup. Structure is prescribed; nothing for perspectives to disagree about. Skip swarm; run synthesis inline.
 
 Record choice in `.pipeline/state.yaml` under `phases_completed.architecture.perspective_swarm: invoked|skipped` with one-line `rationale_decision` (e.g., DEC-NNN) so absence is auditable.
 
@@ -48,12 +48,12 @@ Record choice in `.pipeline/state.yaml` under `phases_completed.architecture.per
 If design-bearing, call `architect-runner.planArchitecture(requirementsContent, pluginRoot, config, specContent, complexity)`.
 
 - `complexity` is the parsed block from SPEC.md frontmatter (returned from `loadSpec(pipelineDir)` as `spec.complexity`).
-- Produces 4 briefs (infrastructure, interface, testing, security). Token budget adapts when SPEC.md present.
+- Produces perspective briefs (default lenses: infrastructure, interface, testing, security; count adapts if registry shifts). Token budget adapts when SPEC.md present.
 - Returns `{ ok, briefs, depthRecommendation }`. The `depthRecommendation` carries the scope-aware depth label (`flat | standard | high-care | full`) and is INJECTED into every brief so each perspective agent adapts its analysis to scope. Logged on stdout for visibility.
 - Use `depthRecommendation.depth` to inform your decomposition decisions in step 8 — `flat` scopes skip multi-wave; `full` scopes get the full decomposition tree.
 
 ### 6. Dispatch Perspective Agents (swarm path only)
-Spawn all 4 agents in parallel using Agent tool. Each gets assembled brief.
+Spawn all perspective agents in parallel using Agent tool. Each gets assembled brief.
 
 ### 7. Parse and Verify Outputs (swarm path only)
 Parse with `lib/agent-output`. Check quorum (architecture_perspective: n-1). Run consistency verifier.

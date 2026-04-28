@@ -41,7 +41,7 @@ Check for `.pipeline/elicitation/SPEC.md`:
 **If no SPEC.md (direct input mode):**
 - Accept problem statement from user's direct input or `.pipeline/problem.md`
 - If neither available, ask user for problem statement
-- Use default 4 perspectives and standard token budget
+- Use `DEFAULT_LENSES` and standard token budget
 
 ### 4. Assemble Perspective Briefs
 

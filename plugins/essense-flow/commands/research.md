@@ -34,7 +34,7 @@ Multi-perspective research on problem statement, producing structured requiremen
 
    **If no SPEC.md (direct input):**
    - Use `problem-statement` argument directly
-   - Use default 4 perspectives (Security, Infrastructure, UX, Testing)
+   - Use `DEFAULT_LENSES` (Security, Infrastructure, UX, Testing — count adapts if registry changes)
    - Use standard token budget (12K brief_ceiling)
 
 3. Use `skills/research/scripts/research-runner.js`:

@@ -1,7 +1,7 @@
-# Override repo-level lib/ ignore — essense-flow needs its lib/ tracked
-!lib/
-!node_modules/**/lib/
-
-# Override repo-level build/ ignore — the /build skill lives in skills/build/
-# and would otherwise be swallowed by the Python-distribution build/ rule.
-!skills/build/
+node_modules/
+.pipeline/
+.pipeline-archive/
+.claude/
+.serena/
+caveman/
+tests/__tmp_*/

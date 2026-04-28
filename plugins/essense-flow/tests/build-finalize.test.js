@@ -1,9 +1,9 @@
 "use strict";
 
 /**
- * Tests for build-runner.finalizeBuild — atomic post-sprint hand-off.
+ * Tests for build-runner.completeSprintExecution — atomic post-sprint hand-off.
  *
- * finalizeBuild is the canonical-name alias of completeSprintExecution
+ * completeSprintExecution is the canonical-name alias of completeSprintExecution
  * (introduced for naming consistency with the other finalize* helpers
  * across skills). Both share the same atomic write+transition path:
  * generate completion-report.md AND transition `sprinting → sprint-complete`
@@ -68,7 +68,7 @@ const goodCompletions = [
   { task_id: "TASK-A", sprint: 1, status: "COMPLETE", files_written: "", deviations: "none", verification: "", completed_at: new Date().toISOString() },
 ];
 
-describe("finalizeBuild — atomic write + transition (sprinting → sprint-complete)", () => {
+describe("completeSprintExecution — atomic write + transition (sprinting → sprint-complete)", () => {
   let tmpRoot, pipelineDir;
 
   before(() => {
@@ -81,7 +81,7 @@ describe("finalizeBuild — atomic write + transition (sprinting → sprint-comp
   });
 
   it("returns ok:true and writes completion-report.md atomically with transition", () => {
-    const result = buildRunner.finalizeBuild(pipelineDir, 1, goodCompletions, {}, null);
+    const result = buildRunner.completeSprintExecution(pipelineDir, 1, goodCompletions, {}, null);
     assert.equal(result.ok, true, `expected ok:true, got: ${JSON.stringify(result)}`);
     assert.ok(result.report);
     assert.ok(result.report.reportPath.endsWith("completion-report.md"));
@@ -105,11 +105,11 @@ describe("finalizeBuild — atomic write + transition (sprinting → sprint-comp
   });
 });
 
-describe("finalizeBuild — phase guard", () => {
+describe("completeSprintExecution — phase guard", () => {
   let tmpRoot, pipelineDir;
 
   before(() => {
-    // Wrong starting phase — finalizeBuild should reject the transition.
+    // Wrong starting phase — completeSprintExecution should reject the transition.
     // Seed completion records so the I-10 gate passes; the test exercises
     // the writeState phase guard, NOT the missing-records refusal.
     ({ tmpRoot, pipelineDir } = makeProject("idle", 2));
@@ -121,7 +121,7 @@ describe("finalizeBuild — phase guard", () => {
   });
 
   it("returns ok:false when starting phase is not 'sprinting'", () => {
-    const result = buildRunner.finalizeBuild(pipelineDir, 2, goodCompletions, {}, null);
+    const result = buildRunner.completeSprintExecution(pipelineDir, 2, goodCompletions, {}, null);
     assert.equal(result.ok, false);
     assert.ok(typeof result.reason === "string" && result.reason.length > 0);
   });
@@ -137,7 +137,7 @@ describe("finalizeBuild — phase guard", () => {
   });
 });
 
-describe("finalizeBuild — failed completions short-circuit", () => {
+describe("completeSprintExecution — failed completions short-circuit", () => {
   let tmpRoot, pipelineDir;
 
   before(() => {
@@ -155,7 +155,7 @@ describe("finalizeBuild — failed completions short-circuit", () => {
     const failedCompletions = [
       { task_id: "TASK-X", sprint: 3, status: "FAILED", files_written: "", deviations: "none", verification: "", completed_at: new Date().toISOString() },
     ];
-    const result = buildRunner.finalizeBuild(pipelineDir, 3, failedCompletions, {}, null);
+    const result = buildRunner.completeSprintExecution(pipelineDir, 3, failedCompletions, {}, null);
     assert.equal(result.ok, false);
     assert.match(result.reason, /failed/);
 
@@ -166,7 +166,7 @@ describe("finalizeBuild — failed completions short-circuit", () => {
 
 // ── I-10 producer-side gate: missing per-task completion records ─────────
 
-describe("finalizeBuild — refuses when completion dir missing", () => {
+describe("completeSprintExecution — refuses when completion dir missing", () => {
   let tmpRoot, pipelineDir;
   before(() => {
     // Phase=sprinting, completions[] non-empty, but NO records on disk.
@@ -178,7 +178,7 @@ describe("finalizeBuild — refuses when completion dir missing", () => {
   after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
   it("returns ok:false with status:missing-completion-records", () => {
-    const r = buildRunner.finalizeBuild(pipelineDir, 4, goodCompletions, {}, null);
+    const r = buildRunner.completeSprintExecution(pipelineDir, 4, goodCompletions, {}, null);
     assert.equal(r.ok, false);
     assert.equal(r.status, "missing-completion-records");
     assert.match(r.reason, /no per-task completion records on disk/);
@@ -200,7 +200,7 @@ describe("finalizeBuild — refuses when completion dir missing", () => {
   });
 });
 
-describe("finalizeBuild — refuses when completion dir empty", () => {
+describe("completeSprintExecution — refuses when completion dir empty", () => {
   let tmpRoot, pipelineDir;
   before(() => {
     ({ tmpRoot, pipelineDir } = makeProject("sprinting", 5));
@@ -210,13 +210,13 @@ describe("finalizeBuild — refuses when completion dir empty", () => {
   after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
   it("returns ok:false with status:missing-completion-records", () => {
-    const r = buildRunner.finalizeBuild(pipelineDir, 5, goodCompletions, {}, null);
+    const r = buildRunner.completeSprintExecution(pipelineDir, 5, goodCompletions, {}, null);
     assert.equal(r.ok, false);
     assert.equal(r.status, "missing-completion-records");
   });
 });
 
-describe("finalizeBuild — refuses when completions array is empty", () => {
+describe("completeSprintExecution — refuses when completions array is empty", () => {
   let tmpRoot, pipelineDir;
   before(() => {
     ({ tmpRoot, pipelineDir } = makeProject("sprinting", 6));
@@ -225,7 +225,7 @@ describe("finalizeBuild — refuses when completions array is empty", () => {
   after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
   it("returns ok:false on empty completions[] argument", () => {
-    const r = buildRunner.finalizeBuild(pipelineDir, 6, [], {}, null);
+    const r = buildRunner.completeSprintExecution(pipelineDir, 6, [], {}, null);
     assert.equal(r.ok, false);
     assert.equal(r.status, "missing-completion-records");
     assert.match(r.reason, /non-empty completions/);
@@ -237,7 +237,7 @@ describe("finalizeBuild — refuses when completions array is empty", () => {
   });
 });
 
-describe("finalizeBuild — refuses on non-array completions", () => {
+describe("completeSprintExecution — refuses on non-array completions", () => {
   let tmpRoot, pipelineDir;
   before(() => {
     ({ tmpRoot, pipelineDir } = makeProject("sprinting", 7));
@@ -246,13 +246,13 @@ describe("finalizeBuild — refuses on non-array completions", () => {
   after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
   it("returns ok:false when completions is null", () => {
-    const r = buildRunner.finalizeBuild(pipelineDir, 7, null, {}, null);
+    const r = buildRunner.completeSprintExecution(pipelineDir, 7, null, {}, null);
     assert.equal(r.ok, false);
     assert.equal(r.status, "missing-completion-records");
   });
 
   it("returns ok:false when completions is undefined", () => {
-    const r = buildRunner.finalizeBuild(pipelineDir, 7, undefined, {}, null);
+    const r = buildRunner.completeSprintExecution(pipelineDir, 7, undefined, {}, null);
     assert.equal(r.ok, false);
     assert.equal(r.status, "missing-completion-records");
   });

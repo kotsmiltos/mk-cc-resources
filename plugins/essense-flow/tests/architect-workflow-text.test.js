@@ -59,11 +59,12 @@ describe("commands/architect.md — dispatcher instructions present", () => {
 describe("skills/architect/workflows/plan.md — heavyweight workflow instructions present", () => {
   const text = readWorkflow("skills/architect/workflows/plan.md");
 
-  it("describes the perspective swarm dispatch (4 agents in parallel)", () => {
+  it("describes the perspective swarm dispatch (parallel via Agent tool)", () => {
     // Catches silent drift if "in parallel" or "Agent tool" is dropped during
     // refactor — the orchestrator would no longer fan out and would serialize
-    // the swarm, blowing the wall-clock budget.
-    assert.match(text, /4 agents/);
+    // the swarm, blowing the wall-clock budget. Count is adaptive (registry-
+    // driven), so don't assert a specific number.
+    assert.match(text, /perspective agents/);
     assert.match(text, /parallel/);
     assert.match(text, /Agent tool/);
   });

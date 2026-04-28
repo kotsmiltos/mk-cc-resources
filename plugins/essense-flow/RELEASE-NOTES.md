@@ -1,5 +1,47 @@
 # essense-flow Release Notes
 
+## 0.7.0 (2026-04-28)
+
+Rigidity-reduction release. Closes the failure shape "experience breaks when normal things occur" (interrupts, transitions, fixes) by collapsing redundant APIs, deleting orphan modules, softening hook scope, auto-synthesizing missing build artifacts, and dropping hardcoded perspective counts that prevented adaptive scope.
+
+### Build → review auto-synthesis (T16)
+
+- **`review-runner.enterReview`** now attempts `synthesizeCompletionRecordsFromReport` before refusing on missing completion records. If `sprints/sprint-N/SPRINT-REPORT.md` (or `completion-report.md`) exists and `sprints/sprint-N/tasks/` has TASK-NNN.md specs, the runner generates synthetic `.completion.yaml` records for each task with `synthetic: true` and `synthesis_source: <report path>`.
+- Closes the orchestrator-improvisation loop observed in the field: build wrote a top-level summary directly without per-task records, /review refused, autopilot looped re-firing /review.
+- Synthetic records carry an explicit deviation note pointing reviewers at the source report. Pre-existing records are never overwritten.
+- Tests: 9 new in `tests/review-enter.test.js` covering synthesis success, source variants, idempotent skip when records already present, refusal when neither report nor specs exist.
+
+### review-guard soften (T15)
+
+- Dropped bash safe-list entirely from `hooks/scripts/review-guard.js`. Subagents already bypass via `CLAUDE_SUBAGENT=1`; the bash safe-list was forcing the orchestrator to dispatch every runner call through Agent indirection even when the LLM could follow clear instructions directly.
+- Symmetric path-allowlist for both reviewing and verifying phases. `state.yaml` added to verifying allowlist (was missing — caused finalizeVerify to fail).
+- `lib/bash-guard.js` deleted. `MAX_COMMAND_LENGTH` constant removed from `lib/constants.js`.
+
+### Redundant API collapse (T14)
+
+- `lib/state-machine.transition()` deleted (was a thin wrapper around `validateTransition` + `writeState`). Internal call site migrated to `validateTransition` directly. `transition` was test-only — tests migrated to `writeState`/`validateTransition`.
+- `build-runner.finalizeBuild` 3-LoC passthrough collapsed (was an alias for `completeSprintExecution`). Removed from exports.
+
+### Dead code purge (T13)
+
+- `lib/completion.js` deleted (210 LoC orphan — zero callers).
+- `lib/artifact-integrity.js`: removed `validateManifest`, `hashOnYamlWrite` exports (zero callers).
+- `skills/research/scripts/research-runner.js`: removed `loadVocabulary`, `detectRerunContext`, `parseExistingReq`, `rerunTargeted`, `isItemStillRelevant`, `REQ_ITEM_PATTERN`, `REQ_SECTION_PATTERN`, `VOCABULARY_REL` (zero callers).
+
+### Magic-number scrub (T18)
+
+- Hardcoded "4 perspectives/agents/validators" in commands/skills docs replaced with adaptive language ("count adapts to domain", "registered review perspectives"). Code already drives count from `DEFAULT_LENSES` / `PERSPECTIVE_REGISTRY` / `DEFAULT_REVIEW_PERSPECTIVES`; the docs now reflect that.
+- Updated: `commands/review.md`, `commands/research.md`, `commands/architect.md`, `skills/research/workflows/execute.md`, `skills/architect/workflows/plan.md`, `skills/review/SKILL.md`. Stale `state-machine.transition()` doc reference fixed → `writeState()`.
+
+### defaults/config.yaml cleanup (paired with autopilot 0.3.0)
+
+- Dropped `autopilot.max_iterations` and `autopilot.context_threshold_pct` keys. The autopilot plugin no longer honors them — see essense-autopilot 0.3.0 release notes for the new no-progress detection mechanism.
+
+### Tests
+
+- Full suite: 896 → **900 pass**. Architect-workflow-text test relaxed to assert "perspective agents" + "parallel" + "Agent tool" instead of literal "4 agents".
+- New file: `tests/review-enter.test.js` (+9 synthesis tests).
+
 ## 0.6.2 (2026-04-28)
 
 Build/review boundary fix. Closes a stuck-pipeline shape reproduced across **2 projects** (sprint-3.4, sprint-4): build orchestrator wrote a top-level summary directly (`SPRINT-REPORT.md`) and called `state-machine.writeState` directly to transition `sprinting → sprint-complete`, **never invoking `recordCompletion` per task or `completeSprintExecution`**. Result: phase=sprint-complete with empty `sprints/sprint-N/completion/` dir → `/review`'s `assembleReviewBriefs` rejected empty `completionRecordPaths` → autopilot looped re-firing /review with no input.

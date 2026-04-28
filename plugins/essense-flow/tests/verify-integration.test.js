@@ -487,34 +487,34 @@ describe("state machine — verify phase transitions", () => {
 
   // triaging → verifying is a valid transition (SPEC.md must exist as precondition).
   it("triaging → verifying: ok", () => {
-    const result = stateMachine.transition("triaging", "verifying", transitionMap);
+    const result = stateMachine.validateTransition("triaging", "verifying", transitionMap);
     assert.equal(result.ok, true, `Expected ok=true: ${result.error}`);
     assert.equal(result.transition.to, "verifying");
   });
 
   // triaging → complete is NOT a valid transition in the state machine.
   it("triaging → complete: rejected (not a valid transition)", () => {
-    const result = stateMachine.transition("triaging", "complete", transitionMap);
+    const result = stateMachine.validateTransition("triaging", "complete", transitionMap);
     assert.equal(result.ok, false, "triaging→complete should be invalid");
   });
 
   // verifying → complete is valid when there are no confirmed gaps.
   it("verifying → complete: ok", () => {
-    const result = stateMachine.transition("verifying", "complete", transitionMap);
+    const result = stateMachine.validateTransition("verifying", "complete", transitionMap);
     assert.equal(result.ok, true, `Expected ok=true: ${result.error}`);
     assert.equal(result.transition.to, "complete");
   });
 
   // verifying → eliciting is valid when confirmed spec drift items exist.
   it("verifying → eliciting: ok", () => {
-    const result = stateMachine.transition("verifying", "eliciting", transitionMap);
+    const result = stateMachine.validateTransition("verifying", "eliciting", transitionMap);
     assert.equal(result.ok, true, `Expected ok=true: ${result.error}`);
     assert.equal(result.transition.to, "eliciting");
   });
 
   // verifying → architecture is valid when confirmed missing implementation items exist.
   it("verifying → architecture: ok", () => {
-    const result = stateMachine.transition("verifying", "architecture", transitionMap);
+    const result = stateMachine.validateTransition("verifying", "architecture", transitionMap);
     assert.equal(result.ok, true, `Expected ok=true: ${result.error}`);
     assert.equal(result.transition.to, "architecture");
   });

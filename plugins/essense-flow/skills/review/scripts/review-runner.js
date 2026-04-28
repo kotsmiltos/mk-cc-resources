@@ -976,6 +976,109 @@ function finalizeReview(pipelineDir, sprintNumber, reportContent) {
  * @param {number|string|null} sprintNumber — for the audit-log artifact field
  * @returns {{ ok: boolean, transitioned?: boolean, alreadyEntered?: boolean, error?: string }}
  */
+/**
+ * Count completion records in a sprint's completion/ dir. Robust to dir
+ * not existing yet — returns 0.
+ *
+ * @param {string} completionDir
+ * @returns {number}
+ */
+function countCompletionRecords(completionDir) {
+  try {
+    if (fs.existsSync(completionDir) && fs.statSync(completionDir).isDirectory()) {
+      return fs
+        .readdirSync(completionDir)
+        .filter((f) => f.endsWith(".yaml") || f.endsWith(".md"))
+        .length;
+    }
+  } catch (_e) {
+    // fall through
+  }
+  return 0;
+}
+
+/**
+ * Synthesize per-task completion records from SPRINT-REPORT.md or
+ * completion-report.md when the build phase wrote a top-level summary
+ * but skipped recordCompletion per task.
+ *
+ * Reads task IDs from `.pipeline/sprints/sprint-N/tasks/TASK-*.md`,
+ * writes one synthetic `<taskId>.completion.yaml` per task spec into
+ * `.pipeline/sprints/sprint-N/completion/`. Records are marked
+ * `synthetic: true` and reference the source report so reviewers see
+ * exactly what's reconstructed vs original.
+ *
+ * Side-effects: writes files. Idempotent if rerun (does not overwrite
+ * existing records).
+ *
+ * @param {string} pipelineDir
+ * @param {number|string} sprintNumber
+ * @returns {{ ok: boolean, created: number, source?: string, reason?: string }}
+ */
+function synthesizeCompletionRecordsFromReport(pipelineDir, sprintNumber) {
+  const sprintDir = path.join(pipelineDir, "sprints", `sprint-${sprintNumber}`);
+  const tasksDir = path.join(sprintDir, "tasks");
+  const completionDir = path.join(sprintDir, "completion");
+
+  // Need a source report to justify synthesis — without one we have no
+  // evidence the sprint actually finished.
+  const REPORT_NAMES = ["SPRINT-REPORT.md", "completion-report.md"];
+  let sourceReport = null;
+  for (const name of REPORT_NAMES) {
+    const candidate = path.join(sprintDir, name);
+    if (fs.existsSync(candidate)) {
+      sourceReport = candidate;
+      break;
+    }
+  }
+  if (!sourceReport) {
+    return { ok: false, created: 0, reason: "no SPRINT-REPORT.md or completion-report.md found" };
+  }
+
+  // Need task specs to know which task IDs to synthesize for.
+  if (!fs.existsSync(tasksDir) || !fs.statSync(tasksDir).isDirectory()) {
+    return { ok: false, created: 0, reason: "no task specs found at sprints/sprint-N/tasks/" };
+  }
+
+  // Match TASK-* spec files only — exclude .agent.md sibling files (those
+  // are the agent-readable variant of the same task).
+  const taskFiles = fs
+    .readdirSync(tasksDir)
+    .filter((f) => f.startsWith("TASK-") && f.endsWith(".md") && !f.endsWith(".agent.md"));
+
+  if (taskFiles.length === 0) {
+    return { ok: false, created: 0, reason: "task spec dir empty" };
+  }
+
+  fs.mkdirSync(completionDir, { recursive: true });
+
+  const sourceRel = path.relative(pipelineDir, sourceReport).split(path.sep).join("/");
+  const completedAt = new Date().toISOString();
+  let created = 0;
+
+  for (const taskFile of taskFiles) {
+    const taskId = taskFile.replace(/\.md$/, "");
+    const recordPath = path.join(completionDir, `${taskId}.completion.yaml`);
+    if (fs.existsSync(recordPath)) continue; // don't overwrite existing
+    const record = {
+      task_id: taskId,
+      sprint: sprintNumber,
+      status: "COMPLETE",
+      files_written: "",
+      deviations: `Synthesized from ${sourceRel} — original per-task completion record was not written by the build phase. Review against actual changes in the working tree.`,
+      verification: "",
+      criteria_met: [],
+      completed_at: completedAt,
+      synthetic: true,
+      synthesis_source: sourceRel,
+    };
+    yamlIO.safeWrite(recordPath, record);
+    created++;
+  }
+
+  return { ok: true, created, source: sourceRel };
+}
+
 function enterReview(pipelineDir, sprintNumber) {
   const statePath = path.join(pipelineDir, "state.yaml");
   const state = yamlIO.safeReadWithFallback(statePath, {});
@@ -992,14 +1095,13 @@ function enterReview(pipelineDir, sprintNumber) {
     };
   }
 
-  // I-04 readiness gate: refuse if per-task completion records are missing.
-  // /review's assembleReviewBriefs requires non-empty completionRecordPaths
-  // and aborts cleanly otherwise. Without this gate, enterReview would
-  // transition phase=reviewing with no records on disk, leaving the
-  // pipeline stuck — autopilot loops re-firing /review and the orchestrator
-  // improvises (hand-rolled briefs, manual writeState bypass, etc.).
-  // Reproducible across at least 2 projects (sprint-3.4, sprint-4 — see
-  // .planning/v0.7.0-backlog.md I-04/I-10).
+  // Readiness gate: per-task completion records must be present. If the
+  // build phase improvised (wrote SPRINT-REPORT.md or completion-report.md
+  // but skipped recordCompletion per task), auto-synthesize stub records
+  // from the task spec list so /review can proceed. Reproducible failure
+  // mode across multiple projects (sprint-3.4, sprint-4) — see I-04/I-10
+  // in v0.7.0-backlog.md. Synthesis preserves the deviation (records are
+  // marked synthetic: true) without blocking the user behind /heal.
   if (sprintNumber != null) {
     const completionDir = path.join(
       pipelineDir,
@@ -1007,17 +1109,15 @@ function enterReview(pipelineDir, sprintNumber) {
       `sprint-${sprintNumber}`,
       "completion"
     );
-    let recordCount = 0;
-    try {
-      if (fs.existsSync(completionDir) && fs.statSync(completionDir).isDirectory()) {
-        recordCount = fs
-          .readdirSync(completionDir)
-          .filter((f) => f.endsWith(".yaml") || f.endsWith(".md"))
-          .length;
+    let recordCount = countCompletionRecords(completionDir);
+
+    if (recordCount === 0) {
+      const synth = synthesizeCompletionRecordsFromReport(pipelineDir, sprintNumber);
+      if (synth.ok && synth.created > 0) {
+        recordCount = countCompletionRecords(completionDir);
       }
-    } catch (_e) {
-      // fall through to recordCount=0 — refuse below
     }
+
     if (recordCount === 0) {
       return {
         ok: false,
@@ -1025,10 +1125,9 @@ function enterReview(pipelineDir, sprintNumber) {
         status: "missing-completion-records",
         error:
           `enterReview requires per-task completion records at ${completionDir} ` +
-          `(none found). The build phase did not write per-task completion records — ` +
-          `re-run /build to finalize sprint ${sprintNumber} via completeSprintExecution, ` +
-          `or synthesize records from sprints/sprint-${sprintNumber}/SPRINT-REPORT.md ` +
-          `if /build succeeded but skipped recordCompletion.`,
+          `(none found, no SPRINT-REPORT.md or completion-report.md to synthesize from, ` +
+          `and no task specs at sprints/sprint-${sprintNumber}/tasks/). ` +
+          `Re-run /build to finalize sprint ${sprintNumber} via completeSprintExecution.`,
       };
     }
   }
@@ -1927,6 +2026,8 @@ module.exports = {
   writeQAReport,
   finalizeReview,
   enterReview,
+  countCompletionRecords,
+  synthesizeCompletionRecordsFromReport,
   loadSpecPath,
   loadRequirements,
   loadTaskSpecPaths,

@@ -124,12 +124,12 @@ If `npm test` or `npm run lint` fails, those failures ARE the findings. LLM revi
 ## Pipeline Stage Diagram
 
 ```
-QA Wave (4 agents) → barrier sync → Validator Wave (4 validators) → Orchestrator → Report → Verdict
+QA Wave (N agents) → barrier sync → Validator Wave (N validators) → Orchestrator → Report → Verdict
 ```
 
-- **QA Wave** — 4 parallel adversarial agents, one per review perspective
+- **QA Wave** — parallel adversarial agents, one per registered review perspective (`DEFAULT_REVIEW_PERSPECTIVES`)
 - **Barrier sync** — orchestrator waits for all QA outputs before validator wave begins
-- **Validator Wave** — 4 parallel validators cross-check QA findings for fabrication and grounding
+- **Validator Wave** — parallel validators cross-check QA findings for fabrication and grounding
 - **Orchestrator** — collects validator outputs, assigns FIND-IDs, writes confirmed-findings.yaml
 - **Report** — QA-REPORT.md generated from confirmed and rejected findings
 - **Verdict** — PASS or FAIL emitted as final pipeline signal
@@ -165,7 +165,7 @@ All artifacts written under `.pipeline/reviews/sprint-N/`:
 ## QA-REPORT.md Structure
 
 - **Summary header** — required within first 20 lines; omitting it is a conformance failure
-- **Validator manifest section** — all 4 validators required; missing entry throws at synthesis
+- **Validator manifest section** — every registered validator required; missing entry throws at synthesis
 - **FALSE_POSITIVE juxtaposition format** — original claim and counter-evidence must appear in the same block:
 
   ```

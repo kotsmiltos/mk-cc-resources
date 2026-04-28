@@ -65,8 +65,8 @@ Used for `flat` depth or `mechanical` classification — DAG-based wave construc
 
 - Read `.pipeline/requirements/REQ.md`
 - Read `.pipeline/elicitation/SPEC.md` if exists (primary design source — DEC-010)
-- If `phase === "requirements-ready"`: transition `requirements-ready → architecture` via `lib/state-machine.transition()` before any artifacts are produced.
-- Call `architect-runner.planArchitecture(requirements, pluginRoot, config, specContent, complexity)` — 4 perspective briefs
+- If `phase === "requirements-ready"`: transition `requirements-ready → architecture` via `lib/state-machine.writeState()` before any artifacts are produced.
+- Call `architect-runner.planArchitecture(requirements, pluginRoot, config, specContent, complexity)` — perspective briefs (count adapts to domain)
 - Dispatch perspective agents
 - Call `architect-runner.synthesizeArchitecture(parsedOutputs, requirements, config)` — produces ARCH.md content (in memory)
 - Call `architect-runner.decomposeIntoSprints(tasks)` — DAG wave ordering

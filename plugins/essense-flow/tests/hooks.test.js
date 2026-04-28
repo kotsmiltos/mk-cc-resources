@@ -199,13 +199,6 @@ test("FR-054: review-guard allows write to confirmed-findings.yaml during review
   }
 });
 
-test("FR-BG-001: bash-guard rejects whitespace-only and empty commands", () => {
-  const { isSafeCommand } = require("../lib/bash-guard");
-  assert.strictEqual(isSafeCommand("   "), false, "whitespace-only rejected");
-  assert.strictEqual(isSafeCommand(""), false, "empty string rejected");
-  assert.strictEqual(isSafeCommand("\t\t"), false, "tab-only rejected");
-});
-
 test("FR-009: yaml-validate skips non-YAML files without error", () => {
   const { dir, cleanup } = createTmpPipeline();
   try {

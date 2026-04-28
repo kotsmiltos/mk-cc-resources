@@ -60,8 +60,6 @@ autopilot:
     - verifying
   terminal:                         # Pipeline-done phases
     - complete
-  max_iterations: 30                # Stuck-loop safety: halt after this many same-phase advances
-  context_threshold_pct: 60         # Halt if estimated context usage exceeds this %
   flow:                             # Phase → command. Canonical: references/phase-command-map.yaml. Override per project.
     research: /triage
     triaging: /triage

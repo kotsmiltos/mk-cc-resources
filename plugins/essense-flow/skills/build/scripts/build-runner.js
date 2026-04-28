@@ -792,18 +792,6 @@ function completeSprintExecution(pipelineDir, sprintNumber, completions, _config
 }
 
 /**
- * Atomic post-build hand-off: alias for completeSprintExecution under the
- * canonical finalize* naming used by other skills (finalizeReview,
- * finalizeTriage, finalizeResearch, finalizeDecompose). Same atomic
- * write+transition behaviour: completion-report.md and state transition
- * `sprinting → sprint-complete` are produced together so phase=sprinting
- * never persists with a completion report already written.
- */
-function finalizeBuild(pipelineDir, sprintNumber, completions, config, projectRoot) {
-  return completeSprintExecution(pipelineDir, sprintNumber, completions, config, projectRoot);
-}
-
-/**
  * Dispatch the consistency verifier for a completed wave.
  * Reads completion records and assembles a verifier brief.
  *
@@ -1025,7 +1013,6 @@ module.exports = {
   recordCompletion,
   generateCompletionReport,
   completeSprintExecution,
-  finalizeBuild,
   VALID_BUILD_ROUTES,
   dispatchVerifier,
   handleVerifierResult,

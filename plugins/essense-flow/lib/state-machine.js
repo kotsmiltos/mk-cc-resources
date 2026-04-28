@@ -115,68 +115,6 @@ function validPhasesFrom(transitionMap) {
 }
 
 /**
- * Validate whether a transition from currentPhase to targetPhase is allowed.
- *
- * @param {string} currentPhase — current pipeline phase
- * @param {string} targetPhase — desired target phase
- * @param {Object<string, Array>} transitionMap — output of loadTransitions()
- * @returns {{ ok: boolean, transition?: Object, error?: string }}
- */
-function transition(currentPhaseOrFilePath, targetPhase, transitionMap, _projectRoot) {
-  // Overload: if first arg looks like a file path (contains path sep or .yaml),
-  // treat as state file path — read current phase, validate, write new phase.
-  const fs = require("fs");
-  if (
-    typeof currentPhaseOrFilePath === "string" &&
-    (currentPhaseOrFilePath.includes(path.sep) || currentPhaseOrFilePath.includes("/") || currentPhaseOrFilePath.endsWith(".yaml"))
-  ) {
-    const statePath = currentPhaseOrFilePath;
-    const stateData = yamlIO.safeReadWithFallback(statePath, {});
-    const currentPhase = (stateData && stateData.pipeline && stateData.pipeline.phase) || "idle";
-
-    const outgoing = transitionMap[currentPhase];
-    if (!outgoing || outgoing.length === 0) {
-      throw new Error(`Invalid transition from ${currentPhase} to ${targetPhase}: no outgoing transitions`);
-    }
-    const match = outgoing.find((t) => t.to === targetPhase);
-    if (!match) {
-      const allowed = outgoing.map((t) => t.to);
-      throw new Error(`Invalid transition from ${currentPhase} to ${targetPhase}: allowed targets are ${allowed.join(", ")}`);
-    }
-
-    // Write new state
-    const newState = {
-      ...stateData,
-      pipeline: { ...((stateData && stateData.pipeline) || {}), phase: targetPhase },
-      last_updated: new Date().toISOString(),
-    };
-    yamlIO.safeWrite(statePath, newState);
-    return { ok: true, transition: match };
-  }
-
-  // Original API: currentPhaseOrFilePath is a phase string
-  const currentPhase = currentPhaseOrFilePath;
-  const outgoing = transitionMap[currentPhase];
-  if (!outgoing || outgoing.length === 0) {
-    return {
-      ok: false,
-      error: errors.formatError("E_TRANSITION_INVALID", { from: currentPhase, to: targetPhase, valid: "none" }),
-    };
-  }
-
-  const match = outgoing.find((t) => t.to === targetPhase);
-  if (!match) {
-    const allowed = outgoing.map((t) => t.to);
-    return {
-      ok: false,
-      error: errors.formatError("E_TRANSITION_INVALID", { from: currentPhase, to: targetPhase, valid: allowed.join(", ") }),
-    };
-  }
-
-  return { ok: true, transition: match };
-}
-
-/**
  * Write a validated state transition to state.yaml and append a history record.
  *
  * Enforces the terminal-state guard (FR-015): a completed pipeline cannot advance
@@ -226,7 +164,7 @@ function writeState(pipelineDir, targetPhase, stateUpdates, options = {}) {
     };
   }
 
-  const transitionResult = transition(fromState, targetPhase, transitionMap);
+  const transitionResult = validateTransition(fromState, targetPhase, transitionMap);
 
   if (!transitionResult.ok) {
     const validTargets = (transitionMap[fromState] || []).map((t) => t.to);
@@ -315,4 +253,4 @@ function validateTransition(currentPhase, targetPhase, transitionMap) {
   return { ok: true, valid: true, transition: match };
 }
 
-module.exports = { loadTransitions, validPhasesFrom, transition, validateTransition, writeState };
+module.exports = { loadTransitions, validPhasesFrom, validateTransition, writeState };

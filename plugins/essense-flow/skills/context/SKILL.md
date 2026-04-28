@@ -59,13 +59,3 @@ See `references/transitions.yaml` for full transition table.
 - NEVER read another skill's internal files — use interface contracts only
 - Keep injection payload under `config.token_budgets.injection_ceiling`
 
-## Pipeline Completion
-
-When pipeline reaches `complete` state:
-
-1. Generate summary report using `lib/completion.generateSummaryReport(pipelineDir)`
-2. Write to `.pipeline/COMPLETION-REPORT.md`
-3. Offer user two options:
-   - **Archive and reset**: Archive `.pipeline/` to `.pipeline-archive/YYYY-MM-DD-name/`, reset to initial state
-   - **Keep as-is**: Leave `.pipeline/` intact for reference, transition `complete → idle`
-4. Execute user's choice using `lib/completion.archivePipeline()` and/or `lib/completion.resetPipeline()`

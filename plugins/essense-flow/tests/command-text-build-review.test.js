@@ -49,31 +49,10 @@ describe("commands/build.md — MANDATORY-call language for recordCompletion + c
   });
 });
 
-// ── commands/review.md (I-12) ─────────────────────────────────────────────
+// ── commands/review.md ────────────────────────────────────────────────────
 
-describe("commands/review.md — subagent-dispatch contract for post-enterReview JS", () => {
-  it("declares enterReview MANDATORY single call (existing — pin)", () => {
+describe("commands/review.md — atomic enterReview contract", () => {
+  it("declares enterReview MANDATORY single call", () => {
     assert.match(REVIEW_MD, /enterReview[^]*MANDATORY single call/);
-  });
-
-  it("instructs Agent-tool dispatch for post-enterReview JS calls", () => {
-    // After enterReview transitions phase=reviewing, review-guard hook
-    // restricts Bash to a safe-list (cat, ls, grep, ...) which excludes
-    // node. Subagents bypass the hook (CLAUDE_SUBAGENT=1 env). The
-    // markdown must make this contract explicit so orchestrators don't
-    // try `node -e` from main session, hit the block, and improvise.
-    assert.match(
-      REVIEW_MD,
-      /(Agent tool|Agent dispatch|subagent dispatch)[^]*post-enterReview/i,
-      "review.md must instruct Agent-tool dispatch for post-enterReview JS calls"
-    );
-  });
-
-  it("warns that main-session node -e is hook-blocked during reviewing", () => {
-    assert.match(
-      REVIEW_MD,
-      /(main-session|main session)[^]*(node -e|hook-blocked|review-guard)/i,
-      "review.md must warn that main-session node -e is blocked by review-guard"
-    );
   });
 });

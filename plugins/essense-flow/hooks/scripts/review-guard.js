@@ -6,7 +6,6 @@ const path = require("path");
 if (process.env.CLAUDE_SUBAGENT === "1") process.exit(0);
 
 const { HOOK_TIMEOUT_MS } = require("../../lib/constants");
-const { isSafeCommand, SHELL_CHAIN_PATTERN } = require("../../lib/bash-guard");
 
 function block(reason) {
   process.stdout.write(JSON.stringify({ decision: "block", reason }) + "\n");
@@ -108,6 +107,7 @@ process.stdin.on("end", () => {
     const filePath = toolInput.file_path || "";
     const resolvedTarget = resolveSymlinkAware(filePath);
     const pipelineParent = path.dirname(pipelineDir);
+    const resolvedState = path.resolve(pipelineParent, ".pipeline", "state.yaml");
     const VERIFY_ALLOWED_DIRS = [
       path.resolve(pipelineParent, ".pipeline", "verify"),
     ];
@@ -116,22 +116,15 @@ process.stdin.on("end", () => {
       path.resolve(pipelineParent, ".pipeline", "VERIFICATION-REPORT-ondemand.md"),
       path.resolve(pipelineParent, ".pipeline", "extracted-items.yaml"),
       path.resolve(pipelineParent, ".pipeline", "verify-checkpoint.yaml"),
+      resolvedState,
     ];
     const isAllowed =
       VERIFY_ALLOWED_DIRS.some((d) => resolvedTarget.startsWith(d + path.sep) || resolvedTarget === d)
       || VERIFY_ALLOWED_FILES.some((f) => resolvedTarget === f);
     if (!isAllowed) {
       block(
-        toolName + " blocked during verifying phase. Allowed paths: .pipeline/verify/, .pipeline/VERIFICATION-REPORT.md, .pipeline/extracted-items.yaml. Restriction lifts when verifying phase ends."
+        toolName + " blocked during verifying phase. Allowed paths: .pipeline/verify/, .pipeline/VERIFICATION-REPORT.md, .pipeline/extracted-items.yaml, .pipeline/state.yaml. Restriction lifts when verifying phase ends."
       );
-    }
-    process.exit(0);
-  }
-
-  if (toolName === "Bash") {
-    const cmd = toolInput.command || "";
-    if (!isSafeCommand(cmd)) {
-      block(`Bash \`${cmd}\` blocked: reviewing phase restriction. Allowed bash: read-only commands (cat, ls, grep, git log/show/status/diff, head, tail, wc, diff, find). Restriction lifts when reviewing phase ends.`);
     }
     process.exit(0);
   }

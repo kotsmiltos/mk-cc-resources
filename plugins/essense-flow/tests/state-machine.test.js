@@ -8,7 +8,6 @@ const os = require("os");
 const yaml = require("js-yaml");
 
 const { writeState } = require("../lib/state-machine");
-const { validateManifest } = require("../lib/artifact-integrity");
 const { STATE_FILE, STATE_HISTORY_FILE } = require("../lib/constants");
 
 // Path to the project's transitions.yaml (two levels up from this test file)
@@ -228,76 +227,3 @@ describe("writeState — phase-enum guard rejects unknown target phase", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Test 4 — validateManifest: incomplete perspectives returns {ok:false}
-// ---------------------------------------------------------------------------
-
-describe("validateManifest — incomplete perspectives_completed returns {ok:false}", () => {
-  let tmpDir;
-  let artifactPath;
-
-  const PERSPECTIVES_REQUIRED = 4;
-  const PERSPECTIVES_COMPLETED = 2;
-
-  before(() => {
-    tmpDir = makeTmpDir("t4");
-    artifactPath = path.join(tmpDir, "RESEARCH.md");
-
-    const frontmatter = yaml.dump({
-      perspectives_required: PERSPECTIVES_REQUIRED,
-      perspectives_completed: PERSPECTIVES_COMPLETED,
-    });
-    // Write a valid markdown file with YAML frontmatter
-    fs.writeFileSync(
-      artifactPath,
-      `---\n${frontmatter}---\n\n# Research\n\nContent here.\n`,
-      "utf8"
-    );
-  });
-
-  after(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it("returns {ok:false} when perspectives_completed < perspectives_required", () => {
-    const result = validateManifest(artifactPath);
-    assert.equal(result.ok, false, "expected ok:false for incomplete perspectives");
-    assert.ok(typeof result.error === "string" && result.error.length > 0, "error message must be present");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Test 5 — validateManifest: matching counts returns {ok:true}
-// ---------------------------------------------------------------------------
-
-describe("validateManifest — matching perspectives counts returns {ok:true}", () => {
-  let tmpDir;
-  let artifactPath;
-
-  const PERSPECTIVES_REQUIRED = 3;
-  const PERSPECTIVES_COMPLETED = 3;
-
-  before(() => {
-    tmpDir = makeTmpDir("t5");
-    artifactPath = path.join(tmpDir, "RESEARCH.md");
-
-    const frontmatter = yaml.dump({
-      perspectives_required: PERSPECTIVES_REQUIRED,
-      perspectives_completed: PERSPECTIVES_COMPLETED,
-    });
-    fs.writeFileSync(
-      artifactPath,
-      `---\n${frontmatter}---\n\n# Research\n\nContent here.\n`,
-      "utf8"
-    );
-  });
-
-  after(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it("returns {ok:true} when perspectives_completed === perspectives_required", () => {
-    const result = validateManifest(artifactPath);
-    assert.equal(result.ok, true, "expected ok:true when perspectives counts match");
-  });
-});
