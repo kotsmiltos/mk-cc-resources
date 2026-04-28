@@ -11,14 +11,14 @@
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, single-invocation wave contract for /build.",
-      "version": "0.5.0"
+      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family. Phase-from-artifacts inference + /heal (interactive forward-walk) + /repair Case 6 (scripted forward-walk) self-heal stuck pipelines. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, single-invocation wave contract for /build.",
+      "version": "0.6.0"
     },
     {
       "name": "essense-autopilot",
       "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
-      "version": "0.2.0"
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, stuck-phase detection (default 5 iterations without state change → suggests /heal), forward-detect for sprint-complete + QA-REPORT, configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
+      "version": "0.2.2"
     },
     {
       "name": "schema-scout",
