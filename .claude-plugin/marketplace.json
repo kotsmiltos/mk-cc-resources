@@ -17,8 +17,8 @@
     {
       "name": "essense-autopilot",
       "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, stuck-phase detection (default 5 iterations without state change → suggests /heal), forward-detect for sprint-complete + QA-REPORT, configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
-      "version": "0.2.2"
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, stuck-phase detection (default 5 iterations without state change → suggests /heal), forward-detect for sprint-complete + QA-REPORT, background-Agent in-flight detection (transcript-scan; halts without incrementing iter counter while perspective/build/review swarms are running), configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
+      "version": "0.2.3"
     },
     {
       "name": "schema-scout",
