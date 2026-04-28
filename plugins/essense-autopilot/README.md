@@ -45,6 +45,7 @@ The autopilot **stops blocking** (i.e. lets Claude end the turn) under any of:
 | iteration cap exceeded (default 30) | infinite-loop safety |
 | same phase persists ≥ `stuck_phase_threshold` iterations (default 5) | likely stuck — suggests `/heal` |
 | `sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` exists | already reviewed but phase didn't advance — suggests `/heal` |
+| background `Agent` calls in flight (unpaired tool_use in transcript, fresh < `agents_pending_stale_minutes`) | orchestrator awaiting completion — halt without incrementing iter counter |
 | context usage > threshold (default 60%) | preserve context window for human work |
 
 Any of these → autopilot lets Claude stop normally. You see the report and decide what to do.
@@ -68,6 +69,8 @@ autopilot:
   max_iterations: 30              # halt if same-phase advance fires this many times in a row
 
   stuck_phase_threshold: 5        # halt if phase persists this many iterations without state change — suggests /heal
+
+  agents_pending_stale_minutes: 60  # treat unpaired Agent tool_use older than this as crashed (autopilot proceeds + warns)
 
   context_threshold_pct: 60       # halt if estimated context usage exceeds this %
 
@@ -111,6 +114,20 @@ The hook persists per-session counters in `state.session.autopilot_iterations` a
 `max_iterations` (default 30) catches infinite loops eventually. `stuck_phase_threshold` (default 5) catches the **stuck-pipeline failure mode** much earlier: when `state.pipeline.phase` persists 5 iterations without changing, autopilot halts and prints `phase persisted N iterations without state change — run /heal`. The `/heal` command (essense-flow plugin) infers the correct phase from on-disk artifacts and walks the state machine forward through legal transitions on user confirmation.
 
 A complementary forward-detect halts immediately at iteration 1 when `phase=sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` already exists on disk — the most common stuck-state shape (review/triage already done, phase didn't advance).
+
+## Background-Agent In-Flight Detection
+
+The orchestrator (essense-flow skills like `/architect`, `/research`, `/build`, `/review`) dispatches background `Agent` tool calls that span multiple turns — perspective swarms, parallel reviewers, build waves. Phase doesn't change while these run, but that's correct behavior, not a stuck pipeline. Without protection, every Stop hook between dispatch and collection would auto-advance the same command, eventually false-firing the `stuck_phase_threshold` halt with a misleading "/heal" diagnostic.
+
+The hook scans the transcript JSONL (`transcript_path` in the Stop payload) for `tool_use` entries with `name: "Agent"` whose `id` has no matching `tool_result.tool_use_id`. Unpaired = in flight. When detected:
+
+- **Halt without auto-advance** — Claude stops normally; user can wait or send any prompt to resume
+- **Iteration counter NOT incremented** — so `stuck_phase_threshold` doesn't false-fire after the agents complete and the next phase transition fires
+- **Stderr diagnostic** — reports count + age of oldest unpaired Agent
+
+Stale entries (older than `agents_pending_stale_minutes`, default 60 min) are treated as crashed agents — autopilot proceeds with a stderr warning. Tighten per-project if you want faster crash recovery; loosen for very long build waves.
+
+The transcript JSONL schema is undocumented; if it changes, this check returns "no in-flight agents" (count=0), degrading gracefully to the pre-v0.2.3 behavior, never false-halt.
 
 ## Context Threshold
 

@@ -53,6 +53,14 @@ const DEFAULT_CONFIG = {
   // those should be self-looping transitions in transitions.yaml, not
   // command-level loops.
   stuck_phase_threshold: 5,
+  // Background-agent in-flight detection — halts autopilot without
+  // incrementing the iteration counter while unpaired `Agent` tool_use
+  // entries exist in the transcript. Stale threshold (minutes) decides
+  // when an unpaired entry is treated as a crashed agent (autopilot
+  // proceeds, stderr warning). 60 min is generous: heavyweight architect
+  // with 4 perspective agents typically completes in 5-10 min; build waves
+  // with many tasks can run longer. Tighten per-project if needed.
+  agents_pending_stale_minutes: 60,
   context_threshold_pct: 60,
   // Phase → command map. Reflects essense-flow state-machine semantics
   // (references/transitions.yaml). Project config can override per project.
@@ -146,6 +154,66 @@ function estimateContextPct(transcriptPath) {
   } catch (_e) {
     return null;
   }
+}
+
+// Scan transcript JSONL for unpaired Agent tool_use entries. An Agent call
+// is "in flight" when its `tool_use.id` has no matching `tool_result.tool_use_id`.
+// Stale entries (older than staleMinutes) are split out so they don't block
+// the autopilot indefinitely after an agent crashed without producing a result.
+//
+// JSONL schema (verified empirically against an active 4751-line transcript on
+// 2026-04-28): each line is a JSON object with optional top-level `timestamp`
+// and a `message.content` array (or `content` directly). Items in content can
+// have `type: "tool_use"` with `name` + `id`, or `type: "tool_result"` with
+// `tool_use_id`. The schema is undocumented; if it changes, this function
+// returns count=0 (no false halts), degrading gracefully to pre-v0.2.3 behavior.
+function countInFlightAgents(transcriptPath, opts) {
+  const staleMinutes = (opts && opts.staleMinutes) || 60;
+  const empty = { count: 0, oldest_age_minutes: null, stale_count: 0 };
+  if (!transcriptPath) return empty;
+  let raw;
+  try {
+    if (!fs.existsSync(transcriptPath)) return empty;
+    raw = fs.readFileSync(transcriptPath, "utf8");
+  } catch (_e) {
+    return empty;
+  }
+  const pending = new Map(); // tool_use.id -> dispatch timestamp (ms)
+  const lines = raw.split("\n");
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let obj;
+    try { obj = JSON.parse(line); } catch (_e) { continue; }
+    const msg = obj.message || obj;
+    const content = msg && msg.content;
+    if (!Array.isArray(content)) continue;
+    const ts = obj.timestamp || msg.timestamp;
+    for (const c of content) {
+      if (!c || typeof c !== "object") continue;
+      if (c.type === "tool_use" && c.name === "Agent" && c.id) {
+        const tsMs = ts ? Date.parse(ts) : Date.now();
+        if (!isNaN(tsMs)) pending.set(c.id, tsMs);
+      } else if (c.type === "tool_result" && c.tool_use_id) {
+        pending.delete(c.tool_use_id);
+      }
+    }
+  }
+  const now = Date.now();
+  const staleCutoffMs = staleMinutes * 60_000;
+  let count = 0;
+  let staleCount = 0;
+  let oldestMs = null;
+  for (const tsMs of pending.values()) {
+    const ageMs = now - tsMs;
+    if (ageMs > staleCutoffMs) {
+      staleCount++;
+    } else {
+      count++;
+      if (oldestMs === null || tsMs < oldestMs) oldestMs = tsMs;
+    }
+  }
+  const oldest_age_minutes = oldestMs === null ? null : (now - oldestMs) / 60_000;
+  return { count, oldest_age_minutes, stale_count: staleCount };
 }
 
 function allowStop(reason) {
@@ -255,6 +323,38 @@ async function main() {
     }
   }
 
+  // Background-agent in-flight detection. Halt without incrementing the
+  // iteration counter while unpaired `Agent` tool_use entries exist in the
+  // transcript. The orchestrator dispatches background Agent() calls that
+  // span turns; phase doesn't change while they're running, but that's
+  // correct behavior, not a stuck pipeline. Without this gate, every
+  // perspective-dispatch turn N+1 would trip the auto-advance + eventually
+  // the stuck_phase_threshold halt with a misleading /heal diagnostic.
+  //
+  // Stale entries (older than agents_pending_stale_minutes, default 60)
+  // are treated as crashed agents — autopilot proceeds, prints a stderr
+  // warning. JSONL schema is undocumented; degradation on schema change
+  // is "no halt" (count=0), not false-halt — falls back to v0.2.2 behavior.
+  const inflight = countInFlightAgents(payload.transcript_path, {
+    staleMinutes: cfg.agents_pending_stale_minutes,
+  });
+  if (inflight.count > 0) {
+    return allowStop(
+      `${inflight.count} background agent(s) in flight ` +
+      `(oldest ${inflight.oldest_age_minutes.toFixed(1)}m ago) — ` +
+      `orchestrator awaiting completion. Iteration counter not incremented. ` +
+      `Reply with any prompt or wait for agents to finish.`
+    );
+  }
+  if (inflight.stale_count > 0) {
+    process.stderr.write(
+      `[essense-autopilot] warning: ${inflight.stale_count} stale unpaired ` +
+      `Agent tool_use entr${inflight.stale_count === 1 ? "y" : "ies"} ` +
+      `(older than ${cfg.agents_pending_stale_minutes}m) — likely crashed ` +
+      `agent(s), ignoring.\n`
+    );
+  }
+
   // Iteration counter — reset when phase changes
   state.session = state.session || {};
   const lastPhase = state.session.autopilot_last_phase;
@@ -338,7 +438,15 @@ async function main() {
   return blockStop(reason);
 }
 
-main().catch((err) => {
-  process.stderr.write(`[essense-autopilot] error: ${err.message} — allowing stop\n`);
-  process.exit(0);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`[essense-autopilot] error: ${err.message} — allowing stop\n`);
+    process.exit(0);
+  });
+}
+
+// Exports for unit tests. The hook is invoked as a child process by Claude
+// Code (require.main === module guard above), so these exports are inert in
+// production. Tests `require("../hooks/scripts/autopilot.js")` to call
+// countInFlightAgents directly against synthetic transcript fixtures.
+module.exports = { countInFlightAgents };

@@ -22,10 +22,10 @@ function makeProject(stateYaml, configYaml) {
   return root;
 }
 
-function runHook(cwd) {
+function runHook(cwd, transcriptPath) {
   const res = spawnSync(process.execPath, [HOOK], {
     cwd,
-    input: JSON.stringify({ transcript_path: "/nonexistent" }),
+    input: JSON.stringify({ transcript_path: transcriptPath || "/nonexistent" }),
     encoding: "utf8",
   });
   return {
@@ -35,6 +35,35 @@ function runHook(cwd) {
     decision: (() => {
       try { return JSON.parse(res.stdout); } catch { return null; }
     })(),
+  };
+}
+
+// Synthetic JSONL fixture writer for transcript-scan tests. Mirrors the
+// schema empirically observed in real Claude Code transcripts: each line is
+// a JSON object with `timestamp` + `message.content` array. Items in
+// content can be `{type:"tool_use", name:"Agent", id:"..."}` or
+// `{type:"tool_result", tool_use_id:"..."}`.
+function makeTranscript(entries) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ap-tx-"));
+  const p = path.join(root, "transcript.jsonl");
+  const lines = entries.map((e) => JSON.stringify(e)).join("\n");
+  fs.writeFileSync(p, lines + "\n");
+  return p;
+}
+
+function agentUse(id, ageMinutes, name) {
+  const ts = new Date(Date.now() - ageMinutes * 60_000).toISOString();
+  return {
+    timestamp: ts,
+    message: { content: [{ type: "tool_use", name: name || "Agent", id }] },
+  };
+}
+
+function agentResult(toolUseId, ageMinutes) {
+  const ts = new Date(Date.now() - ageMinutes * 60_000).toISOString();
+  return {
+    timestamp: ts,
+    message: { content: [{ type: "tool_result", tool_use_id: toolUseId }] },
   };
 }
 
@@ -395,4 +424,198 @@ test("forward-detect: sprint-complete without sprint number falls through", () =
   assert.equal(r.status, 0);
   assert.ok(r.decision);
   assert.match(r.decision.reason, /\/review/);
+});
+
+// ── countInFlightAgents — direct unit tests via module require ───────────
+
+const { countInFlightAgents } = require("../hooks/scripts/autopilot.js");
+
+test("countInFlightAgents: empty / missing transcript returns count=0", () => {
+  assert.deepEqual(
+    countInFlightAgents(null, {}),
+    { count: 0, oldest_age_minutes: null, stale_count: 0 }
+  );
+  assert.deepEqual(
+    countInFlightAgents("/path/does/not/exist", {}),
+    { count: 0, oldest_age_minutes: null, stale_count: 0 }
+  );
+});
+
+test("countInFlightAgents: all Agent calls paired returns count=0", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 10),
+    agentUse("toolu_b", 8),
+    agentUse("toolu_c", 5),
+    agentResult("toolu_a", 9),
+    agentResult("toolu_b", 7),
+    agentResult("toolu_c", 4),
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 0);
+  assert.equal(r.oldest_age_minutes, null);
+  assert.equal(r.stale_count, 0);
+});
+
+test("countInFlightAgents: one fresh unpaired Agent → count=1", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 10),
+    agentResult("toolu_a", 9),
+    agentUse("toolu_b", 5),  // unpaired, fresh
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 1);
+  assert.ok(r.oldest_age_minutes >= 4.9 && r.oldest_age_minutes <= 5.1, `expected ~5m, got ${r.oldest_age_minutes}`);
+  assert.equal(r.stale_count, 0);
+});
+
+test("countInFlightAgents: stale unpaired Agent → counted as stale, not in flight", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 90),  // unpaired, 90 min old
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 0);
+  assert.equal(r.oldest_age_minutes, null);
+  assert.equal(r.stale_count, 1);
+});
+
+test("countInFlightAgents: 4 unpaired with varied ages → oldest reported", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 12),
+    agentUse("toolu_b", 8),
+    agentUse("toolu_c", 15),  // oldest of the unpaired
+    agentUse("toolu_d", 3),
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 4);
+  assert.ok(r.oldest_age_minutes >= 14.9 && r.oldest_age_minutes <= 15.1, `expected ~15m, got ${r.oldest_age_minutes}`);
+  assert.equal(r.stale_count, 0);
+});
+
+test("countInFlightAgents: malformed JSONL line skipped, scan continues", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ap-tx-bad-"));
+  const p = path.join(root, "transcript.jsonl");
+  const lines = [
+    JSON.stringify(agentUse("toolu_a", 5)),
+    "{not valid json}",
+    JSON.stringify(agentResult("toolu_a", 4)),
+    JSON.stringify(agentUse("toolu_b", 3)),  // unpaired
+  ];
+  fs.writeFileSync(p, lines.join("\n") + "\n");
+  const r = countInFlightAgents(p, { staleMinutes: 60 });
+  assert.equal(r.count, 1);
+  assert.equal(r.stale_count, 0);
+});
+
+test("countInFlightAgents: ignores non-Agent tool_use entries", () => {
+  // Bash, Read, Write etc. should not register — only Agent spans turns.
+  const tx = makeTranscript([
+    agentUse("toolu_bash", 5, "Bash"),
+    agentUse("toolu_read", 4, "Read"),
+    agentUse("toolu_agent", 3, "Agent"),  // only this one counts
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 1);
+});
+
+test("countInFlightAgents: mix of fresh + stale + paired", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 90),  // stale unpaired
+    agentUse("toolu_b", 10),  // paired
+    agentResult("toolu_b", 9),
+    agentUse("toolu_c", 5),   // fresh unpaired
+    agentUse("toolu_d", 2),   // fresh unpaired
+  ]);
+  const r = countInFlightAgents(tx, { staleMinutes: 60 });
+  assert.equal(r.count, 2);
+  assert.equal(r.stale_count, 1);
+  assert.ok(r.oldest_age_minutes >= 4.9 && r.oldest_age_minutes <= 5.1);
+});
+
+test("countInFlightAgents: default staleMinutes is 60 when opts omitted", () => {
+  const tx = makeTranscript([
+    agentUse("toolu_a", 65),  // 65m > default 60m → stale
+    agentUse("toolu_b", 30),  // 30m < default 60m → in flight
+  ]);
+  const r = countInFlightAgents(tx);
+  assert.equal(r.count, 1);
+  assert.equal(r.stale_count, 1);
+});
+
+// ── Hook integration: agents-pending halt branch ─────────────────────────
+
+test("agents-pending halt: fresh in-flight Agent halts without incrementing iter", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    ENABLED
+  );
+  const tx = makeTranscript([
+    agentUse("toolu_a", 5),  // fresh unpaired
+  ]);
+  const r = runHook(root, tx);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "");
+  assert.match(r.stderr, /background agent\(s\) in flight/);
+  assert.match(r.stderr, /Iteration counter not incremented/);
+
+  // Verify state.session.autopilot_iterations was NOT written
+  const stateAfter = fs.readFileSync(path.join(root, ".pipeline", "state.yaml"), "utf8");
+  assert.doesNotMatch(stateAfter, /autopilot_iterations/);
+});
+
+test("agents-pending halt: stale Agent triggers warning but proceeds", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    ENABLED
+  );
+  const tx = makeTranscript([
+    agentUse("toolu_a", 90),  // stale unpaired (default 60m threshold)
+  ]);
+  const r = runHook(root, tx);
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /stale unpaired Agent tool_use/);
+  // Hook proceeded (decision should be block for /architect)
+  assert.ok(r.decision, `expected decision JSON, got stdout=${r.stdout} stderr=${r.stderr}`);
+  assert.equal(r.decision.decision, "block");
+});
+
+test("agents-pending halt: all paired → autopilot proceeds normally", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    ENABLED
+  );
+  const tx = makeTranscript([
+    agentUse("toolu_a", 5),
+    agentResult("toolu_a", 4),
+  ]);
+  const r = runHook(root, tx);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+  assert.equal(r.decision.decision, "block");
+  assert.match(r.decision.reason, /\/architect/);
+});
+
+test("agents-pending halt: custom stale threshold via config", () => {
+  const cfg = "autopilot:\n  enabled: true\n  agents_pending_stale_minutes: 10\n";
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    cfg
+  );
+  const tx = makeTranscript([
+    agentUse("toolu_a", 15),  // 15m > custom 10m → stale, not in flight
+  ]);
+  const r = runHook(root, tx);
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /stale unpaired Agent/);
+  assert.ok(r.decision);
+});
+
+test("agents-pending halt: nonexistent transcript_path falls through (no false halt)", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    ENABLED
+  );
+  const r = runHook(root);  // default transcript_path = /nonexistent
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+  assert.equal(r.decision.decision, "block");
 });
