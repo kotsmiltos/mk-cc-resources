@@ -43,6 +43,8 @@ The autopilot **stops blocking** (i.e. lets Claude end the turn) under any of:
 | `state.pipeline.phase` ∈ `terminal` | pipeline is done (`complete`) |
 | no `flow[phase]` mapping | unknown phase — fail-safe halt |
 | iteration cap exceeded (default 30) | infinite-loop safety |
+| same phase persists ≥ `stuck_phase_threshold` iterations (default 5) | likely stuck — suggests `/heal` |
+| `sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` exists | already reviewed but phase didn't advance — suggests `/heal` |
 | context usage > threshold (default 60%) | preserve context window for human work |
 
 Any of these → autopilot lets Claude stop normally. You see the report and decide what to do.
@@ -64,6 +66,8 @@ autopilot:
     - complete
 
   max_iterations: 30              # halt if same-phase advance fires this many times in a row
+
+  stuck_phase_threshold: 5        # halt if phase persists this many iterations without state change — suggests /heal
 
   context_threshold_pct: 60       # halt if estimated context usage exceeds this %
 
@@ -101,6 +105,12 @@ autopilot:
 ## Iteration Counter
 
 The hook persists per-session counters in `state.session.autopilot_iterations` and `autopilot_last_phase`. The counter resets to zero whenever the phase changes — so progress through phases doesn't trip the safety cap. The cap exists to catch genuine stuck-loop situations (same phase, no progress, repeated advance).
+
+## Stuck-Phase Detection
+
+`max_iterations` (default 30) catches infinite loops eventually. `stuck_phase_threshold` (default 5) catches the **stuck-pipeline failure mode** much earlier: when `state.pipeline.phase` persists 5 iterations without changing, autopilot halts and prints `phase persisted N iterations without state change — run /heal`. The `/heal` command (essense-flow plugin) infers the correct phase from on-disk artifacts and walks the state machine forward through legal transitions on user confirmation.
+
+A complementary forward-detect halts immediately at iteration 1 when `phase=sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` already exists on disk — the most common stuck-state shape (review/triage already done, phase didn't advance).
 
 ## Context Threshold
 

@@ -41,6 +41,18 @@ const DEFAULT_CONFIG = {
   human_gates: ["idle", "eliciting", "verifying"],
   terminal: ["complete"],
   max_iterations: 30,
+  // Stuck-state threshold — separate from max_iterations. When the same
+  // (phase, command) pair fires this many times without phase change, halt
+  // with a /heal-suggesting diagnostic instead of waiting for max_iterations.
+  // Rationale: a phase that re-fires the same command 5 times in a row with
+  // no state advancement is almost always a stuck pipeline (either /review
+  // detecting an existing QA-REPORT and refusing to overwrite, /architect
+  // hitting an unhandled case, etc.). Halting at 5 instead of 30 saves the
+  // user 25 redundant block-and-retry cycles. Set higher only if you
+  // genuinely have a long-running phase that needs many auto-advances —
+  // those should be self-looping transitions in transitions.yaml, not
+  // command-level loops.
+  stuck_phase_threshold: 5,
   context_threshold_pct: 60,
   // Phase → command map. Reflects essense-flow state-machine semantics
   // (references/transitions.yaml). Project config can override per project.
@@ -255,6 +267,52 @@ async function main() {
   if (iters > cfg.max_iterations) {
     return allowStop(
       `iteration cap (${cfg.max_iterations}) reached at phase '${phase}' — investigate stuck pipeline`
+    );
+  }
+
+  // Forward-detect (M4b — cheap fast-fail). Halts on iteration 1 when the
+  // disk artifact for the NEXT phase already exists, indicating the phase
+  // is stale, not mid-flight. The /review-spam scenario the user observed:
+  // phase=sprint-complete persisted but reviews/sprint-N/QA-REPORT.md was
+  // already on disk from an earlier review. Without this gate autopilot
+  // would fire /review repeatedly until stuck_phase_threshold; this catches
+  // it on the first firing.
+  //
+  // Currently scoped to sprint-complete because that's the boundary where
+  // the user got stuck. Other phases can be added when their forward-
+  // artifact signature is unambiguous (architecture+ARCH.md → sprinting,
+  // etc.). Keep narrow — false positives here halt legitimate work.
+  if (phase === "sprint-complete") {
+    const sprintNum = state.pipeline.sprint;
+    if (sprintNum != null) {
+      const qaPath = path.join(
+        pipelineDir,
+        "reviews",
+        `sprint-${sprintNum}`,
+        "QA-REPORT.md"
+      );
+      if (fs.existsSync(qaPath)) {
+        return allowStop(
+          `phase '${phase}' but ${qaPath} already exists — review already complete for sprint ${sprintNum}. ` +
+          `Pipeline likely stuck (phase did not advance after review). ` +
+          `Run /heal to inspect state vs disk artifacts and walk forward, ` +
+          `or /repair --apply for non-interactive repair.`
+        );
+      }
+    }
+  }
+
+  // Stuck-state threshold — same (phase, command) pair persisted N
+  // iterations without state advancing. Halts with /heal hint before
+  // hitting the much larger max_iterations cap.
+  if (iters >= cfg.stuck_phase_threshold) {
+    return allowStop(
+      `phase '${phase}' has persisted across ${iters} auto-advances ` +
+      `(stuck_phase_threshold ${cfg.stuck_phase_threshold}). ` +
+      `Pipeline likely stuck — same command would fire again with no progress. ` +
+      `Run /heal to inspect state vs disk artifacts and walk forward, ` +
+      `or /repair --apply for non-interactive repair. ` +
+      `Disable autopilot if continuing manually: .pipeline/config.yaml → autopilot.enabled: false.`
     );
   }
 

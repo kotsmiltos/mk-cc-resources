@@ -276,3 +276,123 @@ test("counter: phase change resets iteration counter", () => {
   assert.ok(r.decision, "should not halt — phase changed, counter resets");
   assert.match(r.decision.reason, /iteration 1\/30/);
 });
+
+// ── Stuck-state threshold (M4 — separate from max_iterations) ─────────────
+//
+// The user-reported failure pattern: phase=sprint-complete persisted across
+// 10+ /review firings because /review's orchestrator detected QA-REPORT
+// already on disk and refused to overwrite. Without stuck-detect, autopilot
+// kept firing until max_iterations=30. With stuck-detect (default 5),
+// autopilot halts on the 5th firing with a /heal-suggesting diagnostic.
+
+test("stuck: same phase persisted 5 iterations halts before max_iterations", () => {
+  // Iters=4 already, this hook firing makes iters=5 → halt
+  const root = makeProject(
+    "pipeline:\n  phase: triaging\n" +
+    "session:\n  autopilot_iterations: 4\n  autopilot_last_phase: triaging\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "", "should halt (allowStop), not block");
+  assert.match(r.stderr, /persisted across 5 auto-advances/);
+  assert.match(r.stderr, /\/heal/);
+});
+
+test("stuck: iteration 4 still advances (below threshold)", () => {
+  // Iters=3 already, this hook firing makes iters=4 → still below threshold=5
+  const root = makeProject(
+    "pipeline:\n  phase: triaging\n" +
+    "session:\n  autopilot_iterations: 3\n  autopilot_last_phase: triaging\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision, "iteration 4 should still block (advance), not halt");
+  assert.equal(r.decision.decision, "block");
+  assert.match(r.decision.reason, /iteration 4\/30/);
+});
+
+test("stuck: custom stuck_phase_threshold overrides default", () => {
+  const customConfig =
+    "autopilot:\n" +
+    "  enabled: true\n" +
+    "  stuck_phase_threshold: 2\n";
+  // Iters=1, this firing makes iters=2 → halts at custom threshold
+  const root = makeProject(
+    "pipeline:\n  phase: triaging\n" +
+    "session:\n  autopilot_iterations: 1\n  autopilot_last_phase: triaging\n",
+    customConfig
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "");
+  assert.match(r.stderr, /stuck_phase_threshold 2/);
+});
+
+test("stuck: phase change resets stuck counter (so post-heal advance works)", () => {
+  // Phase changed from sprint-complete to requirements-ready (e.g. via /heal).
+  // Counter should reset, autopilot should advance.
+  const root = makeProject(
+    "pipeline:\n  phase: requirements-ready\n" +
+    "session:\n  autopilot_iterations: 5\n  autopilot_last_phase: sprint-complete\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision, "phase changed → reset to iteration 1, advance");
+  assert.match(r.decision.reason, /iteration 1\/30/);
+  assert.match(r.decision.reason, /\/architect/);
+});
+
+// ── Forward-detect for sprint-complete (M4b — cheap fast-fail) ────────────
+//
+// When QA-REPORT.md already exists for the current sprint AND phase is still
+// sprint-complete, the phase is stale (review already happened). Don't wait
+// for stuck_phase_threshold — halt on iteration 1 with /heal hint.
+
+test("forward-detect: sprint-complete with QA-REPORT.md halts on iteration 1", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: sprint-complete\n  sprint: 3\n",
+    ENABLED
+  );
+  // Seed QA-REPORT.md on disk — indicates review already completed
+  const fsMod = require("node:fs");
+  const pathMod = require("node:path");
+  const qaDir = pathMod.join(root, ".pipeline", "reviews", "sprint-3");
+  fsMod.mkdirSync(qaDir, { recursive: true });
+  fsMod.writeFileSync(pathMod.join(qaDir, "QA-REPORT.md"), "# QA stub\n");
+
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "", "should halt immediately, not block");
+  assert.match(r.stderr, /already exists/);
+  assert.match(r.stderr, /review already complete for sprint 3/);
+  assert.match(r.stderr, /\/heal/);
+});
+
+test("forward-detect: sprint-complete WITHOUT QA-REPORT advances normally to /review", () => {
+  // Genuine "review needs to run" case — no QA-REPORT yet.
+  const root = makeProject(
+    "pipeline:\n  phase: sprint-complete\n  sprint: 3\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+  assert.equal(r.decision.decision, "block");
+  assert.match(r.decision.reason, /\/review/);
+});
+
+test("forward-detect: sprint-complete without sprint number falls through", () => {
+  // Defensive: state.pipeline.sprint is null, can't form QA path → skip the
+  // forward-detect, advance normally to /review (which will figure it out).
+  const root = makeProject(
+    "pipeline:\n  phase: sprint-complete\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+  assert.match(r.decision.reason, /\/review/);
+});
