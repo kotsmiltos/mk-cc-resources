@@ -977,7 +977,6 @@ function finalizeReview(pipelineDir, sprintNumber, reportContent) {
  * @returns {{ ok: boolean, transitioned?: boolean, alreadyEntered?: boolean, error?: string }}
  */
 function enterReview(pipelineDir, sprintNumber) {
-  const yamlIO = require("../../../lib/yaml-io");
   const statePath = path.join(pipelineDir, "state.yaml");
   const state = yamlIO.safeReadWithFallback(statePath, {});
   const phase = state && state.pipeline && state.pipeline.phase;
@@ -991,6 +990,47 @@ function enterReview(pipelineDir, sprintNumber) {
       transitioned: false,
       error: `enterReview requires phase='sprint-complete' (got '${phase}')`,
     };
+  }
+
+  // I-04 readiness gate: refuse if per-task completion records are missing.
+  // /review's assembleReviewBriefs requires non-empty completionRecordPaths
+  // and aborts cleanly otherwise. Without this gate, enterReview would
+  // transition phase=reviewing with no records on disk, leaving the
+  // pipeline stuck — autopilot loops re-firing /review and the orchestrator
+  // improvises (hand-rolled briefs, manual writeState bypass, etc.).
+  // Reproducible across at least 2 projects (sprint-3.4, sprint-4 — see
+  // .planning/v0.7.0-backlog.md I-04/I-10).
+  if (sprintNumber != null) {
+    const completionDir = path.join(
+      pipelineDir,
+      "sprints",
+      `sprint-${sprintNumber}`,
+      "completion"
+    );
+    let recordCount = 0;
+    try {
+      if (fs.existsSync(completionDir) && fs.statSync(completionDir).isDirectory()) {
+        recordCount = fs
+          .readdirSync(completionDir)
+          .filter((f) => f.endsWith(".yaml") || f.endsWith(".md"))
+          .length;
+      }
+    } catch (_e) {
+      // fall through to recordCount=0 — refuse below
+    }
+    if (recordCount === 0) {
+      return {
+        ok: false,
+        transitioned: false,
+        status: "missing-completion-records",
+        error:
+          `enterReview requires per-task completion records at ${completionDir} ` +
+          `(none found). The build phase did not write per-task completion records — ` +
+          `re-run /build to finalize sprint ${sprintNumber} via completeSprintExecution, ` +
+          `or synthesize records from sprints/sprint-${sprintNumber}/SPRINT-REPORT.md ` +
+          `if /build succeeded but skipped recordCompletion.`,
+      };
+    }
   }
 
   const stateMachine = require("../../../lib/state-machine");

@@ -13,6 +13,55 @@ const TRANSITIONS_YAML_REL = path.join("references", "transitions.yaml");
 // Terminal phase — once reached, no further transitions are allowed except reset to idle.
 const TERMINAL_PHASE = "complete";
 
+// Phase → next command map. Single source of truth is references/phase-command-map.yaml
+// (loaded lazily below). Inline fallback covers every canonical phase so writeState
+// can self-heal next_action even when the references file is unavailable. Mirrors
+// PHASE_NEXT_FALLBACK in skills/context/scripts/next-runner.js — keep in sync.
+//
+// Background: prior to this contract, finalize* helpers transitioned phase atomically
+// but left state.next_action pointing at the OLD phase's command. autopilot routes
+// from phase (correct), but /status, context-inject auto-advance hint, and next-runner
+// fallback all read state.next_action and surfaced stale values. Pinning next_action
+// to the new phase's command on every transition closes that gap at the source.
+const PHASE_NEXT_FALLBACK = {
+  idle:                 "/elicit",
+  eliciting:            "/elicit",
+  research:             "/triage",
+  triaging:             "/triage",
+  "requirements-ready": "/architect",
+  architecture:         "/architect",
+  decomposing:          "/architect",
+  sprinting:            "/build",
+  "sprint-complete":    "/review",
+  reviewing:            "/triage",
+  verifying:            "/verify",
+  complete:             "/status",
+};
+
+let _phaseNextCache = null;
+function loadPhaseNextCommand() {
+  if (_phaseNextCache) return _phaseNextCache;
+  // Resolve references/phase-command-map.yaml relative to plugin root (state-machine
+  // lives at lib/state-machine.js → plugin root is two `..` up).
+  const yamlPath = path.resolve(__dirname, "..", "references", "phase-command-map.yaml");
+  const data = yamlIO.safeRead(yamlPath);
+  if (!data || !data.phase_command || typeof data.phase_command !== "object") {
+    _phaseNextCache = PHASE_NEXT_FALLBACK;
+    return _phaseNextCache;
+  }
+  const out = {};
+  for (const [phase, cmd] of Object.entries(data.phase_command)) {
+    if (typeof cmd === "string") out[phase] = cmd;
+  }
+  _phaseNextCache = Object.keys(out).length > 0 ? out : PHASE_NEXT_FALLBACK;
+  return _phaseNextCache;
+}
+
+function nextCommandFor(phase) {
+  const map = loadPhaseNextCommand();
+  return map[phase] || "";
+}
+
 /**
  * Load transitions from a transitions.yaml file and return a map
  * from source state to an array of transition objects.
@@ -202,6 +251,14 @@ function writeState(pipelineDir, targetPhase, stateUpdates, options = {}) {
     },
     last_updated: new Date().toISOString(),
   };
+
+  // Pin next_action to the target phase's canonical command so consumers
+  // (status-runner, context-inject auto-advance hint, next-runner fallback)
+  // never read a stale value left over from a prior transition. Caller-supplied
+  // stateUpdates.next_action takes precedence — caller knows best.
+  if (!stateUpdates || !("next_action" in stateUpdates)) {
+    newState.next_action = nextCommandFor(targetPhase);
+  }
 
   try {
     yamlIO.safeWrite(statePath, newState);

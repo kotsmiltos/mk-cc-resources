@@ -234,60 +234,6 @@ function extractDependencies(spec) {
 }
 
 /**
- * Write a completion record for a task to the sprint's completion directory.
- * Uses yamlIO.safeWrite for atomic writes.
- *
- * Evidence object shape:
- *   status: "complete" | "blocked" | "failed"
- *   files_created: string[]
- *   files_modified: string[]
- *   acceptance_criteria_met: string[]
- *   reason?: string (for blocked/failed)
- *
- * @param {string} pipelineDir — absolute path to .pipeline/
- * @param {number} sprintNumber — sprint number
- * @param {string} taskId — task identifier (e.g. "TASK-001")
- * @param {Object} evidence — completion evidence
- * @returns {{ ok: boolean, path?: string, error?: string }}
- */
-function recordCompletion(pipelineDir, sprintNumber, taskId, evidence) {
-  if (!evidence || typeof evidence !== "object") {
-    return { ok: false, error: "Evidence object is required" };
-  }
-
-  const validStatuses = ["complete", "blocked", "failed", "deferred"];
-  if (!validStatuses.includes(evidence.status)) {
-    return { ok: false, error: `Invalid status "${evidence.status}" — must be one of: ${validStatuses.join(", ")}` };
-  }
-
-  const completionDir = path.join(
-    pipelineDir,
-    "sprints",
-    sprintDirName(sprintNumber),
-    "completion"
-  );
-  paths.ensureDir(completionDir);
-
-  const record = {
-    task_id: taskId,
-    status: evidence.status,
-    files_created: evidence.files_created || [],
-    files_modified: evidence.files_modified || [],
-    acceptance_criteria_met: evidence.acceptance_criteria_met || [],
-    timestamp: evidence.timestamp || new Date().toISOString(),
-  };
-
-  if (evidence.reason) {
-    record.reason = evidence.reason;
-  }
-
-  const recordPath = path.join(completionDir, `${taskId}.yaml`);
-  yamlIO.safeWrite(recordPath, record);
-
-  return { ok: true, path: recordPath };
-}
-
-/**
  * Read all completion records for a sprint and produce a summary.
  *
  * @param {string} pipelineDir — absolute path to .pipeline/
@@ -739,6 +685,62 @@ const VALID_BUILD_ROUTES = ["sprint-complete"];
 
 function completeSprintExecution(pipelineDir, sprintNumber, completions, _config, _projectRoot) {
   const stateMachine = require("../../../lib/state-machine");
+
+  // I-10 producer-side gate. Refuse to transition `sprinting → sprint-complete`
+  // when no per-task completion records exist on disk. Reproducible across
+  // 2 projects (sprint-3.4, sprint-4): orchestrator improvised
+  // SPRINT-REPORT.md + raw writeState call, skipping recordCompletion per
+  // task. Result: phase=sprint-complete with empty completion/ dir →
+  // /review's assembleReviewBriefs aborts → autopilot loops. Closing this
+  // gate at the canonical producer means the bug shape is impossible to
+  // reach via completeSprintExecution; a parallel direct writeState bypass
+  // is addressed by commands/build.md MANDATORY language (I-10b).
+  //
+  // Two checks: (1) caller passed non-empty completions array (guards the
+  // "called with []" mistake), (2) at least one completion record file
+  // exists on disk (guards the "wrote completions array but recordCompletion
+  // never landed" mistake — defense in depth).
+  if (!Array.isArray(completions) || completions.length === 0) {
+    return {
+      ok: false,
+      status: "missing-completion-records",
+      reason:
+        `completeSprintExecution requires a non-empty completions[] argument ` +
+        `(got ${Array.isArray(completions) ? "empty array" : typeof completions}). ` +
+        `Call recordCompletion(pipelineDir, sprintNumber, taskId, evidence) per task before finalizing.`,
+    };
+  }
+  if (sprintNumber != null) {
+    const completionDir = path.join(
+      pipelineDir,
+      "sprints",
+      sprintDirName(sprintNumber),
+      "completion"
+    );
+    let recordCount = 0;
+    try {
+      if (fs.existsSync(completionDir) && fs.statSync(completionDir).isDirectory()) {
+        recordCount = fs
+          .readdirSync(completionDir)
+          .filter((f) => f.endsWith(".yaml") || f.endsWith(".md"))
+          .length;
+      }
+    } catch (_e) {
+      // fall through to recordCount=0 — refuse below
+    }
+    if (recordCount === 0) {
+      return {
+        ok: false,
+        status: "missing-completion-records",
+        reason:
+          `completeSprintExecution refuses to transition: no per-task ` +
+          `completion records on disk at ${completionDir}. ` +
+          `recordCompletion must run for every task before completeSprintExecution. ` +
+          `If the build wrote SPRINT-REPORT.md or similar without per-task records, ` +
+          `that is a bypass — refuse here so /review does not break downstream.`,
+      };
+    }
+  }
 
   // Reject if any tasks failed
   const failures = completions.filter((c) => c.status === "FAILED" || c.status === COMPLETION_STATUS.FAILED);

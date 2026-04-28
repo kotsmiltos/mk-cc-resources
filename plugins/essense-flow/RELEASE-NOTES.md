@@ -1,5 +1,60 @@
 # essense-flow Release Notes
 
+## 0.6.2 (2026-04-28)
+
+Build/review boundary fix. Closes a stuck-pipeline shape reproduced across **2 projects** (sprint-3.4, sprint-4): build orchestrator wrote a top-level summary directly (`SPRINT-REPORT.md`) and called `state-machine.writeState` directly to transition `sprinting → sprint-complete`, **never invoking `recordCompletion` per task or `completeSprintExecution`**. Result: phase=sprint-complete with empty `sprints/sprint-N/completion/` dir → `/review`'s `assembleReviewBriefs` rejected empty `completionRecordPaths` → autopilot looped re-firing /review with no input.
+
+Closes the bug from BOTH sides:
+- **Producer side** (`completeSprintExecution`) — refuses to transition if completion records are missing on disk OR completions array empty
+- **Consumer side** (`enterReview`) — refuses to transition `sprint-complete → reviewing` if completion records are missing
+- **Orchestrator-text contracts** — `commands/build.md` and `commands/review.md` now have MANDATORY-call language + explicit forbid-list against the bypass paths the orchestrator improvised in the field
+
+Plus three smaller fixes: `next_action` hygiene (auto-pinned on every phase transition), dead duplicate `recordCompletion` deleted, subagent-dispatch contract documented in /review for hook-aware orchestrators.
+
+### `enterReview` readiness gate (I-04 — consumer side)
+
+- **`review-runner.enterReview`** now refuses with `{ok:false, status:"missing-completion-records"}` if `sprints/sprint-N/completion/` is missing or contains no `.yaml`/`.md` records. Phase stays at `sprint-complete`. State-history is NOT appended on the refusal path.
+- Idempotent re-entry path (phase already at `reviewing`) skips the readiness check — supports crash-recovery without false-failing.
+- Skipped when `sprintNumber` is null (defensive — no sprint scope means no records location).
+- Tests: 9 new in `tests/review-enter.test.js` (12 → 21 in that file). Covers missing dir, empty dir, non-record files only, `.md`-only legacy records, null sprint, idempotent reviewing.
+
+### `completeSprintExecution` producer-side gate (I-10)
+
+- **`build-runner.completeSprintExecution`** now refuses to transition `sprinting → sprint-complete` with `{ok:false, status:"missing-completion-records"}` when:
+  - `completions` argument is `null`/`undefined`/non-array/empty array, OR
+  - `sprints/sprint-N/completion/` directory is missing or contains zero `.yaml`/`.md` records
+- Defense in depth: catches both "called with []" mistakes AND "called with non-empty array but writes never landed" silent failures. Refuses BEFORE `generateCompletionReport` runs, so no `completion-report.md` is written on the refusal path.
+- Tests: 9 new in `tests/build-finalize.test.js` (7 → 16). Covers missing dir, empty dir, empty array, null, undefined.
+
+### `commands/build.md` MANDATORY-call contract (I-10b)
+
+- Step 3 reformatted to make `recordCompletion` per task and `completeSprintExecution` MANDATORY single calls (not advisory list items). Matches the v0.6.0 atomic-finalize* pattern from `review.md`.
+- New constraint section forbids: (a) calling `lib/state-machine.writeState` directly to transition `sprinting → sprint-complete`, (b) writing `SPRINT-REPORT.md` or any top-level sprint summary. The canonical output is `completion-report.md` via `completeSprintExecution`.
+- Closes the orchestrator-improvisation pattern at the source — runtime gates catch the bypass; text contract prevents the orchestrator from forming the bypass intent.
+
+### `commands/review.md` subagent-dispatch contract (I-12)
+
+- New `### Hook contract` section documents the post-`enterReview` execution model: `review-guard` hook restricts main-session Bash to a safe-list (no `node`), so post-enterReview runner calls (assembleReviewBriefs, parseReviewOutputs, categorizeFindings, runReview, finalizeReview) MUST be dispatched via the **Agent tool**. Subagents inherit `CLAUDE_SUBAGENT=1` which `review-guard.js` detects and exits early.
+- Closes orchestrator-confusion shape observed in the field: orchestrators tried `node -e "require('review-runner').assembleReviewBriefs(...)"` from main session, hit hook block, considered "patching bash-guard" or "bypass via Edit". The hook design + subagent dispatch IS the canonical path; the markdown now makes that explicit.
+
+### `state-machine.writeState` next_action auto-pin (I-05)
+
+- **`writeState`** now sets `state.next_action` to the canonical command for the new phase (per `references/phase-command-map.yaml` or inline fallback) on every transition. Caller-supplied `stateUpdates.next_action` overrides the auto-pin.
+- Closes a UX bug: `finalizeTriage` (and other finalize* helpers) transitioned phase atomically but left `state.next_action` pointing at the OLD phase's command. `/status`, `context-inject` auto-advance hint, and `next-runner` fallback all surfaced the stale value.
+- Inline `PHASE_NEXT_FALLBACK` in `state-machine.js` mirrors `PHASE_NEXT_FALLBACK` in `next-runner.js` — keep in sync. References-file load is cached on first call.
+- Tests: 7 new in `tests/state-machine-next-action.test.js`. Covers each canonical phase transition + caller override + stale-overwrite regression.
+
+### Dead-code cleanup (I-11)
+
+- Deleted the first `recordCompletion` declaration in `build-runner.js` (lines 253-288). JS function-declaration hoisting means the second declaration (line 611) was the only one ever called — first was unreachable. Verifiable: `grep -c "^function recordCompletion" skills/build/scripts/build-runner.js` returns 1.
+
+### Tests
+
+- Full suite: 862 → **896 pass** (+34 net new). Baseline retained: every pre-fix test that was reasonable now passes after seeding completion records (I-10 gate enforces that the test scenario is realistic).
+- New file: `tests/state-machine-next-action.test.js` (7 assertions).
+- New file: `tests/command-text-build-review.test.js` (9 assertions across both command markdowns).
+- Modified: `tests/review-enter.test.js` (+9), `tests/build-finalize.test.js` (+9, plus seed updates), `tests/build.test.js` (seed updates).
+
 ## 0.6.0 (2026-04-28)
 
 Self-heal release. Closes the **stuck-pipeline** failure mode where `state.pipeline.phase` falls behind on-disk artifacts (e.g. QA-REPORT.md + TRIAGE-REPORT.md exist on disk but phase still says `sprint-complete`), and autopilot loops by re-firing the now-no-op command. Adds a pure phase-from-artifacts inference module, an interactive `/heal` command for forward-walk recovery via legal transitions, a scripted `/repair --apply` Case 6 covering the same forward-walk shape, autopilot stuck-state detection that halts and suggests `/heal` instead of spamming, and an `enterReview` helper that closes the last B-class split surface (the `/review` skill-entry transition). Pairs with **essense-autopilot 0.2.2** (separate plugin) which adds the stuck-state halt + forward-detect for `sprint-complete` + QA-REPORT.

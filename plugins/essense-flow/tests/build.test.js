@@ -355,9 +355,25 @@ describe("completeSprintExecution", () => {
     }
   });
 
+  // I-10 producer-side gate seeds: completeSprintExecution refuses without
+  // per-task completion records on disk. Tests that exercise paths past the
+  // gate must seed records explicitly.
+  function seedRecordsForSprint(sprintNumber, taskIds) {
+    const dir = path.join(TMP_DIR, "sprints", `sprint-${sprintNumber}`, "completion");
+    fs.mkdirSync(dir, { recursive: true });
+    for (const tid of taskIds) {
+      fs.writeFileSync(
+        path.join(dir, `${tid}.completion.yaml`),
+        `task_id: ${tid}\nstatus: complete\n`,
+        "utf8"
+      );
+    }
+  }
+
   it("transitions state to sprint-complete on success via state machine", () => {
     // Pre-set state to sprinting (valid source for sprint-complete transition)
     yamlIO.safeWrite(path.join(TMP_DIR, "state.yaml"), { schema_version: 1, pipeline: { phase: "sprinting" } });
+    seedRecordsForSprint(1, ["TASK-A"]);
 
     const completions = [
       { task_id: "TASK-A", sprint: 1, status: "COMPLETE", files_written: "", deviations: "none", verification: "", completed_at: new Date().toISOString() },
@@ -373,6 +389,7 @@ describe("completeSprintExecution", () => {
 
   it("does not transition state when tasks failed", () => {
     yamlIO.safeWrite(path.join(TMP_DIR, "state.yaml"), { schema_version: 1, pipeline: { phase: "sprinting" } });
+    seedRecordsForSprint(1, ["TASK-A"]);
 
     const completions = [
       { task_id: "TASK-A", sprint: 1, status: "FAILED", files_written: "", deviations: "none", verification: "", completed_at: new Date().toISOString() },

@@ -34,6 +34,14 @@ Post-sprint QA review. Alternative to `/architect` auto-routing when triggering 
    - `finalizeReview(pipelineDir, sprintNumber, reportContent)` — atomic QA-REPORT write + state transition `reviewing → triaging`
 5. Report: QA results summary, findings by severity, next action based on result
 
+### Hook contract — post-enterReview JS calls MUST use Agent dispatch
+
+Once `enterReview` transitions phase to `reviewing`, `hooks/scripts/review-guard.js` activates a Bash safe-list (`cat, ls, echo, pwd, head, tail, grep, wc, diff, find` + `git log/show/status/diff` only — see `lib/bash-guard.js`). **`node` is NOT on the safe-list.** Trying to invoke any post-enterReview JS function from the main session via `node -e "require('review-runner').assembleReviewBriefs(...)"` will be hook-blocked by design.
+
+The canonical path: dispatch every post-enterReview runner call (assembleReviewBriefs, parseReviewOutputs, categorizeFindings, runReview, finalizeReview) via the **Agent tool**. Subagents inherit `CLAUDE_SUBAGENT=1`, which review-guard.js detects (line 6) and exits early — bypass intentional, not accidental. The Write/Edit hook also matches Tool=Bash|Write|Edit only; Agent-tool dispatch is not matched, so subagents can run node, write artifacts, and call the runner freely within the canonical paths the runner enforces.
+
+Do not improvise around the hook block (no inline `node -e`, no patching `bash-guard.js`, no unsetting `CLAUDE_SUBAGENT`). The hook is the contract; subagent dispatch is the intended path. Reproducible orchestrator confusion in the field — see `.planning/v0.7.0-backlog.md` I-12 — comes from main-session `node -e` attempts after enterReview. Don't.
+
 Note: the legacy `skills/architect/scripts/architect-runner.runReview` is a separate sync implementation retained for the /architect skill's grounded review path and historical tests. Do not invoke it from /review — it bypasses the validator round and produces a different return shape.
 
 ## Constraints
