@@ -42,11 +42,9 @@ The autopilot **stops blocking** (i.e. lets Claude end the turn) under any of:
 | `state.pipeline.phase` ∈ `human_gates` | phase requires dialogue (e.g. `eliciting`, `verifying`) |
 | `state.pipeline.phase` ∈ `terminal` | pipeline is done (`complete`) |
 | no `flow[phase]` mapping | unknown phase — fail-safe halt |
-| iteration cap exceeded (default 30) | infinite-loop safety |
-| same phase persists ≥ `stuck_phase_threshold` iterations (default 5) | likely stuck — suggests `/heal` |
+| no progress since last fire (same phase + sprint + wave) | same command would re-fire with no advancement — suggests `/heal` |
 | `sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` exists | already reviewed but phase didn't advance — suggests `/heal` |
-| background `Agent` calls in flight (unpaired tool_use in transcript, fresh < `agents_pending_stale_minutes`) | orchestrator awaiting completion — halt without incrementing iter counter |
-| context usage > threshold (default 60%) | preserve context window for human work |
+| background `Agent` calls in flight (unpaired tool_use in transcript, fresh < 60 min) | orchestrator awaiting completion |
 
 Any of these → autopilot lets Claude stop normally. You see the report and decide what to do.
 
@@ -65,14 +63,6 @@ autopilot:
 
   terminal:                       # phases meaning "pipeline done"
     - complete
-
-  max_iterations: 30              # halt if same-phase advance fires this many times in a row
-
-  stuck_phase_threshold: 5        # halt if phase persists this many iterations without state change — suggests /heal
-
-  agents_pending_stale_minutes: 60  # treat unpaired Agent tool_use older than this as crashed (autopilot proceeds + warns)
-
-  context_threshold_pct: 60       # halt if estimated context usage exceeds this %
 
   flow:                           # phase → command. Override per-project to customize.
     research: /triage
@@ -105,33 +95,29 @@ autopilot:
   human_gates: [idle, eliciting, verifying, reviewing]
 ```
 
-## Iteration Counter
+## Progress Markers
 
-The hook persists per-session counters in `state.session.autopilot_iterations` and `autopilot_last_phase`. The counter resets to zero whenever the phase changes — so progress through phases doesn't trip the safety cap. The cap exists to catch genuine stuck-loop situations (same phase, no progress, repeated advance).
+The hook persists progress signals in `state.session`: `autopilot_last_phase`, `autopilot_last_sprint`, `autopilot_last_wave`, and `autopilot_last_advance_at`. On each fire, it compares the current `(phase, sprint, wave)` against the last-recorded triple. If all three match — and no Agent calls are in flight — the prior auto-advance produced no forward motion, so the same command would re-fire with the same result. Halt with `/heal` hint instead of looping.
 
-## Stuck-Phase Detection
+## No-Progress Detection
 
-`max_iterations` (default 30) catches infinite loops eventually. `stuck_phase_threshold` (default 5) catches the **stuck-pipeline failure mode** much earlier: when `state.pipeline.phase` persists 5 iterations without changing, autopilot halts and prints `phase persisted N iterations without state change — run /heal`. The `/heal` command (essense-flow plugin) infers the correct phase from on-disk artifacts and walks the state machine forward through legal transitions on user confirmation.
+This replaces the prior magic-number iteration counter (`max_iterations=30`, `stuck_phase_threshold=5`). The new mechanism is signal-driven: phase, sprint number, and wave are the natural progress dimensions. If none changed since the last fire, you are stuck — halt immediately with diagnostic `no progress since last auto-advance (phase 'X', sprint N, wave M unchanged) — run /heal to inspect state vs disk artifacts and walk forward`.
 
-A complementary forward-detect halts immediately at iteration 1 when `phase=sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` already exists on disk — the most common stuck-state shape (review/triage already done, phase didn't advance).
+A complementary forward-detect halts on the very first fire when `phase=sprint-complete` AND `reviews/sprint-N/QA-REPORT.md` already exists on disk — the most common stuck-state shape (review already done, phase didn't advance).
 
 ## Background-Agent In-Flight Detection
 
-The orchestrator (essense-flow skills like `/architect`, `/research`, `/build`, `/review`) dispatches background `Agent` tool calls that span multiple turns — perspective swarms, parallel reviewers, build waves. Phase doesn't change while these run, but that's correct behavior, not a stuck pipeline. Without protection, every Stop hook between dispatch and collection would auto-advance the same command, eventually false-firing the `stuck_phase_threshold` halt with a misleading "/heal" diagnostic.
+The orchestrator (essense-flow skills like `/architect`, `/research`, `/build`, `/review`) dispatches background `Agent` tool calls that span multiple turns — perspective swarms, parallel reviewers, build waves. Phase doesn't change while these run, but that's correct behavior, not a stuck pipeline. Without protection, every Stop hook between dispatch and collection would auto-advance the same command, eventually false-firing the no-progress halt with a misleading "/heal" diagnostic.
 
 The hook scans the transcript JSONL (`transcript_path` in the Stop payload) for `tool_use` entries with `name: "Agent"` whose `id` has no matching `tool_result.tool_use_id`. Unpaired = in flight. When detected:
 
 - **Halt without auto-advance** — Claude stops normally; user can wait or send any prompt to resume
-- **Iteration counter NOT incremented** — so `stuck_phase_threshold` doesn't false-fire after the agents complete and the next phase transition fires
+- **Progress markers NOT updated** — so the no-progress check fires correctly when agents finish and the next phase transition lands
 - **Stderr diagnostic** — reports count + age of oldest unpaired Agent
 
-Stale entries (older than `agents_pending_stale_minutes`, default 60 min) are treated as crashed agents — autopilot proceeds with a stderr warning. Tighten per-project if you want faster crash recovery; loosen for very long build waves.
+Stale entries (older than 60 minutes, hardcoded internally) are treated as crashed agents — autopilot proceeds with a stderr warning.
 
-The transcript JSONL schema is undocumented; if it changes, this check returns "no in-flight agents" (count=0), degrading gracefully to the pre-v0.2.3 behavior, never false-halt.
-
-## Context Threshold
-
-The hook estimates context usage by reading the transcript file size and dividing by `CHARS_PER_TOKEN` (4) and `TOKEN_BUDGET` (200000). Above the configured percentage, autopilot halts. This is a rough heuristic — Claude Code does not currently expose exact token usage to hooks. Adjust `context_threshold_pct` if your runs hit early/late.
+The transcript JSONL schema is undocumented; if it changes, this check returns "no in-flight agents" (count=0), degrading gracefully, never false-halt.
 
 ## Manual Override
 
@@ -164,8 +150,8 @@ These come from upstream Claude Code, not this plugin:
    Should print `{"decision":"block","reason":"..."}` if conditions are met. Empty output = halted (check stderr for reason).
 
 **Autopilot loops on the same phase.**
-- Check `state.session.autopilot_iterations`. If it's growing without phase change, the underlying skill is failing to advance. Investigate that skill's runner.
-- Iteration cap will eventually halt and warn.
+- Should not happen — no-progress detection halts on the second fire when `(phase, sprint, wave)` is unchanged. If you see it loop more than once, check `state.session.autopilot_last_phase` / `_last_sprint` / `_last_wave` — if they're not being persisted, the hook is failing to write `state.yaml`.
+- Run `/heal` to inspect state vs disk artifacts and walk the pipeline forward.
 
 **Autopilot halts at unexpected phase.**
 - Check `human_gates` and `flow` in your config — phases not in `flow` halt by default. Add the phase to `flow` if it should auto-advance.

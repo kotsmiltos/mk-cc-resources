@@ -5,20 +5,20 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family, with build/review boundary contract enforced from BOTH sides (producer disk validation, consumer readiness gate, MANDATORY-call orchestrator markdown). Phase-from-artifacts inference + /heal (interactive forward-walk) + /repair Case 6 (scripted forward-walk) self-heal stuck pipelines. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth, propagating artifact contracts, next_action auto-pin on phase transitions.",
-      "version": "0.6.2"
+      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family, with build/review boundary contract enforced from BOTH sides (producer disk validation, consumer readiness gate, MANDATORY-call orchestrator markdown). Build→review auto-synthesizes completion records from SPRINT-REPORT.md when missing (no more refusal-loops). Phase-from-artifacts inference + /heal (interactive forward-walk) + /repair Case 6 (scripted forward-walk) self-heal stuck pipelines. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth (count adapts to domain registry), propagating artifact contracts, next_action auto-pin on phase transitions.",
+      "version": "0.7.0"
     },
     {
       "name": "essense-autopilot",
       "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, iteration cap, stuck-phase detection (default 5 iterations without state change → suggests /heal), forward-detect for sprint-complete + QA-REPORT, background-Agent in-flight detection (transcript-scan; halts without incrementing iter counter while perspective/build/review swarms are running), configurable context-usage threshold (default 60%), and unplanned sprints. Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
-      "version": "0.2.3"
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, verifying), real blockers, in-flight background Agent calls (transcript-scan), forward-detect for sprint-complete + QA-REPORT, and no-progress (same phase + sprint + wave as last fire → suggests /heal). Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
+      "version": "0.3.0"
     },
     {
       "name": "schema-scout",

@@ -133,7 +133,7 @@ test("halt: unknown phase has no flow mapping", () => {
   assert.match(r.stderr, /mapped phases:/);
 });
 
-// ── Flow map semantics (fix #1) ────────────────────────────────────────────
+// ── Flow map semantics ─────────────────────────────────────────────────────
 
 test("flow: architecture maps to /architect (not /build)", () => {
   const root = makeProject(
@@ -234,7 +234,7 @@ test("gate: reviewing without QA-REPORT halts with /review hint (review still mi
   assert.match(r.stderr, /run \/review first/);
 });
 
-// ── Tasks-empty gate (fix #6) ──────────────────────────────────────────────
+// ── Tasks-empty gate ───────────────────────────────────────────────────────
 
 test("gate: sprinting with empty tasks halts with diagnostic", () => {
   const root = makeProject(
@@ -279,108 +279,101 @@ test("gate: sprinting without pipeline.sprint set is permissive", () => {
   assert.match(r.decision.reason, /\/build/);
 });
 
-// ── Iteration counter ──────────────────────────────────────────────────────
-
-test("counter: iteration cap halts with diagnostic", () => {
-  const root = makeProject(
-    "pipeline:\n  phase: sprinting\n  sprint: 1\n" +
-    "sprints:\n  sprint-1:\n    tasks: [t]\n    tasks_total: 1\n" +
-    "session:\n  autopilot_iterations: 30\n  autopilot_last_phase: sprinting\n",
-    ENABLED
-  );
-  const r = runHook(root);
-  assert.equal(r.status, 0);
-  assert.equal(r.stdout, "");
-  assert.match(r.stderr, /iteration cap \(30\)/);
-});
-
-test("counter: phase change resets iteration counter", () => {
-  const root = makeProject(
-    "pipeline:\n  phase: triaging\n" +
-    "session:\n  autopilot_iterations: 30\n  autopilot_last_phase: sprinting\n",
-    ENABLED
-  );
-  const r = runHook(root);
-  assert.equal(r.status, 0);
-  assert.ok(r.decision, "should not halt — phase changed, counter resets");
-  assert.match(r.decision.reason, /iteration 1\/30/);
-});
-
-// ── Stuck-state threshold (M4 — separate from max_iterations) ─────────────
+// ── No-progress detection (replaces iteration-counter + stuck-threshold) ──
 //
-// The user-reported failure pattern: phase=sprint-complete persisted across
-// 10+ /review firings because /review's orchestrator detected QA-REPORT
-// already on disk and refused to overwrite. Without stuck-detect, autopilot
-// kept firing until max_iterations=30. With stuck-detect (default 5),
-// autopilot halts on the 5th firing with a /heal-suggesting diagnostic.
+// Replaces the prior magic-number scheme (max_iterations=30, stuck=5):
+// halt as soon as a fire would repeat (same phase + sprint + wave) since
+// the same command would produce the same result. /heal hint surfaces.
 
-test("stuck: same phase persisted 5 iterations halts before max_iterations", () => {
-  // Iters=4 already, this hook firing makes iters=5 → halt
+test("no-progress: same phase + sprint + wave halts on second fire", () => {
   const root = makeProject(
     "pipeline:\n  phase: triaging\n" +
-    "session:\n  autopilot_iterations: 4\n  autopilot_last_phase: triaging\n",
+    "session:\n  autopilot_last_phase: triaging\n",
     ENABLED
   );
   const r = runHook(root);
   assert.equal(r.status, 0);
   assert.equal(r.stdout, "", "should halt (allowStop), not block");
-  assert.match(r.stderr, /persisted across 5 auto-advances/);
+  assert.match(r.stderr, /no progress since last auto-advance/);
   assert.match(r.stderr, /\/heal/);
 });
 
-test("stuck: iteration 4 still advances (below threshold)", () => {
-  // Iters=3 already, this hook firing makes iters=4 → still below threshold=5
+test("no-progress: phase change advances normally (no halt)", () => {
+  // phase moved triaging → architecture. lastPhase mismatch → advance.
   const root = makeProject(
-    "pipeline:\n  phase: triaging\n" +
-    "session:\n  autopilot_iterations: 3\n  autopilot_last_phase: triaging\n",
+    "pipeline:\n  phase: architecture\n" +
+    "session:\n  autopilot_last_phase: triaging\n",
     ENABLED
   );
   const r = runHook(root);
   assert.equal(r.status, 0);
-  assert.ok(r.decision, "iteration 4 should still block (advance), not halt");
+  assert.ok(r.decision, "phase changed → should advance, not halt");
   assert.equal(r.decision.decision, "block");
-  assert.match(r.decision.reason, /iteration 4\/30/);
-});
-
-test("stuck: custom stuck_phase_threshold overrides default", () => {
-  const customConfig =
-    "autopilot:\n" +
-    "  enabled: true\n" +
-    "  stuck_phase_threshold: 2\n";
-  // Iters=1, this firing makes iters=2 → halts at custom threshold
-  const root = makeProject(
-    "pipeline:\n  phase: triaging\n" +
-    "session:\n  autopilot_iterations: 1\n  autopilot_last_phase: triaging\n",
-    customConfig
-  );
-  const r = runHook(root);
-  assert.equal(r.status, 0);
-  assert.equal(r.stdout, "");
-  assert.match(r.stderr, /stuck_phase_threshold 2/);
-});
-
-test("stuck: phase change resets stuck counter (so post-heal advance works)", () => {
-  // Phase changed from sprint-complete to requirements-ready (e.g. via /heal).
-  // Counter should reset, autopilot should advance.
-  const root = makeProject(
-    "pipeline:\n  phase: requirements-ready\n" +
-    "session:\n  autopilot_iterations: 5\n  autopilot_last_phase: sprint-complete\n",
-    ENABLED
-  );
-  const r = runHook(root);
-  assert.equal(r.status, 0);
-  assert.ok(r.decision, "phase changed → reset to iteration 1, advance");
-  assert.match(r.decision.reason, /iteration 1\/30/);
   assert.match(r.decision.reason, /\/architect/);
 });
 
-// ── Forward-detect for sprint-complete (M4b — cheap fast-fail) ────────────
+test("no-progress: same phase but sprint advanced → still advances", () => {
+  // Same phase=sprinting, but sprint moved 1 → 2. Genuine progress.
+  const root = makeProject(
+    "pipeline:\n  phase: sprinting\n  sprint: 2\n" +
+    "sprints:\n  sprint-2:\n    tasks: [t]\n    tasks_total: 1\n" +
+    "session:\n  autopilot_last_phase: sprinting\n  autopilot_last_sprint: 1\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision, "sprint advanced → should not halt");
+  assert.match(r.decision.reason, /\/build/);
+});
+
+test("no-progress: same phase + sprint but wave advanced → still advances", () => {
+  // Same phase=sprinting, sprint=1, wave moved 0 → 1. Genuine progress.
+  const root = makeProject(
+    "pipeline:\n  phase: sprinting\n  sprint: 1\n  wave: 1\n" +
+    "sprints:\n  sprint-1:\n    tasks: [t]\n    tasks_total: 1\n" +
+    "session:\n  autopilot_last_phase: sprinting\n  autopilot_last_sprint: 1\n  autopilot_last_wave: 0\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision, "wave advanced → should not halt");
+  assert.match(r.decision.reason, /\/build/);
+});
+
+test("no-progress: first fire (no session markers) advances", () => {
+  // Fresh state, no session block. lastPhase undefined → never matches.
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+  assert.match(r.decision.reason, /\/architect/);
+});
+
+test("progress markers: persisted on successful advance", () => {
+  const root = makeProject(
+    "pipeline:\n  phase: architecture\n  sprint: 1\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.ok(r.decision);
+
+  // Verify state.yaml gained the session markers
+  const stateAfter = fs.readFileSync(path.join(root, ".pipeline", "state.yaml"), "utf8");
+  assert.match(stateAfter, /autopilot_last_phase: architecture/);
+  assert.match(stateAfter, /autopilot_last_sprint: 1/);
+  assert.match(stateAfter, /autopilot_last_advance_at:/);
+});
+
+// ── Forward-detect for sprint-complete (cheap fast-fail) ──────────────────
 //
 // When QA-REPORT.md already exists for the current sprint AND phase is still
-// sprint-complete, the phase is stale (review already happened). Don't wait
-// for stuck_phase_threshold — halt on iteration 1 with /heal hint.
+// sprint-complete, the phase is stale (review already happened).
 
-test("forward-detect: sprint-complete with QA-REPORT.md halts on iteration 1", () => {
+test("forward-detect: sprint-complete with QA-REPORT.md halts immediately", () => {
   const root = makeProject(
     "pipeline:\n  phase: sprint-complete\n  sprint: 3\n",
     ENABLED
@@ -543,7 +536,7 @@ test("countInFlightAgents: default staleMinutes is 60 when opts omitted", () => 
 
 // ── Hook integration: agents-pending halt branch ─────────────────────────
 
-test("agents-pending halt: fresh in-flight Agent halts without incrementing iter", () => {
+test("agents-pending halt: fresh in-flight Agent halts (does not advance)", () => {
   const root = makeProject(
     "pipeline:\n  phase: architecture\n",
     ENABLED
@@ -555,11 +548,11 @@ test("agents-pending halt: fresh in-flight Agent halts without incrementing iter
   assert.equal(r.status, 0);
   assert.equal(r.stdout, "");
   assert.match(r.stderr, /background agent\(s\) in flight/);
-  assert.match(r.stderr, /Iteration counter not incremented/);
 
-  // Verify state.session.autopilot_iterations was NOT written
+  // Verify state.session progress markers were NOT written (halt happened
+  // before the persist block). Pre-existing state.yaml content unchanged.
   const stateAfter = fs.readFileSync(path.join(root, ".pipeline", "state.yaml"), "utf8");
-  assert.doesNotMatch(stateAfter, /autopilot_iterations/);
+  assert.doesNotMatch(stateAfter, /autopilot_last_phase/);
 });
 
 test("agents-pending halt: stale Agent triggers warning but proceeds", () => {
@@ -592,21 +585,6 @@ test("agents-pending halt: all paired → autopilot proceeds normally", () => {
   assert.ok(r.decision);
   assert.equal(r.decision.decision, "block");
   assert.match(r.decision.reason, /\/architect/);
-});
-
-test("agents-pending halt: custom stale threshold via config", () => {
-  const cfg = "autopilot:\n  enabled: true\n  agents_pending_stale_minutes: 10\n";
-  const root = makeProject(
-    "pipeline:\n  phase: architecture\n",
-    cfg
-  );
-  const tx = makeTranscript([
-    agentUse("toolu_a", 15),  // 15m > custom 10m → stale, not in flight
-  ]);
-  const r = runHook(root, tx);
-  assert.equal(r.status, 0);
-  assert.match(r.stderr, /stale unpaired Agent/);
-  assert.ok(r.decision);
 });
 
 test("agents-pending halt: nonexistent transcript_path falls through (no false halt)", () => {

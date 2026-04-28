@@ -16,8 +16,8 @@
  *   - phase in human_gates (e.g. eliciting needs dialogue, verifying is gated)
  *   - phase in terminal (complete)
  *   - no flow entry for current phase
- *   - iteration cap exceeded (loop safety)
- *   - context usage above threshold (preserve context for human work)
+ *   - no progress since last fire (same phase + sprint + wave) — stuck pipeline
+ *   - background Agent in-flight — orchestrator awaiting completion
  *
  * Fail-open: any error path falls through to "allow stop" — never blocks
  * stoppage on its own bug.
@@ -40,28 +40,6 @@ const DEFAULT_CONFIG = {
   enabled: false,
   human_gates: ["idle", "eliciting", "verifying"],
   terminal: ["complete"],
-  max_iterations: 30,
-  // Stuck-state threshold — separate from max_iterations. When the same
-  // (phase, command) pair fires this many times without phase change, halt
-  // with a /heal-suggesting diagnostic instead of waiting for max_iterations.
-  // Rationale: a phase that re-fires the same command 5 times in a row with
-  // no state advancement is almost always a stuck pipeline (either /review
-  // detecting an existing QA-REPORT and refusing to overwrite, /architect
-  // hitting an unhandled case, etc.). Halting at 5 instead of 30 saves the
-  // user 25 redundant block-and-retry cycles. Set higher only if you
-  // genuinely have a long-running phase that needs many auto-advances —
-  // those should be self-looping transitions in transitions.yaml, not
-  // command-level loops.
-  stuck_phase_threshold: 5,
-  // Background-agent in-flight detection — halts autopilot without
-  // incrementing the iteration counter while unpaired `Agent` tool_use
-  // entries exist in the transcript. Stale threshold (minutes) decides
-  // when an unpaired entry is treated as a crashed agent (autopilot
-  // proceeds, stderr warning). 60 min is generous: heavyweight architect
-  // with 4 perspective agents typically completes in 5-10 min; build waves
-  // with many tasks can run longer. Tighten per-project if needed.
-  agents_pending_stale_minutes: 60,
-  context_threshold_pct: 60,
   // Phase → command map. Reflects essense-flow state-machine semantics
   // (references/transitions.yaml). Project config can override per project.
   //
@@ -88,12 +66,11 @@ const DEFAULT_CONFIG = {
   },
 };
 
-// Token estimate constants — used for context threshold check.
-// 200K is the practical default Claude Code context budget; 4 chars/token is
-// a conservative average across mixed code + prose. These are rough but
-// directionally correct for "are we approaching the ceiling".
-const TOKEN_BUDGET = 200_000;
-const CHARS_PER_TOKEN = 4;
+// In-flight Agent stale threshold — unpaired tool_use entries older than
+// this are treated as crashed agents (autopilot proceeds, stderr warning).
+// 60 min is generous: heavyweight architect typically completes in 5–10 min;
+// build waves with many tasks can run longer.
+const AGENT_STALE_MINUTES = 60;
 
 // ---------- Helpers ----------
 
@@ -145,17 +122,6 @@ function readPayload() {
   });
 }
 
-function estimateContextPct(transcriptPath) {
-  if (!transcriptPath) return null;
-  try {
-    const stat = fs.statSync(transcriptPath);
-    const tokens = stat.size / CHARS_PER_TOKEN;
-    return (tokens / TOKEN_BUDGET) * 100;
-  } catch (_e) {
-    return null;
-  }
-}
-
 // Scan transcript JSONL for unpaired Agent tool_use entries. An Agent call
 // is "in flight" when its `tool_use.id` has no matching `tool_result.tool_use_id`.
 // Stale entries (older than staleMinutes) are split out so they don't block
@@ -168,7 +134,7 @@ function estimateContextPct(transcriptPath) {
 // `tool_use_id`. The schema is undocumented; if it changes, this function
 // returns count=0 (no false halts), degrading gracefully to pre-v0.2.3 behavior.
 function countInFlightAgents(transcriptPath, opts) {
-  const staleMinutes = (opts && opts.staleMinutes) || 60;
+  const staleMinutes = (opts && opts.staleMinutes) || AGENT_STALE_MINUTES;
   const empty = { count: 0, oldest_age_minutes: null, stale_count: 0 };
   if (!transcriptPath) return empty;
   let raw;
@@ -263,6 +229,8 @@ async function main() {
   }
 
   const phase = state.pipeline.phase;
+  const sprint = state.pipeline.sprint != null ? state.pipeline.sprint : null;
+  const wave = state.pipeline.wave != null ? state.pipeline.wave : null;
   const blocker = state.blocked_on;
 
   if (blocker) {
@@ -285,9 +253,8 @@ async function main() {
   // to have task specs decomposed. If the sprint entry has empty tasks,
   // running /build will fail — halt and route the user to /architect.
   if (advanceCmd === "/build") {
-    const sprintNum = state.pipeline.sprint;
-    if (sprintNum != null) {
-      const sprintKey = `sprint-${sprintNum}`;
+    if (sprint != null) {
+      const sprintKey = `sprint-${sprint}`;
       const sprintEntry = state.sprints && state.sprints[sprintKey];
       const tasks = (sprintEntry && sprintEntry.tasks) || [];
       const tasksTotal = (sprintEntry && sprintEntry.tasks_total) || tasks.length || 0;
@@ -307,12 +274,11 @@ async function main() {
   // Halt here with a diagnostic so the user knows to run /review, rather
   // than letting autopilot fire /triage against a missing artifact.
   if (phase === "reviewing" && advanceCmd === "/triage") {
-    const sprintNum = state.pipeline.sprint;
-    if (sprintNum != null) {
+    if (sprint != null) {
       const qaPath = path.join(
         pipelineDir,
         "reviews",
-        `sprint-${sprintNum}`,
+        `sprint-${sprint}`,
         "QA-REPORT.md"
       );
       if (!fs.existsSync(qaPath)) {
@@ -323,26 +289,22 @@ async function main() {
     }
   }
 
-  // Background-agent in-flight detection. Halt without incrementing the
-  // iteration counter while unpaired `Agent` tool_use entries exist in the
-  // transcript. The orchestrator dispatches background Agent() calls that
-  // span turns; phase doesn't change while they're running, but that's
-  // correct behavior, not a stuck pipeline. Without this gate, every
-  // perspective-dispatch turn N+1 would trip the auto-advance + eventually
-  // the stuck_phase_threshold halt with a misleading /heal diagnostic.
+  // Background-agent in-flight detection. Halt while unpaired `Agent`
+  // tool_use entries exist in the transcript. The orchestrator dispatches
+  // background Agent() calls that span turns; phase doesn't change while
+  // they're running, but that's correct behavior, not a stuck pipeline.
+  // Without this gate, perspective-dispatch turns would trip the
+  // no-progress halt with a misleading /heal diagnostic.
   //
-  // Stale entries (older than agents_pending_stale_minutes, default 60)
-  // are treated as crashed agents — autopilot proceeds, prints a stderr
-  // warning. JSONL schema is undocumented; degradation on schema change
-  // is "no halt" (count=0), not false-halt — falls back to v0.2.2 behavior.
-  const inflight = countInFlightAgents(payload.transcript_path, {
-    staleMinutes: cfg.agents_pending_stale_minutes,
-  });
+  // Stale entries (older than AGENT_STALE_MINUTES) are treated as crashed
+  // agents — autopilot proceeds, prints a stderr warning. JSONL schema is
+  // undocumented; degradation on schema change is "no halt" (count=0).
+  const inflight = countInFlightAgents(payload.transcript_path);
   if (inflight.count > 0) {
     return allowStop(
       `${inflight.count} background agent(s) in flight ` +
       `(oldest ${inflight.oldest_age_minutes.toFixed(1)}m ago) — ` +
-      `orchestrator awaiting completion. Iteration counter not incremented. ` +
+      `orchestrator awaiting completion. ` +
       `Reply with any prompt or wait for agents to finish.`
     );
   }
@@ -350,90 +312,67 @@ async function main() {
     process.stderr.write(
       `[essense-autopilot] warning: ${inflight.stale_count} stale unpaired ` +
       `Agent tool_use entr${inflight.stale_count === 1 ? "y" : "ies"} ` +
-      `(older than ${cfg.agents_pending_stale_minutes}m) — likely crashed ` +
+      `(older than ${AGENT_STALE_MINUTES}m) — likely crashed ` +
       `agent(s), ignoring.\n`
     );
   }
 
-  // Iteration counter — reset when phase changes
-  state.session = state.session || {};
-  const lastPhase = state.session.autopilot_last_phase;
-  let iters = state.session.autopilot_iterations || 0;
-  if (lastPhase !== phase) {
-    iters = 0;
-  }
-  iters += 1;
-
-  if (iters > cfg.max_iterations) {
-    return allowStop(
-      `iteration cap (${cfg.max_iterations}) reached at phase '${phase}' — investigate stuck pipeline`
+  // Forward-detect (cheap fast-fail). Halts when the disk artifact for
+  // the NEXT phase already exists, indicating the phase is stale. The
+  // /review-spam scenario: phase=sprint-complete persisted but
+  // reviews/sprint-N/QA-REPORT.md was already on disk. Without this
+  // gate autopilot would re-fire /review against a finished review.
+  if (phase === "sprint-complete" && sprint != null) {
+    const qaPath = path.join(
+      pipelineDir,
+      "reviews",
+      `sprint-${sprint}`,
+      "QA-REPORT.md"
     );
-  }
-
-  // Forward-detect (M4b — cheap fast-fail). Halts on iteration 1 when the
-  // disk artifact for the NEXT phase already exists, indicating the phase
-  // is stale, not mid-flight. The /review-spam scenario the user observed:
-  // phase=sprint-complete persisted but reviews/sprint-N/QA-REPORT.md was
-  // already on disk from an earlier review. Without this gate autopilot
-  // would fire /review repeatedly until stuck_phase_threshold; this catches
-  // it on the first firing.
-  //
-  // Currently scoped to sprint-complete because that's the boundary where
-  // the user got stuck. Other phases can be added when their forward-
-  // artifact signature is unambiguous (architecture+ARCH.md → sprinting,
-  // etc.). Keep narrow — false positives here halt legitimate work.
-  if (phase === "sprint-complete") {
-    const sprintNum = state.pipeline.sprint;
-    if (sprintNum != null) {
-      const qaPath = path.join(
-        pipelineDir,
-        "reviews",
-        `sprint-${sprintNum}`,
-        "QA-REPORT.md"
+    if (fs.existsSync(qaPath)) {
+      return allowStop(
+        `phase '${phase}' but ${qaPath} already exists — review already complete for sprint ${sprint}. ` +
+        `Pipeline likely stuck (phase did not advance after review). ` +
+        `Run /heal to inspect state vs disk artifacts and walk forward, ` +
+        `or /repair --apply for non-interactive repair.`
       );
-      if (fs.existsSync(qaPath)) {
-        return allowStop(
-          `phase '${phase}' but ${qaPath} already exists — review already complete for sprint ${sprintNum}. ` +
-          `Pipeline likely stuck (phase did not advance after review). ` +
-          `Run /heal to inspect state vs disk artifacts and walk forward, ` +
-          `or /repair --apply for non-interactive repair.`
-        );
-      }
     }
   }
 
-  // Stuck-state threshold — same (phase, command) pair persisted N
-  // iterations without state advancing. Halts with /heal hint before
-  // hitting the much larger max_iterations cap.
-  if (iters >= cfg.stuck_phase_threshold) {
+  // No-progress detection. If (phase, sprint, wave) is identical to the
+  // last fire AND no in-flight agents, the prior auto-advance produced no
+  // forward motion — same command would fire again with the same result.
+  // Halt with /heal hint instead of looping.
+  state.session = state.session || {};
+  const lastPhase = state.session.autopilot_last_phase;
+  const lastSprint = state.session.autopilot_last_sprint != null
+    ? state.session.autopilot_last_sprint : null;
+  const lastWave = state.session.autopilot_last_wave != null
+    ? state.session.autopilot_last_wave : null;
+
+  const sameAsLast =
+    lastPhase === phase && lastSprint === sprint && lastWave === wave;
+
+  if (sameAsLast) {
     return allowStop(
-      `phase '${phase}' has persisted across ${iters} auto-advances ` +
-      `(stuck_phase_threshold ${cfg.stuck_phase_threshold}). ` +
-      `Pipeline likely stuck — same command would fire again with no progress. ` +
+      `no progress since last auto-advance ` +
+      `(phase '${phase}', sprint ${sprint}, wave ${wave} unchanged) — ` +
+      `same command would fire again with no progress. ` +
       `Run /heal to inspect state vs disk artifacts and walk forward, ` +
       `or /repair --apply for non-interactive repair. ` +
       `Disable autopilot if continuing manually: .pipeline/config.yaml → autopilot.enabled: false.`
     );
   }
 
-  // Context threshold check
-  const ctxPct = estimateContextPct(payload.transcript_path);
-  if (ctxPct !== null && ctxPct > cfg.context_threshold_pct) {
-    return allowStop(
-      `context ~${ctxPct.toFixed(0)}% > ${cfg.context_threshold_pct}% threshold — preserving context for human work`
-    );
-  }
-
-  // Persist iteration counter (best-effort; failure non-fatal)
-  state.session.autopilot_iterations = iters;
+  // Persist progress markers (best-effort; failure non-fatal)
   state.session.autopilot_last_phase = phase;
+  state.session.autopilot_last_sprint = sprint;
+  state.session.autopilot_last_wave = wave;
   state.session.autopilot_last_advance_at = new Date().toISOString();
   writeYamlSafe(statePath, state);
 
-  const ctxNote = ctxPct !== null ? `ctx ~${ctxPct.toFixed(0)}%` : "ctx unknown";
   const reason =
-    `[essense-autopilot] Pipeline phase '${phase}'. Auto-advance: invoke ${advanceCmd} now. ` +
-    `(iteration ${iters}/${cfg.max_iterations}, ${ctxNote})`;
+    `[essense-autopilot] Pipeline phase '${phase}'. Auto-advance: invoke ${advanceCmd} now.`;
 
   return blockStop(reason);
 }
