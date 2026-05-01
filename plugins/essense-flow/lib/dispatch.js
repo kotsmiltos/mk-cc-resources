@@ -1,328 +1,129 @@
-"use strict";
+// dispatch.js — parallel sub-agent fan-out helpers.
+//
+// This plugin runs INSIDE Claude Code; the actual sub-agent invocation
+// is performed by the skill agent using the Agent tool. dispatch.js does
+// the bookkeeping around that call:
+//
+//   - prepareBriefs: assembles parallel briefs (one per lens)
+//   - parseReturn:   extracts the body from a returned string,
+//                    detecting the sentinel line that terminates output
+//   - synthesizeMissing: builds a synthetic finding for a lens whose
+//                    agent crashed or returned no signal — never silent
+//   - collateQuorum: combines results, applies the per-skill quorum rule
+//
+// No concurrency cap, no agent-count cap, no budget enforcement. The
+// skill decides how many lenses are useful for the work; dispatch.js
+// just orders the bookkeeping.
 
-const fs = require("fs");
-const path = require("path");
-const { MAX_CONCURRENT_AGENTS, MIN_WAVE_CAP } = require("./constants");
-const { formatError } = require("./errors");
-const yaml = require("js-yaml");
+import { envelope } from "./brief.js";
 
-// Filename for persisted dispatch state
-const DISPATCH_STATE_FILE = ".dispatch-state.yaml";
-
-// Agent status constants
-const AGENT_STATUS = {
-  PENDING: "PENDING",
-  RUNNING: "RUNNING",
-  COMPLETE: "COMPLETE",
-  FAILED: "FAILED",
-};
-
-/**
- * Build a dependency graph from task definitions.
- * Returns { taskIds, adjacency (task → dependents), reverse (task → dependencies) }.
- *
- * @param {Object<string, { dependsOn?: string[] }>} tasks
- * @returns {{ taskIds: string[], adjacency: Object, reverse: Object }}
- * @throws if an unknown dependency is referenced
- */
-function buildDependencyGraph(tasks) {
-  const taskIds = Object.keys(tasks);
-  const adjacency = {};
-  const reverse = {};
-
-  // Initialize empty lists
-  for (const id of taskIds) {
-    adjacency[id] = [];
-    reverse[id] = [];
+// prepareBriefs(lensSpecs) where lensSpecs is:
+//   [{ lens: "correctness", brief: "...string...", sentinel?: "..." }, ...]
+// Returns an array of { lens, prompt, sentinel } ready to hand to Agent calls.
+export function prepareBriefs(lensSpecs) {
+  if (!Array.isArray(lensSpecs)) {
+    return { ok: false, reason: "lensSpecs must be an array" };
   }
-
-  for (const [taskId, spec] of Object.entries(tasks)) {
-    const deps = spec.dependsOn || spec.depends_on || [];
-    for (const dep of deps) {
-      if (!adjacency[dep] && dep !== taskId) {
-        throw new Error(`unknown task "${dep}" referenced by "${taskId}"`);
-      }
-      // adjacency: dep → taskId (dep must run before taskId, so taskId depends on dep)
-      // reverse: taskId ← dep (taskId's prerequisites)
-      if (!adjacency[dep].includes(taskId)) adjacency[dep].push(taskId);
-      if (!reverse[taskId].includes(dep)) reverse[taskId].push(dep);
+  const out = [];
+  for (const spec of lensSpecs) {
+    if (!spec || !spec.lens || !spec.brief) {
+      return {
+        ok: false,
+        reason: "each lensSpec needs {lens, brief}",
+        offending: spec,
+      };
     }
+    const env = envelope({ lens: spec.lens, brief: spec.brief, sentinel: spec.sentinel });
+    out.push({ lens: spec.lens, prompt: env.prompt, sentinel: env.sentinel });
   }
-
-  return { taskIds, adjacency, reverse };
+  return { ok: true, briefs: out };
 }
 
-/**
- * Validate that the graph is a DAG (no cycles) using Kahn's algorithm.
- * Accepts either:
- *   - { taskIds, adjacency, reverse } from buildDependencyGraph
- *   - A raw adjacency map { taskId: [dep, ...] } (array values = dependencies)
- *
- * @param {{ taskIds: string[], adjacency: Object, reverse: Object }|Object} graphOrMap
- * @returns {{ valid: boolean, order?: string[], cycle?: string[], error?: string }}
- */
-function validateDAG(graphOrMap) {
-  // Normalize: if input lacks `taskIds` array, treat as raw dep map
-  // Raw map: { A: ["B"] } means A depends on B
-  let graph;
-  if (!Array.isArray(graphOrMap.taskIds)) {
-    // Build graph from raw dependency map (values are dep lists)
-    const rawMap = graphOrMap;
-    const allIds = new Set(Object.keys(rawMap));
-    // Add implicit nodes (deps not declared as keys)
-    for (const deps of Object.values(rawMap)) {
-      for (const dep of (Array.isArray(deps) ? deps : [])) {
-        allIds.add(dep);
-      }
-    }
-    const taskIds = [...allIds];
-    const adjacency = {};
-    const reverse = {};
-    for (const id of taskIds) {
-      adjacency[id] = [];
-      reverse[id] = [];
-    }
-    for (const [id, deps] of Object.entries(rawMap)) {
-      for (const dep of (Array.isArray(deps) ? deps : [])) {
-        if (!adjacency[dep]) { adjacency[dep] = []; reverse[dep] = []; }
-        if (!adjacency[dep].includes(id)) adjacency[dep].push(id);
-        if (!reverse[id].includes(dep)) reverse[id].push(dep);
-      }
-    }
-    graph = { taskIds, adjacency, reverse };
-  } else {
-    graph = graphOrMap;
+// parseReturn({ raw, sentinel })
+// Returns:
+//   { ok: true, body }     — sentinel found at end of a line; body is everything before it
+//   { ok: false, reason }  — sentinel missing (agent crashed, malformed, or didn't follow contract)
+export function parseReturn({ raw, sentinel }) {
+  if (typeof raw !== "string") {
+    return { ok: false, reason: "raw is not a string" };
   }
-
-  const { taskIds, adjacency, reverse } = graph;
-
-  // In-degree = number of prerequisites (length of reverse[id])
-  const inDegree = {};
-  for (const id of taskIds) {
-    inDegree[id] = (reverse[id] || []).length;
+  if (!sentinel) {
+    return { ok: false, reason: "sentinel is required" };
   }
-
-  // Start with nodes that have no prerequisites
-  const queue = taskIds.filter((id) => inDegree[id] === 0).sort();
-  const order = [];
-
-  while (queue.length > 0) {
-    const node = queue.shift();
-    order.push(node);
-
-    // Reduce in-degree for all dependents of this node
-    for (const dependent of (adjacency[node] || [])) {
-      inDegree[dependent]--;
-      if (inDegree[dependent] === 0) {
-        queue.push(dependent);
-        queue.sort(); // maintain deterministic order
-      }
-    }
+  const idx = raw.indexOf(sentinel);
+  if (idx < 0) {
+    return { ok: false, reason: `sentinel not found in agent return` };
   }
-
-  if (order.length !== taskIds.length) {
-    const inOrderSet = new Set(order);
-    const cycle = taskIds.filter((n) => !inOrderSet.has(n));
-    return {
-      valid: false,
-      cycle,
-      error: formatError ? formatError("E_CYCLE_DETECTED", { cycle: cycle.join(" → ") }) : `Cycle detected: ${cycle.join(" → ")}`,
-    };
-  }
-
-  return { valid: true, order };
+  return { ok: true, body: raw.slice(0, idx).trimEnd() };
 }
 
-/**
- * Construct execution waves (parallelizable batches) from the dependency graph.
- *
- * @param {{ taskIds: string[], adjacency: Object, reverse: Object }} graph
- * @param {string[]} order — topological order from validateDAG
- * @returns {string[][]}
- */
-function constructWaves(graph, order) {
-  if (!order || order.length === 0) return [];
-
-  // Depth of each node = max depth of any dependency + 1
-  const depth = {};
-  for (const node of order) {
-    const deps = (graph.reverse || {})[node] || [];
-    if (deps.length === 0) {
-      depth[node] = 0;
-    } else {
-      depth[node] = Math.max(...deps.map((d) => (depth[d] != null ? depth[d] : 0))) + 1;
-    }
-  }
-
-  // Group by depth
-  const maxDepth = Math.max(0, ...Object.values(depth));
-  const waves = [];
-  for (let d = 0; d <= maxDepth; d++) {
-    const wave = order.filter((n) => depth[n] === d);
-    if (wave.length > 0) waves.push(wave);
-  }
-
-  return waves;
-}
-
-/**
- * Split a wave into sub-batches capped at `cap` agents each.
- *
- * @param {string[]} wave
- * @param {number} [cap=MAX_CONCURRENT_AGENTS]
- * @returns {string[][]}
- */
-function queueWave(wave, cap = MAX_CONCURRENT_AGENTS) {
-  if (cap < MIN_WAVE_CAP) throw new Error(`queueWave cap must be >= ${MIN_WAVE_CAP}, got ${cap}`);
-  const batches = [];
-  for (let i = 0; i < wave.length; i += cap) {
-    batches.push(wave.slice(i, i + cap));
-  }
-  return batches;
-}
-
-// --- Dispatch state management ---
-
-/**
- * Create an initial dispatch state object.
- *
- * @param {string} phase
- * @param {number} batch
- * @returns {Object}
- */
-function createDispatchState(phase, batch) {
+// synthesizeMissing({ lens, reason })
+// Produces the canonical synthetic-finding shape that callers should treat
+// as a real finding (never a silent drop). Per Diligent-Conduct: missing
+// signals surface, not hide.
+export function synthesizeMissing({ lens, reason }) {
   return {
-    phase,
-    batch,
-    agents: [],
-    verifier: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    lens,
+    status: "crashed",
+    synthetic: true,
+    reason: reason || "no signal returned by agent",
   };
 }
 
-/**
- * Add or update an agent entry within dispatch state.
- * When status transitions to RUNNING, sets started_at.
- * When status transitions to COMPLETE or FAILED, sets completed_at.
- *
- * @param {Object} state — mutable dispatch state
- * @param {string} agentId
- * @param {Object} update — { status, output_path?, ... }
- */
-function updateAgentState(state, agentId, update) {
-  const now = new Date().toISOString();
-  state.updated_at = now;
-
-  const existing = state.agents.find((a) => a.id === agentId);
-  if (existing) {
-    Object.assign(existing, update);
-    if (update.status === "RUNNING" && !existing.started_at) {
-      existing.started_at = now;
-    }
-    if (["COMPLETE", "FAILED"].includes(update.status) && !existing.completed_at) {
-      existing.completed_at = now;
-    }
-  } else {
-    const entry = { id: agentId, ...update };
-    if (update.status === "RUNNING") entry.started_at = now;
-    if (["COMPLETE", "FAILED"].includes(update.status)) entry.completed_at = now;
-    state.agents.push(entry);
-  }
-}
-
-/**
- * Get status summary for a specific wave.
- *
- * @param {Object} state
- * @param {number} waveIndex
- * @param {string[][]} waves
- * @returns {{ complete: boolean, pending: number, running: number, completed: number, failed: number }}
- */
-function getWaveStatus(state, waveIndex, waves) {
-  if (waveIndex >= waves.length) {
-    return { complete: true, pending: 0, running: 0, completed: 0, failed: 0 };
-  }
-
-  const waveTasks = waves[waveIndex];
-  let pending = 0;
-  let running = 0;
-  let completed = 0;
-  let failed = 0;
-
-  for (const taskId of waveTasks) {
-    const agent = state.agents.find((a) => a.id === taskId);
-    if (!agent) {
-      pending++;
-    } else if (agent.status === "COMPLETE") {
-      completed++;
-    } else if (agent.status === "FAILED") {
-      failed++;
-    } else if (agent.status === "RUNNING") {
-      running++;
-    } else {
-      pending++;
+// collateQuorum({ results, expectedLenses, mode })
+// results: array of either { lens, body, ok: true } or { lens, ok: false, reason }
+// mode: "all-required" | "tolerant" | "task-by-task"
+//   - all-required: any missing → ok: false
+//   - tolerant:     n-1 of expected may be missing → ok: true with warnings
+//   - task-by-task: per-result ok flags, no aggregate gate (build uses this)
+//
+// Always returns the results array, augmented with synthetic findings for
+// any lens in expectedLenses that has no result. Quorum decides only
+// whether the aggregate is "actionable" — never drops anything.
+export function collateQuorum({ results, expectedLenses, mode }) {
+  if (!Array.isArray(results)) results = [];
+  const seen = new Set(results.map((r) => r.lens));
+  const augmented = [...results];
+  const missing = [];
+  for (const lens of expectedLenses) {
+    if (!seen.has(lens)) {
+      const synthetic = synthesizeMissing({ lens, reason: "no signal" });
+      augmented.push(synthetic);
+      missing.push(lens);
     }
   }
 
-  const allDone = waveTasks.every((id) => {
-    const a = state.agents.find((ag) => ag.id === id);
-    return a && ["COMPLETE", "FAILED"].includes(a.status);
-  });
+  if (mode === "task-by-task") {
+    return { ok: true, mode, results: augmented, missing };
+  }
 
-  return { complete: allDone, pending, running, completed, failed };
+  if (mode === "all-required") {
+    return {
+      ok: missing.length === 0,
+      reason: missing.length > 0 ? `missing lenses: ${missing.join(", ")}` : null,
+      mode,
+      results: augmented,
+      missing,
+    };
+  }
+
+  if (mode === "tolerant") {
+    const expected = expectedLenses.length;
+    const ok = missing.length <= 1 && expected >= 2;
+    return {
+      ok,
+      reason: ok ? null : `tolerant quorum needs n-1 lenses; ${missing.length} missing of ${expected}`,
+      mode,
+      results: augmented,
+      missing,
+    };
+  }
+
+  return {
+    ok: false,
+    reason: `unknown quorum mode: ${mode}`,
+    mode,
+    results: augmented,
+    missing,
+  };
 }
-
-/**
- * Check if the current wave can advance to the next.
- * Requires: all agents in wave done, and verifier (if present) is COMPLETE.
- *
- * @param {Object} state
- * @param {number} waveIndex
- * @param {string[][]} waves
- * @returns {boolean}
- */
-function canAdvanceWave(state, waveIndex, waves) {
-  const status = getWaveStatus(state, waveIndex, waves);
-  if (!status.complete) return false;
-  if (state.verifier && state.verifier.status !== "COMPLETE") return false;
-  return true;
-}
-
-/**
- * Persist dispatch state to a YAML file in dir.
- *
- * @param {Object} state
- * @param {string} dir
- */
-function persistDispatchState(state, dir) {
-  const filePath = path.join(dir, DISPATCH_STATE_FILE);
-  fs.writeFileSync(filePath, yaml.dump(state, { lineWidth: 120, noRefs: true }), "utf8");
-}
-
-/**
- * Load dispatch state from dir. Returns null if not found.
- *
- * @param {string} dir
- * @returns {Object|null}
- */
-function loadDispatchState(dir) {
-  const filePath = path.join(dir, DISPATCH_STATE_FILE);
-  if (!fs.existsSync(filePath)) return null;
-  const content = fs.readFileSync(filePath, "utf8");
-  return yaml.load(content);
-}
-
-module.exports = {
-  AGENT_STATUS,
-  buildDependencyGraph,
-  validateDAG,
-  constructWaves,
-  queueWave,
-  createDispatchState,
-  updateAgentState,
-  getWaveStatus,
-  canAdvanceWave,
-  persistDispatchState,
-  loadDispatchState,
-};

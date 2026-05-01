@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.1.0"
+    "version": "2.2.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline with verification discipline: Elicit, Research, Triage, Architecture, Build, Review, Verify. /architect dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition with AskUserQuestion) flows by SPEC complexity. Atomic finalize* helpers across every phase-producing skill close the B-class autopilot loop hazard family, with build/review boundary contract enforced from BOTH sides (producer disk validation, consumer readiness gate, MANDATORY-call orchestrator markdown). Build→review auto-synthesizes completion records from SPRINT-REPORT.md when missing (no more refusal-loops). Phase-from-artifacts inference + /heal (interactive forward-walk) + /repair Case 6 (scripted forward-walk) self-heal stuck pipelines. Phase-aware context map, deterministic-before-LLM gate, blocks_advance routing, scope-adaptive decomposition depth (count adapts to domain registry), propagating artifact contracts, next_action auto-pin on phase transitions.",
-      "version": "0.7.0"
+      "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report is re-validated against disk — drift is auditable, not silent. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state — never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
+      "version": "0.9.0"
     },
     {
       "name": "essense-autopilot",

@@ -1,26 +1,9 @@
 ---
-name: next
-description: Suggest next pipeline command based on current state.
+description: Show recommended next slash command for the current phase.
 ---
 
-# /next
+Invoke the `essense-flow:context` skill in `next` mode in the current working directory.
 
-Suggest next action based on current pipeline phase. Read-only.
+Read state. Look up `references/phase-command-map.yaml`. Emit: command name, description, input paths it expects to read.
 
-## What it does
-
-1. Reads `.pipeline/state.yaml`
-2. Maps current phase to recommended next command
-
-## Instructions
-
-Run `node skills/context/scripts/next-runner.js [--json]` from project root.
-
-Flags:
-- `--json`: emit JSON with `next_command`, `why`, `prerequisites`, `scope` fields
-
-## Constraints
-
-- Do NOT modify `.pipeline/state.yaml` or any file
-- Do NOT transition state
-- Do NOT auto-execute suggested command — only suggest
+Suggestion only. Never auto-execute.

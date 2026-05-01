@@ -1,61 +1,108 @@
 ---
 name: context
-description: Pipeline state management — reads/writes .pipeline/state.yaml, formats context injection, manages pause/resume, suggests next actions.
-version: 0.2.0
+description: State plumbing for the pipeline — init, status, next-step. Reads .pipeline/state.yaml, validates against transitions.yaml, surfaces degraded states clearly. Used by /init, /status, /next.
+version: 1.0.0
 schema_version: 1
 ---
 
-# Context Skill
+# Context skill
 
-Manage essense-flow pipeline state and context. Single authority for pipeline position.
+## Conduct
 
-## Operating Contract
+You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
 
-Before producing any output: think it through.
-Before injecting state: verify the context_map matches actual `.pipeline/` state — not a stale snapshot.
-Before reporting the next action: trace it through state-machine transitions, not from memory.
-Before handing off: confirm `state.yaml` reflects what actually happened, not what was intended.
+Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
 
-This is not a checklist. It is how this skill operates.
+The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
 
-## Core Responsibilities
+Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
 
-1. **State management** — Read/update `.pipeline/state.yaml` via lib/state-machine. All phase transitions go through here.
-2. **Context injection** — Format state + rules into concise payload injected on every user message via hook.
-3. **Next-action suggestion** — Derive exact command user should run next based on pipeline position.
-4. **Pause/resume** — Save continuation context when pausing, restore when resuming.
-5. **Drift detection** — Compare claimed state against filesystem reality.
+Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
 
-## State File
+We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
 
-Single source of truth: `.pipeline/state.yaml` (D11).
+Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
 
-Read with `lib/yaml-io.safeReadWithFallback()`. Write with `lib/yaml-io.safeWrite()`. Validate transitions with `lib/state-machine.validateTransition()`.
+## Operating contract
 
-## Phase Flow
+- Read inputs from canonical paths.
+- On degraded inputs (missing/corrupt state.yaml), surface the degradation explicitly, do not refuse work.
+- Never silently regenerate `.pipeline/state.yaml` — `init` only writes when no state exists; degraded recovery requires `force: true` from a deliberate caller.
+- Verify by reading code, not by checking that a file exists.
+- State the verifiable check that proves work done.
 
-```
-idle → [eliciting →] research → triaging → requirements-ready → architecture → [decomposing →] sprinting → sprint-complete → reviewing → triaging → architecture|complete
-```
+## Core principle
 
-See `references/transitions.yaml` for full transition table.
+State is a contract, not a vibe. Every phase write goes through `lib/state.js` and is validated against `references/transitions.yaml`. If the state machine wouldn't accept the transition, the write doesn't happen — and the user sees why.
 
-## Workflows
+## What you produce
 
-- **status** — Read state, format summary, show next action
-- **pause** — Save current context to `state.session.continue_from`, report what was saved
-- **resume** — Read and clear `state.session.continue_from`, orient the session
+Three modes, no artifacts of its own beyond `.pipeline/state.yaml`:
 
-## Scripts
+- **init** — write `.pipeline/state.yaml` from `defaults/state.yaml`. Refuses if state already exists (caller should run `/heal` instead).
+- **status** — read state, render a short human-readable summary: phase, sprint, wave, last_updated, any degradation warning, list of canonical artifact paths the next phase will read.
+- **next** — read state, look up `references/phase-command-map.yaml`, return the recommended next slash command + one-line description + inputs it will read. Suggestion only.
 
-- `scripts/context-manager.js` — formats `state.yaml` + rules into per-turn injection payload; derives next-action hint; backs session-orient hook.
-- `scripts/drift-check.js` — compares claimed state against filesystem reality, reports divergences (used on pause/resume and doctor-style checks).
-- `scripts/init.js` — initializes fresh `.pipeline/` tree (state.yaml, config.yaml, rules.yaml) for new project; invoked by `/init`.
+## How you work
+
+### init
+
+1. Check `.pipeline/state.yaml` does not exist. If it does, return `{ok: false, reason: "state already exists; run /heal to reconcile prior work"}`.
+2. Call `lib/state.js initState(projectRoot)`. State is written from `defaults/state.yaml`.
+3. Surface to the user: state path, initial phase (idle), and the recommended next move (`/elicit "<your project pitch>"`).
+
+### status
+
+1. Call `lib/state.js readState(projectRoot)`.
+2. If `degraded`: emit a warning block naming the degradation and the file. Continue — do not refuse.
+3. Render:
+   - phase + (sprint, wave) if applicable
+   - last_updated
+   - degradation warning if any
+   - canonical artifact paths for the current phase (look up in the per-phase map below)
+   - list of upstream artifacts that should already exist
+   - recommended next command (delegate to next).
+
+### next
+
+1. Read state.
+2. Look up `phases.<phase>` in `references/phase-command-map.yaml`.
+3. Emit the cue: command name, description, input paths it expects to read.
+4. Never auto-execute the next command. The user is the gatekeeper.
 
 ## Constraints
 
-- NEVER auto-approve transitions requiring "user approval" (triaging phase — ambiguous items)
-- NEVER write state without going through state machine transition validator
-- NEVER read another skill's internal files — use interface contracts only
-- Keep injection payload under `config.token_budgets.injection_ceiling`
+- Per **Graceful-Degradation**: degraded state never silently auto-repairs. The user always sees the warning and decides whether to `/heal`.
+- Per **Fail-Soft**: status and next never block, never refuse. They emit, then continue.
+- Per **Diligent-Conduct**: do not invent a phase name that isn't in `transitions.yaml.phases`. If state.phase is unknown, render the degradation warning verbatim.
+- Per **Front-Loaded-Design**: context does not own design closure (that's the upstream skills' responsibility). What context owns is making the *current* state visible so closure can happen elsewhere — surfacing a stuck phase via `/status` is the form Front-Loaded-Design takes here.
+- Per **INST-13**: no cap on `/status` invocations or `/next` polling. Both are read-only and idempotent — no budget governs their use.
 
+## Scripts
+
+`lib/state.js` for read/write. No sub-agents are dispatched.
+
+## State transitions
+
+This skill writes state for `init` only (no transition — initial write). `status` and `next` are read-only.
+
+| from | to | trigger | auto |
+|------|----|---------|------|
+| (no state) | idle | init | n/a |
+
+## Per-phase canonical artifact map
+
+| phase | artifacts the next phase will read |
+|-------|----------------------------------|
+| idle | none |
+| eliciting | `.pipeline/elicitation/SPEC.md` |
+| research | `.pipeline/elicitation/SPEC.md`, `.pipeline/requirements/REQ.md` |
+| triaging | `.pipeline/elicitation/SPEC.md`, `.pipeline/requirements/REQ.md`, `.pipeline/triage/TRIAGE-REPORT.md` |
+| requirements-ready | `.pipeline/requirements/REQ.md` |
+| architecture | `.pipeline/architecture/ARCH.md`, `.pipeline/architecture/sprints/<n>/manifest.yaml` |
+| decomposing | `.pipeline/architecture/ARCH.md` (in flux) |
+| sprinting | `.pipeline/architecture/sprints/<n>/manifest.yaml`, per-task specs |
+| sprint-complete | `.pipeline/build/sprints/<n>/SPRINT-REPORT.md`, completion records |
+| reviewing | `.pipeline/review/sprints/<n>/QA-REPORT.md` |
+| verifying | `.pipeline/verify/VERIFICATION-REPORT.md`, `.pipeline/verify/extracted-items.yaml` |
+| complete | `.pipeline/state.yaml` |

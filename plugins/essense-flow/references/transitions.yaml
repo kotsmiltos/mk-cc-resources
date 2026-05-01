@@ -1,260 +1,271 @@
-# essense-flow state machine transition table
-# Defines every legal state transition, its trigger, preconditions, and effects.
-# Referenced by state-management hooks to validate phase changes.
+# essense-flow state machine — the law.
+#
+# Every phase change goes through one of these transitions. lib/state.js
+# rejects illegal transitions at write time. Skills propose; the state
+# machine grants.
+#
+# No transition has a resource cap or budget gate. `requires` declares
+# concrete artifact preconditions only — never quotas, budgets, counts.
+#
+# Phases:
+#   idle, eliciting, research, triaging, requirements-ready, architecture,
+#   decomposing, sprinting, sprint-complete, reviewing, verifying, complete
+
 schema_version: 1
 
-# Valid phases:
-#   idle, eliciting, research, triaging, requirements-ready, architecture,
-#   decomposing, sprinting, sprint-complete, reviewing, complete
+phases:
+  - idle
+  - eliciting
+  - research
+  - triaging
+  - requirements-ready
+  - architecture
+  - decomposing
+  - sprinting
+  - sprint-complete
+  - reviewing
+  - verifying
+  - complete
+
+# Phases where the user is the actor — autopilot must halt here.
+human_gates:
+  - idle
+  - eliciting
+  - verifying
+
+terminal:
+  - complete
 
 transitions:
+
+  # --- entry / elicit ---
+
   idle-to-eliciting:
-    from: "idle"
-    to: "eliciting"
-    triggered_by: "elicit-skill"
+    from: idle
+    to: eliciting
+    triggered_by: elicit-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "elicitation.status"
-      - "elicitation.started_at"
-      - "last_updated"
+    fields_changed: [phase, elicitation.started_at, last_updated]
 
   eliciting-to-eliciting:
-    from: "eliciting"
-    to: "eliciting"
-    triggered_by: "elicit-skill"
+    from: eliciting
+    to: eliciting
+    triggered_by: elicit-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "elicitation.current_round"
-      - "elicitation.explored"
-      - "last_updated"
+    fields_changed: [elicitation.round, last_updated]
 
-  eliciting-to-idle:
-    from: "eliciting"
-    to: "idle"
-    triggered_by: "elicit-skill"
-    requires: null
-    auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "elicitation.status"
-      - "elicitation.completed_at"
-      - "phases_completed.elicitation"
-      - "last_updated"
+  eliciting-to-research:
+    from: eliciting
+    to: research
+    triggered_by: elicit-skill
+    requires: ".pipeline/elicitation/SPEC.md exists with status: build-ready"
+    auto_advance: true
+    fields_changed: [phase, elicitation.completed_at, last_updated]
 
-  idle-to-research:
-    from: "idle"
-    to: "research"
-    triggered_by: "research-skill"
+  eliciting-to-architecture:
+    from: eliciting
+    to: architecture
+    triggered_by: elicit-skill
+    requires: ".pipeline/elicitation/SPEC.md exists with status: build-ready AND user routed around research"
+    auto_advance: false
+    fields_changed: [phase, elicitation.completed_at, last_updated]
+
+  # --- research ---
+
+  research-to-research:
+    from: research
+    to: research
+    triggered_by: research-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [research.round, last_updated]
 
   research-to-triaging:
-    from: "research"
-    to: "triaging"
-    triggered_by: "research-skill"
-    requires: null
+    from: research
+    to: triaging
+    triggered_by: research-skill
+    requires: ".pipeline/requirements/REQ.md exists"
     auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "phases_completed.research"
-      - "last_updated"
+    fields_changed: [phase, research.completed_at, last_updated]
 
-  research-to-requirements-ready:
-    from: "research"
-    to: "requirements-ready"
-    triggered_by: "research-skill"
-    requires: null
-    auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+  # --- triage (the sorting hat) ---
 
   triaging-to-eliciting:
-    from: "triaging"
-    to: "eliciting"
-    triggered_by: "triage-skill"
-    requires: null
+    from: triaging
+    to: eliciting
+    triggered_by: triage-skill
+    requires: "triage routed item back for design intent addendum"
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
-
-  triaging-to-requirements-ready:
-    from: "triaging"
-    to: "requirements-ready"
-    triggered_by: "triage-skill"
-    requires: null
-    auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [phase, last_updated]
 
   triaging-to-research:
-    from: "triaging"
-    to: "research"
-    triggered_by: "triage-skill"
-    requires: null
+    from: triaging
+    to: research
+    triggered_by: triage-skill
+    requires: "triage routed item back for further analysis"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  triaging-to-requirements-ready:
+    from: triaging
+    to: requirements-ready
+    triggered_by: triage-skill
+    requires: "all triage dispositions resolved; no upstream routes"
     auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [phase, triage.completed_at, last_updated]
 
   triaging-to-architecture:
-    from: "triaging"
-    to: "architecture"
-    triggered_by: "triage-skill"
-    requires: null
+    from: triaging
+    to: architecture
+    triggered_by: triage-skill
+    requires: "triage routed item to architecture"
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [phase, last_updated]
 
   triaging-to-verifying:
-    from: "triaging"
-    to: "verifying"
-    triggered_by: "triage-skill"
-    requires: "SPEC.md exists at .pipeline/elicitation/SPEC.md"
+    from: triaging
+    to: verifying
+    triggered_by: triage-skill
+    requires: "post-build triage routed all items to spec-compliance audit"
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [phase, last_updated]
 
-  verifying-to-complete:
-    from: "verifying"
-    to: "complete"
-    triggered_by: "verify-skill"
-    requires: "VERIFICATION-REPORT.md exists with completion_status: complete and no CONFIRMED gaps"
-    auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "phases_completed.verify"
-      - "last_updated"
-
-  verifying-to-eliciting:
-    from: "verifying"
-    to: "eliciting"
-    triggered_by: "verify-skill"
-    requires: "VERIFICATION-REPORT.md contains CONFIRMED spec drift items"
-    auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
-
-  verifying-to-architecture:
-    from: "verifying"
-    to: "architecture"
-    triggered_by: "verify-skill"
-    requires: "VERIFICATION-REPORT.md contains CONFIRMED missing implementation items"
-    auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+  # --- architecture ---
 
   requirements-ready-to-architecture:
-    from: "requirements-ready"
-    to: "architecture"
-    triggered_by: "architecture-skill"
+    from: requirements-ready
+    to: architecture
+    triggered_by: architect-skill
     requires: ".pipeline/requirements/REQ.md exists"
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
-
-  architecture-to-sprinting:
-    from: "architecture"
-    to: "sprinting"
-    triggered_by: "architecture-skill"
-    requires: "task specs exist for current sprint"
-    auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.sprint"
-      - "phases_completed.architecture"
-      - "last_updated"
+    fields_changed: [phase, last_updated]
 
   architecture-to-decomposing:
-    from: "architecture"
-    to: "decomposing"
-    triggered_by: "architecture-skill"
+    from: architecture
+    to: decomposing
+    triggered_by: architect-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
+    fields_changed: [phase, last_updated]
 
   decomposing-to-decomposing:
-    from: "decomposing"
-    to: "decomposing"
-    triggered_by: "architecture-skill"
+    from: decomposing
+    to: decomposing
+    triggered_by: architect-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "pipeline.wave"
-      - "last_updated"
+    fields_changed: [decomposition.round, last_updated]
+
+  decomposing-to-architecture:
+    from: decomposing
+    to: architecture
+    triggered_by: architect-skill
+    requires: "open design decision surfaced during decomposition"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  architecture-to-sprinting:
+    from: architecture
+    to: sprinting
+    triggered_by: architect-skill
+    requires: ".pipeline/architecture/sprints/<n>/manifest.yaml exists with all task specs closed"
+    auto_advance: true
+    fields_changed: [phase, sprint, architecture.completed_at, last_updated]
 
   decomposing-to-sprinting:
-    from: "decomposing"
-    to: "sprinting"
-    triggered_by: "architecture-skill"
-    requires: null
+    from: decomposing
+    to: sprinting
+    triggered_by: architect-skill
+    requires: ".pipeline/architecture/sprints/<n>/manifest.yaml exists with all task specs closed"
     auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.sprint"
-      - "phases_completed.architecture"
-      - "last_updated"
+    fields_changed: [phase, sprint, architecture.completed_at, last_updated]
 
-  sprinting-to-sprint-complete:
-    from: "sprinting"
-    to: "sprint-complete"
-    triggered_by: "build-skill"
-    requires: null
-    auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.task_in_progress"
-      - "last_updated"
+  # --- build ---
 
-  sprint-complete-to-reviewing:
-    from: "sprint-complete"
-    to: "reviewing"
-    triggered_by: "review-skill"
-    requires: "completion report exists for current sprint"
-    auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
-
-  reviewing-to-triaging:
-    from: "reviewing"
-    to: "triaging"
-    triggered_by: "review-skill"
-    requires: "QA report exists for current sprint"
-    auto_advance: true
-    fields_changed:
-      - "pipeline.phase"
-      - "last_updated"
-
-  # NOTE: triaging -> complete is NOT a valid transition.
-  # All-acceptable findings route triaging -> verifying first.
-  # Only verifying -> complete is allowed (requires zero CONFIRMED gaps).
-
-  complete-to-idle:
-    from: "complete"
-    to: "idle"
-    triggered_by: "orchestrator"
+  sprinting-to-sprinting:
+    from: sprinting
+    to: sprinting
+    triggered_by: build-skill
     requires: null
     auto_advance: false
-    fields_changed:
-      - "pipeline.phase"
-      - "pipeline.sprint"
-      - "pipeline.wave"
-      - "pipeline.task_in_progress"
-      - "next_action"
-      - "last_updated"
+    fields_changed: [wave, last_updated]
+
+  sprinting-to-sprint-complete:
+    from: sprinting
+    to: sprint-complete
+    triggered_by: build-skill
+    requires: ".pipeline/build/sprints/<n>/SPRINT-REPORT.md exists with all tasks resolved"
+    auto_advance: true
+    fields_changed: [phase, last_updated]
+
+  # --- review ---
+
+  sprint-complete-to-reviewing:
+    from: sprint-complete
+    to: reviewing
+    triggered_by: review-skill
+    requires: ".pipeline/build/sprints/<n>/SPRINT-REPORT.md exists"
+    auto_advance: true
+    fields_changed: [phase, last_updated]
+
+  reviewing-to-triaging:
+    from: reviewing
+    to: triaging
+    triggered_by: review-skill
+    requires: ".pipeline/review/sprints/<n>/QA-REPORT.md exists with confirmed_unacknowledged_criticals > 0"
+    auto_advance: true
+    fields_changed: [phase, last_updated]
+
+  reviewing-to-verifying:
+    from: reviewing
+    to: verifying
+    triggered_by: review-skill
+    requires: ".pipeline/review/sprints/<n>/QA-REPORT.md exists with confirmed_unacknowledged_criticals == 0"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  # --- verify (top-down spec compliance) ---
+
+  verifying-to-complete:
+    from: verifying
+    to: complete
+    triggered_by: verify-skill
+    requires: ".pipeline/verify/VERIFICATION-REPORT.md exists with no confirmed gaps"
+    auto_advance: true
+    fields_changed: [phase, verify.completed_at, last_updated]
+
+  verifying-to-eliciting:
+    from: verifying
+    to: eliciting
+    triggered_by: verify-skill
+    requires: "VERIFICATION-REPORT.md confirms spec drift requiring elicit addendum"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  verifying-to-architecture:
+    from: verifying
+    to: architecture
+    triggered_by: verify-skill
+    requires: "VERIFICATION-REPORT.md confirms missing implementation"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  verifying-to-triaging:
+    from: verifying
+    to: triaging
+    triggered_by: verify-skill
+    requires: "VERIFICATION-REPORT.md surfaces items needing categorization"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  # --- terminal cycle ---
+
+  complete-to-idle:
+    from: complete
+    to: idle
+    triggered_by: orchestrator
+    requires: null
+    auto_advance: false
+    fields_changed: [phase, sprint, wave, last_updated]

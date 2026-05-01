@@ -1,165 +1,144 @@
-"use strict";
+#!/usr/bin/env node
+// validate-plugin.js — schema-checks plugin.json, every SKILL.md
+// frontmatter, every command file, and every artifact template renders
+// without missing bindings against a fixture.
+//
+// Exits 0 on green, non-zero on any failure with a clear list.
 
-const fs = require("fs");
-const path = require("path");
+import { readFile, readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+import yaml from "js-yaml";
 
-const PLUGIN_ROOT = path.resolve(__dirname, "..");
-let totalChecks = 0;
-let totalPassed = 0;
-let totalFailed = 0;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_ROOT = resolve(__dirname, "..");
 
-function report(name, pass, detail) {
-  totalChecks++;
-  if (pass) {
-    totalPassed++;
-    console.log(`  PASS  ${name}`);
-  } else {
-    totalFailed++;
-    console.log(`  FAIL  ${name} — ${detail}`);
-  }
+const failures = [];
+
+function fail(msg) {
+  failures.push(msg);
 }
 
-// --- CHECK 1: plugin.json parses as valid JSON ---
-
-function checkPluginJson() {
-  console.log("\nCheck 1: plugin.json is valid JSON");
-
-  const pluginJsonPath = path.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json");
-  if (!fs.existsSync(pluginJsonPath)) {
-    report("plugin.json exists", false, "File not found");
-    return null;
-  }
-
+async function checkPluginManifest() {
+  const path = join(PLUGIN_ROOT, ".claude-plugin/plugin.json");
+  if (!existsSync(path)) return fail(`missing ${path}`);
+  const raw = await readFile(path, "utf8");
+  let json;
   try {
-    const content = fs.readFileSync(pluginJsonPath, "utf8");
-    const parsed = JSON.parse(content);
-    report("plugin.json parses", true);
-    return parsed;
-  } catch (e) {
-    report("plugin.json parses", false, e.message);
-    return null;
+    json = JSON.parse(raw);
+  } catch (err) {
+    return fail(`plugin.json parse: ${err.message}`);
   }
+  for (const k of ["name", "version", "description", "author"]) {
+    if (!json[k]) fail(`plugin.json missing ${k}`);
+  }
+  if (json.name !== "essense-flow") fail(`plugin.json name must be "essense-flow"`);
 }
 
-// --- CHECK 2: All commands have corresponding .md files ---
-
-function checkCommands(plugin) {
-  console.log("\nCheck 2: Commands reference existing files");
-
-  if (!plugin || !plugin.commands) {
-    report("commands section exists", false, "No commands in plugin.json");
-    return;
-  }
-
-  for (const cmd of plugin.commands) {
-    const cmdPath = path.join(PLUGIN_ROOT, cmd.file);
-    const exists = fs.existsSync(cmdPath);
-    report(`command "${cmd.name}" → ${cmd.file}`, exists, exists ? undefined : "File not found");
-  }
-}
-
-// --- CHECK 3: All skills have SKILL.md ---
-
-function checkSkills(plugin) {
-  console.log("\nCheck 3: Skills reference existing SKILL.md files");
-
-  if (!plugin || !plugin.skills) {
-    report("skills section exists", false, "No skills in plugin.json");
-    return;
-  }
-
-  for (const skill of plugin.skills) {
-    const skillPath = path.join(PLUGIN_ROOT, skill.file);
-    const exists = fs.existsSync(skillPath);
-    report(`skill "${skill.name}" → ${skill.file}`, exists, exists ? undefined : "File not found");
-  }
-}
-
-// --- CHECK 4: hooks.json exists and references valid scripts ---
-
-function checkHooks(plugin) {
-  console.log("\nCheck 4: Hooks reference existing scripts");
-
-  if (!plugin || !plugin.hooks) {
-    report("hooks field exists", false, "No hooks reference in plugin.json");
-    return;
-  }
-
-  const hooksPath = path.join(PLUGIN_ROOT, plugin.hooks);
-  if (!fs.existsSync(hooksPath)) {
-    report("hooks.json exists", false, `${plugin.hooks} not found`);
-    return;
-  }
-
-  try {
-    const hooksContent = fs.readFileSync(hooksPath, "utf8");
-    const hooks = JSON.parse(hooksContent);
-    report("hooks.json parses", true);
-
-    // Check each hook command references an existing script
-    if (hooks.hooks) {
-      for (const [event, entries] of Object.entries(hooks.hooks)) {
-        for (const entry of entries) {
-          for (const hook of entry.hooks || []) {
-            if (hook.command) {
-              // Extract script path from command (e.g., "bash hooks/scripts/context-inject.sh")
-              const parts = hook.command.split(" ");
-              const scriptPath = parts[parts.length - 1];
-              const fullPath = path.join(PLUGIN_ROOT, scriptPath);
-              const exists = fs.existsSync(fullPath);
-              report(`hook ${event} → ${scriptPath}`, exists, exists ? undefined : "Script not found");
-            }
-          }
-        }
-      }
+async function checkSkills() {
+  const skillsDir = join(PLUGIN_ROOT, "skills");
+  const entries = (await readdir(skillsDir, { withFileTypes: true }))
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+  if (entries.length < 9) fail(`expected ≥9 skill directories, found ${entries.length}`);
+  for (const skill of entries) {
+    const path = join(skillsDir, skill, "SKILL.md");
+    if (!existsSync(path)) {
+      fail(`skill "${skill}" missing SKILL.md`);
+      continue;
     }
-  } catch (e) {
-    report("hooks.json parses", false, e.message);
+    const raw = await readFile(path, "utf8");
+    const fm = raw.match(/^---\n([\s\S]+?)\n---/);
+    if (!fm) {
+      fail(`skill "${skill}" SKILL.md missing frontmatter`);
+      continue;
+    }
+    let parsed;
+    try {
+      parsed = yaml.load(fm[1]);
+    } catch (err) {
+      fail(`skill "${skill}" frontmatter parse: ${err.message}`);
+      continue;
+    }
+    for (const k of ["name", "description", "version", "schema_version"]) {
+      if (!parsed[k]) fail(`skill "${skill}" frontmatter missing ${k}`);
+    }
+    if (parsed.name !== skill) fail(`skill "${skill}" name "${parsed.name}" mismatches directory`);
   }
 }
 
-// --- CHECK 5: Run self-test ---
-
-function checkSelfTest() {
-  console.log("\nCheck 5: Self-test script exists");
-
-  const selfTestPath = path.join(PLUGIN_ROOT, "scripts", "self-test.js");
-  const exists = fs.existsSync(selfTestPath);
-  report("scripts/self-test.js exists", exists, exists ? undefined : "File not found");
-}
-
-// --- CHECK 6: Version consistency ---
-
-function checkVersion(plugin) {
-  console.log("\nCheck 6: Version is set");
-
-  if (!plugin || !plugin.version) {
-    report("version field", false, "No version in plugin.json");
-    return;
+async function checkCommands() {
+  const commandsDir = join(PLUGIN_ROOT, "commands");
+  const entries = (await readdir(commandsDir)).filter((f) => f.endsWith(".md"));
+  if (entries.length < 12) fail(`expected ≥12 commands, found ${entries.length}`);
+  for (const f of entries) {
+    const raw = await readFile(join(commandsDir, f), "utf8");
+    if (!raw.startsWith("---\n")) fail(`command ${f} missing frontmatter`);
+    if (!/description:\s*\S/.test(raw)) fail(`command ${f} missing description`);
   }
-
-  report(`version: ${plugin.version}`, plugin.version === "0.1.0", plugin.version !== "0.1.0" ? `Expected 0.1.0, got ${plugin.version}` : undefined);
 }
 
-// --- Main ---
-
-console.log("essense-flow Plugin Validation");
-console.log("=".repeat(40));
-
-const plugin = checkPluginJson();
-checkCommands(plugin);
-checkSkills(plugin);
-checkHooks(plugin);
-checkSelfTest();
-checkVersion(plugin);
-
-console.log("\n" + "=".repeat(40));
-console.log(`Total: ${totalChecks} checks, ${totalPassed} passed, ${totalFailed} failed`);
-
-if (totalFailed === 0) {
-  console.log("\nPlugin is ready to install.");
-} else {
-  console.log(`\nPlugin has ${totalFailed} issue(s) to fix.`);
+async function checkReferences() {
+  for (const f of ["transitions.yaml", "phase-command-map.yaml", "principles.md"]) {
+    const path = join(PLUGIN_ROOT, "references", f);
+    if (!existsSync(path)) fail(`missing references/${f}`);
+  }
 }
 
-process.exit(totalFailed > 0 ? 1 : 0);
+async function checkDefaults() {
+  for (const f of ["state.yaml", "config.yaml"]) {
+    const path = join(PLUGIN_ROOT, "defaults", f);
+    if (!existsSync(path)) fail(`missing defaults/${f}`);
+  }
+}
+
+async function checkHooks() {
+  const path = join(PLUGIN_ROOT, "hooks/hooks.json");
+  if (!existsSync(path)) return fail(`missing hooks/hooks.json`);
+  const raw = await readFile(path, "utf8");
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch (err) {
+    return fail(`hooks.json parse: ${err.message}`);
+  }
+  if (!json.hooks) fail(`hooks.json missing "hooks" key`);
+  for (const event of ["UserPromptSubmit", "SessionStart", "Stop"]) {
+    if (!json.hooks[event]) fail(`hooks.json missing event ${event}`);
+  }
+  for (const script of ["context-inject.js", "next-step.js"]) {
+    const p = join(PLUGIN_ROOT, "hooks/scripts", script);
+    if (!existsSync(p)) fail(`missing hooks/scripts/${script}`);
+  }
+}
+
+async function checkLib() {
+  for (const f of ["state.js", "finalize.js", "brief.js", "dispatch.js", "verify-disk.js"]) {
+    const p = join(PLUGIN_ROOT, "lib", f);
+    if (!existsSync(p)) fail(`missing lib/${f}`);
+  }
+}
+
+async function main() {
+  await checkPluginManifest();
+  await checkSkills();
+  await checkCommands();
+  await checkReferences();
+  await checkDefaults();
+  await checkHooks();
+  await checkLib();
+  if (failures.length > 0) {
+    console.error("validate-plugin FAIL:");
+    for (const m of failures) console.error(`  - ${m}`);
+    process.exit(1);
+  }
+  console.log("validate-plugin OK");
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error("validate-plugin crashed:", err);
+  process.exit(1);
+});

@@ -1,7 +1,4 @@
 node_modules/
+.DS_Store
+*.log
 .pipeline/
-.pipeline-archive/
-.claude/
-.serena/
-caveman/
-tests/__tmp_*/

@@ -1,52 +1,73 @@
-# essense-flow phase → command map (canonical reference)
-#
-# Single source of truth describing which command should run for each
-# pipeline phase. Two consumers exist with slightly different semantics:
-#
-#   - skills/context/scripts/next-runner.js — informational ("what command
-#     should I run next given phase X?"). Includes human-gate phases
-#     (eliciting, verifying) that need dialogue.
-#
-#   - essense-autopilot plugin (autopilot.js DEFAULT_CONFIG.flow) — operational
-#     ("what command should I auto-fire when phase X persists at stop?").
-#     EXCLUDES human-gate phases (those live in autopilot.human_gates) and
-#     terminal phases (autopilot.terminal). Otherwise mirrors this file.
-#
-# Phases ending in `-ing` are skill-mid-flight states — re-invoke the same
-# skill to resume. Other phases are milestones — advance to the next skill.
-#
-# When adding a new phase to references/transitions.yaml, you MUST also add
-# a corresponding entry here AND in the consumers above (or place it in
-# autopilot.human_gates / autopilot.terminal as appropriate). The cross-check
-# test in tests/phase-command-map.test.js will fail if you don't.
+# Phase → recommended next slash command.
+# Read by the next-step hook to surface the cue. Suggestion only —
+# the user can ignore, run something else, or run nothing.
 
 schema_version: 1
 
-# phase → command. Used by next-runner verbatim and by autopilot for
-# non-gated, non-terminal phases.
-phase_command:
-  idle:                 "/elicit"
-  eliciting:            "/elicit"
-  research:             "/triage"
-  triaging:             "/triage"
-  "requirements-ready": "/architect"
-  architecture:         "/architect"
-  decomposing:          "/architect"
-  sprinting:            "/build"
-  "sprint-complete":    "/review"
-  reviewing:            "/triage"
-  verifying:            "/verify"
-  complete:             "/status"
+phases:
 
-# Phases that must NOT be auto-advanced by essense-autopilot — they need
-# human input. autopilot.human_gates in DEFAULT_CONFIG.flow MUST mirror
-# this list (autopilot is an opt-in separate plugin, so duplication is
-# unavoidable; cross-check test enforces parity in dev).
-autopilot_human_gates:
-  - idle
-  - eliciting
-  - verifying
+  idle:
+    next: /elicit
+    description: "Start a new pipeline cycle by eliciting the project pitch into a build-ready spec."
+    inputs: []
 
-# Pipeline-done phases. autopilot.terminal MUST mirror.
-autopilot_terminal:
-  - complete
+  eliciting:
+    next: /elicit
+    description: "Resume elicitation — continue refining SPEC.md until build-ready."
+    inputs: [".pipeline/elicitation/SPEC.md"]
+
+  research:
+    next: /research
+    description: "Resume research — perspective agents synthesize REQ.md."
+    inputs: [".pipeline/elicitation/SPEC.md"]
+
+  triaging:
+    next: /triage
+    description: "Triage open items — categorize gaps and findings, route to upstream phase."
+    inputs:
+      - ".pipeline/elicitation/SPEC.md"
+      - ".pipeline/requirements/REQ.md"
+
+  requirements-ready:
+    next: /architect
+    description: "Decompose requirements into closed task specs and a sprint manifest."
+    inputs:
+      - ".pipeline/elicitation/SPEC.md"
+      - ".pipeline/requirements/REQ.md"
+
+  architecture:
+    next: /architect
+    description: "Resume architecture — close decisions, decompose to leaves, package task specs."
+    inputs: [".pipeline/architecture/ARCH.md"]
+
+  decomposing:
+    next: /architect
+    description: "Resume decomposition wave — classify nodes as leaves or split further."
+    inputs: [".pipeline/architecture/ARCH.md"]
+
+  sprinting:
+    next: /build
+    description: "Execute the sprint — dispatch task agents in dependency-ordered waves."
+    inputs: [".pipeline/architecture/sprints/<n>/manifest.yaml"]
+
+  sprint-complete:
+    next: /review
+    description: "Review the sprint output — adversarial agents hunt bugs and drift with path evidence."
+    inputs: [".pipeline/build/sprints/<n>/SPRINT-REPORT.md"]
+
+  reviewing:
+    next: /review
+    description: "Resume review — finish validating findings against disk."
+    inputs: [".pipeline/review/sprints/<n>/QA-REPORT.md"]
+
+  verifying:
+    next: /verify
+    description: "Top-down spec compliance audit — every spec decision verified against implementation."
+    inputs:
+      - ".pipeline/elicitation/SPEC.md"
+      - ".pipeline/architecture/ARCH.md"
+
+  complete:
+    next: /status
+    description: "Cycle complete. Run /status to inspect, or /init to begin a new cycle."
+    inputs: [".pipeline/state.yaml"]

@@ -1,220 +1,142 @@
-"use strict";
-const { test, describe } = require("node:test");
-const assert = require("node:assert/strict");
-const { spawnSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const { createTmpPipeline } = require("./fixtures/pipeline-factory");
+// hooks.test.js — both hooks fail-soft on missing/corrupt state.
+// Asserts exit 0 in every case + zero blocking branches.
 
-const ROOT = path.resolve(__dirname, "..");
-const HOOKS_DIR = path.join(ROOT, "hooks", "scripts");
-const HOOKS_JSON = path.join(ROOT, "hooks", "hooks.json");
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
-test("FR-001: hooks.json has all 4 hooks with correct event bindings", () => {
-  const hooks = JSON.parse(fs.readFileSync(HOOKS_JSON, "utf8"));
-  const h = hooks.hooks;
-  assert.ok(h.SessionStart, "SessionStart key must exist");
-  assert.ok(h.UserPromptSubmit, "UserPromptSubmit key must exist");
-  assert.ok(h.PreToolUse, "PreToolUse key must exist");
-  assert.ok(h.PostToolUse, "PostToolUse key must exist");
-  assert.ok(!h.Notification, "Notification key must be absent");
-  // verify review-guard is on PreToolUse
-  const preToolHooks = h.PreToolUse.flatMap(e => e.hooks);
-  assert.ok(preToolHooks.some(h => h.command.includes("review-guard")), "review-guard must be on PreToolUse");
-});
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_ROOT = resolve(__dirname, "..");
 
-test("FR-002: session-orient exits 0 with valid pipeline state", () => {
-  const { dir, cleanup } = createTmpPipeline({ phase: "sprinting" });
+const CONTEXT_INJECT = join(PLUGIN_ROOT, "hooks/scripts/context-inject.js");
+const NEXT_STEP = join(PLUGIN_ROOT, "hooks/scripts/next-step.js");
+
+async function tmpProject() {
+  return mkdtemp(join(tmpdir(), "essense-flow-hooks-"));
+}
+
+function runHook(script, cwd) {
+  return spawnSync("node", [script], {
+    cwd,
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+}
+
+test("context-inject: missing state.yaml exits 0 with degraded warning", async () => {
+  const root = await tmpProject();
   try {
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0, "exit code must be 0");
+    const r = runHook(CONTEXT_INJECT, root);
+    assert.equal(r.status, 0, "must exit 0 — fail-soft");
+    assert.match(r.stdout, /<essense-flow-context>/);
+    assert.match(r.stdout, /DEGRADED/);
+    assert.match(r.stdout, /missing/);
+    assert.match(r.stdout, /tool calls are NOT blocked/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("FR-003: session-orient exits within 5100ms", () => {
-  const { dir, cleanup } = createTmpPipeline();
+test("context-inject: corrupt state.yaml exits 0 with degraded:corrupt warning", async () => {
+  const root = await tmpProject();
   try {
-    const start = Date.now();
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    const elapsed = Date.now() - start;
-    assert.ok(result.status !== null, "process must not time out");
-    assert.ok(elapsed < 5200, `elapsed ${elapsed}ms exceeds 5200ms`);
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    await writeFile(join(root, ".pipeline/state.yaml"), "::garbage::", "utf8");
+    const r = runHook(CONTEXT_INJECT, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /DEGRADED/);
+    assert.match(r.stdout, /corrupt/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("FR-004: missing state.yaml emits [HOOK WARNING to stdout", () => {
-  const { dir, pipelineDir, cleanup } = createTmpPipeline();
+test("context-inject: valid state surfaces phase + canonical artifact paths", async () => {
+  const root = await tmpProject();
   try {
-    // remove state.yaml after creation
-    fs.unlinkSync(path.join(pipelineDir, "state.yaml"));
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0, "must still exit 0");
-    assert.ok(result.stdout.includes("[HOOK WARNING"), "stdout must contain [HOOK WARNING");
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    await writeFile(
+      join(root, ".pipeline/state.yaml"),
+      "schema_version: 1\nphase: eliciting\nlast_updated: 2026-05-01T00:00:00Z\n",
+      "utf8",
+    );
+    const r = runHook(CONTEXT_INJECT, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /phase: eliciting/);
+    assert.match(r.stdout, /canonical artifacts/);
+    assert.match(r.stdout, /SPEC\.md/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("session-orient surfaces state drift on invalid phase value (issue B repro)", () => {
-  // Repro of project B's actual state corruption: phase: "triaged" lands in
-  // state.yaml (not a canonical phase). Session-orient should surface this
-  // visibly so the user sees it before any skill consumes the bad state.
-  const { dir, pipelineDir, cleanup } = createTmpPipeline({ phase: "triaged" });
+test("next-step: degraded state recommends /heal, exits 0", async () => {
+  const root = await tmpProject();
   try {
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8",
-    });
-    assert.strictEqual(result.status, 0, "must exit 0");
-    assert.ok(result.stdout.includes("state drift detected"), `stdout must include drift banner; got: ${result.stdout}`);
-    assert.ok(result.stdout.includes("phase-valid"), "stdout must cite phase-valid finding");
-    assert.ok(result.stdout.includes("triaged"), "stdout must include the corrupt phase value");
+    const r = runHook(NEXT_STEP, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /<essense-flow-next>/);
+    assert.match(r.stdout, /degraded/);
+    assert.match(r.stdout, /\/heal/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("session-orient does NOT print drift banner on clean state", () => {
-  // Negative — drift banner must not fire when state is canonical.
-  const { dir, cleanup } = createTmpPipeline({ phase: "idle" });
+test("next-step: idle phase recommends /elicit", async () => {
+  const root = await tmpProject();
   try {
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8",
-    });
-    assert.strictEqual(result.status, 0);
-    assert.ok(!result.stdout.includes("state drift detected"), `clean state must not surface drift banner; got: ${result.stdout}`);
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    await writeFile(
+      join(root, ".pipeline/state.yaml"),
+      "schema_version: 1\nphase: idle\nlast_updated: 2026-05-01T00:00:00Z\n",
+      "utf8",
+    );
+    const r = runHook(NEXT_STEP, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /phase: idle/);
+    assert.match(r.stdout, /\/elicit/);
+    assert.match(r.stdout, /suggestion only/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("FR-005: CLAUDE_SESSION_TYPE=subagent → empty stdout", { skip: process.env.SKIP_SUBAGENT_TEST === "1" }, () => {
-  const { dir, cleanup } = createTmpPipeline();
+test("next-step: complete phase recommends /status", async () => {
+  const root = await tmpProject();
   try {
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "session-orient.js")], {
-      cwd: dir,
-      timeout: 5100,
-      encoding: "utf8",
-      env: { ...process.env, CLAUDE_SESSION_TYPE: "subagent" }
-    });
-    assert.strictEqual(result.status, 0, "must exit 0");
-    assert.strictEqual(result.stdout.trim(), "", "stdout must be empty");
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    await writeFile(
+      join(root, ".pipeline/state.yaml"),
+      "schema_version: 1\nphase: complete\nlast_updated: 2026-05-01T00:00:00Z\n",
+      "utf8",
+    );
+    const r = runHook(NEXT_STEP, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /\/status/);
   } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });
 
-test("FR-008: review-guard blocks path traversal during reviewing phase", () => {
-  const { dir, cleanup } = createTmpPipeline({ phase: "reviewing" });
+test("hooks never exit non-zero — even with read-only filesystem-like errors", async () => {
+  // Invoke from a path we know exists but where state file is malformed YAML
+  // that yaml.load will throw on AFTER initial parse. The hook must still exit 0.
+  const root = await tmpProject();
   try {
-    const input = JSON.stringify({
-      tool_name: "Write",
-      tool_input: { file_path: ".pipeline/reviews/sprint-01/../../forbidden.txt" }
-    });
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "review-guard.js")], {
-      cwd: dir,
-      input,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0);
-    const out = JSON.parse(result.stdout.trim());
-    assert.strictEqual(out.decision, "block");
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    // YAML that loads as a non-object (e.g. just a string).
+    await writeFile(join(root, ".pipeline/state.yaml"), "just a string\n", "utf8");
+    const r1 = runHook(CONTEXT_INJECT, root);
+    const r2 = runHook(NEXT_STEP, root);
+    assert.equal(r1.status, 0);
+    assert.equal(r2.status, 0);
   } finally {
-    cleanup();
-  }
-});
-
-test("FR-008: review-guard allows valid path during reviewing phase", () => {
-  const { dir, cleanup } = createTmpPipeline({ phase: "reviewing" });
-  try {
-    const input = JSON.stringify({
-      tool_name: "Write",
-      tool_input: { file_path: ".pipeline/reviews/sprint-01/valid.md" }
-    });
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "review-guard.js")], {
-      cwd: dir,
-      input,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0);
-    // stdout should be empty or {"decision":"allow"}
-    const raw = result.stdout.trim();
-    if (raw) {
-      const out = JSON.parse(raw);
-      assert.strictEqual(out.decision, "allow");
-    }
-    // empty stdout also = allow
-  } finally {
-    cleanup();
-  }
-});
-
-test("FR-054: review-guard allows write to confirmed-findings.yaml during reviewing phase", () => {
-  const { dir, pipelineDir, cleanup } = createTmpPipeline({ phase: "reviewing" });
-  try {
-    // Create the reviews/sprint-01 dir so realpathSync succeeds
-    const sprintDir = path.join(pipelineDir, "reviews", "sprint-01");
-    fs.mkdirSync(sprintDir, { recursive: true });
-    const targetPath = path.join(sprintDir, "confirmed-findings.yaml");
-    const input = JSON.stringify({
-      tool_name: "Write",
-      tool_input: { file_path: targetPath }
-    });
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "review-guard.js")], {
-      cwd: dir,
-      input,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0);
-    const raw = result.stdout.trim();
-    if (raw) {
-      const out = JSON.parse(raw);
-      assert.strictEqual(out.decision, "allow", "confirmed-findings.yaml write must be allowed");
-    }
-    // empty stdout also = allow (hook exited without emitting block)
-  } finally {
-    cleanup();
-  }
-});
-
-test("FR-009: yaml-validate skips non-YAML files without error", () => {
-  const { dir, cleanup } = createTmpPipeline();
-  try {
-    const input = JSON.stringify({
-      tool_name: "Write",
-      tool_input: { file_path: path.join(dir, ".pipeline", "QA-REPORT.md") }
-    });
-    const result = spawnSync("node", [path.join(HOOKS_DIR, "yaml-validate.js")], {
-      cwd: dir,
-      input,
-      timeout: 5100,
-      encoding: "utf8"
-    });
-    assert.strictEqual(result.status, 0, "must exit 0 for .md file");
-    assert.strictEqual(result.stderr, "", "must have no stderr output");
-  } finally {
-    cleanup();
+    await rm(root, { recursive: true, force: true });
   }
 });

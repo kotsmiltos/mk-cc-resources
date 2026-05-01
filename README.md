@@ -6,7 +6,7 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 
 | Plugin | Version | What it does |
 |---|---|---|
-| **essense-flow** | 0.5.0 | Multi-phase AI development pipeline. `/architect` dispatcher routes between lightweight (DAG) and heavyweight (wave-based decomposition) flows by SPEC complexity. Atomic `finalize*` helpers across every phase-producing skill close the B-class autopilot loop hazard family. State machine, phase-aware context map, deterministic-before-LLM gate, propagating artifact contracts. |
+| **essense-flow** | 0.9.0 | Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, **no resource caps**. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Every SKILL.md carries the verbatim Conduct preamble + cites all 5 principles (Graceful-Degradation, Front-Loaded-Design, Fail-Soft, Diligent-Conduct, INST-13) — drift audited. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report re-validated against disk. v0.7.0 archived on `archive/essense-flow-v0.7`. |
 | **essense-autopilot** | 0.2.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold, unplanned sprints. Diagnostic stderr on every halt. Opt-in per project. |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
 | **thorough-mode** | 1.3.2 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`. Inject behavioral rules for thoroughness, doc checks, interactive questions. |
@@ -75,21 +75,22 @@ Then in any project:
 | Elicit | `/elicit` | Collaborative ideation — produces SPEC.md from a project pitch |
 | Research | `/research` | Multi-perspective research — produces REQ.md with testable acceptance criteria |
 | Triage | `/triage` | Categorizes findings, routes to the correct phase |
-| Architecture | `/architect` | Dispatcher routes by SPEC complexity. **Lightweight** (bug-fix / mechanical): 4-perspective swarm → DAG-based decomposition → sprint task specs. **Heavyweight** (new-feature / partial-rewrite / new-project): swarm → wave-based decomposition with `AskUserQuestion` design questions and convergence check, then sprint task specs. |
-| Build | `/build` | Executes task specs in dependency-ordered waves with per-wave test gate |
-| Review | `/review` | Adversarial QA agents validate built code against specs |
-| Verify | `/verify` | Top-down spec compliance check before marking complete |
+| Architecture | `/architect` | Decide → decompose → package. Closes every design decision before build starts. Produces ARCH.md + decisions index + closed task specs + sprint manifest. Every task spec is unambiguous — no "TBD," no "agent decides X." |
+| Build | `/build` | Executes task specs in dependency-ordered waves. **No concurrency cap.** Re-validates every agent's completion record against disk via `lib/verify-disk.js`; drift surfaces loudly. |
+| Review | `/review` | Adversarial QA. Findings carry verbatim path evidence; quotes re-validated against disk. Deterministic gate: `confirmed_unacknowledged_criticals == 0` advances; non-zero blocks. False-positive ledger remembers prior rejections. |
+| Verify | `/verify` | Top-down spec compliance audit. Every spec decision verified against implementation by reading code at the locator hint. `confirmed_gaps == 0` advances to complete. |
+| Heal | `/heal` | Pipeline self-heal. Picks up from any prior state — fresh project, mid-flight, prior tool's artifacts, code-without-spec. Walks artifacts, infers phase, proposes walk-forward via legal transitions on user confirm. |
 
 ### Hooks
 
-- **SessionStart** — orients new sessions to current pipeline state; surfaces state drift
-- **UserPromptSubmit** — phase-aware context injection
-- **PreToolUse** — review-guard prevents writes outside scope during reviewing phase
-- **PostToolUse** — yaml-validate confirms YAML files parse after Write/Edit
+Two advisory hooks. Both fail-soft — never block tool calls.
+
+- **UserPromptSubmit + SessionStart — context-inject** — surfaces phase, sprint, canonical artifact paths, any degradation warning. Continues on missing/corrupt state with a visible warning.
+- **Stop — next-step** — suggests the recommended next slash command for the current phase. Suggestion only; user is the gatekeeper.
 
 ### Commands
 
-`/init`, `/elicit`, `/research`, `/triage`, `/architect`, `/build`, `/review`, `/verify`, `/status`, `/next`, `/help`
+`/init`, `/elicit`, `/research`, `/triage`, `/architect`, `/build`, `/review`, `/verify`, `/heal`, `/status`, `/next`, `/help`
 
 ## essense-autopilot — Stop-Hook Autopilot
 

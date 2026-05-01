@@ -1,309 +1,113 @@
-"use strict";
+// dispatch.test.js — fan-out helpers, sentinel parsing, missing-signal
+// synthesis, quorum modes.
 
-const { describe, it, before, after } = require("node:test");
-const assert = require("node:assert/strict");
-const path = require("path");
-const fs = require("fs");
-const dispatch = require("../lib/dispatch");
+import { test } from "node:test";
+import assert from "node:assert/strict";
 
-const TMP_DIR = path.join(__dirname, "__tmp_dispatch__");
+import {
+  prepareBriefs,
+  parseReturn,
+  synthesizeMissing,
+  collateQuorum,
+} from "../lib/dispatch.js";
 
-// --- buildDependencyGraph ---
-
-describe("buildDependencyGraph", () => {
-  it("builds adjacency lists from task specs", () => {
-    const tasks = {
-      A: { dependsOn: [] },
-      B: { dependsOn: ["A"] },
-      C: { dependsOn: ["A"] },
-      D: { dependsOn: ["B", "C"] },
-    };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    assert.deepEqual(graph.taskIds.sort(), ["A", "B", "C", "D"]);
-    assert.ok(graph.adjacency["A"].includes("B"));
-    assert.ok(graph.adjacency["A"].includes("C"));
-    assert.deepEqual(graph.reverse["A"], []);
-    assert.deepEqual(graph.reverse["B"], ["A"]);
-    assert.deepEqual(graph.reverse["D"].sort(), ["B", "C"]);
-  });
-
-  it("handles tasks with no dependencies", () => {
-    const tasks = { X: { dependsOn: [] }, Y: { dependsOn: [] } };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    assert.deepEqual(graph.reverse["X"], []);
-    assert.deepEqual(graph.reverse["Y"], []);
-  });
-
-  it("throws on unknown dependency", () => {
-    const tasks = { A: { dependsOn: ["Z"] } };
-    assert.throws(() => dispatch.buildDependencyGraph(tasks), /unknown task "Z"/);
-  });
-
-  it("handles empty task map", () => {
-    const graph = dispatch.buildDependencyGraph({});
-    assert.deepEqual(graph.taskIds, []);
-  });
+test("prepareBriefs: builds prompts + sentinels for each lens", () => {
+  const r = prepareBriefs([
+    { lens: "correctness", brief: "B1" },
+    { lens: "drift", brief: "B2" },
+  ]);
+  assert.equal(r.ok, true);
+  assert.equal(r.briefs.length, 2);
+  assert.match(r.briefs[0].prompt, /correctness agent/);
+  assert.match(r.briefs[0].prompt, /B1/);
+  assert.equal(r.briefs[0].sentinel, "<<<ESSENSE-FLOW:correctness:END>>>");
 });
 
-// --- validateDAG ---
-
-describe("validateDAG", () => {
-  it("validates a valid DAG", () => {
-    const tasks = { A: { dependsOn: [] }, B: { dependsOn: ["A"] }, C: { dependsOn: ["B"] } };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const result = dispatch.validateDAG(graph);
-    assert.equal(result.valid, true);
-    assert.deepEqual(result.order, ["A", "B", "C"]);
-  });
-
-  it("detects a simple cycle", () => {
-    const graph = {
-      adjacency: { A: ["B"], B: ["C"], C: ["A"] },
-      reverse: { A: ["C"], B: ["A"], C: ["B"] },
-      taskIds: ["A", "B", "C"],
-    };
-    const result = dispatch.validateDAG(graph);
-    assert.equal(result.valid, false);
-    assert.ok(result.cycle.length > 0);
-    assert.ok(result.cycle.includes("A"));
-  });
-
-  it("detects self-dependency", () => {
-    const graph = {
-      adjacency: { A: ["A"] },
-      reverse: { A: ["A"] },
-      taskIds: ["A"],
-    };
-    const result = dispatch.validateDAG(graph);
-    assert.equal(result.valid, false);
-    assert.deepEqual(result.cycle, ["A"]);
-  });
-
-  it("handles empty graph", () => {
-    const result = dispatch.validateDAG({ adjacency: {}, reverse: {}, taskIds: [] });
-    assert.equal(result.valid, true);
-    assert.deepEqual(result.order, []);
-  });
-
-  it("produces valid topological order for diamond dependency", () => {
-    const tasks = {
-      A: { dependsOn: [] },
-      B: { dependsOn: ["A"] },
-      C: { dependsOn: ["A"] },
-      D: { dependsOn: ["B", "C"] },
-    };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const result = dispatch.validateDAG(graph);
-    assert.equal(result.valid, true);
-    // A must come before B, C; B and C must come before D
-    const order = result.order;
-    assert.ok(order.indexOf("A") < order.indexOf("B"));
-    assert.ok(order.indexOf("A") < order.indexOf("C"));
-    assert.ok(order.indexOf("B") < order.indexOf("D"));
-    assert.ok(order.indexOf("C") < order.indexOf("D"));
-  });
+test("prepareBriefs: malformed spec returns ok:false", () => {
+  const r = prepareBriefs([{ lens: "x" }]);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /needs \{lens, brief\}/);
 });
 
-// --- constructWaves ---
-
-describe("constructWaves", () => {
-  it("groups independent tasks into one wave", () => {
-    const tasks = { A: { dependsOn: [] }, B: { dependsOn: [] }, C: { dependsOn: [] } };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const { order } = dispatch.validateDAG(graph);
-    const waves = dispatch.constructWaves(graph, order);
-    assert.equal(waves.length, 1);
-    assert.equal(waves[0].length, 3);
+test("parseReturn: sentinel found returns body trimmed", () => {
+  const sentinel = "<<<END>>>";
+  const r = parseReturn({
+    raw: "the body here\nmore body\n<<<END>>>\nignore after",
+    sentinel,
   });
-
-  it("produces correct waves for linear chain", () => {
-    const tasks = { A: { dependsOn: [] }, B: { dependsOn: ["A"] }, C: { dependsOn: ["B"] } };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const { order } = dispatch.validateDAG(graph);
-    const waves = dispatch.constructWaves(graph, order);
-    assert.equal(waves.length, 3);
-    assert.deepEqual(waves[0], ["A"]);
-    assert.deepEqual(waves[1], ["B"]);
-    assert.deepEqual(waves[2], ["C"]);
-  });
-
-  it("produces correct waves for diamond dependency", () => {
-    const tasks = {
-      A: { dependsOn: [] },
-      B: { dependsOn: ["A"] },
-      C: { dependsOn: ["A"] },
-      D: { dependsOn: ["B", "C"] },
-    };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const { order } = dispatch.validateDAG(graph);
-    const waves = dispatch.constructWaves(graph, order);
-    assert.equal(waves.length, 3);
-    assert.deepEqual(waves[0], ["A"]);
-    assert.equal(waves[1].length, 2);
-    assert.ok(waves[1].includes("B") && waves[1].includes("C"));
-    assert.deepEqual(waves[2], ["D"]);
-  });
-
-  it("handles A->B, B->C, A->C (transitive) correctly", () => {
-    const tasks = {
-      A: { dependsOn: [] },
-      B: { dependsOn: ["A"] },
-      C: { dependsOn: ["A", "B"] },
-    };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const { order } = dispatch.validateDAG(graph);
-    const waves = dispatch.constructWaves(graph, order);
-    assert.equal(waves.length, 3);
-    assert.deepEqual(waves[0], ["A"]);
-    assert.deepEqual(waves[1], ["B"]);
-    assert.deepEqual(waves[2], ["C"]);
-  });
-
-  it("handles single task", () => {
-    const tasks = { A: { dependsOn: [] } };
-    const graph = dispatch.buildDependencyGraph(tasks);
-    const { order } = dispatch.validateDAG(graph);
-    const waves = dispatch.constructWaves(graph, order);
-    assert.equal(waves.length, 1);
-    assert.deepEqual(waves[0], ["A"]);
-  });
-
-  it("handles empty graph", () => {
-    const waves = dispatch.constructWaves({ adjacency: {}, reverse: {}, taskIds: [] }, []);
-    assert.deepEqual(waves, []);
-  });
+  assert.equal(r.ok, true);
+  assert.equal(r.body, "the body here\nmore body");
 });
 
-// --- dispatch state management ---
-
-describe("createDispatchState", () => {
-  it("creates initial state with phase and batch", () => {
-    const state = dispatch.createDispatchState("research", 0);
-    assert.equal(state.phase, "research");
-    assert.equal(state.batch, 0);
-    assert.deepEqual(state.agents, []);
-    assert.equal(state.verifier, null);
-    assert.ok(state.created_at);
-  });
+test("parseReturn: missing sentinel returns ok:false (agent crashed)", () => {
+  const r = parseReturn({ raw: "some body without terminator", sentinel: "<<<END>>>" });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /sentinel not found/);
 });
 
-describe("updateAgentState", () => {
-  it("adds a new agent to state", () => {
-    const state = dispatch.createDispatchState("research", 0);
-    dispatch.updateAgentState(state, "agent-1", { status: "PENDING" });
-    assert.equal(state.agents.length, 1);
-    assert.equal(state.agents[0].id, "agent-1");
-  });
-
-  it("updates existing agent status", () => {
-    const state = dispatch.createDispatchState("research", 0);
-    dispatch.updateAgentState(state, "agent-1", { status: "PENDING" });
-    dispatch.updateAgentState(state, "agent-1", { status: "RUNNING" });
-    assert.equal(state.agents.length, 1);
-    assert.equal(state.agents[0].status, "RUNNING");
-    assert.ok(state.agents[0].started_at);
-  });
-
-  it("sets completed_at on COMPLETE", () => {
-    const state = dispatch.createDispatchState("research", 0);
-    dispatch.updateAgentState(state, "agent-1", { status: "RUNNING" });
-    dispatch.updateAgentState(state, "agent-1", { status: "COMPLETE", output_path: "out.xml" });
-    assert.ok(state.agents[0].completed_at);
-    assert.equal(state.agents[0].output_path, "out.xml");
-  });
-
-  it("sets completed_at on FAILED", () => {
-    const state = dispatch.createDispatchState("research", 0);
-    dispatch.updateAgentState(state, "agent-1", { status: "FAILED" });
-    assert.ok(state.agents[0].completed_at);
-  });
+test("synthesizeMissing: produces synthetic finding shape", () => {
+  const f = synthesizeMissing({ lens: "correctness", reason: "killed" });
+  assert.equal(f.lens, "correctness");
+  assert.equal(f.status, "crashed");
+  assert.equal(f.synthetic, true);
+  assert.match(f.reason, /killed/);
 });
 
-describe("getWaveStatus", () => {
-  it("reports all pending when no agents registered", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    const waves = [["A", "B"], ["C"]];
-    const status = dispatch.getWaveStatus(state, 0, waves);
-    assert.equal(status.complete, false);
-    assert.equal(status.pending, 2);
+test("collateQuorum all-required: missing lens flags ok:false", () => {
+  const c = collateQuorum({
+    results: [{ lens: "a", body: "x", ok: true }],
+    expectedLenses: ["a", "b"],
+    mode: "all-required",
   });
-
-  it("reports complete when all agents done", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    dispatch.updateAgentState(state, "A", { status: "COMPLETE" });
-    dispatch.updateAgentState(state, "B", { status: "COMPLETE" });
-    const waves = [["A", "B"], ["C"]];
-    const status = dispatch.getWaveStatus(state, 0, waves);
-    assert.equal(status.complete, true);
-    assert.equal(status.completed, 2);
-  });
-
-  it("handles out-of-range wave index", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    const status = dispatch.getWaveStatus(state, 5, [["A"]]);
-    assert.equal(status.complete, true);
-  });
+  assert.equal(c.ok, false);
+  assert.deepEqual(c.missing, ["b"]);
+  // Synthetic finding for b is ALWAYS appended — never silently dropped.
+  assert.ok(c.results.some((r) => r.lens === "b" && r.synthetic === true));
 });
 
-describe("canAdvanceWave", () => {
-  it("returns true when wave is complete and no verifier", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    dispatch.updateAgentState(state, "A", { status: "COMPLETE" });
-    const waves = [["A"], ["B"]];
-    assert.equal(dispatch.canAdvanceWave(state, 0, waves), true);
+test("collateQuorum tolerant: 1 missing of 3 lenses still ok:true", () => {
+  const c = collateQuorum({
+    results: [
+      { lens: "a", body: "x", ok: true },
+      { lens: "b", body: "y", ok: true },
+    ],
+    expectedLenses: ["a", "b", "c"],
+    mode: "tolerant",
   });
-
-  it("returns false when wave has running agents", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    dispatch.updateAgentState(state, "A", { status: "RUNNING" });
-    const waves = [["A"], ["B"]];
-    assert.equal(dispatch.canAdvanceWave(state, 0, waves), false);
-  });
-
-  it("returns false when verifier is pending", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    dispatch.updateAgentState(state, "A", { status: "COMPLETE" });
-    state.verifier = { status: "PENDING" };
-    const waves = [["A"], ["B"]];
-    assert.equal(dispatch.canAdvanceWave(state, 0, waves), false);
-  });
-
-  it("returns true when verifier is complete", () => {
-    const state = dispatch.createDispatchState("build", 0);
-    dispatch.updateAgentState(state, "A", { status: "COMPLETE" });
-    state.verifier = { status: "COMPLETE" };
-    const waves = [["A"], ["B"]];
-    assert.equal(dispatch.canAdvanceWave(state, 0, waves), true);
-  });
+  assert.equal(c.ok, true);
+  assert.deepEqual(c.missing, ["c"]);
+  assert.ok(c.results.some((r) => r.lens === "c" && r.synthetic === true));
 });
 
-// --- persistence ---
-
-describe("dispatch state persistence", () => {
-  before(() => {
-    fs.mkdirSync(TMP_DIR, { recursive: true });
+test("collateQuorum tolerant: 2 missing of 3 lenses fails the gate", () => {
+  const c = collateQuorum({
+    results: [{ lens: "a", body: "x", ok: true }],
+    expectedLenses: ["a", "b", "c"],
+    mode: "tolerant",
   });
+  assert.equal(c.ok, false);
+});
 
-  after(() => {
-    fs.rmSync(TMP_DIR, { recursive: true, force: true });
+test("collateQuorum task-by-task: never aggregates ok across tasks", () => {
+  const c = collateQuorum({
+    results: [
+      { lens: "task-1", ok: true, body: "ok" },
+      { lens: "task-2", ok: false, reason: "boom" },
+    ],
+    expectedLenses: ["task-1", "task-2", "task-3"],
+    mode: "task-by-task",
   });
+  assert.equal(c.ok, true); // mode never gates aggregate
+  assert.ok(c.missing.includes("task-3"));
+  assert.ok(c.results.some((r) => r.lens === "task-3" && r.synthetic === true));
+});
 
-  it("persists and loads dispatch state", () => {
-    const state = dispatch.createDispatchState("architecture", 1);
-    dispatch.updateAgentState(state, "arch-infra", { status: "COMPLETE" });
-    dispatch.persistDispatchState(state, TMP_DIR);
-
-    const loaded = dispatch.loadDispatchState(TMP_DIR);
-    assert.equal(loaded.phase, "architecture");
-    assert.equal(loaded.batch, 1);
-    assert.equal(loaded.agents.length, 1);
-    assert.equal(loaded.agents[0].id, "arch-infra");
+test("collateQuorum: unknown mode surfaces the error", () => {
+  const c = collateQuorum({
+    results: [],
+    expectedLenses: ["a"],
+    mode: "made-up",
   });
-
-  it("returns null when no state file exists", () => {
-    const emptyDir = path.join(TMP_DIR, "empty");
-    fs.mkdirSync(emptyDir, { recursive: true });
-    const loaded = dispatch.loadDispatchState(emptyDir);
-    assert.equal(loaded, null);
-  });
+  assert.equal(c.ok, false);
+  assert.match(c.reason, /unknown quorum mode/);
 });

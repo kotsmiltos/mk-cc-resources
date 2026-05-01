@@ -1,28 +1,9 @@
 ---
-name: status
-description: Display current pipeline state — phase, sprint, last action, next recommended action.
+description: Show current pipeline phase, sprint, last_updated, recommended next command.
 ---
 
-# /status
+Invoke the `essense-flow:context` skill in `status` mode in the current working directory.
 
-Show current pipeline status. Read-only.
+Read `.pipeline/state.yaml`. If degraded, surface the warning explicitly. Render: phase, sprint, wave, last_updated, canonical artifact paths the next phase will read, recommended next command.
 
-## What it does
-
-1. Reads `.pipeline/state.yaml`
-2. Reports current phase, sprint number, last update timestamp
-3. Suggests next recommended action
-
-## Instructions
-
-Run `node skills/context/scripts/status-runner.js [--json] [--history]` from project root.
-
-Flags:
-- `--json`: emit full JSON output
-- `--history`: include last 10 state transitions in output
-
-## Constraints
-
-- Do NOT modify `.pipeline/state.yaml` or any file
-- Do NOT transition state
-- If state file missing or corrupt, report error clearly
+Read-only — no state mutation.

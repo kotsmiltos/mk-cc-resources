@@ -1,106 +1,102 @@
-"use strict";
+#!/usr/bin/env node
+// context-inject.js — fires on UserPromptSubmit + SessionStart.
+//
+// Reads .pipeline/state.yaml. Emits a short structured block to user
+// channel (stdout JSON, claude-code merges into prompt context). On any
+// degraded state, names the file + failure but ALWAYS continues with
+// exit 0. On any unexpected error, logs to stderr and exits 0.
+//
+// Per Fail-Soft: this hook NEVER blocks tool calls. There is no decision
+// path that exits non-zero. Every code path that could throw is wrapped
+// in try/catch with stderr-warning + exit 0.
 
-const path = require("path");
-const { yamlIO } = require("../../lib");
-const { findPipelineDir } = require("../../lib/paths");
-const { STATE_FILE, CONFIG_FILE, AUTO_ADVANCE_MAP, AUTO_ADVANCE_DESCRIPTIONS } = require("../../lib/constants");
-const contextManager = require("../../skills/context/scripts/context-manager");
-const debug = require("../../lib/debug");
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, resolve, join } from "node:path";
+import { existsSync } from "node:fs";
 
-if (process.env.CLAUDE_SESSION_TYPE === "subagent" || process.env.CLAUDE_SUBAGENT === "1") {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_ROOT = resolve(__dirname, "../..");
+const STATE_LIB_URL = pathToFileURL(join(PLUGIN_ROOT, "lib/state.js")).href;
+
+main().catch((err) => {
+  // Top-level catch — last line of defense. Per Fail-Soft, exit 0 always.
+  process.stderr.write(`[essense-flow context-inject] unexpected error: ${err && err.message}\n`);
+  process.exit(0);
+});
+
+async function main() {
+  const projectRoot = process.cwd();
+
+  let state, libErr;
+  try {
+    const { readState } = await import(STATE_LIB_URL);
+    state = await readState(projectRoot);
+  } catch (err) {
+    libErr = err;
+  }
+
+  // If the lib itself crashed (e.g. js-yaml missing), emit a warning and
+  // bail with exit 0 — never block.
+  if (libErr) {
+    process.stderr.write(
+      `[essense-flow context-inject] lib unavailable: ${libErr.message} — continuing\n`,
+    );
+    process.exit(0);
+  }
+
+  const block = renderContext(state, projectRoot);
+  // claude-code reads stdout JSON for prompt-context augmentation.
+  // Falls back gracefully on simple text — claude-code accepts both forms.
+  process.stdout.write(block);
   process.exit(0);
 }
 
-function main() {
-  debug.trace("context-inject:main", { event: "entry" });
-  const config = (() => {
-    const cwd = process.cwd();
-    const pipelineDir = findPipelineDir(cwd);
-    if (!pipelineDir) return null;
-    const configFile = path.join(pipelineDir, CONFIG_FILE);
-    return { pipelineDir, config: yamlIO.safeReadWithFallback(configFile) };
-  })();
-
-  const TO = setTimeout(() => process.exit(0), config?.config?.timeouts?.hook_ms || 5000);
-
-  const cwd = process.cwd();
-  const pipelineDir = findPipelineDir(cwd);
-
-  if (!pipelineDir) {
-    process.stdout.write("[HOOK WARNING: context-inject — no pipeline directory found. Run /status.]\n");
-    clearTimeout(TO);
-    return;
-  }
-
-  try {
-    const lockfile = require("../../lib/lockfile");
-    const lockStatus = lockfile.checkLock(pipelineDir);
-    if (lockStatus.locked && !lockStatus.stale) {
-      process.stdout.write(`[essense-flow] WARNING: Pipeline locked by another session (started ${lockStatus.lockInfo.created_at}). Proceed with caution.\n`);
-    } else if (lockStatus.locked && lockStatus.stale) {
-      process.stdout.write(`[essense-flow] Stale lock detected (last heartbeat: ${lockStatus.lockInfo.last_heartbeat}). Consider deleting .pipeline/.lock\n`);
-    }
-  } catch (_e) { /* lock check is advisory */ }
-
-  try {
-    const lockfile = require("../../lib/lockfile");
-    lockfile.updateHeartbeat(pipelineDir);
-  } catch (_e) { /* heartbeat is advisory */ }
-
-  const configFile = path.join(pipelineDir, CONFIG_FILE);
-  const cfg = yamlIO.safeReadWithFallback(configFile);
-
-  const payload = contextManager.buildInjectionPayload(pipelineDir, cfg);
-  if (payload) {
-    const stateFile = path.join(pipelineDir, STATE_FILE);
-    const state = yamlIO.safeReadWithFallback(stateFile);
-
-    if (!state) {
-      process.stdout.write("[HOOK WARNING: context-inject — state.yaml unreadable. Run /status.]\n");
-      clearTimeout(TO);
-      return;
-    }
-
-    const phase = state.pipeline ? state.pipeline.phase : null;
-    let output = payload;
-
-    // Inject phase-input slice from context map — only what current phase needs.
-    // Falls back silently if map absent (e.g. fresh session before SessionStart fires).
-    if (phase) {
-      try {
-        const contextMap = contextManager.readContextMap(pipelineDir);
-        const inputsLine = contextManager.formatPhaseInputsForInjection(contextMap, phase);
-        if (inputsLine) {
-          output += `\n${inputsLine}`;
-        }
-      } catch (_e) { /* advisory — state metadata still injected */ }
-    }
-
-    if (phase) {
-      const advanceCmd = AUTO_ADVANCE_MAP[phase];
-      const shouldAdvance =
-        (advanceCmd && state.next_action === advanceCmd)
-        || (phase === "architecture" && state.next_action === "/build");
-      if (shouldAdvance) {
-        const cmd = state.next_action;
-        // Description is co-located with AUTO_ADVANCE_MAP in lib/constants.js;
-        // a parity assertion at module load guarantees every phase has a description.
-        const desc = AUTO_ADVANCE_DESCRIPTIONS[phase] || phase;
-        output += `\n[essense-flow] Auto-advancing to ${cmd} — ${desc}. Reply STOP to pause.`;
-        output += `\n[auto-advance: ${cmd}]`;
+function renderContext(state, projectRoot) {
+  const lines = [];
+  lines.push(`<essense-flow-context>`);
+  if (state.degraded) {
+    lines.push(`status: DEGRADED (${state.degraded})`);
+    if (state.reason) lines.push(`reason: ${state.reason}`);
+    if (state.path) lines.push(`state_file: ${state.path}`);
+    lines.push(`recommendation: run /heal to reconcile prior state, or /init for a fresh start`);
+    lines.push(`hook posture: advisory only — tool calls are NOT blocked`);
+  } else {
+    lines.push(`phase: ${state.phase}`);
+    if (state.sprint != null) lines.push(`sprint: ${state.sprint}`);
+    if (state.wave != null) lines.push(`wave: ${state.wave}`);
+    if (state.last_updated) lines.push(`last_updated: ${state.last_updated}`);
+    const pathsBlock = canonicalPathsFor(state.phase, projectRoot);
+    if (pathsBlock) {
+      lines.push(`canonical artifacts:`);
+      for (const p of pathsBlock) {
+        const present = existsSync(p) ? "exists" : "missing";
+        lines.push(`  - ${p} (${present})`);
       }
     }
-
-    process.stdout.write(output);
   }
-
-  debug.trace("context-inject:main", { event: "exit" });
-  clearTimeout(TO);
+  lines.push(`</essense-flow-context>`);
+  return lines.join("\n") + "\n";
 }
 
-try {
-  main();
-} catch (err) {
-  process.stdout.write(`[HOOK WARNING: context-inject — ${err.message}. Run /status.]\n`);
-  process.exit(0);
+function canonicalPathsFor(phase, projectRoot) {
+  const map = {
+    eliciting: [".pipeline/elicitation/SPEC.md"],
+    research: [".pipeline/elicitation/SPEC.md", ".pipeline/requirements/REQ.md"],
+    triaging: [
+      ".pipeline/elicitation/SPEC.md",
+      ".pipeline/requirements/REQ.md",
+      ".pipeline/triage/TRIAGE-REPORT.md",
+    ],
+    "requirements-ready": [".pipeline/requirements/REQ.md"],
+    architecture: [".pipeline/architecture/ARCH.md"],
+    decomposing: [".pipeline/architecture/ARCH.md"],
+    sprinting: [".pipeline/architecture/ARCH.md"],
+    "sprint-complete": [".pipeline/build"],
+    reviewing: [".pipeline/review"],
+    verifying: [".pipeline/verify/VERIFICATION-REPORT.md"],
+    complete: [".pipeline/state.yaml"],
+  };
+  const paths = map[phase];
+  if (!paths) return null;
+  return paths.map((p) => join(projectRoot, p));
 }
