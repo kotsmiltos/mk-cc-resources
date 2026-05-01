@@ -122,6 +122,12 @@ Default: route to `triaging` so the categorizer decides which upstream phase han
 - Per **INST-13**: no cap on items. The spec defines the item count.
 - Per **Graceful-Degradation**: an item whose locator hint cannot be resolved verdicts as `missing`, not as "cannot determine." Verify always produces a per-item verdict — uncertainty surfaces as `manual` for user resolution, never silently dropped.
 
+## Why delegation is mandatory here
+
+Without parallel extraction + verification agents, the verify substance — extracting every spec decision then checking each against code — would run in master context. By the time the gate computes, the rule (existence ≠ implementation; every verdict reads code at the locator hint) drifts under the spec text plus the codebase being audited. Drift symptom: "file exists" becomes evidence; verdicts skew toward `implemented` without actually reading the function bodies; uncertain items get verdicts instead of `manual` flags.
+
+Delegation keeps the rule loud at synthesis. Each per-item verifier reads code in a clean context for one item only; master rolls up `confirmed_gaps` with the existence-vs-implementation distinction still vivid because the master never read code in bulk.
+
 ## Scripts
 
 - `lib/dispatch.js` — extraction + verification agent fan-out (mode: `all-required`).

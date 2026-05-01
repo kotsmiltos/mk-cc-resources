@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Bridge between intent and execution. Decide → decompose → package. Closes every design decision before build starts. Produces ARCH.md + decisions index + per-task specs + sprint manifest. After architect runs, every remaining question is an implementation question, not a design question.
+description: Bridge between intent and execution. Master architect orchestrates — decide → delegate → synthesize → pack → finalize. Top-level decisions close in main context; per-module substance delegates to sub-architects in parallel; master packs sprints from the dependency graph with discipline rule still loud. Produces ARCH.md + decisions index + per-task specs + sprint manifest. After architect runs, every remaining question is an implementation question, not a design question.
 version: 1.0.0
 schema_version: 1
 ---
@@ -63,119 +63,130 @@ decisions_closed: <count>
 
 ## How you work
 
-Architect runs three jobs in sequence: **decide → decompose → package.**
+**You are the master architect. You orchestrate. You do not personally write task specs.**
 
-### 1. Decide
+The substance of architecting per module — designing internals, producing closed task specs, declaring dependencies — is delegated to **sub-architect agents** dispatched in parallel. Your job is decisions, delegation, and packing. By keeping the substance out of your own context, you arrive at packing time with the sprint-discipline rule still loud in working memory rather than buried under 80+ task specs you wrote yourself.
 
-For every design question implicit in the spec + the requirements:
+This is the operationalization of the Conduct preamble's "Use sub-agents with agency + clear goals + clear requirements. Parallelize." It is not optional for architect — when you handle every detail in main context, the rules drift out of focus and you produce theme-split sprints. The master/sub-architect split exists specifically to prevent that.
+
+Five jobs in sequence: **decide → delegate → synthesize → pack → finalize.**
+
+### 1. Decide (master, in main context)
+
+For every TOP-LEVEL design question implicit in the spec + requirements:
 
 1. Arrive at one closed answer with rationale.
-2. Capture: module boundaries, abstractions introduced, data flow, where state lives, what the seams are.
+2. Capture: module boundaries, abstractions introduced, data flow at the seam between modules, where state lives, what each module owns.
 3. List alternatives considered + why rejected.
 4. When a question is genuinely undecidable from the inputs:
-   - **Ask the user** via `AskUserQuestion` with arrow-key options (and apply the answer), OR
+   - **Ask the user** via `AskUserQuestion` with arrow-key options (apply the answer), OR
    - **Route back to `eliciting`** via `triaging` with a specific addendum request.
    - Never silently guess. Never push the decision down to build.
 
-Output: `decisions.yaml` populated with every closed decision.
+You decide module-level boundaries here. **Internal-to-a-module decisions belong to the sub-architect for that module**, not to you.
 
-### 2. Decompose
+Output: `.pipeline/architecture/decisions.yaml` populated with every closed top-level decision. ARCH.md draft (module map + seams + decisions summary) — body sections may be sparse pending sub-architect returns.
 
-The closed design becomes a tree of work. Every node is classified as one of:
+### 2. Delegate (master spawns sub-architects in parallel)
 
-- **leaf** — small enough to be a single task, ready for spec-writing
-- **pending decision** — needs an answer before it can be classified
-- **resolvable with children** — splits into smaller nodes
+For each module identified in step 1, dispatch one **sub-architect agent** via the `Agent` / `Task` tool. **All sub-architects launch in a single message — parallel, no concurrency cap.**
 
-Loop:
+Each sub-architect receives a brief built from `templates/sub-architect-brief.md`, carrying:
 
-1. Classify every node in the current tree.
-2. For every `pending decision` node, surface to the user (or route to elicit if it's a design intent gap).
-3. Apply answers. Decompose `resolvable with children` nodes.
-4. Re-classify.
-5. End loop when every node is `leaf` or explicitly blocked.
-6. **Convergence check**: if two consecutive iterations produce zero classification changes, the loop has stalled — surface the stall as a real signal so the user can intervene. Never silently cap and exit.
+- The module name + the boundary you decided
+- The SPEC.md slice relevant to this module (your selection)
+- The REQ.md slice (FRs/NFRs traced to this module)
+- Your closed top-level decisions that constrain this module
+- The Conduct preamble (inherited)
+- The task spec shape (so the return is mechanical, not creative)
+- The forbidden list (NO sprint packing — that's master's job)
+- The sentinel envelope
 
-Self-transition `decomposing → decomposing` is the in-loop write.
+Sub-architects work in parallel. Each one's job: design THIS module's internal structure + produce closed task specs for it + declare cross-module dependencies. Sub-architects do not pack sprints, do not decide cross-module concerns, do not surface back design questions about other modules.
 
-### 3. Package
+If a sub-architect returns with "TBD" or "agent decides X" in any task spec, the brief was insufficient — return-to-sender with the missing constraint, OR surface to user. **Do not silently accept open task specs.**
 
-For each leaf node, produce a **task spec** under `.pipeline/architecture/sprints/<n>/tasks/<id>.yaml`:
+Use `lib/dispatch.js` helpers: `prepareBriefs(...)`, `parseReturn(...)`, `collateQuorum({mode: "all-required"})`. Crashed sub-architects produce synthetic findings — never silently drop a module.
 
-```yaml
-schema_version: 1
-task_id: <slug>
-goal: "<one sentence stating what changes>"
-requirements_traced: [FR-1, NFR-2, ...]   # which REQ items this task satisfies
-file_write_contract:
-  allowed: ["src/foo.js", "tests/foo.test.js"]
-  forbidden: []
-behavioral_pseudocode: |
-  # only when implementation shape matters
-  # leave empty when the goal is clear and the agent should design freely
-test_completion_contract:
-  - id: AC-1
-    description: "<plain language>"
-    check:
-      type: test | grep | file_exists | manual
-      spec: <type-specific>
-dependencies: [<other-task-id>, ...]
-agency_level: prescribed | guided | open
-agency_rationale: "<why this level fits this work>"
-```
+### 3. Synthesize (master collects + audits returns)
 
-#### Agency level rules
+For each sub-architect return:
 
-- **prescribed** — pseudocode covers every requirement. Use only when implementation shape is non-negotiable.
-- **guided** (default) — clear goal + key constraints + file-write contract; agent designs the implementation within those bounds.
-- **open** — goal is clear, agent designs freely. Use when you genuinely want the agent's judgment.
+1. Validate task spec shape — every spec has goal, requirements_traced, file_write_contract, test_completion_contract, dependencies, agency_level, agency_rationale.
+2. Validate closure — no "TBD," no "agent decides X," no open questions.
+3. Extract declared cross-module dependencies into a global dependency graph.
+4. Note any decisions the sub-architect made internal to its module — these append to ARCH.md's per-module section.
 
-The level is itself a closed decision. Record agency_rationale.
+Stop and surface to user / re-dispatch if anything failed validation.
 
-#### Sprint and wave packing
+### 4. Pack (master, fresh context, applies sprint discipline)
 
-- Default: one sprint, one wave — every task runs in parallel.
-- A sprint splits **only when there's a real data-dependency** that cannot be parallelized.
-- A wave splits inside a sprint **only when there's a real file-conflict** between tasks (two tasks would write the same file).
-- **Theme-based splits ("the hooks sprint") are rejected.** The unit of work is the dependency graph, not the topic.
+You arrive at this step with the sprint rule still in working memory because you did not write the 80 task specs — you read them as inputs. This is the entire point of the master/sub-architect split.
+
+The packing arithmetic:
+
+1. Build the dependency graph from declared cross-task `dependencies:` (from synthesized returns).
+2. **Sprint count = topological depth of the dependency graph.** Tasks with zero incoming deps land in sprint 1. Tasks whose deps are satisfied at sprint N+1 land in sprint N+1. Compute it. Do not bucket by theme.
+3. **Within a sprint, tasks split into waves only on real file-conflict** — two tasks that would write the same file land in different waves of the same sprint. Otherwise: same wave, run parallel. Adding a wave inside a sprint costs the user nothing. Adding a sprint costs the user another `/build` invocation.
+4. **Wave-first thinking.** If you find yourself proposing sprint 2, ask first: can this be wave 2 of sprint 1? Wave 2 is parallel-safe but sequenced (different files); same `/build` invocation. Sprint 2 is a hard checkpoint requiring the user to re-invoke `/build`. Always prefer wave over sprint.
+5. **Stop-cost rule.** Every sprint split = the user types `/build` again. Justify each sprint split inline:
+   - Sprint > 1 manifest entries MUST carry `data_dependency_on_prior_sprint:` with **one sentence** naming what runtime/built output the next sprint consumes from the prior. If you cannot write that sentence, the split is theme-based — collapse it.
+6. **Theme-based splits remain rejected.** "Tests sprint," "docs sprint," "UI sprint," "hooks sprint" — these split the codebase by topic, not by dependency. If the tasks share a topic but no data dependency, they belong in the same sprint, parallel waves.
 
 `sprints/<n>/manifest.yaml`:
 
 ```yaml
 schema_version: 1
 sprint: <n>
+data_dependency_on_prior_sprint: |    # required when sprint > 1; missing → split is invalid
+  <one sentence naming the runtime/built output this sprint consumes from sprint <n-1>>
 waves:
   - wave: 1
     tasks: [task-id-1, task-id-2, task-id-3]
+    file_conflict_rationale: null     # null when wave is the first
   - wave: 2
-    tasks: [task-id-4]   # depends on wave 1 outputs
+    tasks: [task-id-4]
+    file_conflict_rationale: "task-4 writes src/foo.js which task-1 also writes"
 dependency_graph:
   task-id-4: [task-id-1]
+notes: |
+  <packing rationale: why this many sprints, why these wave cuts>
 ```
 
-### Justifications inline
+### Agency level rules (pass-through to sub-architects)
 
-Every sprint split, wave split, abstraction introduction, and agency-level pick carries its rationale **in the artifact next to the choice.** Reviewable without external context.
+Sub-architects pick `agency_level` per task. You audit the rationale.
 
-### Re-read verification
+- **prescribed** — pseudocode covers every requirement. Use only when implementation shape is non-negotiable.
+- **guided** (default) — clear goal + key constraints + file-write contract; agent designs implementation within those bounds.
+- **open** — goal is clear, agent designs freely. Use when you genuinely want the agent's judgment.
 
-Before completing: read ARCH.md + decisions.yaml + every task spec + manifest end-to-end. Confirm:
+### 5. Finalize
 
-- Every requirement (FR/NFR) appears in at least one task's `requirements_traced`.
-- No task spec contains "TBD," "agent decides," or open questions.
-- No node in the decomposition tree was silently dropped.
-- Every closed decision has a rationale and alternatives-rejected.
+Re-read verification before write:
 
-If any of these fail, return to the relevant job (decide / decompose / package) and fix. Do not finalize a partial architecture.
-
-### Finalize
+- Every FR/NFR appears in at least one task's `requirements_traced`
+- No task spec contains "TBD," "agent decides," or open questions (already audited at synthesis, but re-audit)
+- Every closed top-level decision has rationale + alternatives-rejected
+- Sprint count is justifiable: each sprint > 1 has a one-sentence `data_dependency_on_prior_sprint`
+- No theme-shared task cluster ended up in its own sprint without a real data dependency
 
 Two finalize points:
 
-- **`requirements-ready → architecture`** (initial entry) — first ARCH.md draft.
-- **`architecture → sprinting`** OR **`decomposing → sprinting`** — task specs and manifest closed.
+- **`requirements-ready → architecture`** (initial entry) — ARCH.md draft pre-delegation.
+- **`architecture → sprinting`** OR **`decomposing → sprinting`** — task specs + manifest closed; sub-architect synthesis complete.
 
-Call `finalize` with all artifacts in one call. Each writes is atomic.
+Call `finalize` with all artifacts in one call. Each write atomic.
+
+### Why the master/sub-architect split exists
+
+Three observed failure modes when architect runs everything in main context:
+
+1. **Context dilution.** By the time the agent has read SPEC + REQ, decided 8 design questions, and written 80 task specs, the original sprint-discipline rule from the Core Principle is hundreds of tokens behind. The rule loses its weight.
+2. **Theme drift.** Without fresh attention to the dependency graph, the agent buckets tasks by topic ("test gaps," "validation," "TODOs") because topics are the most recently used cognitive index. Theme-split sprints are the symptom.
+3. **Stop multiplication.** A 10-sprint manifest forces the user to type `/build` ten times. Every sprint split is paid for in user invocations. Master/sub-architect produces 1-3 sprints typically because packing happens with the rule still loud.
+
+The split is the mechanism. The rule survives because the substance was delegated.
 
 ## Constraints
 
@@ -188,7 +199,8 @@ Call `finalize` with all artifacts in one call. Each writes is atomic.
 
 - `lib/finalize.js` — atomic write+transition.
 - `lib/state.js` — read current phase.
-- `AskUserQuestion` (built-in) — for design questions that surface during decide/decompose.
+- `AskUserQuestion` (built-in) — for design questions that surface during decide or synthesis (sub-architect surfaced cross-module concern).
+- `Agent` / `Task` (built-in) — for parallel sub-architect dispatch during delegate.
 
 ## State transitions
 

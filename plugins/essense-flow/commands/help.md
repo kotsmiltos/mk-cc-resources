@@ -9,7 +9,7 @@ Display the essense-flow command list:
 - `/elicit "<pitch>"` — turn pitch into build-ready SPEC.md
 - `/research` — multi-perspective synthesis to REQ.md
 - `/triage` — categorize and route open items
-- `/architect` — close design + decompose + package task specs
+- `/architect` — close design, dispatch sub-architects per module, pack sprints from the dependency graph
 - `/build` — execute the current sprint
 - `/review` — adversarial QA with path-evidence
 - `/verify` — top-down spec compliance audit

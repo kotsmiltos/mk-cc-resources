@@ -162,6 +162,12 @@ Per Diligent-Conduct: missing signals surface, never hide.
 - Per **Fail-Soft**: out-of-contract writes are flagged, not blocked. The flag travels to review.
 - Per **Graceful-Degradation**: a missing or partial completion record from a crashed task agent produces a synthetic record (`synthetic: true`) and a paused-task verdict. The sprint surfaces the gap loudly; build does not pretend the task succeeded and does not silently skip it.
 
+## Why delegation is mandatory here
+
+Without per-task agent dispatch, the build substance — implementing every task in the sprint — would run in master context. By the time synthesis hits, the rule (verify every claim against disk; preserve `agent_claim` alongside `runner_verification`; out-of-contract writes flagged not blocked) drifts under thousands of tokens of code edits. Drift symptom: completion records start to summarize rather than preserve raw agent claims; `runner_verification` gets short-circuited; out-of-contract writes pass unflagged.
+
+Delegation keeps the rule loud at sprint-report time. Each task agent returns its self-report from a clean context; master receives it and re-validates against disk with the verification discipline still vivid because the master never wrote the code.
+
 ## Scripts
 
 - `lib/dispatch.js` — task agent fan-out (mode: `task-by-task`).

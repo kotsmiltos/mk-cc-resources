@@ -154,6 +154,12 @@ Call `finalize` with all artifacts (QA-REPORT.md, spec-compliance.yaml, updated 
 - Per **INST-13**: no cap on the number of lenses. Adaptive — picked from what the sprint touched. No budget on findings count.
 - Per **Graceful-Degradation**: when the sprint report is partial, review audits what's on disk and surfaces the missing portion as a coverage gap finding (synthetic, with `lens: report-coverage`). Refusing to review because the input is incomplete is a fail-closed regression.
 
+## Why delegation is mandatory here
+
+Without parallel adversarial lenses, the review substance — bug-hunting plus drift-checking across the sprint's modified code — would run in master context. By the time the deterministic gate computes, the rule (every finding carries verbatim path evidence; quotes shorter than `min_quote_length` auto-flag inconclusive; quote-drift auto-flags `false_positive`; uncertain findings go to `needs_context`) drifts under all the code being read. Drift symptom: vibes-based findings persist ("looks fragile"); quote-drift goes uncaught; uncertain findings get silently classified as confirmed to look productive — which drives the endless fix-the-non-existent-bug loop the discipline exists to prevent.
+
+Delegation keeps the rule loud at validation. Each lens-agent returns evidence-backed findings from a clean context; master re-validates each one against disk with the evidence policy still in working memory because the master never read the code in bulk.
+
 ## Scripts
 
 - `lib/dispatch.js` — adversarial agent fan-out (mode: `tolerant`).

@@ -72,6 +72,7 @@ The four rules that govern every skill: Graceful-Degradation, Front-Loaded-Desig
 
 ## Versioning
 
+`0.10.0` — master/sub-agent orchestration pattern across 6 skills (architect, research, build, review, verify, triage, heal). Discipline rules survive synthesis because substance is delegated.
 `0.9.0` — principle-citation enforcement + architect Core Principle block.
 `0.8.0` — full rewrite. v0.7.0 archived on the `archive/essense-flow-v0.7` branch.
 

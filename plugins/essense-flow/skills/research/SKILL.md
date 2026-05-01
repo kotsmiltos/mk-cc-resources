@@ -117,6 +117,12 @@ Call `finalize` with:
 - Per **INST-13**: no cap on perspective-lens count. The skill commissions one lens per open spec question. Count is driven by spec gaps, not by a quota.
 - Per the user's source rules: high-confidence sources only. Quote, don't paraphrase. Cross-reference where possible.
 
+## Why delegation is mandatory here
+
+Without parallel perspective agents, the research substance — multiple lenses, fetched sources, candidate answers — runs entirely in master context. By the time synthesis happens, the rule (high-confidence sources only; cross-reference; convert to testable acceptance criteria) has drifted under hundreds of tokens of fetched content. Drift symptom: REQ.md ends up with vague NFRs and low-confidence citations.
+
+Delegation keeps the rule loud at synthesis time. Each lens-agent returns findings + sources; master applies the source rule when stitching, with the citation discipline still in working memory because it didn't burn context fetching pages.
+
 ## Scripts
 
 - `lib/dispatch.js` — parallel agent fan-out (mode: `all-required`).

@@ -111,6 +111,20 @@ Call `finalize` with:
 - writes: `[{ path: ".pipeline/triage/TRIAGE-REPORT.md", content }]`
 - nextState: `{ phase: <routed_to> }`
 
+## Optional delegation — when item volume is large
+
+For small input sets (a handful of gaps from research, a few findings from review), triage runs cleanly in main context. Dispatching sub-agents would cost more than it saves.
+
+For large input sets (a heavy review batch, post-research with many gaps, post-verify with many drift items), per-item categorization in main context burns through working memory. The disciplinary rule (every item gets one disposition; ambiguity surfaces to the user; deterministic signals beat heuristics) starts to drift. Symptom: dispositions become consistent in shape but stop reflecting the actual SPEC cross-reference — the categorizer is pattern-matching, not analyzing.
+
+When that risk is real, dispatch **per-class sub-triagers** in parallel — one sub-triager per item kind (bug, drift, gap, ambiguity, missing-analysis). Each receives the SPEC.md plus its slice of items, and returns dispositions with one-line rationales. Master cross-references each disposition against the deterministic signals it has from the upstream artifact and routes the batch.
+
+Use `templates/sub-triager-brief.md`. Quorum: `all-required` — every dispatched class must return, missing → synthetic record. The classes to dispatch are picked from what the upstream batch actually contains — no hard list.
+
+Per **INST-13**: no count threshold triggers this. The choice is judgment-driven, not arithmetic. If item categorization feels like pattern-matching, delegate. If it feels like reading and deciding, stay in main.
+
+Per **Diligent-Conduct**: when delegating, master STILL re-checks each disposition against SPEC before routing. Sub-triagers categorize per-class; master applies the cross-reference rule with fresh context.
+
 ## Constraints
 
 - Per **Front-Loaded-Design**: triage's job is to ensure unresolved items don't leak past the architect. Items that look like architecture-decisions in disguise must be routed back, not forward.

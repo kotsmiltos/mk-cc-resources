@@ -138,6 +138,20 @@ When prior artifacts are **only code** (no SPEC, no REQ, no ARCH):
 2. On confirm, elicit reads representative parts of the code, drafts SPEC.md retroactively (problem statement, goals inferred from features, constraints from package.json/CI/etc.), and asks the user via `AskUserQuestion` whether each inferred decision matches intent.
 3. The drafted SPEC then enters the normal flow — review can audit it against the code, triage can route discrepancies, architect can decompose forward work.
 
+## Optional delegation — when prior-artifact set is large
+
+For fresh-project heal (no prior `.pipeline/`, just user pitch + clean repo), discovery runs cleanly in main context. The artifact set is small; reading shapes is quick.
+
+For mid-flight heal (existing `.pipeline/` from this or another tool, code-without-spec scenarios, hand-written prose specs at unfamiliar paths, partial sprint outputs), the discovery substance — reading bodies of every candidate artifact, characterizing each shape, mapping to pipeline phase — burns master context. The disciplinary rule (read shapes not listings; existence is never sufficient evidence; never silently mutate state; user confirms before apply) drifts. Symptom: heal infers a phase from filenames rather than file bodies; walk-forward proposal lists confidence `high` for a v0.7 state file that master hadn't actually opened.
+
+When the prior-artifact volume threatens the rule, dispatch **per-shape sub-recognizers** in parallel — one sub-recognizer per artifact kind (SPEC-shape, REQ-shape, ARCH-shape, sprint-output shape, foreign-tool-prose shape). Each reads its slice of candidate paths, returns recognized/unrecognized + content notes + reconciliation hints. Master synthesizes the walk-forward proposal with the shapes-not-listings rule still loud because master never read every body itself.
+
+Use `templates/sub-recognizer-brief.md`. Quorum: `tolerant` — a missing shape recognition becomes a synthetic "shape not surveyed" entry; the proposal still surfaces it to the user with low confidence rather than silently omitting.
+
+Per **INST-13**: no count threshold triggers this. Judgment-driven. If the prior set is small enough to read end-to-end without losing the discipline, stay in main. If reading every body would crowd out the proposal logic, delegate.
+
+Per **Diligent-Conduct**: master STILL writes the walk-forward proposal and the HEAL-LOG.md. Sub-recognizers identify shapes; master decides walk-forward sequencing and confidence. Same legal-transition discipline applies — the walk-forward applies one step at a time on user confirm, regardless of whether discovery was delegated.
+
 ## Constraints
 
 - Per **Graceful-Degradation**: heal handles every degraded state explicitly. Missing state, corrupt state, foreign-shape artifacts — each gets tailored handling, never blanket "this is unsupported."
