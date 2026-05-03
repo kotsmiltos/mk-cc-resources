@@ -1,5 +1,19 @@
 # Release notes — essense-flow
 
+## 0.10.1 — Ship libs and build templates that were silently gitignored
+
+Bug fix. Pre-existing shipping defect, surfaced when 0.10.0 sub-architect dispatch tried to load `lib/dispatch.js` from the installed marketplace cache and failed at `import { envelope } from "./brief.js"` — `brief.js` was on local disk but never reached git.
+
+Root cause: repo-root `.gitignore` carries Python boilerplate (`build/`, `lib/`, `var/`, `wheels/`, etc.). The `lib/` and `build/` rules were recursively swallowing the plugin's own `plugins/essense-flow/lib/` and `plugins/essense-flow/skills/build/` directories. Only `lib/dispatch.js` had been force-added at some point in 0.4.x; the other four lib modules and two build templates that the build skill's SKILL.md references were never tracked.
+
+Fix:
+- `.gitignore` adds re-include negation patterns: `!plugins/*/lib/`, `!plugins/*/lib/**`, `!plugins/*/skills/build/`, `!plugins/*/skills/build/**`. Python ignores still apply to repo-root `lib/`, `build/` etc. — only plugin internals are re-included.
+- Six previously-ignored files now ship: `lib/brief.js`, `lib/finalize.js`, `lib/state.js`, `lib/verify-disk.js`, `skills/build/templates/completion-record.md`, `skills/build/templates/sprint-report.md`.
+
+Verifiable check: `git ls-files plugins/essense-flow/lib/` now returns 5 paths, not 1. Re-installing the plugin pulls a complete `lib/` so `dispatch.js`'s `import "./brief.js"` resolves.
+
+No code changes to the libs or templates — they were already authored and passing the existing 59-test suite locally; they simply weren't reaching the marketplace install.
+
 ## 0.10.0 — Master / sub-agent orchestration
 
 The architect rewrite that surfaced the failure mode also surfaced the systemic answer: when a skill produces N closed contracts, doing the substance in master context causes the discipline rule to drift under the fetched material. The fix is the master/sub-agent pattern — master orchestrates, sub-agents do substance, master synthesizes with the rule still loud.

@@ -41,6 +41,14 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Re-include plugin internals — Python ignores above (build/, lib/, var/, etc.)
+# would otherwise hide plugin source under plugins/*/skills/build/ and
+# plugins/*/lib/. These directories are real plugin code and must ship.
+!plugins/*/lib/
+!plugins/*/lib/**
+!plugins/*/skills/build/
+!plugins/*/skills/build/**
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
