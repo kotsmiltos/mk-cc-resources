@@ -148,3 +148,45 @@ Per **Diligent-Conduct**: when delegating, master STILL re-checks each dispositi
 | triaging | architecture | item routed for decomposition | no |
 | triaging | requirements-ready | all items accepted | yes |
 | triaging | verifying | post-build items routed to spec compliance audit | no |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `triaging → eliciting` — design intent gap; route back to elicit
+- `triaging → research` — needs further analysis
+- `triaging → architecture` — routed for decomposition
+- `triaging → requirements-ready` — all items accepted, no upstream routes
+- `triaging → verifying` — post-build items routed to spec compliance audit
+
+Not legal: `triaged`, `routed`, `done`.
+
+**The exact `finalize` call shape** for any triaging→X transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/triage/TRIAGE-REPORT.md", content: triageReportMd },
+  ],
+  nextState: { phase: "<one-of-the-legal-targets-above>", /* …the rest of state */ },
+});
+```
+
+The TRIAGE-REPORT.md write is required regardless of which target phase you chose — it carries the per-item disposition rationale.
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` exactly one of the legal targets above?
+2. Does TRIAGE-REPORT.md exist in `writes[]` with **every** input item carrying a disposition + one-line rationale? Items with no disposition mean triage is incomplete — don't transition.
+3. If item volume was large, did you dispatch **per-class sub-triagers** (one per item kind: bug, drift, gap, ambiguity)? Master cross-references against SPEC.md and routes; sub-triagers categorize per-class.
+4. Are ambiguous items surfaced to the user, not silently classified?
+5. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.

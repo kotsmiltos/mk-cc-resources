@@ -171,3 +171,46 @@ Per **Diligent-Conduct**: master STILL writes the walk-forward proposal and the 
 Heal does not have its own dedicated transitions. It uses the existing transition table — applying legal transitions one step at a time. Effectively, heal can move state from any phase to any phase **only** by walking the legal graph.
 
 If the inferred destination is not reachable from the current state via legal transitions, heal halts and surfaces. It does not invent illegal moves.
+
+## Improvised-schema architect output (recovery case)
+
+A failure mode seen in the wild: a prior architect run wrote artifacts in an improvised schema instead of the canonical layout. Heal must recognize the shape and propose conversion. Detection signals:
+
+- `.pipeline/state.yaml` has `phase:` set to a value not in `references/transitions.yaml` (e.g. `building`, `built`, `architected`)
+- `.pipeline/architecture/SPRINT-MANIFEST.yaml` exists at the architecture root (single file, all sprints inline) instead of one `.pipeline/architecture/sprints/<n>/manifest.yaml` per sprint
+- `.pipeline/architecture/tasks/*.md` exists (flat, markdown frontmatter) instead of `.pipeline/architecture/sprints/<n>/tasks/<id>.yaml`
+- task spec frontmatter lacks `goal`, `file_write_contract`, `behavioral_pseudocode`, `test_completion_contract`, `agency_level` (canonical schema)
+
+Heal proposes the conversion in chunks the user can confirm:
+
+1. **Phase repair** — if `phase` is invalid, propose nearest legal phase based on on-disk artifacts. State.yaml fields like `architecture.completed_at`, `decomposition.round`, `master_decisions` count point at `architecture` or `decomposing` typically; manifest+tasks closure points at `sprinting`. Apply via `force: true` on the first finalize step (only legal recovery for an illegally-named phase).
+
+2. **Manifest split** — read `SPRINT-MANIFEST.yaml`, split each sprint block into `sprints/<n>/manifest.yaml`. Copy the per-sprint dependency graph + wave structure into each new manifest. Original file moved to `.pipeline/.heal-archive/SPRINT-MANIFEST.yaml` for audit trail, not deleted.
+
+3. **Task spec conversion** — for each `tasks/*.md` file, propose YAML conversion:
+   - `goal` from the "Why" or top-level summary section of the markdown
+   - `file_write_contract.allowed` from the `files:` frontmatter list
+   - `requirements_traced` from any FR/NFR references in the body
+   - `dependencies` from `deps:` frontmatter
+   - `agency_level: guided` (default) unless the markdown explicitly carries detailed pseudocode (then `prescribed`) or explicitly says "agent decides" (route back to architect, not heal — open contracts violate Front-Loaded-Design)
+   - `behavioral_pseudocode` and `test_completion_contract` cannot always be derived. Heal surfaces these gaps as needing architect re-entry, NOT silent stub-out. Each conversion is an interactive confirm with the user; missing fields are listed explicitly.
+
+Conversion writes new YAML files; original `.md` files moved to `.pipeline/.heal-archive/tasks/` for audit. The post-conversion state is `phase: sprinting` with one manifest per sprint and tasks-as-yaml — exactly what build expects.
+
+Per **Diligent-Conduct**: every conversion step is a separate user-confirm. No batch "convert all 80 task specs" without per-step visibility. Per **Graceful-Degradation**: a task spec that cannot be converted (missing pseudocode + missing test contract + the user cannot fill them mid-heal) routes to architect via `decomposing → architecture`, never silently gets a stub.
+
+## Before each apply step
+
+Last block — read it just before you act.
+
+Heal does not finalize once; it walks the legal transition graph one step at a time. **Each step is its own `finalize` call.** Each step is its own user confirm. No batched walk.
+
+For each step:
+
+1. Verify the proposed `from → to` exists in `references/transitions.yaml`. If your proposal lists a transition that doesn't appear there, you invented it — halt, re-read.
+2. The `finalize` call uses the **literal** phase names from the transition graph, never English. If you find yourself writing `nextState.phase = "building"`, you have the wrong target.
+3. After each apply, re-read `state.yaml` from disk. If the on-disk `phase` does not match what `finalize` returned, surface as a drift signal — do not proceed to the next step.
+4. For an illegal-phase recovery (current `phase` is not in the legal phases list), use `force: true` on **only the first** finalize step. Subsequent steps must transition legally without force.
+5. Append every step to `.pipeline/heal/HEAL-LOG.md` in `writes[]` of the same `finalize` call. The log is the audit trail.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — read it. The advisory often points at the next artifact heal needs to create or surface to the user.

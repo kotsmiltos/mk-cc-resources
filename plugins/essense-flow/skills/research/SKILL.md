@@ -137,3 +137,41 @@ Delegation keeps the rule loud at synthesis time. Each lens-agent returns findin
 |------|----|---------|------|
 | research | research | additional round | no |
 | research | triaging | REQ.md written, no open questions | yes |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `research → research` — additional round (`research.round` advances)
+- `research → triaging` — REQ.md written, no open questions
+
+Not legal: `researched`, `req-ready`, `done`.
+
+**The exact `finalize` call shape** for the research→triaging transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/requirements/REQ.md", content: reqMd },
+  ],
+  nextState: { phase: "triaging", /* …the rest of state */ },
+});
+```
+
+For an additional round (`research → research`), keep `phase: "research"` and advance `research.round`.
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` exactly `research` or `triaging`?
+2. Does REQ.md exist in `writes[]` for the route-out (`research → triaging`)?
+3. Did **perspective agents** produce the per-lens findings, master synthesizes? If master wrote REQ.md from main-context recall, the high-confidence-sources rule has likely drifted.
+4. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.

@@ -130,3 +130,43 @@ Loop ends when:
 | eliciting | eliciting | resume / next round | no |
 | eliciting | research | SPEC marked build-ready | yes |
 | eliciting | architecture | SPEC marked build-ready, user routed around research | no |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `idle → eliciting` — initial entry from a pitch
+- `eliciting → eliciting` — resume / next round (`elicitation.round` advances)
+- `eliciting → research` — SPEC marked `status: build-ready`, default route
+- `eliciting → architecture` — SPEC marked `status: build-ready`, user routed around research
+
+Not legal: `elicited`, `spec-ready`, `done`.
+
+**The exact `finalize` call shape** for the eliciting→research transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/elicitation/SPEC.md", content: specMd },
+  ],
+  nextState: { phase: "research", /* …the rest of state */ },
+});
+```
+
+For an in-loop iteration (`eliciting → eliciting`), keep `phase: "eliciting"` and advance `elicitation.round`.
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` exactly one of `eliciting`, `research`, `architecture`?
+2. Does SPEC.md frontmatter carry `status: build-ready` for the route-out transitions? `eliciting → research` and `eliciting → architecture` both require it.
+3. For an iteration, did you advance `elicitation.round` rather than changing `phase`?
+4. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.

@@ -181,3 +181,43 @@ Delegation keeps the rule loud at sprint-report time. Each task agent returns it
 |------|----|---------|------|
 | sprinting | sprinting | next wave | no |
 | sprinting | sprint-complete | all tasks resolved (verified or paused with surface) | yes |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `sprinting → sprinting` — next wave inside the current sprint
+- `sprinting → sprint-complete` — all tasks in the sprint resolved (verified or paused-with-surface)
+
+Not legal: `built`, `building`, `done`, `complete-sprint`. The phase name is `sprint-complete` with a hyphen — copy it.
+
+**The exact `finalize` call shape** for the sprinting→sprint-complete transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/build/sprints/1/SPRINT-REPORT.md",                       content: sprintReport },
+    { path: ".pipeline/build/sprints/1/tasks/<task-id>/completion-record.yaml", content: completionRecordYaml },
+    // …one completion-record.yaml per task in the sprint
+  ],
+  nextState: { phase: "sprint-complete", sprint: 1, /* …the rest of state */ },
+});
+```
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` exactly `sprint-complete` (with the hyphen)?
+2. Do `writes[].path` use the **literal** sprint number (`sprints/1/`), never `<n>`?
+3. Is the SPRINT-REPORT.md filename uppercase as shown? Templates live under `skills/build/templates/sprint-report.md` and `skills/build/templates/completion-record.md` — copy that shape.
+4. Did **task agents** produce the completion records? Master synthesizes their reports and re-validates against disk via `lib/verify-disk.js`. Master should not be writing code in main context.
+5. For a wave-step (`sprinting → sprinting`), `wave` advances; `phase` stays. Do not change `phase` between waves.
+6. Are you calling `finalize`, **not** `Write` or `Edit` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses. Read the advisory if it appears.

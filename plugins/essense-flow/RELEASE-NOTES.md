@@ -1,5 +1,63 @@
 # Release notes — essense-flow
 
+## 0.11.0 — Contracts at the point of action
+
+The 0.10.0 master/sub-agent rewrite cut context dilution but left a class of failures in place: master could still bypass `lib/finalize.js` and write `state.yaml` directly with an invented phase value (e.g. `phase: building`), or improvise the on-disk schema (single `SPRINT-MANIFEST.yaml` instead of one per sprint, `tasks/*.md` instead of `sprints/<n>/tasks/*.yaml`). Downstream skills (build) then halted because canonical paths were absent.
+
+0.11.0 closes the bypass without adding new gates. Three moves, each calibrated to "help without encumber."
+
+### Move 1 — Closing "Before you finalize" block on every phase-producing skill
+
+Every phase-producing SKILL.md now ends with a closing block that:
+
+- Lists the legal phase targets verbatim (copied from `references/transitions.yaml` — no synonyms)
+- Names common invented values (`building`, `done`, `architected`) so they read as wrong
+- Shows the exact `finalize({writes, nextState})` call shape with paths populated
+- Carries a numbered self-check: phase spelled exactly, `<n>` expanded to the literal sprint number, file extensions correct, sub-agents dispatched, `finalize` is the only writer
+- Closes with: "if any answer is no, stop"
+
+Placement is deliberate. The closing block is the last thing master reads — recency bias works for the rule instead of against. Master executing the finalize step sees the contract right where the action happens, not buried at the top of the file under thousands of substance tokens.
+
+Skills covered: architect, build, review, verify, elicit, research, triage. Heal carries a variant ("Before each apply step") because heal walks the legal graph one step at a time rather than finalizing once.
+
+### Move 2 — Soft `requires:` advisory in `finalize.js`
+
+`finalize` now reads the `requires:` field of the from→to transition in `transitions.yaml`, extracts any path hints (substrings starting with `.pipeline/`), expands `<n>` to `nextState.sprint`, and emits a stderr advisory if a hinted path is neither in `writes[]` nor on disk:
+
+```
+[finalize] heads up: transition architecture->sprinting expects
+.pipeline/architecture/sprints/1/manifest.yaml — not in writes,
+not on disk. proceeding anyway.
+```
+
+The advisory does **not** refuse the transition. The legality check (legal `from→to` edge in the graph) remains the gate; this is purely informational, surfacing the gap at the moment of cost. Caller can ignore with reason.
+
+`assertLegalTransition` now returns `requires` alongside the legality verdict, and `finalize` surfaces it. ~30 LOC including path normalization for Windows separators. Three new tests (advisory fires when path missing; advisory silent when path provided; `<n>` expands to literal sprint number). Test count 59 → 62, all pass.
+
+### Move 3 — Heal recognizes improvised-schema architect output
+
+Heal's SKILL.md gains an "Improvised-schema architect output (recovery case)" section enumerating detection signals (illegal `phase` value, single `SPRINT-MANIFEST.yaml`, flat `tasks/*.md`) and a per-step conversion proposal that:
+
+1. Repairs an invalid `phase` to the nearest legal phase via `force: true` on the first finalize step (the only legal recovery for an illegally-named phase).
+2. Splits a flat `SPRINT-MANIFEST.yaml` into one `sprints/<n>/manifest.yaml` per sprint, archiving the original under `.pipeline/.heal-archive/`.
+3. Converts each `tasks/*.md` to `sprints/<n>/tasks/<id>.yaml`, deriving fields where possible (`goal` from "Why" section, `file_write_contract.allowed` from `files:` frontmatter, etc.) and explicitly surfacing fields that **cannot** be derived (`behavioral_pseudocode`, `test_completion_contract`) for user fill-in or routing back to architect.
+
+No silent stubbing. Per-conversion user confirm. Original artifacts archived, never deleted.
+
+### What did NOT get added
+
+Per the constraint "wary of strict / encumbering": no PreToolUse hook on `state.yaml`, no schema-validator scripts, no count thresholds, no refusal in `finalize` when `requires:` paths are missing. The advisory warns; the legality check refuses. That's the entire enforcement surface.
+
+### Verifiable checks
+
+- `tail -50 skills/architect/SKILL.md` ends with "## Before you finalize"; same for build, review, verify, elicit, research, triage. Heal ends with "## Before each apply step".
+- `node scripts/self-test.js` → 62/62 pass.
+- `node scripts/validate-plugin.js` → `validate-plugin OK`.
+- New tests verify advisory fires/doesn't fire correctly and that `<n>` expansion uses `nextState.sprint`.
+
+Plugin 0.10.1 → 0.11.0 (minor — adds contract surface and `finalize` capability).
+Marketplace 2.3.1 → 2.4.0 (minor — plugin sub-bump).
+
 ## 0.10.1 — Ship libs and build templates that were silently gitignored
 
 Bug fix. Pre-existing shipping defect, surfaced when 0.10.0 sub-architect dispatch tried to load `lib/dispatch.js` from the installed marketplace cache and failed at `import { envelope } from "./brief.js"` — `brief.js` was on local disk but never reached git.

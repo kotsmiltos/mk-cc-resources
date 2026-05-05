@@ -173,3 +173,43 @@ Delegation keeps the rule loud at validation. Each lens-agent returns evidence-b
 | sprint-complete | reviewing | initial entry | yes |
 | reviewing | triaging | confirmed_unacknowledged_criticals > 0 | yes |
 | reviewing | verifying | confirmed_unacknowledged_criticals == 0 | no |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `sprint-complete → reviewing` — initial entry to the review pass
+- `reviewing → triaging` — confirmed_unacknowledged_criticals > 0; route findings
+- `reviewing → verifying` — confirmed_unacknowledged_criticals == 0; advance to spec compliance
+
+Not legal: `reviewed`, `qa-done`, `triage` (singular — the legal phase is `triaging`).
+
+**The exact `finalize` call shape** for the reviewing→verifying transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/review/sprints/1/QA-REPORT.md", content: qaReportMd },
+  ],
+  nextState: { phase: "verifying", sprint: 1, /* …the rest of state */ },
+});
+```
+
+For `reviewing → triaging`, swap `nextState.phase` to `"triaging"` and keep the same QA-REPORT write.
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` one of `reviewing`, `triaging`, `verifying`? Spelled exactly?
+2. Does the QA-REPORT path use the **literal** sprint number?
+3. Is `confirmed_unacknowledged_criticals` derived from the per-finding validator returns, not from a master gut-check? The count is the gate; honour it.
+4. Did **lens agents** produce the findings, validators re-quote against disk? Master should not be reading code in bulk.
+5. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.

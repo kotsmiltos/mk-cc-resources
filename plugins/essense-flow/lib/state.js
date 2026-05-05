@@ -92,16 +92,22 @@ export async function readState(projectRoot) {
 
 export async function assertLegalTransition(from, to) {
   const transitions = await loadTransitions();
-  if (from === to) return { ok: true, transition: null, identity: true };
+  if (from === to) return { ok: true, transition: null, identity: true, requires: null };
   for (const [name, t] of Object.entries(transitions.transitions)) {
     if (t.from === from && t.to === to) {
-      return { ok: true, transition: name, identity: false };
+      return {
+        ok: true,
+        transition: name,
+        identity: false,
+        requires: t.requires || null,
+      };
     }
   }
   return {
     ok: false,
     reason: `no legal transition from ${from} to ${to}`,
     transition: null,
+    requires: null,
   };
 }
 

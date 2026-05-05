@@ -212,3 +212,52 @@ The split is the mechanism. The rule survives because the substance was delegate
 | decomposing | architecture | open design decision surfaced; re-decide | no |
 | architecture | sprinting | task specs closed | yes |
 | decomposing | sprinting | decomposition complete, all leaves packaged | yes |
+
+## Before you finalize
+
+This block is at the bottom of the skill on purpose — it is the last thing you read before you act. Apply it directly, do not "remember" it.
+
+**Phase targets** (verbatim from `references/transitions.yaml` — no synonyms, no English):
+
+- `requirements-ready → architecture` — initial entry from triage / requirements
+- `architecture → decomposing` — entering the decomposition loop
+- `decomposing → decomposing` — next decomposition iteration
+- `decomposing → architecture` — open design decision surfaced; re-decide
+- `architecture → sprinting` — sprint manifest closed, task specs closed
+- `decomposing → sprinting` — decomposition converged, packing complete
+
+If your target phase is not in the list above, you have invented it — stop. Common invented values seen in the wild: `building`, `built`, `done`, `architected`. None are legal.
+
+**The exact `finalize` call shape** for the architecture→sprinting transition (replace placeholders, keep the structure):
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/architecture/ARCH.md",                              content: archMd },
+    { path: ".pipeline/architecture/decisions.yaml",                       content: decisionsYaml },
+    { path: ".pipeline/architecture/sprints/1/manifest.yaml",              content: sprint1Manifest },
+    { path: ".pipeline/architecture/sprints/1/tasks/<task-id-1>.yaml",     content: task1Spec },
+    { path: ".pipeline/architecture/sprints/1/tasks/<task-id-2>.yaml",     content: task2Spec },
+    // …one entry per task spec, each under sprints/<n>/tasks/<id>.yaml
+    // For multiple sprints, one manifest per sprint dir, never a single
+    // global SPRINT-MANIFEST.yaml.
+  ],
+  nextState: { phase: "sprinting", sprint: 1, /* …the rest of state */ },
+});
+```
+
+**Self-check before the call** — answer each, out loud if needed:
+
+1. Is `nextState.phase` a string from the legal phases list above? Spelled exactly?
+2. Do `writes[].path` use the **literal** sprint number (`sprints/1/`), never the placeholder `<n>`?
+3. Do task spec files end in `.yaml`, **not** `.md`?
+4. Is there one `manifest.yaml` per sprint directory (`sprints/<n>/manifest.yaml`), **not** a single `SPRINT-MANIFEST.yaml` at the architecture root?
+5. Did **sub-architects** produce the per-module task specs and module-internal decisions? If you authored task specs in main context, the master/sub-architect contract was bypassed — stop and dispatch.
+6. Are you calling `finalize`, **not** `Write` or `Edit` directly on `.pipeline/state.yaml`? `finalize` is the only path that advances phase legally.
+
+If any answer is `no`, do not proceed. Re-read the relevant section above and fix the gap. The cost of pausing here is small; the cost of advancing on a malformed contract is the build skill halting because it cannot find the manifest.
+
+`finalize` will emit a stderr advisory if `requires:` paths from `transitions.yaml` are missing from your writes and from disk. The advisory is informational — `finalize` does not refuse the transition. Read the advisory if it appears; it tells you what the next phase expects to find.

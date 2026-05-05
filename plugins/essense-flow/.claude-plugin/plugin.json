@@ -1,6 +1,6 @@
 {
   "name": "essense-flow",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code with on-disk verification of every agent self-report.",
   "author": {
     "name": "mkots"

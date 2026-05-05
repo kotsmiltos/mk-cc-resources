@@ -142,3 +142,45 @@ Delegation keeps the rule loud at synthesis. Each per-item verifier reads code i
 | verifying | eliciting | confirmed drift requires elicit addendum | no |
 | verifying | architecture | confirmed missing implementation | no |
 | verifying | triaging | items need categorization (default route on gaps) | no |
+
+## Before you finalize
+
+Last block — read it just before you act.
+
+**Phase targets** (verbatim from `references/transitions.yaml`):
+
+- `verifying → complete` — no confirmed gaps; project ships
+- `verifying → eliciting` — drift requires a SPEC.md addendum
+- `verifying → architecture` — missing implementation found; back to design+decompose
+- `verifying → triaging` — items need categorization (default route when gaps exist)
+
+Not legal: `verified`, `done`, `shipped`. The terminal phase is `complete`.
+
+**The exact `finalize` call shape** for the verifying→complete transition:
+
+```js
+import { finalize } from "../../lib/finalize.js";
+
+await finalize({
+  projectRoot,
+  writes: [
+    { path: ".pipeline/verify/VERIFICATION-REPORT.md", content: verificationReportMd },
+    { path: ".pipeline/verify/extracted-items.yaml",   content: extractedItemsYaml },
+  ],
+  nextState: { phase: "complete", /* …the rest of state */ },
+});
+```
+
+For `verifying → architecture` / `eliciting` / `triaging`, swap `nextState.phase` accordingly. The VERIFICATION-REPORT.md write is still required — it's the artifact that justifies the route.
+
+**Self-check before the call:**
+
+1. Is `nextState.phase` exactly one of `complete`, `eliciting`, `architecture`, `triaging`?
+2. Does VERIFICATION-REPORT.md exist in `writes[]` regardless of which target phase you chose? It is the trace of why this transition was legal.
+3. Did **per-item verifiers** read code at the locator? Existence ≠ implementation. Master synthesizes per-item verdicts; master does not declare an item `implemented` without a verifier reading the function body.
+4. Items with unresolved locator hints get verdict `manual`, not `cannot-determine`. No silent drops.
+5. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+
+If any answer is `no`, stop. Re-read.
+
+`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.

@@ -10,8 +10,29 @@
 
 import { writeFile, mkdir, rename, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { writeState, readState, assertLegalTransition } from "./state.js";
+
+// Extract bare path-pattern hints from a `requires:` string.
+// Looks for substrings starting with ".pipeline/" up to the next whitespace.
+// Pure heuristic — emits a stderr advisory only, never refuses the transition.
+// Per "help without encumber": missing required paths surface as a warning at
+// the moment of cost, not as a gate.
+function extractPathHints(requiresStr) {
+  if (!requiresStr || typeof requiresStr !== "string") return [];
+  const hints = [];
+  const re = /\.pipeline\/[^\s]+/g;
+  let match;
+  while ((match = re.exec(requiresStr)) !== null) {
+    hints.push(match[0]);
+  }
+  return hints;
+}
+
+function expandSprintPlaceholder(p, sprintNumber) {
+  if (sprintNumber === undefined || sprintNumber === null) return p;
+  return p.replace(/<n>/g, String(sprintNumber));
+}
 
 // finalize({
 //   projectRoot,
@@ -54,10 +75,35 @@ export async function finalize({ projectRoot, writes, nextState, force = false }
   }
   const fromPhase = current.degraded ? null : current.phase;
 
+  let requiresHint = null;
   if (fromPhase !== null && fromPhase !== undefined) {
     const legal = await assertLegalTransition(fromPhase, nextState.phase);
     if (!legal.ok) {
       return { ok: false, reason: legal.reason, partial: false };
+    }
+    requiresHint = legal.requires;
+  }
+
+  // Soft requires advisory — warn, never refuse.
+  // The transition's `requires:` field in transitions.yaml may name expected
+  // artifact paths. If those paths are neither in `writes[]` nor already on
+  // disk, emit a stderr warning so the caller sees the gap. The transition
+  // proceeds regardless — the gate is the legality check above, not this.
+  if (requiresHint) {
+    const hints = extractPathHints(requiresHint);
+    // Normalize separators so Windows backslashes match POSIX-style hints
+    // extracted from transitions.yaml.
+    const toPosix = (p) => String(p).replace(/\\/g, "/");
+    const writesPaths = writes.map((w) => toPosix(w.path));
+    for (const hintRaw of hints) {
+      const hint = expandSprintPlaceholder(hintRaw, nextState.sprint);
+      const inWrites = writesPaths.some((p) => p === hint || p.endsWith(hint));
+      const onDisk = existsSync(join(projectRoot, hint));
+      if (!inWrites && !onDisk) {
+        process.stderr.write(
+          `[finalize] heads up: transition ${fromPhase}->${nextState.phase} expects ${hint} — not in writes, not on disk. proceeding anyway.\n`,
+        );
+      }
     }
   }
 

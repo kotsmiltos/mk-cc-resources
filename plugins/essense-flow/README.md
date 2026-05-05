@@ -72,6 +72,7 @@ The four rules that govern every skill: Graceful-Degradation, Front-Loaded-Desig
 
 ## Versioning
 
+`0.11.0` — contracts at the point of action. Every phase-producing SKILL.md ends with a "Before you finalize" closing block (verbatim phase targets, exact `finalize` call shape, numbered self-check). `finalize` reads `requires:` from `transitions.yaml` and emits a soft stderr advisory when expected paths are missing — informational, never refuses. Heal recognizes improvised-schema architect output (illegal `phase` value, flat `SPRINT-MANIFEST.yaml`, flat `tasks/*.md`) and proposes per-step conversion with user confirm.
 `0.10.1` — ship libs and build templates that were silently gitignored (repo-root Python `lib/` + `build/` ignores were swallowing plugin internals; only `lib/dispatch.js` was force-added, so installs were broken on `import "./brief.js"`).
 `0.10.0` — master/sub-agent orchestration pattern across 6 skills (architect, research, build, review, verify, triage, heal). Discipline rules survive synthesis because substance is delegated.
 `0.9.0` — principle-citation enforcement + architect Core Principle block.
