@@ -3,22 +3,36 @@
 //
 // S7 spike scope (2026-05-06): implements `init context` and `step-advance`
 // (context skill, all 3 modes — init/status/next; only status mode exercised
-// by the spike). Future S8 / S9.x sessions extend with state-set-* family,
-// state-set-phase, record-task-completion, task-spec-write, and the other 8
-// init <skill> blocks per `redesign/cli-spec.md` and `redesign/init-spec.md`.
+// by the spike).
+//
+// S8 extension (2026-05-06): adds the architect surface — `init architect`,
+// `state-set-phase`, the setter family (`state-set-sprint`,
+// `state-set-architecture-completed`, `state-set-decomposition-round`,
+// plus the other setters needed by future S9.x are stubbed inactive),
+// and `task-spec-write`. `record-task-completion` is build's territory
+// (S9.1) — not implemented here.
 //
 // Spec sources (read-only — do not paraphrase or invent fields):
-//   redesign/cli-spec.md §1.4 step-advance + §5 D-3 Addendum (mode arg).
-//   redesign/init-spec.md §1.9 init context (multi-mode shape).
-//   redesign/06-decisions.md 2026-05-05 D-3 + 2026-05-06 S6.5.
+//   redesign/cli-spec.md §1.1 (state-set-* family preamble + per-field blocks),
+//                       §1.2 (state-set-phase), §1.4 (step-advance + §5 D-3
+//                       Addendum 2026-05-05 mode arg), §1.5 (task-spec-write +
+//                       §5 2026-05-06 Addendum required-key list sync).
+//   redesign/init-spec.md §1.4 (init architect), §1.9 (init context).
+//   redesign/agent-spec.md §1.1 (essense-flow-sub-architect — task spec shape).
+//   redesign/06-decisions.md 2026-05-05 D-3, 2026-05-06 S6.5, 2026-05-06 S7,
+//                            2026-05-06 S8 (this session's spec amend).
 //
 // Conventions:
 //   - All ops emit JSON to stdout on success and exit 0.
 //   - Errors emit one-line message to stderr with exact wording from cli-spec.md
 //     and exit with the cli-spec-named code.
 //   - The .cjs container loads ESM `js-yaml` via dynamic import (Node 18+).
-//   - Cursor file lives at `<project-root>/.pipeline/cursor.yaml` (per S4 §1.4
-//     Note "If S7 surfaces a better location, surface as SURPRISES.md amendment").
+//   - Cursor file lives at `<project-root>/.pipeline/cursor.yaml` (S7-locked
+//     default per 2026-05-06 closed decision; future better-location amend
+//     surfaces as SURPRISES.md per cli-spec §1.4 Note).
+//   - State writes go through lib/state.js's writeState (which already
+//     re-validates phase legality + atomicity guarantees) via dynamic ESM
+//     import, mirroring the js-yaml interop pattern.
 
 const path = require('node:path');
 const fs = require('node:fs');
@@ -28,31 +42,103 @@ const PLUGIN_ROOT = path.resolve(__dirname, '..');
 // ---- Exit codes (per cli-spec.md §1.1 shared rejection table + per-op tables) ----
 const EXIT_OK = 0;
 const EXIT_DEGRADED = 2;
+const EXIT_TYPE_MISMATCH = 3;
 const EXIT_ARG_MISSING_OR_BAD = 4;
+const EXIT_PROJECT_ROOT_BAD = 5;
+const EXIT_ILLEGAL_TRANSITION = 6;
+const EXIT_PREREQ_MISSING = 7;
+const EXIT_GATE_FAILED = 8;
 const EXIT_VALIDATION_FAIL = 9;
+const EXIT_IDEMPOTENCY = 10;
+const EXIT_WRONG_PHASE = 11;
 const EXIT_INIT_LOOKUP_FAIL = 12;
 const EXIT_OUT_OF_ORDER = 13;
 const EXIT_SKILL_OR_MODE_MISMATCH = 14;
+const EXIT_FORBIDDEN_MARKER = 15;
+const EXIT_YAML_PARSE = 16;
+const EXIT_REQUIRED_KEY = 17;
+const EXIT_TASK_ID_MISMATCH = 18;
 const EXIT_UNKNOWN_OP = 4;
+const EXIT_GENERIC = 1;
 
-// ---- Closed-list constants (per cli-spec.md §3.1, §3.2; init-spec.md §1.9) ----
+// ---- Closed-list constants (per cli-spec.md §3.1, §3.2; init-spec.md §1.4 / §1.9) ----
 const SKILLS = [
   'elicit', 'research', 'architect', 'build', 'review',
   'verify', 'triage', 'heal', 'context',
 ];
 const CONTEXT_MODES = ['init', 'status', 'next'];
 
+// Canonical phase list — sourced fresh from references/transitions.yaml on
+// every invocation (cache invalidates on file mtime change per cli-spec §3.1).
+// Bootstrap fallback only used if transitions.yaml unreadable mid-op.
+const CANONICAL_PHASES_FALLBACK = [
+  'idle', 'eliciting', 'research', 'triaging', 'requirements-ready',
+  'architecture', 'decomposing', 'sprinting', 'sprint-complete',
+  'reviewing', 'verifying', 'complete',
+];
+
+// Top-level state-schema field allowlist (per cli-spec.md §3.2 + audit-checks.yaml
+// drift-1.allowed_keys, both sourced from defaults/state.yaml). Ops that read
+// state never reject a key, but the setter family rejects unknown FIELD names
+// structurally because no setter op exists for them.
+const STATE_TOP_LEVEL_KEYS = [
+  'schema_version', 'phase', 'sprint', 'wave',
+  'elicitation', 'research', 'triage', 'architecture',
+  'decomposition', 'verify', 'last_updated',
+];
+
+// Forbidden-marker list per cli-spec.md §3.3 (case-insensitive substring match).
+// "Final marker list locks at S6"; agent-spec.md §1.1 sub-architect constraints
+// confirmed `TBD` + "agent decides X" verbatim. The remainder are common
+// programming-culture leftover-markers; including them costs nothing and closes
+// near-miss variants. Keep ordering by category for grep-readability.
+const FORBIDDEN_MARKERS = [
+  // drift symptom #10 verbatim
+  'TBD',
+  '[TBD]',
+  '<TBD>',
+  'agent decides',
+  '<agent decides>',
+  '[agent decides]',
+  'agent-decides',
+  // general programming culture
+  'TODO',
+  '[TODO]',
+  'XXX',
+  'FIXME',
+  '???',
+  // template-leftover
+  '<choose>',
+  '<fill in>',
+  '<placeholder>',
+];
+
+// Task-id pattern per cli-spec.md §3.5
+const TASK_ID_PATTERN = /^T-\d{3,}$/;
+
+// Required-key list for parsed task-spec content per cli-spec.md §5
+// 2026-05-06 Addendum (supersedes §1.5 step 6 placeholder).
+// 10 keys; `module` accepted-but-not-required.
+const TASK_SPEC_REQUIRED_KEYS = [
+  'schema_version',
+  'task_id',
+  'goal',
+  'requirements_traced',
+  'file_write_contract',
+  'behavioral_pseudocode',
+  'test_completion_contract',
+  'dependencies',
+  'agency_level',
+  'agency_rationale',
+];
+const TASK_SPEC_AGENCY_LEVELS = ['prescribed', 'guided', 'open'];
+
 // Sentinel passed as --next-step to finalize a skill run (deletes cursor file).
-// Per cli-spec.md §1.4 Effect: "the next step-advance call (with --next-step
-// matching the canonical 'skill-complete' sentinel from ordered_steps, or with
-// no successor existing) deletes the cursor file (signaling 'this skill run
-// finalized cleanly; the next skill can run')". S7 implementation uses the
-// literal sentinel `skill-complete` since `ordered_steps_by_mode` arrays do
-// not contain a sentinel entry; cursor at last step + this token = finalize.
 const SKILL_COMPLETE_SENTINEL = 'skill-complete';
 
 const CURSOR_REL = '.pipeline/cursor.yaml';
 const STATE_REL = '.pipeline/state.yaml';
+const TRANSITIONS_REL = 'references/transitions.yaml';
 
 // ---- Async YAML helpers (dynamic ESM import for js-yaml) ----
 let _yamlMod = null;
@@ -65,9 +151,39 @@ async function loadYaml(p) {
   const y = await yaml();
   return y.load(fs.readFileSync(p, 'utf8'));
 }
+async function loadYamlString(s) {
+  const y = await yaml();
+  return y.load(s);
+}
 async function dumpYaml(obj) {
   const y = await yaml();
   return y.dump(obj, { lineWidth: 100, noRefs: true });
+}
+
+// ---- lib/state.js helpers (dynamic ESM import; writeState owns atomicity +
+//      transition legality; this CJS shell delegates rather than re-implementing).
+let _stateMod = null;
+async function stateLib() {
+  if (_stateMod) return _stateMod;
+  // Resolve as file:// URL for cross-platform import (Windows path-as-URL fix).
+  const url = require('node:url').pathToFileURL(path.join(PLUGIN_ROOT, 'lib', 'state.js')).href;
+  _stateMod = await import(url);
+  return _stateMod;
+}
+
+// ---- transitions.yaml loader (fresh-on-every-invoke per cli-spec §3.1) ----
+async function loadTransitions() {
+  const p = path.join(PLUGIN_ROOT, TRANSITIONS_REL);
+  return await loadYaml(p);
+}
+async function canonicalPhases() {
+  try {
+    const t = await loadTransitions();
+    if (Array.isArray(t.phases) && t.phases.length > 0) return t.phases;
+  } catch (_e) {
+    // fallthrough to bootstrap fallback
+  }
+  return CANONICAL_PHASES_FALLBACK;
 }
 
 // ---- Output helpers ----
@@ -80,16 +196,24 @@ function emitFailure(code, msg) {
   process.exit(code);
 }
 
+// ---- Project-root sanity ----
+function validateProjectRoot(projectRoot, opName) {
+  if (!fs.existsSync(projectRoot) || !fs.statSync(projectRoot).isDirectory()) {
+    return emitFailure(
+      EXIT_PROJECT_ROOT_BAD,
+      `essense-flow-tools ${opName}: --project-root ${projectRoot} is not a directory`,
+    );
+  }
+}
+
 // ============================================================================
-// Op: init context
+// Op: init context (S7)
 // ----------------------------------------------------------------------------
 // Returns the multi-mode JSON shape per `redesign/init-spec.md` §1.9.
-// Pure (no writes). Reads `references/transitions.yaml` for cross-check
-// (currently advisory) and `<project-root>/.pipeline/state.yaml` only to
-// populate the `sprint_number` field if state exists.
+// Pure (no writes). Reads `.pipeline/state.yaml` only for the `sprint_number`
+// field; degraded read → null per init-spec §3.7.
 // ============================================================================
 async function initContext(projectRoot) {
-  // Look up sprint from project state (read-only; degraded → null)
   let sprint_number = null;
   const statePath = path.join(projectRoot, STATE_REL);
   if (fs.existsSync(statePath)) {
@@ -97,7 +221,7 @@ async function initContext(projectRoot) {
       const s = await loadYaml(statePath);
       sprint_number = s && typeof s === 'object' && 'sprint' in s ? s.sprint : null;
     } catch (_e) {
-      sprint_number = null; // degraded read → null per init-spec §3.7
+      sprint_number = null;
     }
   }
 
@@ -173,13 +297,530 @@ async function initContext(projectRoot) {
 }
 
 // ============================================================================
-// Op: step-advance
+// Op: init architect (S8 — per init-spec.md §1.4)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps + sub_agents for the architect skill.
+// Pure (no writes). `sprint_number` from state.yaml when present.
+// ============================================================================
+async function initArchitect(projectRoot) {
+  let sprint_number = null;
+  const statePath = path.join(projectRoot, STATE_REL);
+  if (fs.existsSync(statePath)) {
+    try {
+      const s = await loadYaml(statePath);
+      sprint_number = s && typeof s === 'object' && 'sprint' in s ? s.sprint : null;
+    } catch (_e) {
+      sprint_number = null;
+    }
+  }
+
+  return {
+    skill: 'architect',
+    phase_from: ['requirements-ready', 'architecture', 'decomposing'],
+    phase_to: ['architecture', 'decomposing', 'sprinting'],
+    transitions: [
+      { name: 'requirements-ready-to-architecture', from: 'requirements-ready', to: 'architecture',
+        auto_advance: false, requires: '.pipeline/requirements/REQ.md exists' },
+      { name: 'architecture-to-decomposing', from: 'architecture', to: 'decomposing',
+        auto_advance: false, requires: null },
+      { name: 'decomposing-to-decomposing', from: 'decomposing', to: 'decomposing',
+        auto_advance: false, requires: null },
+      { name: 'decomposing-to-architecture', from: 'decomposing', to: 'architecture',
+        auto_advance: false, requires: 'open design decision surfaced during decomposition' },
+      { name: 'architecture-to-sprinting', from: 'architecture', to: 'sprinting',
+        auto_advance: true, requires: '.pipeline/architecture/sprints/<n>/manifest.yaml exists with all task specs closed' },
+      { name: 'decomposing-to-sprinting', from: 'decomposing', to: 'sprinting',
+        auto_advance: true, requires: '.pipeline/architecture/sprints/<n>/manifest.yaml exists with all task specs closed' },
+    ],
+    canonical_paths: {
+      arch_md: '.pipeline/architecture/ARCH.md',
+      decisions_yaml: '.pipeline/architecture/decisions.yaml',
+      sprint_manifest_template: '.pipeline/architecture/sprints/<n>/manifest.yaml',
+      task_spec_template: '.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml',
+    },
+    ordered_steps: [
+      'decide',
+      'delegate',
+      'synthesize',
+      'pack',
+      'finalize',
+    ],
+    sprint_number,
+    required_inputs: [
+      '.pipeline/elicitation/SPEC.md',
+      '.pipeline/requirements/REQ.md',
+    ],
+    principles_cited: [
+      'Front-Loaded-Design',
+      'Fail-Soft',
+      'Diligent-Conduct',
+      'Graceful-Degradation',
+      'INST-13',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-sub-architect',
+        cardinality: 'per-module parallel (one per module identified in `decide` step)',
+        brief_template: 'skills/architect/templates/sub-architect-brief.md',
+        required: true,
+        quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
+// Op family: state-set-* (S8 — per cli-spec.md §1.1)
+// ----------------------------------------------------------------------------
+// Setters share a common shape. Each setter declares: field name, value parser
+// (which also encodes type validation), and any field-specific rejection text.
+// The op-name is hardcoded into the CLI surface — drift symptom #1 (invents
+// schema fields) closes structurally.
+// ============================================================================
+
+// Shared setter runner. `parseValue` returns
+//   { ok: true, value }    — typed value to write
+//   { ok: false, msg }     — exit-3 type-mismatch text (no op prefix needed;
+//                            shared wrapper adds it)
+async function runSetter({
+  opName,        // e.g. 'state-set-sprint'
+  fieldPath,     // e.g. 'sprint' or ['architecture', 'completed_at']
+  rawValue,      // string from --value or undefined
+  parseValue,    // function (raw) → {ok, value} | {ok:false, msg}
+  projectRoot,
+}) {
+  if (rawValue === undefined || rawValue === null) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --value is required`,
+    );
+  }
+
+  const parsed = parseValue(rawValue);
+  if (!parsed.ok) {
+    return emitFailure(
+      EXIT_TYPE_MISMATCH,
+      `essense-flow-tools ${opName}: ${parsed.msg}`,
+    );
+  }
+
+  validateProjectRoot(projectRoot, opName);
+
+  const { readState, writeState } = await stateLib();
+  const current = await readState(projectRoot);
+  if (current.degraded) {
+    return emitFailure(
+      EXIT_DEGRADED,
+      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
+    );
+  }
+
+  // Build the next state. Strip `degraded`/`path` fields readState added.
+  const { degraded, path: _statePath, ...stateCore } = current;
+  const fieldKeys = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
+  const previous = readNested(stateCore, fieldKeys);
+  const nextState = setNested(stateCore, fieldKeys, parsed.value);
+
+  const result = await writeState(projectRoot, nextState);
+  if (!result.ok) {
+    return emitFailure(
+      EXIT_GENERIC,
+      `essense-flow-tools ${opName}: write failed (${result.reason})`,
+    );
+  }
+
+  // Re-read for the freshly-stamped last_updated
+  const after = await readState(projectRoot);
+  return emitSuccess({
+    ok: true,
+    op: opName,
+    field: fieldKeys.join('.'),
+    previous,
+    current: parsed.value,
+    state_path: result.path,
+    last_updated: after.last_updated || null,
+  });
+}
+
+function readNested(obj, keys) {
+  let cur = obj;
+  for (const k of keys) {
+    if (cur === null || cur === undefined || typeof cur !== 'object') return null;
+    cur = cur[k];
+  }
+  return cur === undefined ? null : cur;
+}
+function setNested(obj, keys, value) {
+  if (keys.length === 1) return { ...obj, [keys[0]]: value };
+  const [head, ...rest] = keys;
+  const sub = obj[head] && typeof obj[head] === 'object' ? obj[head] : {};
+  return { ...obj, [head]: setNested(sub, rest, value) };
+}
+
+// Type parsers
+function parsePositiveIntOrNull(opName) {
+  return (raw) => {
+    const trimmed = String(raw).trim();
+    if (trimmed === 'null') return { ok: true, value: null };
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      return {
+        ok: false,
+        msg: `--value rejected — expected positive int or 'null', got ${JSON.stringify(raw)}`,
+      };
+    }
+    if (n < 1) {
+      const suffix = opName.replace('state-set-', '');
+      return {
+        ok: false,
+        msg: `--value rejected — expected ${suffix} >= 1, got ${n}`,
+      };
+    }
+    return { ok: true, value: n };
+  };
+}
+function parseNonNegInt() {
+  return (raw) => {
+    const trimmed = String(raw).trim();
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      return {
+        ok: false,
+        msg: `--value rejected — expected int, got ${JSON.stringify(raw)}`,
+      };
+    }
+    if (n < 0) {
+      return {
+        ok: false,
+        msg: `--value rejected — expected round >= 0, got ${n}`,
+      };
+    }
+    return { ok: true, value: n };
+  };
+}
+function parseIso8601() {
+  return (raw) => {
+    const trimmed = String(raw).trim();
+    if (trimmed === 'null') return { ok: true, value: null };
+    const d = new Date(trimmed);
+    if (Number.isNaN(d.getTime())) {
+      return {
+        ok: false,
+        msg: `--value rejected — expected ISO 8601 datetime, got ${JSON.stringify(raw)}`,
+      };
+    }
+    // Round-trip check rejects loose forms (e.g. "2026-05-06" without time).
+    if (d.toISOString() !== trimmed) {
+      return {
+        ok: false,
+        msg: `--value rejected — expected ISO 8601 datetime, got ${JSON.stringify(raw)}`,
+      };
+    }
+    return { ok: true, value: trimmed };
+  };
+}
+
+// Concrete setter dispatchers
+const SETTERS = {
+  'state-set-sprint': {
+    fieldPath: 'sprint',
+    parseValue: parsePositiveIntOrNull('state-set-sprint'),
+  },
+  'state-set-wave': {
+    fieldPath: 'wave',
+    parseValue: parsePositiveIntOrNull('state-set-wave'),
+  },
+  'state-set-elicitation-round': {
+    fieldPath: ['elicitation', 'round'],
+    parseValue: parseNonNegInt(),
+  },
+  'state-set-elicitation-started': {
+    fieldPath: ['elicitation', 'started_at'],
+    parseValue: parseIso8601(),
+  },
+  'state-set-elicitation-completed': {
+    fieldPath: ['elicitation', 'completed_at'],
+    parseValue: parseIso8601(),
+  },
+  'state-set-research-round': {
+    fieldPath: ['research', 'round'],
+    parseValue: parseNonNegInt(),
+  },
+  'state-set-research-completed': {
+    fieldPath: ['research', 'completed_at'],
+    parseValue: parseIso8601(),
+  },
+  'state-set-triage-completed': {
+    fieldPath: ['triage', 'completed_at'],
+    parseValue: parseIso8601(),
+  },
+  'state-set-architecture-completed': {
+    fieldPath: ['architecture', 'completed_at'],
+    parseValue: parseIso8601(),
+  },
+  'state-set-decomposition-round': {
+    fieldPath: ['decomposition', 'round'],
+    parseValue: parseNonNegInt(),
+  },
+  'state-set-verify-completed': {
+    fieldPath: ['verify', 'completed_at'],
+    parseValue: parseIso8601(),
+  },
+};
+
+// ============================================================================
+// Op: state-set-phase (S8 — per cli-spec.md §1.2)
+// ----------------------------------------------------------------------------
+// Sole CLI op that mutates state.yaml's phase field. Carries:
+//   1. Legality check (against transitions.yaml).
+//   2. Prerequisite-artifact check (transition's `requires:` field).
+//   3. Per-task-record gate for sprinting → sprint-complete.
+//   4. --sprint required iff target ∈ {sprinting, sprint-complete}.
+//
+// Closes drift symptoms #2 (invents phase value), #5 (top-level summary
+// instead of per-task records), #6 (calls writeState directly bypassing
+// per-task ops). Symptoms #5/#6 close via the gate at sprinting → sprint-
+// complete; record-task-completion (S9.1, build's territory) is the only
+// path that increments count_recorded.
+// ============================================================================
+async function stateSetPhase({ rawValue, sprintArg, projectRoot }) {
+  const opName = 'state-set-phase';
+
+  if (rawValue === undefined || rawValue === null) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --value is required`,
+    );
+  }
+
+  const phases = await canonicalPhases();
+  if (!phases.includes(rawValue)) {
+    // Per cli-spec.md §1.2 rejection table row 1: exit 3 (validation/type-mismatch
+    // posture). Distinct from exit 6 (illegal transition between two legal phases).
+    return emitFailure(
+      EXIT_TYPE_MISMATCH,
+      `essense-flow-tools ${opName}: --value rejected — '${rawValue}' not in canonical phases [${phases.join(', ')}]`,
+    );
+  }
+
+  // --sprint required iff target ∈ {sprinting, sprint-complete}
+  const sprintTargets = ['sprinting', 'sprint-complete'];
+  const isSprintTarget = sprintTargets.includes(rawValue);
+  if (isSprintTarget && (sprintArg === undefined || sprintArg === null)) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --sprint is required when --value is in {sprinting, sprint-complete}`,
+    );
+  }
+  if (!isSprintTarget && sprintArg !== undefined && sprintArg !== null) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --sprint not accepted for target phase ${rawValue}`,
+    );
+  }
+
+  let sprintInt = null;
+  if (isSprintTarget) {
+    const n = Number(String(sprintArg).trim());
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+      return emitFailure(
+        EXIT_TYPE_MISMATCH,
+        `essense-flow-tools ${opName}: --sprint rejected — expected positive int, got ${JSON.stringify(sprintArg)}`,
+      );
+    }
+    sprintInt = n;
+  }
+
+  validateProjectRoot(projectRoot, opName);
+
+  const { readState, writeState, assertLegalTransition } = await stateLib();
+  const current = await readState(projectRoot);
+  if (current.degraded) {
+    return emitFailure(
+      EXIT_DEGRADED,
+      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
+    );
+  }
+
+  // Legality check
+  const legal = await assertLegalTransition(current.phase, rawValue);
+  if (!legal.ok) {
+    return emitFailure(
+      EXIT_ILLEGAL_TRANSITION,
+      `essense-flow-tools ${opName}: no legal transition from ${current.phase} to ${rawValue}`,
+    );
+  }
+
+  // Prerequisite-artifact predicate (per cli-spec §3.4)
+  if (legal.requires) {
+    const predResult = evaluatePredicate(legal.requires, projectRoot, sprintInt);
+    if (!predResult.ok) {
+      // Differentiate path-missing (exit 7) from predicate-false (exit 7 with different msg)
+      if (predResult.kind === 'path-missing') {
+        return emitFailure(
+          EXIT_PREREQ_MISSING,
+          `essense-flow-tools ${opName}: transition ${current.phase}→${rawValue} requires ${predResult.path}; not on disk`,
+        );
+      }
+      // predicate-false / disposition-not-met / unparseable
+      return emitFailure(
+        EXIT_PREREQ_MISSING,
+        `essense-flow-tools ${opName}: transition ${current.phase}→${rawValue} requires '${legal.requires}'; condition not met (${predResult.observed || 'predicate evaluation failed'})`,
+      );
+    }
+  }
+
+  // Per-task-record gate (sprinting → sprint-complete only)
+  if (current.phase === 'sprinting' && rawValue === 'sprint-complete') {
+    const gate = await evalSprintCompleteGate(projectRoot, sprintInt);
+    if (!gate.ok) {
+      return emitFailure(
+        EXIT_GATE_FAILED,
+        `essense-flow-tools ${opName}: sprinting→sprint-complete requires ${gate.declared} task records under .pipeline/build/sprints/${sprintInt}/tasks/*/completion-record.yaml; found ${gate.recorded}`,
+      );
+    }
+  }
+
+  // Build next state — write phase + (if sprint-target) sprint atomically
+  const { degraded, path: _statePath, ...stateCore } = current;
+  let nextState = { ...stateCore, phase: rawValue };
+  if (isSprintTarget) {
+    nextState.sprint = sprintInt;
+  }
+
+  const writeResult = await writeState(projectRoot, nextState);
+  if (!writeResult.ok) {
+    return emitFailure(
+      EXIT_GENERIC,
+      `essense-flow-tools ${opName}: write failed (${writeResult.reason})`,
+    );
+  }
+
+  const after = await readState(projectRoot);
+  return emitSuccess({
+    ok: true,
+    op: 'state-set-phase',
+    transition: `${current.phase}→${rawValue}`,
+    transition_name: legal.transition || null,
+    sprint: sprintInt,
+    state_path: writeResult.path,
+    last_updated: after.last_updated || null,
+  });
+}
+
+// Predicate evaluator per cli-spec §3.4
+//   - null → ok
+//   - "<path> exists [with <prop>]" → check existence + optional content prop
+//   - "<disposition prose>" → cannot evaluate at this CLI surface (defer to
+//     skill-level disposition predicate engine; for S8 architect, the only
+//     disposition predicate that fires is decomposing-to-architecture's
+//     "open design decision surfaced during decomposition" — master signals
+//     by passing through the transition explicitly. For now, accept disposition
+//     predicates as unevaluated-by-CLI; the runner trusts master's call.)
+function evaluatePredicate(predicate, projectRoot, sprint) {
+  // Path predicate detection: contains ".pipeline/" + " exists"
+  const pathRegex = /\.pipeline\/[^\s]+/g;
+  const paths = predicate.match(pathRegex);
+  if (paths && predicate.includes(' exists')) {
+    const subbed = sprint != null ? paths[0].replace(/<n>/g, String(sprint)) : paths[0];
+    const fullPath = path.join(projectRoot, subbed);
+    if (!fs.existsSync(fullPath)) {
+      return { ok: false, kind: 'path-missing', path: subbed };
+    }
+    // Content-property predicate: e.g. "exists with status: build-ready"
+    // For S8 architect scope, the only path predicate exercised is
+    //   .pipeline/requirements/REQ.md exists
+    //   .pipeline/architecture/sprints/<n>/manifest.yaml exists with all task specs closed
+    // The "with all task specs closed" property is enforced at sprint-pack
+    // time (every task in manifest.tasks must have a corresponding spec file
+    // under tasks/<task-id>.yaml that passed task-spec-write's marker scan).
+    // Treat the property as a soft-check: if the manifest exists and tasks/
+    // dir contains spec files for every entry in manifest.tasks, predicate
+    // ok. Otherwise reject.
+    if (predicate.includes('with all task specs closed')) {
+      return evalAllTaskSpecsClosed(fullPath, path.dirname(fullPath));
+    }
+    // Other content properties (build-ready, confirmed_unacknowledged_criticals, etc.)
+    // are not exercised by S8 architect scope — defer to S9.x.
+    if (predicate.includes(' with ') && !predicate.includes('with all task specs closed')) {
+      // Best-effort: predicate not implemented for this op surface; trust master's call
+      // (consistent with cli-spec §3.4 disposition-predicate fallback).
+      return { ok: true, kind: 'soft-pass-not-implemented' };
+    }
+    return { ok: true, kind: 'path-exists' };
+  }
+  // Disposition predicate (no path). Accept as unevaluated-by-CLI.
+  return { ok: true, kind: 'disposition-soft-pass' };
+}
+
+function evalAllTaskSpecsClosed(manifestPath, sprintDir) {
+  let manifest;
+  try {
+    const raw = fs.readFileSync(manifestPath, 'utf8');
+    // Parse using sync require; this evaluator is sync-by-shape
+    const yamlSync = require('js-yaml');
+    manifest = yamlSync.load(raw);
+  } catch (e) {
+    return { ok: false, kind: 'predicate-false', observed: `manifest unreadable (${e.message})` };
+  }
+  // Manifest tasks list per architect.md substance: waves[].tasks[] is task ids
+  const taskIds = new Set();
+  if (Array.isArray(manifest && manifest.waves)) {
+    for (const w of manifest.waves) {
+      if (Array.isArray(w.tasks)) for (const t of w.tasks) taskIds.add(t);
+    }
+  }
+  if (taskIds.size === 0) {
+    return { ok: false, kind: 'predicate-false', observed: 'manifest has no tasks' };
+  }
+  const tasksDir = path.join(sprintDir, 'tasks');
+  if (!fs.existsSync(tasksDir)) {
+    return { ok: false, kind: 'predicate-false', observed: `tasks dir ${tasksDir} missing` };
+  }
+  const missing = [];
+  for (const id of taskIds) {
+    if (!fs.existsSync(path.join(tasksDir, `${id}.yaml`))) missing.push(id);
+  }
+  if (missing.length > 0) {
+    return { ok: false, kind: 'predicate-false', observed: `missing task specs: [${missing.join(', ')}]` };
+  }
+  return { ok: true, kind: 'all-task-specs-closed' };
+}
+
+async function evalSprintCompleteGate(projectRoot, sprint) {
+  const manifestPath = path.join(
+    projectRoot,
+    `.pipeline/architecture/sprints/${sprint}/manifest.yaml`,
+  );
+  if (!fs.existsSync(manifestPath)) {
+    return { ok: false, recorded: 0, declared: 0 };
+  }
+  const manifest = await loadYaml(manifestPath);
+  const taskIds = new Set();
+  if (Array.isArray(manifest && manifest.waves)) {
+    for (const w of manifest.waves) {
+      if (Array.isArray(w.tasks)) for (const t of w.tasks) taskIds.add(t);
+    }
+  }
+  const declared = taskIds.size;
+
+  const recordsRoot = path.join(projectRoot, `.pipeline/build/sprints/${sprint}/tasks`);
+  let recorded = 0;
+  if (fs.existsSync(recordsRoot) && fs.statSync(recordsRoot).isDirectory()) {
+    for (const entry of fs.readdirSync(recordsRoot)) {
+      const recPath = path.join(recordsRoot, entry, 'completion-record.yaml');
+      if (fs.existsSync(recPath)) recorded++;
+    }
+  }
+  return { ok: recorded >= declared, recorded, declared };
+}
+
+// ============================================================================
+// Op: step-advance (S7 — per cli-spec.md §1.4 + §5 D-3 Addendum)
 // ----------------------------------------------------------------------------
 // Sole writer of `.pipeline/cursor.yaml`. Monotonic-by-construction.
-// Per cli-spec.md §1.4 + §5 D-3 Addendum.
 // ============================================================================
 async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
-  // V1: skill validation
   if (!skill) {
     return emitFailure(
       EXIT_ARG_MISSING_OR_BAD,
@@ -199,7 +840,6 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     );
   }
 
-  // V1.5: --mode validation per D-3 Addendum
   if (skill === 'context') {
     if (!mode) {
       return emitFailure(
@@ -222,14 +862,15 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     }
   }
 
-  // V2: read init <skill>'s ordered_steps (mode-aware for context)
+  // Read init <skill>'s ordered_steps
   let initJson;
   try {
     if (skill === 'context') {
       initJson = await initContext(projectRoot);
+    } else if (skill === 'architect') {
+      initJson = await initArchitect(projectRoot);
     } else {
-      // S7 spike scope: only context implemented. Future S8/S9.x extend.
-      throw new Error(`init <${skill}> not implemented in S7 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S8 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -248,7 +889,6 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     );
   }
 
-  // V3: read cursor file
   const cursorPath = path.join(projectRoot, CURSOR_REL);
   let cursor = null;
   if (fs.existsSync(cursorPath)) {
@@ -262,7 +902,7 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     }
   }
 
-  // Sentinel: skill-complete (delete cursor when at last step)
+  // Sentinel: skill-complete → delete cursor when at last step
   if (nextStep === SKILL_COMPLETE_SENTINEL) {
     if (!cursor) {
       return emitFailure(
@@ -303,7 +943,6 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     });
   }
 
-  // V4: --next-step in ordered_steps
   if (!orderedSteps.includes(nextStep)) {
     return emitFailure(
       EXIT_VALIDATION_FAIL,
@@ -311,7 +950,7 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     );
   }
 
-  // V4a: cursor empty → must be first step
+  // Cursor empty → must be first step
   if (!cursor) {
     if (nextStep !== orderedSteps[0]) {
       return emitFailure(
@@ -341,7 +980,7 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     });
   }
 
-  // V4b: cursor exists → skill must match
+  // Cursor exists → skill must match
   if (cursor.skill !== skill) {
     return emitFailure(
       EXIT_SKILL_OR_MODE_MISMATCH,
@@ -355,7 +994,7 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
     );
   }
 
-  // V4c: monotonic successor only
+  // Monotonic successor only
   const currentIdx = orderedSteps.indexOf(cursor.current_step);
   if (currentIdx < 0) {
     return emitFailure(
@@ -406,10 +1045,292 @@ async function writeCursor(cursorPath, cursor) {
 }
 
 // ============================================================================
-// Arg parser — minimal, no external dep
+// Op: task-spec-write (S8 — per cli-spec.md §1.5 + §5 2026-05-06 Addendum)
 // ----------------------------------------------------------------------------
-// Recognises positional `<op>` and optional `<sub>` (for `init <skill>`),
-// then `--flag value` pairs. Boolean flags not used by S7 ops.
+// Sole writer of task spec files. Rejects content with forbidden markers
+// (closes drift symptom #10). Required-key list per §5 2026-05-06 Addendum
+// is the 10-key canonical shape from agent-spec §1.1.
+// ============================================================================
+async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
+  const opName = 'task-spec-write';
+
+  // V1: required args
+  if (sprint === undefined || sprint === null) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --sprint is required`);
+  }
+  const sprintInt = Number(String(sprint).trim());
+  if (!Number.isFinite(sprintInt) || !Number.isInteger(sprintInt) || sprintInt < 1) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --sprint required, expected positive int, got ${JSON.stringify(sprint)}`,
+    );
+  }
+  if (!taskId) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --task-id is required`);
+  }
+  if (!TASK_ID_PATTERN.test(taskId)) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: --task-id '${taskId}' does not match canonical pattern /${TASK_ID_PATTERN.source}/ (e.g. T-001)`,
+    );
+  }
+  if (!contentFile) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --content-file is required`);
+  }
+
+  validateProjectRoot(projectRoot, opName);
+
+  if (!fs.existsSync(contentFile)) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --content-file '${contentFile}' not found`,
+    );
+  }
+
+  // V2: load state, check phase
+  const { readState } = await stateLib();
+  const current = await readState(projectRoot);
+  if (current.degraded) {
+    return emitFailure(
+      EXIT_DEGRADED,
+      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
+    );
+  }
+  if (!['architecture', 'decomposing'].includes(current.phase)) {
+    return emitFailure(
+      EXIT_WRONG_PHASE,
+      `essense-flow-tools ${opName}: current phase is ${current.phase}; expected one of [architecture, decomposing]`,
+    );
+  }
+
+  // V3: read content; scan markers; YAML parse
+  const contentText = fs.readFileSync(contentFile, 'utf8');
+  const markerHit = scanForbiddenMarkers(contentText);
+  if (markerHit) {
+    return emitFailure(
+      EXIT_FORBIDDEN_MARKER,
+      `essense-flow-tools ${opName}: --content-file contains forbidden marker '${markerHit.marker}' at line ${markerHit.line}; closed task specs cannot defer fields`,
+    );
+  }
+
+  let parsed;
+  try {
+    parsed = await loadYamlString(contentText);
+  } catch (e) {
+    return emitFailure(
+      EXIT_YAML_PARSE,
+      `essense-flow-tools ${opName}: --content-file YAML parse failed: ${e.message}`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return emitFailure(
+      EXIT_YAML_PARSE,
+      `essense-flow-tools ${opName}: --content-file YAML parse failed: top-level value must be a mapping`,
+    );
+  }
+
+  // V4: required-key check (per §5 2026-05-06 Addendum)
+  for (const k of TASK_SPEC_REQUIRED_KEYS) {
+    if (!(k in parsed)) {
+      return emitFailure(
+        EXIT_REQUIRED_KEY,
+        `essense-flow-tools ${opName}: --content-file missing required key '${k}'; expected keys [${TASK_SPEC_REQUIRED_KEYS.join(', ')}]`,
+      );
+    }
+  }
+
+  // V5: typed-value checks (per §5 2026-05-06 Addendum type table)
+  const typeCheck = validateTaskSpecTypes(parsed);
+  if (!typeCheck.ok) {
+    return emitFailure(
+      EXIT_REQUIRED_KEY,
+      `essense-flow-tools ${opName}: --content-file key '${typeCheck.key}' has invalid value '${typeCheck.observed}'; expected ${typeCheck.expected}`,
+    );
+  }
+
+  // V6: task_id consistency
+  if (parsed.task_id !== taskId) {
+    return emitFailure(
+      EXIT_TASK_ID_MISMATCH,
+      `essense-flow-tools ${opName}: --content-file's task_id field is '${parsed.task_id}', --task-id is '${taskId}'; mismatch`,
+    );
+  }
+
+  // V7: sprint manifest consistency
+  const manifestPath = path.join(
+    projectRoot,
+    `.pipeline/architecture/sprints/${sprintInt}/manifest.yaml`,
+  );
+  if (!fs.existsSync(manifestPath)) {
+    return emitFailure(
+      EXIT_PREREQ_MISSING,
+      `essense-flow-tools ${opName}: sprint manifest .pipeline/architecture/sprints/${sprintInt}/manifest.yaml not found`,
+    );
+  }
+  const manifest = await loadYaml(manifestPath);
+  const taskIds = new Set();
+  if (Array.isArray(manifest && manifest.waves)) {
+    for (const w of manifest.waves) {
+      if (Array.isArray(w.tasks)) for (const t of w.tasks) taskIds.add(t);
+    }
+  }
+  if (!taskIds.has(taskId)) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: --task-id '${taskId}' not in sprint ${sprintInt} manifest tasks list [${[...taskIds].join(', ')}]`,
+    );
+  }
+
+  // V8: idempotency (destination must not exist)
+  const destRel = `.pipeline/architecture/sprints/${sprintInt}/tasks/${taskId}.yaml`;
+  const destPath = path.join(projectRoot, destRel);
+  if (fs.existsSync(destPath)) {
+    return emitFailure(
+      EXIT_IDEMPOTENCY,
+      `essense-flow-tools ${opName}: destination ${destRel} already exists; idempotency violation`,
+    );
+  }
+
+  // Write atomically: write to .tmp-task-spec then rename.
+  const dir = path.dirname(destPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${destPath}.tmp-task-spec`;
+  // Write the parsed (already-validated) yaml back; re-emitted form
+  // canonicalises ordering/indent and ensures bytes match what we validated.
+  const canonical = await dumpYaml(parsed);
+  fs.writeFileSync(tmpPath, canonical, 'utf8');
+  fs.renameSync(tmpPath, destPath);
+
+  return emitSuccess({
+    ok: true,
+    op: 'task-spec-write',
+    sprint: sprintInt,
+    task_id: taskId,
+    spec_path: destRel,
+    bytes_written: Buffer.byteLength(canonical, 'utf8'),
+    scanned_markers_clear: true,
+  });
+}
+
+function scanForbiddenMarkers(text) {
+  const lower = text.toLowerCase();
+  for (const marker of FORBIDDEN_MARKERS) {
+    const idx = lower.indexOf(marker.toLowerCase());
+    if (idx >= 0) {
+      // Compute 1-based line number
+      const line = text.slice(0, idx).split('\n').length;
+      return { marker, line };
+    }
+  }
+  return null;
+}
+
+function validateTaskSpecTypes(spec) {
+  // schema_version: int = 1
+  if (typeof spec.schema_version !== 'number' || !Number.isInteger(spec.schema_version) || spec.schema_version !== 1) {
+    return { ok: false, key: 'schema_version', observed: String(spec.schema_version), expected: 'int frozen at 1' };
+  }
+  // task_id: §3.5 pattern (already checked vs --task-id; here verify shape)
+  if (typeof spec.task_id !== 'string' || !TASK_ID_PATTERN.test(spec.task_id)) {
+    return { ok: false, key: 'task_id', observed: String(spec.task_id), expected: `string matching /${TASK_ID_PATTERN.source}/` };
+  }
+  // goal: non-empty string
+  if (typeof spec.goal !== 'string' || spec.goal.trim() === '') {
+    return { ok: false, key: 'goal', observed: String(spec.goal), expected: 'non-empty string' };
+  }
+  // requirements_traced: array of strings
+  if (!Array.isArray(spec.requirements_traced) ||
+      spec.requirements_traced.some((x) => typeof x !== 'string')) {
+    return {
+      ok: false,
+      key: 'requirements_traced',
+      observed: JSON.stringify(spec.requirements_traced),
+      expected: 'array of strings (FR-* / NFR-* IDs)',
+    };
+  }
+  // file_write_contract: object with `paths` array
+  if (
+    !spec.file_write_contract ||
+    typeof spec.file_write_contract !== 'object' ||
+    Array.isArray(spec.file_write_contract) ||
+    !Array.isArray(spec.file_write_contract.paths)
+  ) {
+    return {
+      ok: false,
+      key: 'file_write_contract',
+      observed: JSON.stringify(spec.file_write_contract),
+      expected: 'object with `paths` array',
+    };
+  }
+  // agency_level: enum first (used by behavioral_pseudocode null-acceptance rule)
+  if (!TASK_SPEC_AGENCY_LEVELS.includes(spec.agency_level)) {
+    return {
+      ok: false,
+      key: 'agency_level',
+      observed: String(spec.agency_level),
+      expected: `enum [${TASK_SPEC_AGENCY_LEVELS.join(', ')}]`,
+    };
+  }
+  // behavioral_pseudocode: string (null OK only when agency_level == 'open')
+  if (spec.behavioral_pseudocode === null) {
+    if (spec.agency_level !== 'open') {
+      return {
+        ok: false,
+        key: 'behavioral_pseudocode',
+        observed: 'null',
+        expected: 'string (null only allowed when agency_level == open)',
+      };
+    }
+  } else if (typeof spec.behavioral_pseudocode !== 'string') {
+    return {
+      ok: false,
+      key: 'behavioral_pseudocode',
+      observed: String(spec.behavioral_pseudocode),
+      expected: 'string',
+    };
+  }
+  // test_completion_contract: array of objects each with id/description/check
+  if (!Array.isArray(spec.test_completion_contract)) {
+    return {
+      ok: false,
+      key: 'test_completion_contract',
+      observed: JSON.stringify(spec.test_completion_contract),
+      expected: 'array of objects each with id, description, check',
+    };
+  }
+  for (const ac of spec.test_completion_contract) {
+    if (!ac || typeof ac !== 'object' || !('id' in ac) || !('description' in ac) || !('check' in ac)) {
+      return {
+        ok: false,
+        key: 'test_completion_contract',
+        observed: JSON.stringify(ac),
+        expected: 'array of objects each with id, description, check',
+      };
+    }
+  }
+  // dependencies: array of strings
+  if (!Array.isArray(spec.dependencies) || spec.dependencies.some((x) => typeof x !== 'string')) {
+    return {
+      ok: false,
+      key: 'dependencies',
+      observed: JSON.stringify(spec.dependencies),
+      expected: 'array of strings (task-id refs)',
+    };
+  }
+  // agency_rationale: non-empty string
+  if (typeof spec.agency_rationale !== 'string' || spec.agency_rationale.trim() === '') {
+    return {
+      ok: false,
+      key: 'agency_rationale',
+      observed: String(spec.agency_rationale),
+      expected: 'non-empty string',
+    };
+  }
+  return { ok: true };
+}
+
+// ============================================================================
+// Arg parser
 // ============================================================================
 function parseArgs(argv) {
   const out = { _op: null, _sub: null };
@@ -440,17 +1361,27 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented in S7 spike (2026-05-06):',
-      '  init context',
-      '      → JSON describing context skill (canonical paths, modes,',
-      '        ordered_steps_by_mode, per_phase_artifact_map). Pure; no writes.',
-      '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <path>]',
+      'Ops implemented (S7 + S8 — 2026-05-06):',
+      '  init context | architect',
+      '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
+      '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
+      '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
       '      → advance per-skill cursor at <project-root>/.pipeline/cursor.yaml',
       '        monotonic-by-construction; --mode required for --skill=context only',
       '        --next-step skill-complete + cursor on last step → cursor deleted',
+      '  state-set-phase --value <phase> [--sprint <int>] [--project-root <p>]',
+      '      → advance pipeline phase; legality + prerequisite + per-task-record gate.',
+      '  state-set-sprint | state-set-wave --value <int|null>',
+      '  state-set-elicitation-round | state-set-research-round | state-set-decomposition-round',
+      '      --value <int>',
+      '  state-set-elicitation-started | -elicitation-completed | -research-completed |',
+      '  state-set-triage-completed | -architecture-completed | -verify-completed',
+      '      --value <iso8601-datetime>',
+      '  task-spec-write --sprint <int> --task-id <id> --content-file <path>',
+      '      → write closed task spec yaml; rejects forbidden markers (TBD, agent decides, …);',
+      '        validates against §5 2026-05-06 Addendum required-key list (10 keys + optional module).',
       '',
-      'Future S8 / S9.x extend with: state-set-* family, state-set-phase,',
-      'record-task-completion, task-spec-write, init <skill> for the other 8 skills.',
+      'Future S9.x extends with: record-task-completion, init <skill> for the other 7 skills.',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -468,10 +1399,28 @@ function printHelp() {
   const args = parseArgs(argv);
   const projectRoot = args['project-root'] ? path.resolve(args['project-root']) : process.cwd();
 
+  // Setter family dispatch
+  if (args._op && SETTERS[args._op]) {
+    const setter = SETTERS[args._op];
+    await runSetter({
+      opName: args._op,
+      fieldPath: setter.fieldPath,
+      rawValue: args.value,
+      parseValue: setter.parseValue,
+      projectRoot,
+    });
+    return;
+  }
+
   switch (args._op) {
     case 'init': {
       if (args._sub === 'context') {
         const json = await initContext(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
+      if (args._sub === 'architect') {
+        const json = await initArchitect(projectRoot);
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
@@ -487,10 +1436,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S7 spike
+      // Known skill but not yet implemented in S8 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S7 spike scope (only 'context' implemented; future S8/S9.x extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S8 spike scope (only 'context' and 'architect' implemented; future S9.x extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
@@ -500,7 +1449,26 @@ function printHelp() {
         mode: args.mode,
         projectRoot,
       });
-      return; // emitSuccess / emitFailure inside stepAdvance call process.exit
+      return;
+    }
+    case 'state-set-phase': {
+      await stateSetPhase({
+        rawValue: args.value,
+        sprintArg: args.sprint,
+        projectRoot,
+      });
+      return;
+    }
+    case 'task-spec-write': {
+      await taskSpecWrite({
+        sprint: args.sprint,
+        taskId: args['task-id'],
+        contentFile: args['content-file']
+          ? path.resolve(args['content-file'])
+          : undefined,
+        projectRoot,
+      });
+      return;
     }
     default:
       return emitFailure(
