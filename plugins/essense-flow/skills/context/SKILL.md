@@ -1,6 +1,6 @@
 ---
 name: context
-description: State plumbing for the pipeline — init, status, next-step. Reads .pipeline/state.yaml, validates against transitions.yaml, surfaces degraded states clearly. Used by /init, /status, /next.
+description: State plumbing for the pipeline — init, status, next-step. Reads pipeline state, validates against transitions.yaml, surfaces degraded states clearly. Used by /init, /status, /next.
 version: 1.0.0
 schema_version: 1
 ---
@@ -25,9 +25,9 @@ Things we build need access from claude to be tested so we can build things like
 
 ## Operating contract
 
-- Read inputs from canonical paths.
-- On degraded inputs (missing/corrupt state.yaml), surface the degradation explicitly, do not refuse work.
-- Never silently regenerate `.pipeline/state.yaml` — `init` only writes when no state exists; degraded recovery requires `force: true` from a deliberate caller.
+- Read inputs from canonical paths supplied by `essense-flow-tools init context`. Do not infer paths from prose.
+- On degraded inputs (missing/corrupt state file), surface the degradation explicitly, do not refuse work.
+- Never silently regenerate the pipeline state file — `init` mode only writes when no state exists; degraded recovery requires `force: true` from a deliberate caller.
 - Verify by reading code, not by checking that a file exists.
 - State the verifiable check that proves work done.
 
@@ -35,40 +35,66 @@ Things we build need access from claude to be tested so we can build things like
 
 State is a contract, not a vibe. Every phase write goes through `lib/state.js` and is validated against `references/transitions.yaml`. If the state machine wouldn't accept the transition, the write doesn't happen — and the user sees why.
 
+## Skill operating mechanism (S7 redesign — 2026-05-06)
+
+Path lookups, ordered step list, and the per-phase artifact map are obtained from a single source: the CLI op `essense-flow-tools init context`. Master parses the JSON and uses its fields verbatim — no path inference from prose, no extension guessing, no key invention.
+
+```
+node <plugin-root>/bin/essense-flow-tools.cjs init context [--project-root <path>]
+```
+
+Cursor bookkeeping for each mode's step sequence is the sole responsibility of:
+
+```
+node <plugin-root>/bin/essense-flow-tools.cjs step-advance --skill context --mode <init|status|next> --next-step <step> [--project-root <path>]
+```
+
+`step-advance` is monotonic-by-construction: rejects out-of-order, repeated, or skip-ahead advances; rejects the wrong mode for an in-progress run. Reaching the last step of a mode and then calling with `--next-step skill-complete` deletes the cursor file (signals the run finalized cleanly).
+
 ## What you produce
 
-Three modes, no artifacts of its own beyond `.pipeline/state.yaml`:
+Three modes; the only on-disk artifact owned by this skill is the project's pipeline state file (path supplied by `init context`'s `canonical_paths.state_yaml`):
 
-- **init** — write `.pipeline/state.yaml` from `defaults/state.yaml`. Refuses if state already exists (caller should run `/heal` instead).
+- **init** — write the state file from `defaults/state.yaml`. Refuses if state already exists (caller should run `/heal` instead).
 - **status** — read state, render a short human-readable summary: phase, sprint, wave, last_updated, any degradation warning, list of canonical artifact paths the next phase will read.
 - **next** — read state, look up `references/phase-command-map.yaml`, return the recommended next slash command + one-line description + inputs it will read. Suggestion only.
 
 ## How you work
 
+In every mode below, replace `<state-path>` and `<artifacts-for-phase>` with the values read from `init context`'s JSON (`canonical_paths.state_yaml` and `per_phase_artifact_map[<state.phase>]` respectively). Do not invent these paths.
+
 ### init
 
-1. Check `.pipeline/state.yaml` does not exist. If it does, return `{ok: false, reason: "state already exists; run /heal to reconcile prior work"}`.
-2. Call `lib/state.js initState(projectRoot)`. State is written from `defaults/state.yaml`.
-3. Surface to the user: state path, initial phase (idle), and the recommended next move (`/elicit "<your project pitch>"`).
+Ordered steps (per `init context` `ordered_steps_by_mode.init` — also enforced by `step-advance`):
+
+1. `check-no-state-exists` — call `step-advance --skill context --mode init --next-step check-no-state-exists`. Then check the file at `canonical_paths.state_yaml` does not exist. If it does, return `{ok: false, reason: "state already exists; run /heal to reconcile prior work"}`.
+2. `init-state-from-defaults` — call `step-advance ... --next-step init-state-from-defaults`. Then call `lib/state.js initState(projectRoot)`. State is written from `defaults/state.yaml`.
+3. `surface-recommended-next` — call `step-advance ... --next-step surface-recommended-next`. Surface to the user: state path (from `canonical_paths.state_yaml`), initial phase (idle), and the recommended next move (`/elicit "<your project pitch>"`).
+4. Finalize — call `step-advance ... --next-step skill-complete`. Cursor file deleted; init mode complete.
 
 ### status
 
-1. Call `lib/state.js readState(projectRoot)`.
-2. If `degraded`: emit a warning block naming the degradation and the file. Continue — do not refuse.
-3. Render:
+Ordered steps (per `init context` `ordered_steps_by_mode.status`):
+
+1. `read-state` — call `step-advance --skill context --mode status --next-step read-state`. Then call `lib/state.js readState(projectRoot)`. The function reads the file at `canonical_paths.state_yaml` internally; do not duplicate the path here.
+2. `render-status-block` — call `step-advance ... --next-step render-status-block`. If `degraded`: emit a warning block naming the degradation and the file path returned by `readState`. Continue — do not refuse. Render:
    - phase + (sprint, wave) if applicable
    - last_updated
    - degradation warning if any
-   - canonical artifact paths for the current phase (look up in the per-phase map below)
-   - list of upstream artifacts that should already exist
+   - canonical artifact paths for the current phase, looked up in `init context`'s `per_phase_artifact_map[<state.phase>]`
+   - list of upstream artifacts that should already exist (same source)
    - recommended next command (delegate to next).
+3. `delegate-to-next` — call `step-advance ... --next-step delegate-to-next`. Hand off to next-mode logic for the next-command cue.
+4. Finalize — call `step-advance ... --next-step skill-complete`. Cursor file deleted; status mode complete.
 
 ### next
 
-1. Read state.
-2. Look up `phases.<phase>` in `references/phase-command-map.yaml`.
-3. Emit the cue: command name, description, input paths it expects to read.
-4. Never auto-execute the next command. The user is the gatekeeper.
+Ordered steps (per `init context` `ordered_steps_by_mode.next`):
+
+1. `read-state` — call `step-advance --skill context --mode next --next-step read-state`. Then call `lib/state.js readState(projectRoot)`.
+2. `lookup-next-command` — call `step-advance ... --next-step lookup-next-command`. Read `references/phase-command-map.yaml` and look up `phases.<phase>`.
+3. `emit-cue-no-auto-execute` — call `step-advance ... --next-step emit-cue-no-auto-execute`. Emit the cue: command name, description, input paths it expects to read. Never auto-execute the next command. The user is the gatekeeper.
+4. Finalize — call `step-advance ... --next-step skill-complete`. Cursor file deleted; next mode complete.
 
 ## Constraints
 
@@ -80,7 +106,8 @@ Three modes, no artifacts of its own beyond `.pipeline/state.yaml`:
 
 ## Scripts
 
-`lib/state.js` for read/write. No sub-agents are dispatched.
+- `bin/essense-flow-tools.cjs` for `init context` (canonical paths + ordered steps + per-phase map) and `step-advance` (cursor bookkeeping). Sole authority for path lookups and ordered-step validation.
+- `lib/state.js` for state read/write (called via `readState` / `initState`). No sub-agents are dispatched.
 
 ## State transitions
 
@@ -92,17 +119,4 @@ This skill writes state for `init` only (no transition — initial write). `stat
 
 ## Per-phase canonical artifact map
 
-| phase | artifacts the next phase will read |
-|-------|----------------------------------|
-| idle | none |
-| eliciting | `.pipeline/elicitation/SPEC.md` |
-| research | `.pipeline/elicitation/SPEC.md`, `.pipeline/requirements/REQ.md` |
-| triaging | `.pipeline/elicitation/SPEC.md`, `.pipeline/requirements/REQ.md`, `.pipeline/triage/TRIAGE-REPORT.md` |
-| requirements-ready | `.pipeline/requirements/REQ.md` |
-| architecture | `.pipeline/architecture/ARCH.md`, `.pipeline/architecture/sprints/<n>/manifest.yaml` |
-| decomposing | `.pipeline/architecture/ARCH.md` (in flux) |
-| sprinting | `.pipeline/architecture/sprints/<n>/manifest.yaml`, per-task specs |
-| sprint-complete | `.pipeline/build/sprints/<n>/SPRINT-REPORT.md`, completion records |
-| reviewing | `.pipeline/review/sprints/<n>/QA-REPORT.md` |
-| verifying | `.pipeline/verify/VERIFICATION-REPORT.md`, `.pipeline/verify/extracted-items.yaml` |
-| complete | `.pipeline/state.yaml` |
+The map lives in `essense-flow-tools init context`'s `per_phase_artifact_map` field (keyed by canonical phase name). Master reads it from there, not from a prose table here. Phase-name keys are the canonical values from `references/transitions.yaml.phases`. The S7 redesign removed the prose table from this file to close the path-inference seam — see `redesign/spike-notes-S7.md` for the rationale.
