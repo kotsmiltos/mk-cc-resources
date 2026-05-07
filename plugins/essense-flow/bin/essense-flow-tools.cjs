@@ -468,6 +468,92 @@ async function initBuild(projectRoot) {
 }
 
 // ============================================================================
+// Op: init review (S9.2 — per init-spec.md §1.6)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps + sub_agents for the review skill.
+// Pure (no writes). `sprint_number` from state.yaml when present.
+// Source: redesign/init-spec.md §1.6 and redesign/skill-substance/review.md
+// "Outputs" + "Ordered steps" + "Sub-agent dispatches".
+// ============================================================================
+async function initReview(projectRoot) {
+  let sprint_number = null;
+  const statePath = path.join(projectRoot, STATE_REL);
+  if (fs.existsSync(statePath)) {
+    try {
+      const s = await loadYaml(statePath);
+      sprint_number = s && typeof s === 'object' && 'sprint' in s ? s.sprint : null;
+    } catch (_e) {
+      sprint_number = null;
+    }
+  }
+
+  return {
+    skill: 'review',
+    phase_from: ['sprint-complete', 'reviewing'],
+    phase_to: ['reviewing', 'triaging', 'verifying'],
+    transitions: [
+      { name: 'sprint-complete-to-reviewing', from: 'sprint-complete', to: 'reviewing',
+        auto_advance: true,
+        requires: '.pipeline/build/sprints/<n>/SPRINT-REPORT.md exists' },
+      { name: 'reviewing-to-triaging', from: 'reviewing', to: 'triaging',
+        auto_advance: true,
+        requires: '.pipeline/review/sprints/<n>/QA-REPORT.md exists with confirmed_unacknowledged_criticals > 0' },
+      { name: 'reviewing-to-verifying', from: 'reviewing', to: 'verifying',
+        auto_advance: false,
+        requires: '.pipeline/review/sprints/<n>/QA-REPORT.md exists with confirmed_unacknowledged_criticals == 0' },
+    ],
+    canonical_paths: {
+      qa_report_md: '.pipeline/review/sprints/<n>/QA-REPORT.md',
+      spec_compliance_yaml: '.pipeline/review/sprints/<n>/spec-compliance.yaml',
+      false_positive_ledger_yaml: '.pipeline/review/false-positive-ledger.yaml',
+      acknowledged_ledger_yaml: '.pipeline/review/acknowledged-ledger.yaml',
+    },
+    ordered_steps: [
+      'read-inputs-and-ledgers',
+      'extract-spec-claims',
+      'audit-adversarial-lenses',
+      'validate-findings-against-disk',
+      'compute-deterministic-gate',
+      'finalize',
+    ],
+    sprint_number,
+    required_inputs: [
+      '.pipeline/elicitation/SPEC.md',
+      '.pipeline/architecture/ARCH.md',
+      '.pipeline/architecture/decisions.yaml',
+      '.pipeline/architecture/sprints/<n>/manifest.yaml',
+      '.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml (one per task)',
+      '.pipeline/build/sprints/<n>/SPRINT-REPORT.md',
+      '.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml (one per task)',
+    ],
+    principles_cited: [
+      'Diligent-Conduct',
+      'Fail-Soft',
+      'Front-Loaded-Design',
+      'INST-13',
+      'Graceful-Degradation',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-adversarial-lens',
+        cardinality:
+          'per-lens parallel (correctness | contract-compliance | hidden-state | failure-modes | spec-drift | functional-testing — adaptive)',
+        brief_template: 'skills/review/templates/adversarial-brief.md',
+        required: false,
+        quorum: 'tolerant (n-1 lenses may crash; missing → synthetic risk finding)',
+      },
+      {
+        name: 'essense-flow-validator',
+        cardinality: 'per-finding (one validator per finding emitted by lens agents)',
+        brief_template: 'skills/review/templates/validator-brief.md',
+        required: true,
+        quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
 // Setters share a common shape. Each setter declares: field name, value parser
@@ -750,8 +836,17 @@ async function stateSetPhase({ rawValue, sprintArg, projectRoot }) {
   }
 
   // Prerequisite-artifact predicate (per cli-spec §3.4)
+  // Fallback: when target phase does not accept --sprint (e.g. reviewing,
+  // verifying, triaging), the predicate's `<n>` placeholder still needs a
+  // value; use the sprint carried in current state.yaml. This closes the
+  // S9.2 gap where sprint-complete → reviewing's
+  // `.pipeline/build/sprints/<n>/SPRINT-REPORT.md exists` predicate could
+  // not be evaluated against the literal sprint.
   if (legal.requires) {
-    const predResult = evaluatePredicate(legal.requires, projectRoot, sprintInt);
+    const sprintForPredicate =
+      sprintInt != null ? sprintInt
+      : (typeof current.sprint === 'number' ? current.sprint : null);
+    const predResult = evaluatePredicate(legal.requires, projectRoot, sprintForPredicate);
     if (!predResult.ok) {
       // Differentiate path-missing (exit 7) from predicate-false (exit 7 with different msg)
       if (predResult.kind === 'path-missing') {
@@ -838,11 +933,24 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
     if (predicate.includes('with all task specs closed')) {
       return evalAllTaskSpecsClosed(fullPath, path.dirname(fullPath));
     }
-    // Other content properties (build-ready, confirmed_unacknowledged_criticals, etc.)
-    // are not exercised by S8 architect scope — defer to S9.x.
-    if (predicate.includes(' with ') && !predicate.includes('with all task specs closed')) {
-      // Best-effort: predicate not implemented for this op surface; trust master's call
-      // (consistent with cli-spec §3.4 disposition-predicate fallback).
+    // S9.2 review wire: `confirmed_unacknowledged_criticals (==|>|<|>=|<=) <int>`
+    // Closes drift symptom at the reviewing→verifying / reviewing→triaging gate.
+    // Without this real check, master could call `state-set-phase --value verifying`
+    // when the count was non-zero — undermining the deterministic gate.
+    const cucMatch = predicate.match(
+      /confirmed_unacknowledged_criticals\s*(==|>=|<=|>|<)\s*(-?\d+)/,
+    );
+    if (cucMatch) {
+      return evalCountPredicate({
+        fullPath,
+        key: 'confirmed_unacknowledged_criticals',
+        operator: cucMatch[1],
+        operand: parseInt(cucMatch[2], 10),
+      });
+    }
+    // Other content properties (build-ready, etc.) not yet exercised — defer to
+    // a later wire-up step (S9.6 elicit) per cli-spec §3.4.
+    if (predicate.includes(' with ')) {
       return { ok: true, kind: 'soft-pass-not-implemented' };
     }
     return { ok: true, kind: 'path-exists' };
@@ -883,6 +991,74 @@ function evalAllTaskSpecsClosed(manifestPath, sprintDir) {
     return { ok: false, kind: 'predicate-false', observed: `missing task specs: [${missing.join(', ')}]` };
   }
   return { ok: true, kind: 'all-task-specs-closed' };
+}
+
+// Evaluate a numeric content-property predicate against a markdown file's
+// YAML frontmatter (or a full YAML file). Per cli-spec §3.4 step 4-6.
+// Used by reviewing-to-verifying / reviewing-to-triaging predicate (S9.2).
+function evalCountPredicate({ fullPath, key, operator, operand }) {
+  let parsed;
+  try {
+    const raw = fs.readFileSync(fullPath, 'utf8');
+    const frontmatter = extractFrontmatter(raw);
+    if (frontmatter == null) {
+      return {
+        ok: false,
+        kind: 'predicate-false',
+        observed: `${path.basename(fullPath)} has no YAML frontmatter; cannot read '${key}'`,
+      };
+    }
+    const yamlSync = require('js-yaml');
+    parsed = yamlSync.load(frontmatter);
+  } catch (e) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} unreadable (${e.message})`,
+    };
+  }
+  if (!parsed || typeof parsed !== 'object' || !(key in parsed)) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} frontmatter missing '${key}'`,
+    };
+  }
+  const observed = parsed[key];
+  if (!Number.isFinite(observed)) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} '${key}' is not a number (got ${JSON.stringify(observed)})`,
+    };
+  }
+  let pass;
+  switch (operator) {
+    case '==': pass = observed === operand; break;
+    case '>=': pass = observed >= operand; break;
+    case '<=': pass = observed <= operand; break;
+    case '>':  pass = observed >  operand; break;
+    case '<':  pass = observed <  operand; break;
+    default: pass = false;
+  }
+  if (!pass) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${key}=${observed}, predicate requires ${operator} ${operand}`,
+    };
+  }
+  return { ok: true, kind: 'count-predicate-pass' };
+}
+
+// Extract the raw YAML frontmatter string from a markdown file
+// (between leading `---` line and the next `---` line).
+// Returns null if no frontmatter found.
+function extractFrontmatter(raw) {
+  // Allow optional UTF-8 BOM
+  const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  return m ? m[1] : null;
 }
 
 async function evalSprintCompleteGate(projectRoot, sprint) {
@@ -969,8 +1145,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initArchitect(projectRoot);
     } else if (skill === 'build') {
       initJson = await initBuild(projectRoot);
+    } else if (skill === 'review') {
+      initJson = await initReview(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S9.1 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S9.2 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -1767,8 +1945,8 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented (S7 + S8 + S9.1 — 2026-05-07):',
-      '  init context | architect | build',
+      'Ops implemented (S7 + S8 + S9.1 + S9.2 — 2026-05-07):',
+      '  init context | architect | build | review',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
       '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
@@ -1792,7 +1970,8 @@ function printHelp() {
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
       '',
-      'Future S9.2-7 extends with: init <skill> for the remaining 6 skills.',
+      'Future S9.3-7 extends with: init <skill> for the remaining 5 skills',
+      '(verify, research, triage, elicit, heal).',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -1840,6 +2019,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'review') {
+        const json = await initReview(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -1852,10 +2036,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.1 spike scope
+      // Known skill but not yet implemented in S9.2 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.1 spike scope (only 'context', 'architect', 'build' implemented; future S9.2-7 extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.2 spike scope (only 'context', 'architect', 'build', 'review' implemented; future S9.3-7 extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {

@@ -30,8 +30,92 @@ Things we build need access from claude to be tested so we can build things like
 - Existence of a file is **never** sufficient evidence — read code at the cited line.
 - Every finding carries verbatim path evidence with quote ≥ `evidence.min_quote_length` (config). Shorter quotes auto-flag the finding as inconclusive.
 - The validator pass re-reads cited files; quotes that drifted out of position auto-flag as `false_positive` with reason `quote_drift`.
-- Use `lib/dispatch.js` for parallel adversarial agents. Quorum mode: `tolerant` (n−1 lenses may crash; missing lens becomes a synthetic risk finding).
+- Dispatch parallel adversarial lenses via the `Agent` tool with `subagent_type=essense-flow-adversarial-lens` (registered at `plugins/essense-flow/agents/essense-flow-adversarial-lens.md`). Quorum mode: `tolerant` (n−1 lenses may crash; missing lens becomes a synthetic risk finding). Dispatch per-finding validators via `subagent_type=essense-flow-validator` (registered at `plugins/essense-flow/agents/essense-flow-validator.md`). Quorum mode: `all-required`.
 - The block-or-pass decision is **deterministic**: count of confirmed-and-unacknowledged criticals. No keyword scoring, no severity-weighting, no fuzzy aggregate.
+- Use `essense-flow-tools state-set-phase --value verifying` (or `--value triaging`) to transition out of `reviewing` once the QA-REPORT.md is written. The op's prerequisite-artifact predicate evaluator reads QA-REPORT.md frontmatter's `confirmed_unacknowledged_criticals` field and rejects the wrong destination structurally — see "Skill operating mechanism" below. (`lib/finalize.js` direct calls deprecated for review per S9.2 redesign.)
+
+## Skill operating mechanism (S9.2 redesign — 2026-05-07)
+
+Path lookups + step bookkeeping + adversarial-lens / validator dispatch + state advancement go through the narrow CLI surface introduced for the redesign. **You do not infer paths from prose. You do not write `phase:` directly. You do not pick QA-REPORT.md extensions or sprint directory names from convention. You do not call `lib/dispatch.js` or `lib/finalize.js` for review's state writes — `state-set-phase` is the sole writer; the deterministic gate is enforced structurally at the CLI op level by the prerequisite-predicate evaluator that reads QA-REPORT.md frontmatter.** The mechanisms below give you exact strings to write or pass; you use them verbatim.
+
+### Get canonical paths from `init review`
+
+At skill-start, call:
+
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs init review --project-root <project-root>
+```
+
+Returns JSON with `canonical_paths` (`qa_report_md`, `spec_compliance_yaml`, `false_positive_ledger_yaml`, `acknowledged_ledger_yaml`), `ordered_steps` (the 6-step sequence below), `sub_agents` (the registered `essense-flow-adversarial-lens` and `essense-flow-validator` blocks — cardinalities and quorums named), `transitions` (legal phase transitions for review — read-only reference; advancement happens via `state-set-phase`), `sprint_number` (read from state.yaml), `required_inputs`, `principles_cited`. Parse the JSON. **Use the strings verbatim — never construct path or step names from prose.**
+
+Where the templates contain `<n>` (sprint number), substitute with the literal sprint number from `init.sprint_number` at write time:
+
+- `qa_report_md` (`.pipeline/review/sprints/<n>/QA-REPORT.md`) → ordinary `Write` after substituting `<n>`. Master writes this directly with `Write`; the prerequisite-predicate evaluator at `state-set-phase` reads its frontmatter to enforce the deterministic gate.
+- `spec_compliance_yaml` (`.pipeline/review/sprints/<n>/spec-compliance.yaml`) → ordinary `Write` after substituting `<n>`.
+- `false_positive_ledger_yaml` (`.pipeline/review/false-positive-ledger.yaml`) → ordinary `Write`. Sprint-spanning (no `<n>`); read prior contents, append this run's false positives, write back.
+- `acknowledged_ledger_yaml` (`.pipeline/review/acknowledged-ledger.yaml`) → ordinary `Write`. Sprint-spanning (no `<n>`); read prior contents, accept user's explicit acks, write back.
+
+### Advance the per-skill cursor at each step
+
+Before doing the substantive work of each step in `ordered_steps`, call:
+
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs step-advance --skill review --next-step <step-name> --project-root <project-root>
+```
+
+The op rejects out-of-order or non-monotonic advances. Sequence MUST be `read-inputs-and-ledgers → extract-spec-claims → audit-adversarial-lenses → validate-findings-against-disk → compute-deterministic-gate → finalize` per init's `ordered_steps`; out-of-order returns exit 13 with a "not the immediate successor" error. After `finalize`'s substantive work, call `step-advance --next-step skill-complete` to delete the cursor (signals review run finalized cleanly; the next skill — verify or triage, depending on the gate's verdict — can run).
+
+### Dispatch adversarial lenses via the registered agent
+
+Use the `Agent` / `Task` tool with `subagent_type=essense-flow-adversarial-lens`. The agent is registered at `plugins/essense-flow/agents/essense-flow-adversarial-lens.md` with description, tool allowlist (`Read, Grep, Glob` — no Bash, no Write, no Edit; the lens hunts for problems, it does not run tests or modify code), and the per-lens brief input shape as its body. Use `templates/adversarial-brief.md` to assemble the brief; substitute `{{lens}}`, `{{sprint_number}}`, `{{spec_path}}`, `{{arch_path}}`, `{{decisions_path}}`, `{{manifest_path}}`, `{{sprint_report_path}}`, `{{lens_specific_instructions}}`, `{{min_quote_length}}`, `{{sentinel}}` per-lens before dispatch.
+
+Dispatch every lens for the current sprint in a SINGLE message — parallel, no concurrency cap (per INST-13). Lenses are picked **adaptively** based on what the sprint touched:
+
+- `correctness` — does the code do what the task spec said?
+- `contract-compliance` — were `file_write_contract` bounds respected?
+- `hidden-state` — globals, mutable closures, shared mutable references that surprise.
+- `failure-modes` — what happens at the edges? unhandled errors? race conditions?
+- `spec-drift` — does the implementation match the spec claim at the cited locator?
+- `functional-testing` — read the tests for what they actually verify.
+- (Adaptive — master may add a lens for what the sprint touched; INST-13 — no cap.)
+
+Each lens returns a list of findings. **Findings without `verbatim_quote` and `file_path:line_number` are rejected at master's evidence-policy step.** Quotes shorter than `{{min_quote_length}}` auto-flag inconclusive.
+
+### Dispatch per-finding validators via the registered agent
+
+Use the `Agent` / `Task` tool with `subagent_type=essense-flow-validator`. The agent is registered at `plugins/essense-flow/agents/essense-flow-validator.md` with description, tool allowlist (`Read, Grep, Glob` — same posture as the lens; no Bash, no Write, no Edit), and the per-finding brief input shape as its body. Use `templates/validator-brief.md` to assemble the brief; substitute `{{finding_id}}`, `{{finding_yaml}}`, `{{file_path}}`, `{{line_number}}`, `{{sentinel}}` per-finding before dispatch.
+
+Dispatch every validator (one per finding) in a SINGLE message — parallel, no concurrency cap. Each validator returns one of:
+
+```yaml
+finding_id: <slug>
+verdict: confirmed | needs_context | false_positive
+rationale: "<one to three sentences>"
+quote_drift_detected: true | false
+```
+
+**Master computes the deterministic gate from the verdicts** — `confirmed_unacknowledged_criticals = count(verdict == confirmed AND severity == critical AND finding_id NOT IN acknowledged-ledger)`. The count is the gate; honour it.
+
+### Advance phase via `state-set-phase`
+
+After QA-REPORT.md is written with the frontmatter `confirmed_unacknowledged_criticals: <count>`, call:
+
+```bash
+# Pass review (no confirmed unacknowledged criticals) — go to verifying:
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value verifying --project-root <project-root>
+
+# Block review (one or more confirmed unacknowledged criticals) — go to triaging:
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value triaging --project-root <project-root>
+```
+
+The op validates legality (`reviewing → verifying` and `reviewing → triaging` are both legal per `references/transitions.yaml:213-225`). Then it evaluates the prerequisite-artifact predicate against the QA-REPORT.md frontmatter:
+
+- For `--value verifying`: predicate `confirmed_unacknowledged_criticals == 0` against the QA-REPORT.md the master just wrote. **If the count in frontmatter is non-zero, the op rejects with exit 7** — closing the drift symptom where master picks `verifying` when `triaging` is the canonical destination.
+- For `--value triaging`: predicate `confirmed_unacknowledged_criticals > 0`. If the count is zero, the op rejects with exit 7 — closing the symmetric drift.
+
+This is the **deterministic gate** the redesign exists to keep loud — enforced structurally at the CLI op rather than relying on master's gut-check.
+
+The op writes only the `phase:` field; `--sprint` is NOT accepted for these targets (review's transitions are not sprint-targeted; sprint stays at the value carried from build).
 
 ## Core principle
 
@@ -44,7 +128,7 @@ Adversarial. Findings without verbatim path evidence are not findings. Vibes don
 - `.pipeline/review/false-positive-ledger.yaml` — appended on every run.
 - `.pipeline/review/acknowledged-ledger.yaml` — items the user has explicitly accepted.
 
-QA-REPORT.md frontmatter:
+QA-REPORT.md frontmatter (the deterministic-gate input read by `state-set-phase`'s predicate evaluator):
 
 ```yaml
 ---
@@ -52,7 +136,7 @@ schema_version: 1
 sprint: <n>
 findings_total: <count>
 confirmed_critical: <count>
-confirmed_unacknowledged_criticals: <count>   # the deterministic gate
+confirmed_unacknowledged_criticals: <count>   # the deterministic gate — read by state-set-phase
 acknowledged: <count>
 needs_context: <count>
 false_positives: <count>
@@ -61,15 +145,17 @@ lenses_missing: [...]                         # never hidden
 ---
 ```
 
+The `confirmed_unacknowledged_criticals` field is the gate — `state-set-phase --value verifying` requires it to be `0`; `state-set-phase --value triaging` requires it to be `> 0`. The predicate evaluator reads it directly from this frontmatter.
+
 ## How you work
 
-### Setup
+### Setup (`read-inputs-and-ledgers`)
 
-1. Read all required inputs. If anything missing, refuse to start with the specific path missing.
+1. Read all required inputs (per `init review` `required_inputs`). If anything missing, refuse to start with the specific path missing.
 2. Read prior false-positive ledger — those rejections are remembered.
 3. Read prior acknowledged ledger — those items already accepted.
 
-### Job 1 — Extract spec claims (drift lens)
+### Job 1 — Extract spec claims (`extract-spec-claims`)
 
 Walk SPEC.md + ARCH.md + decisions.yaml top-down. Emit one claim per design decision:
 - "The system should do X."
@@ -78,16 +164,16 @@ Walk SPEC.md + ARCH.md + decisions.yaml top-down. Emit one claim per design deci
 
 Each claim carries a locator hint pointing at where in the codebase the check applies.
 
-### Job 2 — Audit (adversarial)
+### Job 2 — Audit (`audit-adversarial-lenses`)
 
-Spawn parallel agents, each through a distinct lens. Lenses are picked **adaptively** based on what the sprint touched:
+Spawn parallel agents via `subagent_type=essense-flow-adversarial-lens`, each through a distinct lens. Lenses are picked **adaptively** based on what the sprint touched:
 
 - **correctness** — does the code do what the task spec said?
 - **contract-compliance** — were file_write_contract bounds respected?
 - **hidden-state** — globals, mutable closures, shared mutable references that surprise
 - **failure-modes** — what happens at the edges? unhandled errors? race conditions?
 - **spec-drift** — does the implementation match the spec claim at the cited locator?
-- **functional-testing** — actually run the thing. CLI, smoke test, exercise the feature.
+- **functional-testing** — read the tests for what they actually verify
 
 Each agent produces findings with this shape:
 
@@ -108,9 +194,9 @@ proposed_check: "<the test/grep/inspection that would prove it>"
 
 **Findings without `verbatim_quote` and `file_path:line_number` are not findings.** Reject them at extraction time.
 
-### Job 3 — Validate
+### Job 3 — Validate (`validate-findings-against-disk`)
 
-Every finding is independently re-checked against disk before being trusted:
+Every finding is independently re-checked against disk before being trusted. Spawn one `subagent_type=essense-flow-validator` per finding (parallel, single message):
 
 1. **Quote drift check.** Read the cited file, look for the verbatim quote within the cited window. If the quote does not appear, auto-flag the finding as `false_positive` with reason `quote_drift`.
 2. **Claim evaluation.** Does the code at that location actually exhibit the described problem? Three verdicts:
@@ -120,7 +206,7 @@ Every finding is independently re-checked against disk before being trusted:
 
 For drift-lens findings: each spec claim verdicts as one of `implemented`, `partial`, `missing`, `drift`. `missing` and `drift` feed the same routing pipeline as confirmed bugs.
 
-### Job 4 — Decide (deterministic gate)
+### Job 4 — Decide (`compute-deterministic-gate`)
 
 Count: `confirmed_unacknowledged_criticals`. That number — and only that number — decides advance.
 
@@ -140,11 +226,19 @@ This is the other half of the principle:
 
 A review that invents bugs to look thorough drives the pipeline into endless fix-the-non-existent-bug loops. The fix-loop is the failure mode this discipline prevents.
 
-### Finalize
+### Finalize (`finalize`)
 
-Call `finalize` with all artifacts (QA-REPORT.md, spec-compliance.yaml, updated ledgers) in one call:
+Write QA-REPORT.md, spec-compliance.yaml, and the updated ledgers via ordinary `Write` to the canonical paths from `init review`. Then advance phase via `state-set-phase`:
 
-- nextState: `{ phase: "verifying" }` if confirmed_unacknowledged_criticals == 0, else `{ phase: "triaging" }`.
+```bash
+# pass-review case (count == 0):
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value verifying --project-root <project-root>
+
+# block-review case (count > 0):
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value triaging --project-root <project-root>
+```
+
+Then `step-advance --skill review --next-step skill-complete` to delete the cursor.
 
 ## Constraints
 
@@ -158,13 +252,14 @@ Call `finalize` with all artifacts (QA-REPORT.md, spec-compliance.yaml, updated 
 
 Without parallel adversarial lenses, the review substance — bug-hunting plus drift-checking across the sprint's modified code — would run in master context. By the time the deterministic gate computes, the rule (every finding carries verbatim path evidence; quotes shorter than `min_quote_length` auto-flag inconclusive; quote-drift auto-flags `false_positive`; uncertain findings go to `needs_context`) drifts under all the code being read. Drift symptom: vibes-based findings persist ("looks fragile"); quote-drift goes uncaught; uncertain findings get silently classified as confirmed to look productive — which drives the endless fix-the-non-existent-bug loop the discipline exists to prevent.
 
-Delegation keeps the rule loud at validation. Each lens-agent returns evidence-backed findings from a clean context; master re-validates each one against disk with the evidence policy still in working memory because the master never read the code in bulk.
+Delegation keeps the rule loud at validation. Each lens-agent returns evidence-backed findings from a clean context; master re-validates each one against disk via the per-finding validator agent, with the evidence policy still in working memory because the master never read the code in bulk.
 
 ## Scripts
 
-- `lib/dispatch.js` — adversarial agent fan-out (mode: `tolerant`).
-- `lib/brief.js` — adversarial brief assembly + validator brief assembly.
-- `lib/finalize.js` — atomic write+transition.
+- `bin/essense-flow-tools.cjs` — primary CLI surface (S9.2 redesign): `init review`, `step-advance`, `state-set-phase`. Sole writer of `state.yaml`; deterministic gate enforced at `state-set-phase`'s prerequisite-predicate evaluator reading QA-REPORT.md frontmatter.
+- `lib/dispatch.js` — DEPRECATED for review per S9.2 redesign. Use `Agent` tool with `subagent_type=essense-flow-adversarial-lens` / `essense-flow-validator` instead.
+- `lib/brief.js` — adversarial brief assembly + validator brief assembly. Master assembles briefs from `templates/adversarial-brief.md` and `templates/validator-brief.md` directly (substituting placeholders); the lib's brief-assembly helpers are reference utilities.
+- `lib/finalize.js` — DEPRECATED for review per S9.2 redesign. Use `state-set-phase` instead.
 
 ## State transitions
 
@@ -186,30 +281,22 @@ Last block — read it just before you act.
 
 Not legal: `reviewed`, `qa-done`, `triage` (singular — the legal phase is `triaging`).
 
-**The exact `finalize` call shape** for the reviewing→verifying transition:
+**The exact CLI invocation for the reviewing→verifying transition:**
 
-```js
-import { finalize } from "../../lib/finalize.js";
-
-await finalize({
-  projectRoot,
-  writes: [
-    { path: ".pipeline/review/sprints/1/QA-REPORT.md", content: qaReportMd },
-  ],
-  nextState: { phase: "verifying", sprint: 1, /* …the rest of state */ },
-});
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value verifying --project-root <project-root>
 ```
 
-For `reviewing → triaging`, swap `nextState.phase` to `"triaging"` and keep the same QA-REPORT write.
+For `reviewing → triaging`, swap `--value triaging`. **Do NOT pass `--sprint`** — these transitions are not sprint-targeted (per cli-spec.md §1.2 and per `state-set-phase` rejection rules).
 
 **Self-check before the call:**
 
-1. Is `nextState.phase` one of `reviewing`, `triaging`, `verifying`? Spelled exactly?
-2. Does the QA-REPORT path use the **literal** sprint number?
-3. Is `confirmed_unacknowledged_criticals` derived from the per-finding validator returns, not from a master gut-check? The count is the gate; honour it.
-4. Did **lens agents** produce the findings, validators re-quote against disk? Master should not be reading code in bulk.
-5. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+1. Did you call `init review` to get canonical paths and ordered_steps from JSON, not infer them from prose?
+2. Did you advance the cursor via `step-advance --skill review` at every step, in the canonical order?
+3. Is the value passed to `state-set-phase` one of `verifying` or `triaging`? Spelled exactly with no plural / no past tense (`reviewed`, `qa-done`, `triage` are NOT canonical)?
+4. Does the QA-REPORT path use the **literal** sprint number from `init.sprint_number` (NOT the placeholder `<n>`)?
+5. Is `confirmed_unacknowledged_criticals` in the QA-REPORT.md frontmatter derived from the per-finding **validator** returns, not from a master gut-check? The count is the gate; honour it. The CLI op's predicate evaluator reads this field; if it disagrees with your intended `--value`, the op rejects.
+6. Did **lens agents** produce the findings, **validators** re-quote against disk? Master should not be reading code in bulk; both should run via `Agent` tool with `subagent_type=essense-flow-adversarial-lens` / `essense-flow-validator`.
+7. Are you calling `state-set-phase`, NOT `Write` on `.pipeline/state.yaml` and NOT `lib/finalize.js`?
 
 If any answer is `no`, stop. Re-read.
-
-`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.
