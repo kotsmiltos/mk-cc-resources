@@ -12,15 +12,48 @@
 // and `task-spec-write`. `record-task-completion` is build's territory
 // (S9.1) — not implemented here.
 //
+// S9.1 extension (2026-05-07): adds the build surface — `init build`,
+// `record-task-completion` (dual-record shape per cli-spec §5 2026-05-07
+// Addendum). essense-flow-task-agent registered.
+//
+// S9.2 extension (2026-05-07): adds the review surface — `init review`,
+// extends `evaluatePredicate` for `confirmed_unacknowledged_criticals` content-
+// property predicate (reading QA-REPORT.md frontmatter) to enforce the
+// reviewing→verifying / reviewing→triaging deterministic gate. essense-flow-
+// adversarial-lens + essense-flow-validator registered. `evaluatePredicate`
+// fallback fix: `<n>` substitution falls back to `current.sprint` when the
+// transition target phase doesn't accept `--sprint` (per S9.2 closed decision).
+//
+// S9.3 extension (2026-05-07): adds the verify surface — `init verify`,
+// extends `evaluatePredicate` for the `confirmed_gaps == 0` content-property
+// predicate (reading VERIFICATION-REPORT.md frontmatter) to enforce the
+// verifying→complete deterministic gate. The transitions.yaml predicate
+// phrase "with no confirmed gaps" maps to `confirmed_gaps == 0`.
+// essense-flow-extractor + essense-flow-item-verifier registered.
+//
 // Spec sources (read-only — do not paraphrase or invent fields):
 //   redesign/cli-spec.md §1.1 (state-set-* family preamble + per-field blocks),
 //                       §1.2 (state-set-phase), §1.4 (step-advance + §5 D-3
 //                       Addendum 2026-05-05 mode arg), §1.5 (task-spec-write +
-//                       §5 2026-05-06 Addendum required-key list sync).
-//   redesign/init-spec.md §1.4 (init architect), §1.9 (init context).
-//   redesign/agent-spec.md §1.1 (essense-flow-sub-architect — task spec shape).
+//                       §5 2026-05-06 Addendum required-key list sync),
+//                       §1.3 (record-task-completion + §5 2026-05-07 Addendum
+//                       dual-record shape), §3.4 (predicate evaluator).
+//   redesign/init-spec.md §1.4 (init architect), §1.5 (init build),
+//                         §1.6 (init review), §1.7 (init verify),
+//                         §1.9 (init context),
+//                         §7 Addendum 2026-05-06 (item-verifier brief_template
+//                         = null; extracted-item IS the brief input).
+//   redesign/agent-spec.md §1.1 (essense-flow-sub-architect — task spec shape),
+//                          §1.4 (validator), §1.5 (adversarial-lens),
+//                          §1.6 (extractor — verify Job 1),
+//                          §1.8 (task-agent — dual-record shape),
+//                          §1.9 (item-verifier — verify Job 2),
+//                          §3.3 (item-verifier — no dedicated template).
 //   redesign/06-decisions.md 2026-05-05 D-3, 2026-05-06 S6.5, 2026-05-06 S7,
-//                            2026-05-06 S8 (this session's spec amend).
+//                            2026-05-06 S8 (cli-spec §1.5 amend +
+//                            drift-5 amend), 2026-05-07 S9.1 (cli-spec §1.3
+//                            amend), 2026-05-07 S9.2 (impl-vs-spec gap),
+//                            2026-05-07 S9.3 (verify wire).
 //
 // Conventions:
 //   - All ops emit JSON to stdout on success and exit 0.
@@ -554,6 +587,87 @@ async function initReview(projectRoot) {
 }
 
 // ============================================================================
+// Op: init verify (S9.3 — per init-spec.md §1.7)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps + sub_agents for the verify skill.
+// Pure (no writes). `sprint_number: null` — verify is whole-codebase audit,
+// not sprint-scoped (per skill-substance/verify.md "Inputs": SPEC, ARCH,
+// decisions plus codebase under audit; codebase root not a discrete path).
+// Source: redesign/init-spec.md §1.7 + skill-substance/verify.md "Outputs"
+// + "Ordered steps" + "Sub-agent dispatches".
+//
+// brief_template for essense-flow-item-verifier is null per init-spec.md
+// §7 Addendum 2026-05-06 + agent-spec.md §3.3 (extracted-items.yaml entry
+// IS the brief input; verification-report.md is the report-output shape
+// master uses, not a brief read by the agent).
+// ============================================================================
+async function initVerify(projectRoot) {
+  return {
+    skill: 'verify',
+    phase_from: ['verifying'],
+    phase_to: ['complete', 'eliciting', 'architecture', 'triaging'],
+    transitions: [
+      { name: 'verifying-to-complete', from: 'verifying', to: 'complete',
+        auto_advance: true,
+        requires: '.pipeline/verify/VERIFICATION-REPORT.md exists with no confirmed gaps' },
+      { name: 'verifying-to-eliciting', from: 'verifying', to: 'eliciting',
+        auto_advance: false,
+        requires: 'VERIFICATION-REPORT.md confirms spec drift requiring elicit addendum' },
+      { name: 'verifying-to-architecture', from: 'verifying', to: 'architecture',
+        auto_advance: false,
+        requires: 'VERIFICATION-REPORT.md confirms missing implementation' },
+      { name: 'verifying-to-triaging', from: 'verifying', to: 'triaging',
+        auto_advance: false,
+        requires: 'VERIFICATION-REPORT.md surfaces items needing categorization' },
+    ],
+    canonical_paths: {
+      verification_report_md: '.pipeline/verify/VERIFICATION-REPORT.md',
+      extracted_items_yaml: '.pipeline/verify/extracted-items.yaml',
+    },
+    ordered_steps: [
+      'extract-spec-decisions',
+      'per-item-verification-dispatch',
+      'aggregate-verdicts',
+      'compute-confirmed-gaps',
+      'set-completion-status',
+      'finalize',
+    ],
+    sprint_number: null,
+    required_inputs: [
+      '.pipeline/elicitation/SPEC.md',
+      '.pipeline/architecture/ARCH.md',
+      '.pipeline/architecture/decisions.yaml',
+    ],
+    principles_cited: [
+      'Diligent-Conduct',
+      'Fail-Soft',
+      'Front-Loaded-Design',
+      'INST-13',
+      'Graceful-Degradation',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-extractor',
+        cardinality: 'single (one extraction agent per verify run)',
+        brief_template: 'skills/verify/templates/extraction-brief.md',
+        required: true,
+        quorum: 'all-required',
+      },
+      {
+        name: 'essense-flow-item-verifier',
+        cardinality: 'per-item parallel (one per extracted spec decision)',
+        // null per init-spec §7 Addendum 2026-05-06 + agent-spec §3.3:
+        // extracted-items.yaml entry IS the brief input; verification-report.md
+        // is the report-output shape master uses, not a brief read by the agent.
+        brief_template: null,
+        required: true,
+        quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
 // Setters share a common shape. Each setter declares: field name, value parser
@@ -948,6 +1062,32 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
         operand: parseInt(cucMatch[2], 10),
       });
     }
+    // S9.3 verify wire: `confirmed_gaps (==|>|<|>=|<=) <int>` with explicit
+    // operator+operand, OR the natural-language phrase "no confirmed gaps"
+    // (from transitions.yaml verifying-to-complete predicate verbatim) which
+    // maps to `confirmed_gaps == 0`. Closes drift symptom at the verifying→
+    // complete gate. Without this real check, master could call
+    // `state-set-phase --value complete` while gaps were non-zero —
+    // undermining the deterministic gate (gaps = missing + drift).
+    const cgMatch = predicate.match(
+      /confirmed_gaps\s*(==|>=|<=|>|<)\s*(-?\d+)/,
+    );
+    if (cgMatch) {
+      return evalCountPredicate({
+        fullPath,
+        key: 'confirmed_gaps',
+        operator: cgMatch[1],
+        operand: parseInt(cgMatch[2], 10),
+      });
+    }
+    if (/with no confirmed gaps/i.test(predicate)) {
+      return evalCountPredicate({
+        fullPath,
+        key: 'confirmed_gaps',
+        operator: '==',
+        operand: 0,
+      });
+    }
     // Other content properties (build-ready, etc.) not yet exercised — defer to
     // a later wire-up step (S9.6 elicit) per cli-spec §3.4.
     if (predicate.includes(' with ')) {
@@ -1147,8 +1287,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initBuild(projectRoot);
     } else if (skill === 'review') {
       initJson = await initReview(projectRoot);
+    } else if (skill === 'verify') {
+      initJson = await initVerify(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S9.2 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S9.3 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -1945,8 +2087,8 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented (S7 + S8 + S9.1 + S9.2 — 2026-05-07):',
-      '  init context | architect | build | review',
+      'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 — 2026-05-07):',
+      '  init context | architect | build | review | verify',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
       '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
@@ -1970,8 +2112,8 @@ function printHelp() {
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
       '',
-      'Future S9.3-7 extends with: init <skill> for the remaining 5 skills',
-      '(verify, research, triage, elicit, heal).',
+      'Future S9.4-7 extends with: init <skill> for the remaining 4 skills',
+      '(research, triage, elicit, heal).',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -2024,6 +2166,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'verify') {
+        const json = await initVerify(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -2036,10 +2183,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.2 spike scope
+      // Known skill but not yet implemented in S9.3 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.2 spike scope (only 'context', 'architect', 'build', 'review' implemented; future S9.3-7 extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.3 spike scope (only 'context', 'architect', 'build', 'review', 'verify' implemented; future S9.4-7 extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
