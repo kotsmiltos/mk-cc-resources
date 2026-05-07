@@ -29,9 +29,152 @@ Things we build need access from claude to be tested so we can build things like
 - Verify `state.phase == sprinting`.
 - Build does NOT re-read SPEC.md or REQ.md to "fix" a task spec mid-flight. Task specs are the contract. If a task spec is wrong, surface the gap in the completion record and pause the sprint.
 - Dispatch in dependency-ordered waves. Within a wave, every task runs in parallel — **no concurrency cap**.
-- For every task agent's completion record, call `lib/verify-disk.js validateCompletion(...)` before persisting. The record stored is `{ agent_claim, runner_verification, drift }`. Both shapes preserved.
+- For every task agent's completion record, master computes `runner_verification` against disk before persisting. The record stored is the dual-record `{ schema_version, task_id, sprint, agent_claim, runner_verification, drift, verified, task_started_at, task_completed_at, recorded_at }`. Both `agent_claim` and `runner_verification` shapes preserved.
 - On drift, the sprint pauses. Build does NOT silently retry, soften criteria, or rewrite scope.
-- Use `lib/finalize.js` to write the SPRINT-REPORT and transition `sprinting → sprint-complete` once all tasks in the sprint resolve.
+- Use `essense-flow-tools record-task-completion --content-file <staged-path>` to persist each completion record (sole writer). Use `essense-flow-tools state-set-phase --value sprint-complete --sprint <n>` to transition `sprinting → sprint-complete` once all tasks resolve. (`lib/finalize.js` direct calls deprecated for build per S9.1 redesign — see "Skill operating mechanism" below.)
+
+## Skill operating mechanism (S9.1 redesign — 2026-05-07)
+
+Path lookups + step bookkeeping + completion-record writing + state advancement go through the narrow CLI surface introduced for the redesign. **You do not infer paths from prose. You do not write `phase:` directly. You do not pick completion-record extensions or sprint directory names from convention. You do not write completion-record.yaml files with `Write` — `record-task-completion` is the sole writer.** The mechanisms below give you exact strings to write or pass; you use them verbatim.
+
+### Get canonical paths from `init build`
+
+At skill-start, call:
+
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs init build --project-root <project-root>
+```
+
+Returns JSON with `canonical_paths` (`sprint_report_md`, `completion_record_template`, `task_spec_template`, `sprint_manifest_template`), `ordered_steps` (the 8-step sequence below), `sub_agents` (the registered `essense-flow-task-agent` block — `cardinality: per-task parallel within wave; quorum: all-required (with synthetic record on crash)`), `transitions` (legal phase transitions for build — read-only reference; advancement happens via `state-set-phase`), `sprint_number` (read from state.yaml; null pre-sprint), `required_inputs`, `principles_cited`. Parse the JSON. **Use the strings verbatim — never construct path or step names from prose.**
+
+Where the templates contain `<n>` (sprint number) or `<task-id>`, substitute via the relevant CLI op's args at write time:
+
+- `sprint_report_md` (`.pipeline/build/sprints/<n>/SPRINT-REPORT.md`) → ordinary `Write` after substituting `<n>` with the literal sprint number from `init.sprint_number`.
+- `completion_record_template` (`.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml`) → `essense-flow-tools record-task-completion --sprint <n> --task-id <id> --content-file <staged-path>` substitutes both placeholders at write time AND validates content shape AND writes atomically. Master never writes this file directly with `Write`.
+- `task_spec_template` (`.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml`) → READ-ONLY for build. Architect wrote it; build reads it as input.
+- `sprint_manifest_template` (`.pipeline/architecture/sprints/<n>/manifest.yaml`) → READ-ONLY for build. Architect wrote it; build reads `waves[].tasks` to derive wave order.
+
+### Advance the per-skill cursor at each step
+
+Before doing the substantive work of each step in `ordered_steps`, call:
+
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs step-advance --skill build --next-step <step-name> --project-root <project-root>
+```
+
+The op rejects out-of-order or non-monotonic advances. Sequence MUST be `read-manifest → build-wave-order → per-wave-dispatch → per-task-return-and-verify → out-of-contract-write-check → drift-pause-or-continue → assemble-sprint-report → finalize` per init's `ordered_steps`; out-of-order returns exit 13 with a "not the immediate successor" error. After `finalize`'s substantive work, call `step-advance --next-step skill-complete` to delete the cursor (signals build run finalized cleanly; the next skill — review — can run).
+
+### Dispatch task agents via the registered agent
+
+Use the `Agent` / `Task` tool with subagent_type=`essense-flow-task-agent`. The agent is registered at `plugins/essense-flow/agents/essense-flow-task-agent.md` with description, tool allowlist (`Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__query-docs` — wider than sub-architect's because task agent does code work), and the canonical task-spec-as-brief-input shape as its body. Per `redesign/agent-spec.md` §3.2 + S6.5 closed decision: **no dedicated brief template — the closed task spec yaml from architect IS the brief input.** Master concatenates the task spec's fields into the dispatch prompt with `task_id` + `sprint` context + `task_started_at` (ISO 8601 stamped at dispatch).
+
+The agent returns YAML with `task_id`, `status` (`complete | blocked | partial-with-surfaced-concern`), and `agent_claim` (object with `files_written, tests_run, criteria, deviations, out_of_contract_writes, surfaced_concerns, notes, summary`). Master compares to disk before persisting; do NOT summarize the agent's claim.
+
+Dispatch every task in the current wave in a SINGLE message — parallel, no concurrency cap (per INST-13 + the original substance below).
+
+### Re-validate every claim against disk (master-side `runner_verification`)
+
+For every task agent that returns:
+
+1. Parse the returned YAML's `agent_claim` (verbatim).
+2. Re-validate against disk:
+   - For each path in `agent_claim.files_written` (or `files_modified` — synonyms per cli-spec.md §5 2026-05-07 Addendum field-name reconciliation): `Read` the file; capture `{path, exists, mtime, fresh}` (fresh = mtime ≥ task_started_at). Build the array `runner_verification.files_validated`.
+   - For each `criteria[i]` in `agent_claim`: independently verify the check (re-run the test if `mode: must-pass`; read the test file's content if `mode: author-only`). Build `runner_verification.per_criterion_verdicts: [{id, agent_status, runner_status, evidence}]`.
+   - Compute `runner_verification.drift`: `files: [paths the agent claimed but disk disagrees]`, `criteria: [AC ids whose runner_status disagrees with agent_status]`.
+3. Compute `verified = (drift.files empty) AND (drift.criteria empty)`.
+4. Stamp `task_completed_at` (ISO 8601 from now or from the agent's return).
+5. Stage the dual-record YAML at a temp path (e.g. `<project-root>/.tmp-completion-record-<task-id>.yaml`) with the full shape per cli-spec.md §1.3 + §5 2026-05-07 Addendum:
+   ```yaml
+   schema_version: 1
+   task_id: <id>
+   sprint: <n>
+   agent_claim: <verbatim from agent's return>
+   runner_verification: { files_validated, per_criterion_verdicts, drift }
+   verified: <bool>
+   task_started_at: <iso>
+   task_completed_at: <iso>
+   ```
+6. Call:
+   ```bash
+   node plugins/essense-flow/bin/essense-flow-tools.cjs record-task-completion --sprint <n> --task-id <id> --content-file <staged-path> --project-root <project-root>
+   ```
+   The op validates required keys (8 top-level: `schema_version, task_id, sprint, agent_claim, runner_verification, verified, task_started_at, task_completed_at`), validates types per cli-spec.md §5 2026-05-07 Addendum sub-object schema, checks `parsed.task_id == --task-id` (exit 18 if mismatch), checks `parsed.sprint == --sprint` (exit 18 if mismatch), checks task-id is in sprint manifest's `waves[].tasks` (exit 9 if not), checks idempotency (exit 10 if record already exists), atomically writes validated bytes (server-stamps `recorded_at`) to `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml`.
+
+**Out-of-contract write check** (per cli-spec.md substance preserved — happens before stage step 5): compare `runner_verification.files_validated` paths against the task spec's `file_write_contract.paths`. Any path written that's not in `paths` (or is in `forbidden`) — flag in `agent_claim.out_of_contract_writes` (the agent should already have flagged; master verifies). **Do not silently re-permit.** Per Fail-Soft: flag travels to review, not blocked.
+
+### On drift — sprint pauses (no silent retry)
+
+When `runner_verification.drift.files` or `runner_verification.drift.criteria` is non-empty after the re-validation:
+
+1. The dual-record stages with `verified: false` and the drift visible.
+2. Call `record-task-completion` to persist the record (the gate counts records, not verifications).
+3. **Pause the sprint.** Surface to the user (or the review/heal phase) that the sprint paused on drift. Loud, not silent.
+4. Build does NOT:
+   - re-dispatch the task with adjusted parameters
+   - silently retry
+   - soften the criterion
+   - re-permit out-of-contract writes
+5. Skip remaining waves; do NOT call `state-set-phase --value sprint-complete`.
+
+### On contradiction in task spec
+
+If the agent reports it cannot satisfy the task spec (pseudocode won't compile, two requirements conflict, an AC is unsatisfiable):
+
+1. The agent surfaces the contradiction in `agent_claim.surfaced_concerns` (also reflected in `agent_claim.notes`).
+2. Build records the contradiction in the completion record (status: `partial-with-surfaced-concern` or `blocked` per agent's call).
+3. **Sprint pauses.** Surface the contradiction. The architect (or the user via triage routing) decides how to resolve. Build does not silently rewrite scope.
+
+### Auto-synthesis safety net (master-side)
+
+If a task agent crashes without returning any record, master writes a **synthetic** dual-record:
+
+```yaml
+schema_version: 1
+task_id: <id>
+sprint: <n>
+agent_claim:
+  status: crashed
+  files_written: []
+  tests_run: []
+  criteria: []
+  deviations: []
+  out_of_contract_writes: []
+  surfaced_concerns: []
+  notes: "agent crashed without returning"
+  summary: "task agent crashed; synthetic record per Graceful-Degradation"
+runner_verification:
+  files_validated: <as observed from disk under file_write_contract.paths>
+  per_criterion_verdicts: []
+  drift:
+    files: []
+    criteria: []
+verified: false
+synthetic: true
+task_started_at: <iso>
+task_completed_at: <iso>
+```
+
+Stage at temp path; call `record-task-completion --content-file <temp>` (the op accepts `synthetic: true` per its type-check table). Per Diligent-Conduct: missing signals surface, never hide. The sprint-complete gate (in `state-set-phase`) counts the synthetic record like any other; the sprint advances to `sprint-complete` when count_recorded == count_declared. `synthetic: true` records mark the task for triage post-sprint; review reads them as paused-task verdicts.
+
+### Advance to sprint-complete via `state-set-phase` (NOT direct state writes)
+
+When ALL tasks in the sprint have a completion record (verified or paused-with-surface or synthetic), call:
+
+```bash
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value sprint-complete --sprint <n> --project-root <project-root>
+```
+
+The op enforces the per-task-record gate: counts files matching `.pipeline/build/sprints/<n>/tasks/*/completion-record.yaml` (one per task directory) against the manifest's `waves[].tasks` union size. If count_recorded < count_declared, exit 8 with the gap named. If the prerequisite predicate `.pipeline/build/sprints/<n>/SPRINT-REPORT.md exists with all tasks resolved` is enforced (currently soft-pass at CLI surface; review-phase enforces report shape), build still must `Write` the report before advancing.
+
+`--sprint` is required for target `sprint-complete`. The op writes `phase: sprint-complete` + `sprint: <n>` atomically + auto-stamps `last_updated`.
+
+### What you write directly with `Write` (not via CLI ops)
+
+One artifact has no dedicated CLI op — it is a document write per `redesign/cli-spec.md` §2.1:
+
+- `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — the synthesized rollup. Path comes from `init build.canonical_paths.sprint_report_md` with `<n>` substituted. Use ordinary `Write`. Frontmatter shape per "What you produce" below; body lists per-task verdicts (verified / drifted / paused / contradiction / synthetic), out-of-contract writes summary, recommended next move (review, or back to architecture if drift is widespread).
+
+The SPRINT-REPORT.md's existence is verified by `state-set-phase`'s prerequisite-artifact predicate at the `sprinting → sprint-complete` transition; if you call `state-set-phase --value sprint-complete --sprint 1` and the report is missing, the op rejects with exit 7 and names the missing path.
 
 ## Core principle
 
@@ -42,15 +185,21 @@ Trust task specs, verify agents. The architect's contracts are ground truth. The
 - `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml` — one per task. Contains agent_claim + runner_verification + drift flag.
 - `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — synthesized rollup. Becomes input to review.
 
-Completion record:
+Completion record (dual-record shape per cli-spec.md §5 2026-05-07 Addendum; superset of original substance):
 
 ```yaml
 schema_version: 1
 task_id: <id>
+sprint: <n>
 agent_claim:
-  files_modified: [...]
+  files_written: [...]                # synonym: files_modified
+  tests_run: [{path, pass}, ...]
   criteria: [{ id, status, check }]
+  deviations: [...]
+  out_of_contract_writes: [...]
+  surfaced_concerns: [...]
   notes: "<agent's prose>"
+  summary: "<one to three sentences>"
 runner_verification:
   files_validated: [{ path, exists, mtime, fresh }]
   per_criterion_verdicts: [{ id, agent_status, runner_status, evidence }]
@@ -58,8 +207,10 @@ runner_verification:
     files: [...]
     criteria: [...]
 verified: true | false
+synthetic: false                       # true only for crash records
 task_started_at: <iso>
 task_completed_at: <iso>
+recorded_at: <iso>                     # server-stamped by record-task-completion
 ```
 
 SPRINT-REPORT.md frontmatter:
@@ -95,16 +246,17 @@ tasks_paused: <count>
 For each task agent that returns:
 
 1. Parse the completion claim it returned.
-2. Call `lib/verify-disk.js validateCompletion({ projectRoot, claim, taskStartTime: task_started_at })`.
-3. Write the completion record at `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml` with both agent_claim and runner_verification.
-4. **Out-of-contract write check.** Compare runner_verification.files_validated against task spec's file_write_contract.allowed. Any path written that's not in `allowed` (or is in `forbidden`) — flag in the completion record. **Do not silently re-permit.**
+2. Compute `runner_verification` against disk per "Re-validate every claim against disk" above.
+3. Stage the dual-record YAML at a temp path.
+4. Call `record-task-completion --sprint <n> --task-id <id> --content-file <staged-path>` to persist atomically at `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml` with both agent_claim and runner_verification.
+5. **Out-of-contract write check.** Compare `runner_verification.files_validated` against task spec's `file_write_contract.paths`. Any path written that's not in `paths` (or is in `forbidden`) — flag in the completion record. **Do not silently re-permit.**
 
 ### On drift
 
 When `runner_verification.drift.files` or `runner_verification.drift.criteria` is non-empty:
 
-1. Mark the task `paused`.
-2. Write the completion record with the drift visible.
+1. Mark the task `paused` (verified: false in the dual-record).
+2. Persist the completion record with the drift visible.
 3. **Pause the sprint.** Surface to the user (or the review/heal phase) that the sprint paused on drift. Loud, not silent.
 4. Build does NOT:
    - re-dispatch the task with adjusted parameters
@@ -133,26 +285,12 @@ assemble SPRINT-REPORT.md:
 - List of out-of-contract writes (if any).
 - Recommended next move (review, or back to architecture if drift is widespread).
 
-Call `finalize`:
-- writes: SPRINT-REPORT.md + (if any tasks paused, the report carries them)
-- nextState: `{ phase: "sprint-complete" }`
+Then advance:
+- `state-set-phase --value sprint-complete --sprint <n>` (op enforces the per-task-record gate; rejects if count_recorded < count_declared per manifest).
 
 ### Auto-synthesis safety net
 
-If a task agent crashes without returning any record, build does NOT skip the task. Build writes a synthetic completion record:
-
-```yaml
-agent_claim:
-  files_modified: []
-  criteria: []
-  notes: "agent crashed without returning"
-runner_verification:
-  ...as observed from disk
-verified: false
-synthetic: true
-```
-
-Per Diligent-Conduct: missing signals surface, never hide.
+If a task agent crashes without returning any record, build does NOT skip the task. Build writes a synthetic dual-record (full shape per "Auto-synthesis safety net" in operating-mechanism section above) and persists via `record-task-completion --content-file <temp>`. Per Graceful-Degradation: missing signals surface, never hide.
 
 ## Constraints
 
@@ -170,12 +308,13 @@ Delegation keeps the rule loud at sprint-report time. Each task agent returns it
 
 ## Scripts
 
-- `lib/dispatch.js` — task agent fan-out (mode: `task-by-task`).
-- `lib/brief.js` — task brief assembly.
-- `lib/verify-disk.js` — re-validation of every completion record.
-- `lib/finalize.js` — sprint-end atomic write+transition.
+- `bin/essense-flow-tools.cjs` (S9.1 redesign — sole writer of completion records via `record-task-completion`; sole cursor advancer via `step-advance`; sole phase advancer via `state-set-phase`). Replaces direct calls to `lib/finalize.js` for build's state-mutation surface.
+- `lib/dispatch.js` — task agent fan-out (mode: `task-by-task`). Used as helper; canonical dispatch is via the registered `essense-flow-task-agent` per the operating-mechanism section above.
+- `lib/brief.js` — task brief assembly. Used as helper; canonical brief is the task spec yaml itself per agent-spec.md §3.2.
+- `lib/verify-disk.js` — re-validation helper for `runner_verification`. Used as helper; canonical persistence is via `record-task-completion`.
+- `lib/finalize.js` — DEPRECATED for build per S9.1 redesign. Use `record-task-completion` for completion records and `state-set-phase --value sprint-complete --sprint <n>` for the phase transition. Direct `lib/finalize.js` calls bypass the per-task-record gate and the dual-record validation; both are load-bearing.
 
-## State transitions
+## State transitions (read-only reference; advancement via `state-set-phase`)
 
 | from | to | trigger | auto |
 |------|----|---------|------|
@@ -191,33 +330,32 @@ Last block — read it just before you act.
 - `sprinting → sprinting` — next wave inside the current sprint
 - `sprinting → sprint-complete` — all tasks in the sprint resolved (verified or paused-with-surface)
 
-Not legal: `built`, `building`, `done`, `complete-sprint`. The phase name is `sprint-complete` with a hyphen — copy it.
+Not legal: `built`, `building`, `done`, `complete-sprint`. The phase name is `sprint-complete` with a hyphen — `state-set-phase` rejects the others with exit 3 + canonical-phase-list error.
 
-**The exact `finalize` call shape** for the sprinting→sprint-complete transition:
+**The exact CLI call shape** for the sprinting→sprint-complete transition (S9.1 redesign — replaces the old `finalize` js call):
 
-```js
-import { finalize } from "../../lib/finalize.js";
+```bash
+# Per-task: persist dual-record (one call per task in sprint)
+node plugins/essense-flow/bin/essense-flow-tools.cjs record-task-completion \
+    --sprint 1 --task-id T-001 \
+    --content-file <project-root>/.tmp-completion-record-T-001.yaml \
+    --project-root <project-root>
 
-await finalize({
-  projectRoot,
-  writes: [
-    { path: ".pipeline/build/sprints/1/SPRINT-REPORT.md",                       content: sprintReport },
-    { path: ".pipeline/build/sprints/1/tasks/<task-id>/completion-record.yaml", content: completionRecordYaml },
-    // …one completion-record.yaml per task in the sprint
-  ],
-  nextState: { phase: "sprint-complete", sprint: 1, /* …the rest of state */ },
-});
+# After all tasks recorded + SPRINT-REPORT.md written: advance phase
+node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase \
+    --value sprint-complete --sprint 1 \
+    --project-root <project-root>
 ```
 
-**Self-check before the call:**
+**Self-check before the calls:**
 
-1. Is `nextState.phase` exactly `sprint-complete` (with the hyphen)?
-2. Do `writes[].path` use the **literal** sprint number (`sprints/1/`), never `<n>`?
-3. Is the SPRINT-REPORT.md filename uppercase as shown? Templates live under `skills/build/templates/sprint-report.md` and `skills/build/templates/completion-record.md` — copy that shape.
-4. Did **task agents** produce the completion records? Master synthesizes their reports and re-validates against disk via `lib/verify-disk.js`. Master should not be writing code in main context.
-5. For a wave-step (`sprinting → sprinting`), `wave` advances; `phase` stays. Do not change `phase` between waves.
-6. Are you calling `finalize`, **not** `Write` or `Edit` on `.pipeline/state.yaml`?
+1. Did you pass `--value sprint-complete` (with the hyphen) to `state-set-phase`? Invented values like `built` / `building` / `done` are rejected with exit 3.
+2. Do `--content-file` paths use the **literal** sprint number (your packed `<n>` from `init build.sprint_number`), never `<n>` placeholder? `record-task-completion` substitutes the placeholder at write time; the placeholder must NOT appear in your staged YAML or the post-write disk path.
+3. Is the SPRINT-REPORT.md filename uppercase as `init build.canonical_paths.sprint_report_md` shows? Templates live under `skills/build/templates/sprint-report.md` and `skills/build/templates/completion-record.md` — copy that shape.
+4. Did **task agents** produce the agent_claim portion? Master synthesizes `runner_verification` and re-validates against disk. Master should not be writing code in main context.
+5. For a wave-step (`sprinting → sprinting`), `wave` advances via `state-set-wave --value <n>`; `phase` stays. Do not call `state-set-phase` between waves.
+6. Are you calling `record-task-completion` and `state-set-phase`, **not** `Write` or `Edit` on `.pipeline/state.yaml` or `.pipeline/build/sprints/.../completion-record.yaml`? `record-task-completion` rejects pre-existing destinations (idempotency) — but that won't catch a `Write` that landed before the CLI op was called. Discipline: never `Write` to the completion-record path; route every per-task persistence through `record-task-completion`.
 
 If any answer is `no`, stop. Re-read.
 
-`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses. Read the advisory if it appears.
+`record-task-completion` and `state-set-phase` emit JSON success on stdout (op + record_path / sprint + verified / sprint_progress) and one-line stderr error on rejection. Read both — the `sprint_progress: {recorded, declared}` field on `record-task-completion` returns is your countdown to gate-clearing.

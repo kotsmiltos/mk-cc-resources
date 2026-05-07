@@ -133,6 +133,29 @@ const TASK_SPEC_REQUIRED_KEYS = [
 ];
 const TASK_SPEC_AGENCY_LEVELS = ['prescribed', 'guided', 'open'];
 
+// Required-key list for parsed completion-record content per cli-spec.md §5
+// 2026-05-07 Addendum (supersedes §1.3 prior wording — thin-gate 5-key shape →
+// dual-record from build.md substance + agent-spec §1.8). 8 top-level keys
+// required; `drift, synthetic, recorded_at` accepted-but-not-required
+// (`recorded_at` server-stamped; `synthetic` defaults false; `drift` defaults
+// to empty).
+const COMPLETION_RECORD_REQUIRED_KEYS = [
+  'schema_version',
+  'task_id',
+  'sprint',
+  'agent_claim',
+  'runner_verification',
+  'verified',
+  'task_started_at',
+  'task_completed_at',
+];
+const COMPLETION_RECORD_AGENT_STATUS_VALUES = [
+  'complete',
+  'blocked',
+  'partial-with-surfaced-concern',
+  'crashed', // for synthetic records per build.md "Auto-synthesis safety net"
+];
+
 // Sentinel passed as --next-step to finalize a skill run (deletes cursor file).
 const SKILL_COMPLETE_SENTINEL = 'skill-complete';
 
@@ -364,6 +387,81 @@ async function initArchitect(projectRoot) {
         brief_template: 'skills/architect/templates/sub-architect-brief.md',
         required: true,
         quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
+// Op: init build (S9.1 — per init-spec.md §1.5)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps + sub_agents for the build skill.
+// Pure (no writes). `sprint_number` from state.yaml when present.
+// Path source per cli-spec.md §5 D-1 Addendum (2026-05-05): completion-record
+// path is the S1-canonical nested-tasks shape, NOT §1.3 prior `task-records/`.
+// Shape source per cli-spec.md §5 2026-05-07 Addendum: dual-record (not 5-key
+// thin gate).
+// ============================================================================
+async function initBuild(projectRoot) {
+  let sprint_number = null;
+  const statePath = path.join(projectRoot, STATE_REL);
+  if (fs.existsSync(statePath)) {
+    try {
+      const s = await loadYaml(statePath);
+      sprint_number = s && typeof s === 'object' && 'sprint' in s ? s.sprint : null;
+    } catch (_e) {
+      sprint_number = null;
+    }
+  }
+
+  return {
+    skill: 'build',
+    phase_from: ['sprinting'],
+    phase_to: ['sprinting', 'sprint-complete'],
+    transitions: [
+      { name: 'sprinting-to-sprinting', from: 'sprinting', to: 'sprinting',
+        auto_advance: false, requires: null },
+      { name: 'sprinting-to-sprint-complete', from: 'sprinting', to: 'sprint-complete',
+        auto_advance: true,
+        requires: '.pipeline/build/sprints/<n>/SPRINT-REPORT.md exists with all tasks resolved' },
+    ],
+    canonical_paths: {
+      sprint_report_md: '.pipeline/build/sprints/<n>/SPRINT-REPORT.md',
+      completion_record_template: '.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml',
+      task_spec_template: '.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml',
+      sprint_manifest_template: '.pipeline/architecture/sprints/<n>/manifest.yaml',
+    },
+    ordered_steps: [
+      'read-manifest',
+      'build-wave-order',
+      'per-wave-dispatch',
+      'per-task-return-and-verify',
+      'out-of-contract-write-check',
+      'drift-pause-or-continue',
+      'assemble-sprint-report',
+      'finalize',
+    ],
+    sprint_number,
+    required_inputs: [
+      '.pipeline/architecture/sprints/<n>/manifest.yaml',
+      '.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml (one per task in manifest)',
+    ],
+    principles_cited: [
+      'INST-13',
+      'Front-Loaded-Design',
+      'Diligent-Conduct',
+      'Fail-Soft',
+      'Graceful-Degradation',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-task-agent',
+        cardinality: 'per-task parallel within wave (no concurrency cap per INST-13)',
+        // Per S6.5 Path A resolution + agent-spec.md §3.2: no dedicated brief
+        // template — task spec yaml from architect IS the brief input.
+        brief_template: null,
+        required: true,
+        quorum: 'all-required (with synthetic record on crash)',
       },
     ],
   };
@@ -869,8 +967,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initContext(projectRoot);
     } else if (skill === 'architect') {
       initJson = await initArchitect(projectRoot);
+    } else if (skill === 'build') {
+      initJson = await initBuild(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S8 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S9.1 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -1330,6 +1430,312 @@ function validateTaskSpecTypes(spec) {
 }
 
 // ============================================================================
+// Op: record-task-completion (S9.1 — per cli-spec.md §1.3 + §5 D-1 Addendum
+// 2026-05-05 [path] + §5 2026-05-07 Addendum [shape])
+// ----------------------------------------------------------------------------
+// Sole writer of per-task completion records. Args mirror task-spec-write
+// pattern: --content-file <path> carrying assembled dual-record YAML.
+// Required keys per §5 2026-05-07 Addendum (8 top-level: schema_version,
+// task_id, sprint, agent_claim, runner_verification, verified,
+// task_started_at, task_completed_at). Optional: drift, synthetic,
+// recorded_at (server-stamped). Closes drift symptom #5/#6 (dual-record
+// preserves agent_claim + runner_verification both; per-task ops are the
+// only path to advance the gate).
+// ============================================================================
+async function recordTaskCompletion({ sprint, taskId, contentFile, projectRoot }) {
+  const opName = 'record-task-completion';
+
+  // V1: required args
+  if (sprint === undefined || sprint === null) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --sprint required, expected positive int`,
+    );
+  }
+  const sprintInt = Number(String(sprint).trim());
+  if (!Number.isFinite(sprintInt) || !Number.isInteger(sprintInt) || sprintInt < 1) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --sprint required, expected positive int`,
+    );
+  }
+  if (!taskId) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --task-id is required`);
+  }
+  if (!TASK_ID_PATTERN.test(taskId)) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: --task-id '${taskId}' does not match canonical pattern /${TASK_ID_PATTERN.source}/ (e.g. T-001)`,
+    );
+  }
+  if (!contentFile) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --content-file is required`);
+  }
+
+  validateProjectRoot(projectRoot, opName);
+
+  if (!fs.existsSync(contentFile)) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --content-file '${contentFile}' not found`,
+    );
+  }
+
+  // V2: load state, check phase
+  const { readState } = await stateLib();
+  const current = await readState(projectRoot);
+  if (current.degraded) {
+    return emitFailure(
+      EXIT_DEGRADED,
+      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
+    );
+  }
+  if (current.phase !== 'sprinting') {
+    return emitFailure(
+      EXIT_WRONG_PHASE,
+      `essense-flow-tools ${opName}: current phase is ${current.phase}; expected 'sprinting' (record-task-completion is sprinting-phase-only)`,
+    );
+  }
+
+  // V3: read content; YAML parse
+  const contentText = fs.readFileSync(contentFile, 'utf8');
+  let parsed;
+  try {
+    parsed = await loadYamlString(contentText);
+  } catch (e) {
+    return emitFailure(
+      EXIT_YAML_PARSE,
+      `essense-flow-tools ${opName}: --content-file YAML parse failed: ${e.message}`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return emitFailure(
+      EXIT_YAML_PARSE,
+      `essense-flow-tools ${opName}: --content-file YAML parse failed: top-level value must be a mapping`,
+    );
+  }
+
+  // V4: required-key check
+  for (const k of COMPLETION_RECORD_REQUIRED_KEYS) {
+    if (!(k in parsed)) {
+      return emitFailure(
+        EXIT_REQUIRED_KEY,
+        `essense-flow-tools ${opName}: --content-file missing required key '${k}'; expected keys [${COMPLETION_RECORD_REQUIRED_KEYS.join(', ')}]`,
+      );
+    }
+  }
+
+  // V5: typed-value checks (per §5 2026-05-07 Addendum sub-object schema table)
+  const typeCheck = validateCompletionRecordTypes(parsed);
+  if (!typeCheck.ok) {
+    return emitFailure(
+      EXIT_REQUIRED_KEY,
+      `essense-flow-tools ${opName}: --content-file key '${typeCheck.key}' has invalid value '${typeCheck.observed}'; expected ${typeCheck.expected}`,
+    );
+  }
+
+  // V6: task_id consistency (parsed task_id must equal --task-id)
+  if (parsed.task_id !== taskId) {
+    return emitFailure(
+      EXIT_TASK_ID_MISMATCH,
+      `essense-flow-tools ${opName}: --content-file's task_id field is '${parsed.task_id}', --task-id is '${taskId}'; mismatch`,
+    );
+  }
+
+  // V7: sprint consistency (parsed sprint must equal --sprint)
+  if (parsed.sprint !== sprintInt) {
+    return emitFailure(
+      EXIT_TASK_ID_MISMATCH,
+      `essense-flow-tools ${opName}: --content-file's sprint field is '${parsed.sprint}', --sprint is '${sprintInt}'; mismatch`,
+    );
+  }
+
+  // V8: sprint manifest consistency
+  const manifestPath = path.join(
+    projectRoot,
+    `.pipeline/architecture/sprints/${sprintInt}/manifest.yaml`,
+  );
+  if (!fs.existsSync(manifestPath)) {
+    return emitFailure(
+      EXIT_PREREQ_MISSING,
+      `essense-flow-tools ${opName}: sprint manifest .pipeline/architecture/sprints/${sprintInt}/manifest.yaml not found`,
+    );
+  }
+  const manifest = await loadYaml(manifestPath);
+  const taskIds = new Set();
+  if (Array.isArray(manifest && manifest.waves)) {
+    for (const w of manifest.waves) {
+      if (Array.isArray(w.tasks)) for (const t of w.tasks) taskIds.add(t);
+    }
+  }
+  if (!taskIds.has(taskId)) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: --task-id '${taskId}' not in sprint ${sprintInt} manifest tasks list [${[...taskIds].join(', ')}]`,
+    );
+  }
+
+  // V9: idempotency (destination must not exist) per §5 D-1 canonical path
+  const destRel = `.pipeline/build/sprints/${sprintInt}/tasks/${taskId}/completion-record.yaml`;
+  const destPath = path.join(projectRoot, destRel);
+  if (fs.existsSync(destPath)) {
+    return emitFailure(
+      EXIT_IDEMPOTENCY,
+      `essense-flow-tools ${opName}: record .pipeline/build/sprints/${sprintInt}/tasks/${taskId}/completion-record.yaml already exists; idempotency violation`,
+    );
+  }
+
+  // Build canonical content: server-stamp recorded_at, normalize sprint/task_id,
+  // default synthetic + drift if absent.
+  const recordedAt = new Date().toISOString();
+  const canonicalContent = {
+    schema_version: parsed.schema_version,
+    task_id: taskId,
+    sprint: sprintInt,
+    agent_claim: parsed.agent_claim,
+    runner_verification: parsed.runner_verification,
+    verified: parsed.verified,
+    synthetic: parsed.synthetic === true,
+    task_started_at: parsed.task_started_at,
+    task_completed_at: parsed.task_completed_at,
+    recorded_at: recordedAt,
+  };
+  // drift only included if present (defaults to absent → empty)
+  if (parsed.drift !== undefined && parsed.drift !== null) {
+    canonicalContent.drift = parsed.drift;
+  }
+
+  // Atomic write: tmp + rename
+  const dir = path.dirname(destPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${destPath}.tmp-completion-record`;
+  const canonicalYaml = await dumpYaml(canonicalContent);
+  fs.writeFileSync(tmpPath, canonicalYaml, 'utf8');
+  fs.renameSync(tmpPath, destPath);
+
+  // Compute sprint_progress for forensic continuity
+  const recordsRoot = path.join(projectRoot, `.pipeline/build/sprints/${sprintInt}/tasks`);
+  let recorded = 0;
+  if (fs.existsSync(recordsRoot) && fs.statSync(recordsRoot).isDirectory()) {
+    for (const entry of fs.readdirSync(recordsRoot)) {
+      const recPath = path.join(recordsRoot, entry, 'completion-record.yaml');
+      if (fs.existsSync(recPath)) recorded++;
+    }
+  }
+
+  return emitSuccess({
+    ok: true,
+    op: 'record-task-completion',
+    sprint: sprintInt,
+    task_id: taskId,
+    record_path: destRel,
+    verified: canonicalContent.verified,
+    synthetic: canonicalContent.synthetic,
+    recorded_at: recordedAt,
+    bytes_written: Buffer.byteLength(canonicalYaml, 'utf8'),
+    sprint_progress: { recorded, declared: taskIds.size },
+  });
+}
+
+function validateCompletionRecordTypes(rec) {
+  // schema_version: int = 1
+  if (typeof rec.schema_version !== 'number' || !Number.isInteger(rec.schema_version) || rec.schema_version !== 1) {
+    return { ok: false, key: 'schema_version', observed: String(rec.schema_version), expected: 'int frozen at 1' };
+  }
+  // task_id: §3.5 pattern (V6 also re-checks vs --task-id; here verify shape)
+  if (typeof rec.task_id !== 'string' || !TASK_ID_PATTERN.test(rec.task_id)) {
+    return { ok: false, key: 'task_id', observed: String(rec.task_id), expected: `string matching /${TASK_ID_PATTERN.source}/` };
+  }
+  // sprint: positive int
+  if (typeof rec.sprint !== 'number' || !Number.isInteger(rec.sprint) || rec.sprint < 1) {
+    return { ok: false, key: 'sprint', observed: String(rec.sprint), expected: 'positive int' };
+  }
+  // agent_claim: object with optional status enum + summary string when present
+  if (!rec.agent_claim || typeof rec.agent_claim !== 'object' || Array.isArray(rec.agent_claim)) {
+    return { ok: false, key: 'agent_claim', observed: JSON.stringify(rec.agent_claim), expected: 'object (mapping)' };
+  }
+  if ('status' in rec.agent_claim && rec.agent_claim.status !== null) {
+    if (typeof rec.agent_claim.status !== 'string' || !COMPLETION_RECORD_AGENT_STATUS_VALUES.includes(rec.agent_claim.status)) {
+      return {
+        ok: false,
+        key: 'agent_claim.status',
+        observed: String(rec.agent_claim.status),
+        expected: `enum [${COMPLETION_RECORD_AGENT_STATUS_VALUES.join(', ')}]`,
+      };
+    }
+  }
+  if ('summary' in rec.agent_claim && rec.agent_claim.summary !== null && rec.agent_claim.summary !== undefined) {
+    if (typeof rec.agent_claim.summary !== 'string' || rec.agent_claim.summary.trim() === '') {
+      return {
+        ok: false,
+        key: 'agent_claim.summary',
+        observed: String(rec.agent_claim.summary),
+        expected: 'non-empty string when present',
+      };
+    }
+  }
+  // runner_verification: object; drift sub-shape if present
+  if (!rec.runner_verification || typeof rec.runner_verification !== 'object' || Array.isArray(rec.runner_verification)) {
+    return { ok: false, key: 'runner_verification', observed: JSON.stringify(rec.runner_verification), expected: 'object (mapping)' };
+  }
+  if ('files_validated' in rec.runner_verification && rec.runner_verification.files_validated !== null) {
+    if (!Array.isArray(rec.runner_verification.files_validated)) {
+      return {
+        ok: false,
+        key: 'runner_verification.files_validated',
+        observed: JSON.stringify(rec.runner_verification.files_validated),
+        expected: 'array',
+      };
+    }
+  }
+  if ('drift' in rec.runner_verification && rec.runner_verification.drift !== null && rec.runner_verification.drift !== undefined) {
+    const d = rec.runner_verification.drift;
+    if (!d || typeof d !== 'object' || Array.isArray(d)) {
+      return { ok: false, key: 'runner_verification.drift', observed: JSON.stringify(d), expected: 'object with files: array, criteria: array' };
+    }
+    if ('files' in d && !Array.isArray(d.files)) {
+      return { ok: false, key: 'runner_verification.drift.files', observed: JSON.stringify(d.files), expected: 'array' };
+    }
+    if ('criteria' in d && !Array.isArray(d.criteria)) {
+      return { ok: false, key: 'runner_verification.drift.criteria', observed: JSON.stringify(d.criteria), expected: 'array' };
+    }
+  }
+  // top-level drift (alternative location per build.md substance shape)
+  if ('drift' in rec && rec.drift !== null && rec.drift !== undefined) {
+    const d = rec.drift;
+    if (!d || typeof d !== 'object' || Array.isArray(d)) {
+      return { ok: false, key: 'drift', observed: JSON.stringify(d), expected: 'object with files: array, criteria: array' };
+    }
+    if ('files' in d && !Array.isArray(d.files)) {
+      return { ok: false, key: 'drift.files', observed: JSON.stringify(d.files), expected: 'array' };
+    }
+    if ('criteria' in d && !Array.isArray(d.criteria)) {
+      return { ok: false, key: 'drift.criteria', observed: JSON.stringify(d.criteria), expected: 'array' };
+    }
+  }
+  // verified: bool
+  if (typeof rec.verified !== 'boolean') {
+    return { ok: false, key: 'verified', observed: String(rec.verified), expected: 'bool (true / false)' };
+  }
+  // task_started_at + task_completed_at: ISO 8601 strings round-tripping through Date
+  for (const tk of ['task_started_at', 'task_completed_at']) {
+    const v = rec[tk];
+    if (typeof v !== 'string') {
+      return { ok: false, key: tk, observed: String(v), expected: 'ISO 8601 datetime string' };
+    }
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) {
+      return { ok: false, key: tk, observed: v, expected: 'ISO 8601 datetime string (parseable)' };
+    }
+  }
+  // synthetic: optional bool
+  if ('synthetic' in rec && rec.synthetic !== undefined && typeof rec.synthetic !== 'boolean') {
+    return { ok: false, key: 'synthetic', observed: String(rec.synthetic), expected: 'bool (true / false) when present' };
+  }
+  return { ok: true };
+}
+
+// ============================================================================
 // Arg parser
 // ============================================================================
 function parseArgs(argv) {
@@ -1361,8 +1767,8 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented (S7 + S8 — 2026-05-06):',
-      '  init context | architect',
+      'Ops implemented (S7 + S8 + S9.1 — 2026-05-07):',
+      '  init context | architect | build',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
       '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
@@ -1380,8 +1786,13 @@ function printHelp() {
       '  task-spec-write --sprint <int> --task-id <id> --content-file <path>',
       '      → write closed task spec yaml; rejects forbidden markers (TBD, agent decides, …);',
       '        validates against §5 2026-05-06 Addendum required-key list (10 keys + optional module).',
+      '  record-task-completion --sprint <int> --task-id <id> --content-file <path>',
+      '      → write per-task dual-record completion yaml; validates against §5 2026-05-07',
+      '        Addendum required-key list (8 keys: schema_version, task_id, sprint, agent_claim,',
+      '        runner_verification, verified, task_started_at, task_completed_at);',
+      '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
       '',
-      'Future S9.x extends with: record-task-completion, init <skill> for the other 7 skills.',
+      'Future S9.2-7 extends with: init <skill> for the remaining 6 skills.',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -1424,6 +1835,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'build') {
+        const json = await initBuild(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -1436,10 +1852,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S8 spike scope
+      // Known skill but not yet implemented in S9.1 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S8 spike scope (only 'context' and 'architect' implemented; future S9.x extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.1 spike scope (only 'context', 'architect', 'build' implemented; future S9.2-7 extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
@@ -1461,6 +1877,17 @@ function printHelp() {
     }
     case 'task-spec-write': {
       await taskSpecWrite({
+        sprint: args.sprint,
+        taskId: args['task-id'],
+        contentFile: args['content-file']
+          ? path.resolve(args['content-file'])
+          : undefined,
+        projectRoot,
+      });
+      return;
+    }
+    case 'record-task-completion': {
+      await recordTaskCompletion({
         sprint: args.sprint,
         taskId: args['task-id'],
         contentFile: args['content-file']
