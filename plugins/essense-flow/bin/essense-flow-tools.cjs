@@ -40,6 +40,23 @@
 // recurrence-pattern row 10 at preflight rather than at smoke).
 // essense-flow-perspective-agent registered.
 //
+// S9.5 extension (2026-05-08): adds the triage surface — `init triage`.
+// Triage is sprint-spanning (sprint_number: null) and has the most exits of
+// any skill (5 destinations: eliciting, research, architecture,
+// requirements-ready, verifying — the sorting hat). Closes the cli-spec §3.4
+// disposition-predicate TBD (per 06-decisions.md 2026-05-08 + cli-spec §5
+// 2026-05-08 Addendum) by extending `evaluatePredicate` with a 5-entry phrase
+// lookup table mapping each transitions.yaml `triage-skill` `requires:` string
+// to a TRIAGE-REPORT.md frontmatter `routed_to:` scalar-equality check via
+// the new `evalDispositionPredicate` helper (re-uses `extractFrontmatter`
+// + js-yaml-sync from S9.2). Both `case 'init':` public switch + step-advance
+// internal init dispatcher gain a `triage` branch in the SAME edit per S9.3
+// O-4 cross-impl-site preflight rule. Disposition-soft-pass fallback retained
+// as defense-in-depth for predicates outside the locked phrase table.
+// essense-flow-sub-triager registered (optional, judgment-driven, all-required
+// quorum on dispatched classes per agent-spec §1.2 + skill-substance/triage.md
+// "Sub-agent dispatches").
+//
 // Spec sources (read-only — do not paraphrase or invent fields):
 //   redesign/cli-spec.md §1.1 (state-set-* family preamble + per-field blocks),
 //                       §1.2 (state-set-phase), §1.4 (step-advance + §5 D-3
@@ -47,12 +64,14 @@
 //                       §5 2026-05-06 Addendum required-key list sync),
 //                       §1.3 (record-task-completion + §5 2026-05-07 Addendum
 //                       dual-record shape), §3.4 (predicate evaluator).
-//   redesign/init-spec.md §1.2 (init research), §1.4 (init architect),
-//                         §1.5 (init build), §1.6 (init review),
-//                         §1.7 (init verify), §1.9 (init context),
+//   redesign/init-spec.md §1.2 (init research), §1.3 (init triage),
+//                         §1.4 (init architect), §1.5 (init build),
+//                         §1.6 (init review), §1.7 (init verify),
+//                         §1.9 (init context),
 //                         §7 Addendum 2026-05-06 (item-verifier brief_template
 //                         = null; extracted-item IS the brief input).
 //   redesign/agent-spec.md §1.1 (essense-flow-sub-architect — task spec shape),
+//                          §1.2 (sub-triager — triage per-class),
 //                          §1.4 (validator), §1.5 (adversarial-lens),
 //                          §1.6 (extractor — verify Job 1),
 //                          §1.7 (perspective-agent — research per-lens),
@@ -65,7 +84,9 @@
 //                            drift-5 amend), 2026-05-07 S9.1 (cli-spec §1.3
 //                            amend), 2026-05-07 S9.2 (impl-vs-spec gap),
 //                            2026-05-07 S9.3 (verify wire),
-//                            2026-05-08 S9.4 (research wire).
+//                            2026-05-08 S9.4 (research wire),
+//                            2026-05-08 S9.5 (triage wire +
+//                            disposition-predicate TBD lock).
 //
 // Conventions:
 //   - All ops emit JSON to stdout on success and exit 0.
@@ -746,6 +767,78 @@ async function initResearch(projectRoot) {
 }
 
 // ============================================================================
+// Op: init triage (S9.5 — per init-spec.md §1.3)
+// ----------------------------------------------------------------------------
+// Triage is sprint-spanning (sprint_number: null) and has the most exits of
+// any skill (5 destinations: eliciting, research, architecture,
+// requirements-ready, verifying — the sorting hat). Predicates are
+// disposition-shape (TRIAGE-REPORT.md frontmatter `routed_to:` scalar) —
+// handled by the new `evalDispositionPredicate` helper added below to
+// `evaluatePredicate` per cli-spec §5 2026-05-08 Addendum. Sub-agent dispatch
+// is OPTIONAL (judgment-driven; required:false per agent-spec §1.2 +
+// skill-substance/triage.md "Sub-agent dispatches"); when dispatched, all
+// classes the master picks are required to return (synthetic record on crash).
+// ============================================================================
+async function initTriage(projectRoot) {
+  return {
+    skill: 'triage',
+    phase_from: ['triaging'],
+    phase_to: ['eliciting', 'research', 'requirements-ready', 'architecture', 'verifying'],
+    transitions: [
+      { name: 'triaging-to-eliciting', from: 'triaging', to: 'eliciting',
+        auto_advance: false,
+        requires: 'triage routed item back for design intent addendum' },
+      { name: 'triaging-to-research', from: 'triaging', to: 'research',
+        auto_advance: false,
+        requires: 'triage routed item back for further analysis' },
+      { name: 'triaging-to-requirements-ready', from: 'triaging', to: 'requirements-ready',
+        auto_advance: true,
+        requires: 'all triage dispositions resolved; no upstream routes' },
+      { name: 'triaging-to-architecture', from: 'triaging', to: 'architecture',
+        auto_advance: false,
+        requires: 'triage routed item to architecture' },
+      { name: 'triaging-to-verifying', from: 'triaging', to: 'verifying',
+        auto_advance: false,
+        requires: 'post-build triage routed all items to spec-compliance audit' },
+    ],
+    canonical_paths: {
+      triage_report_md: '.pipeline/triage/TRIAGE-REPORT.md',
+    },
+    ordered_steps: [
+      'identify-entry-point',
+      'read-spec-and-upstream',
+      'extract-items',
+      'categorize-items',
+      'apply-deterministic-signal-precedence',
+      'reread-verification',
+      'compute-routing-decision',
+      'finalize',
+    ],
+    sprint_number: null,
+    required_inputs: [
+      '.pipeline/elicitation/SPEC.md',
+      '.pipeline/requirements/REQ.md OR .pipeline/review/sprints/<n>/QA-REPORT.md OR .pipeline/verify/VERIFICATION-REPORT.md',
+    ],
+    principles_cited: [
+      'Front-Loaded-Design',
+      'Diligent-Conduct',
+      'Graceful-Degradation',
+      'Fail-Soft',
+      'INST-13',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-sub-triager',
+        cardinality: 'optional, judgment-driven; per-item-class parallel when dispatched',
+        brief_template: 'skills/triage/templates/sub-triager-brief.md',
+        required: false,
+        quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
 // Setters share a common shape. Each setter declares: field name, value parser
@@ -1173,8 +1266,87 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
     }
     return { ok: true, kind: 'path-exists' };
   }
-  // Disposition predicate (no path). Accept as unevaluated-by-CLI.
+  // S9.5 triage wire: disposition predicate (no path) phrase lookup.
+  // Closes cli-spec §3.4 TBD per cli-spec §5 2026-05-08 Addendum +
+  // 06-decisions.md 2026-05-08 closed decision. Each phrase maps to a
+  // TRIAGE-REPORT.md frontmatter `routed_to:` scalar-equality check. Reads
+  // the canonical path .pipeline/triage/TRIAGE-REPORT.md (init-spec §1.3
+  // canonical_paths.triage_report_md). Without this lock, master could call
+  // state-set-phase --value architecture after a triage that wrote
+  // routed_to: eliciting — predicate evaluator would soft-pass and the
+  // deterministic gate triage exists to enforce would collapse.
+  if (TRIAGE_DISPOSITION_PHRASES.has(predicate)) {
+    const targetRoute = TRIAGE_DISPOSITION_PHRASES.get(predicate);
+    return evalDispositionPredicate({
+      projectRoot,
+      reportRelPath: '.pipeline/triage/TRIAGE-REPORT.md',
+      targetRoute,
+    });
+  }
+  // Disposition predicate not in the locked phrase table — defense-in-depth
+  // soft-pass for predicates not yet locked (future heal/elicit phrase
+  // additions surface as paired closed decisions per cli-spec §5 addendum
+  // discipline; until locked they pass with explicit kind name).
   return { ok: true, kind: 'disposition-soft-pass' };
+}
+
+// S9.5 triage wire — phrase table closes cli-spec §3.4 TBD.
+// Each entry: transitions.yaml `requires:` string verbatim → target routed_to
+// scalar value (frontmatter check key). Locked at S9.5 per cli-spec §5
+// 2026-05-08 Addendum + 06-decisions.md 2026-05-08.
+const TRIAGE_DISPOSITION_PHRASES = new Map([
+  ['triage routed item back for design intent addendum', 'eliciting'],
+  ['triage routed item back for further analysis', 'research'],
+  ['all triage dispositions resolved; no upstream routes', 'requirements-ready'],
+  ['triage routed item to architecture', 'architecture'],
+  ['post-build triage routed all items to spec-compliance audit', 'verifying'],
+]);
+
+// Evaluate a disposition predicate against a markdown file's YAML frontmatter
+// `routed_to:` scalar. Per cli-spec §5 2026-05-08 Addendum 11-step procedure.
+// Used by triaging→{eliciting,research,requirements-ready,architecture,verifying}
+// transitions (S9.5).
+function evalDispositionPredicate({ projectRoot, reportRelPath, targetRoute }) {
+  const fullPath = path.join(projectRoot, reportRelPath);
+  if (!fs.existsSync(fullPath)) {
+    return { ok: false, kind: 'predicate-false', observed: `${reportRelPath} missing; cannot read 'routed_to' for disposition predicate` };
+  }
+  let parsed;
+  try {
+    const raw = fs.readFileSync(fullPath, 'utf8');
+    const frontmatter = extractFrontmatter(raw);
+    if (frontmatter == null) {
+      return {
+        ok: false,
+        kind: 'predicate-false',
+        observed: `${path.basename(fullPath)} has no YAML frontmatter; cannot read 'routed_to'`,
+      };
+    }
+    const yamlSync = require('js-yaml');
+    parsed = yamlSync.load(frontmatter);
+  } catch (e) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} unreadable (${e.message})`,
+    };
+  }
+  if (!parsed || typeof parsed !== 'object' || !('routed_to' in parsed)) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} frontmatter missing 'routed_to'`,
+    };
+  }
+  const observed = parsed.routed_to;
+  if (observed !== targetRoute) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `routed_to=${JSON.stringify(observed)}, predicate requires routed_to == ${JSON.stringify(targetRoute)}`,
+    };
+  }
+  return { ok: true, kind: 'disposition-predicate-pass' };
 }
 
 function evalAllTaskSpecsClosed(manifestPath, sprintDir) {
@@ -1369,6 +1541,8 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initVerify(projectRoot);
     } else if (skill === 'research') {
       initJson = await initResearch(projectRoot);
+    } else if (skill === 'triage') {
+      initJson = await initTriage(projectRoot);
     } else {
       throw new Error(`init <${skill}> not implemented in S9.4 spike scope`);
     }
@@ -2167,8 +2341,8 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 — 2026-05-07):',
-      '  init context | architect | build | review | verify',
+      'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 + S9.4 + S9.5 — 2026-05-08):',
+      '  init context | architect | build | review | verify | research | triage',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
       '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
@@ -2192,8 +2366,8 @@ function printHelp() {
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
       '',
-      'Future S9.5-7 extends with: init <skill> for the remaining 3 skills',
-      '(triage, elicit, heal).',
+      'Future S9.6-7 extends with: init <skill> for the remaining 2 skills',
+      '(elicit, heal).',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -2256,6 +2430,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'triage') {
+        const json = await initTriage(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -2268,10 +2447,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.4 spike scope
+      // Known skill but not yet implemented in S9.5 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.4 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research' implemented; future S9.5-7 extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.5 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research', 'triage' implemented; future S9.6-7 extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
