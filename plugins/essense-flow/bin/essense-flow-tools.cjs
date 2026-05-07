@@ -891,6 +891,350 @@ async function initElicit(_projectRoot) {
   };
 }
 
+async function initHeal(projectRoot) {
+  // Per init-spec §1.8 verbatim. Heal returns descriptive strings (not enumerated
+  // arrays) for phase_from / phase_to / transitions because heal walks the full
+  // graph one step at a time per substance "State transitions" section. D-2 closed
+  // at S6.5 (Recommended): heal's init returns descriptive strings; consumers (heal
+  // skill) interpret. Init does not pre-judge.
+  let sprintNum = null;
+  let degradedFlag = false;
+  try {
+    const { readState } = await stateLib();
+    const s = await readState(projectRoot);
+    if (s.degraded) {
+      degradedFlag = true;
+    } else {
+      sprintNum = (typeof s.sprint === 'number') ? s.sprint : null;
+    }
+  } catch (e) {
+    degradedFlag = true;
+  }
+  return {
+    skill: 'heal',
+    phase_from: '<any phase, including idle, missing-state, or corrupt-state>',
+    phase_to: '<any phase reachable from current via legal transitions, one step at a time>',
+    transitions: '<heal walks the existing transition graph in references/transitions.yaml; no heal-specific transitions exist>',
+    canonical_paths: {
+      heal_log_md: '.pipeline/heal/HEAL-LOG.md',
+      proposal_yaml: '.pipeline/heal/proposal.yaml',
+      heal_archive_dir: '.pipeline/.heal-archive/',
+    },
+    ordered_steps: [
+      'discover-artifacts',
+      'infer-phase-and-confidence',
+      'propose-walk-forward',
+      'await-user-confirm',
+      'apply-walk-forward-step-by-step',
+      'handoff',
+    ],
+    sprint_number: sprintNum,
+    required_inputs: [],
+    principles_cited: [
+      'Graceful-Degradation',
+      'Front-Loaded-Design',
+      'Diligent-Conduct',
+      'Fail-Soft',
+      'INST-13',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-sub-recognizer',
+        cardinality: 'optional, judgment-driven; per-shape parallel when dispatched (SPEC-shape | REQ-shape | ARCH-shape | sprint-output-shape | foreign-tool-prose-shape)',
+        brief_template: 'skills/heal/templates/sub-recognizer-brief.md',
+        required: false,
+        quorum: 'tolerant',
+      },
+    ],
+    degraded: degradedFlag,
+  };
+}
+
+// ============================================================================
+// HEAL-LOG.md atomic-append helper (per cli-spec §5 2026-05-08 Addendum
+// state-force-set-phase / cursor-rewind audit-trail discipline). Reads
+// existing HEAL-LOG.md (creating with canonical frontmatter shape if absent),
+// merges the new entry into the appropriate frontmatter array, writes back.
+// HEAL-LOG.md write happens BEFORE the state.yaml mutation in force-set
+// (audit-trail-before-state-mutation discipline).
+// ============================================================================
+async function appendHealLog(projectRoot, arrayKey, entry) {
+  const healDir = path.join(projectRoot, '.pipeline', 'heal');
+  const logPath = path.join(healDir, 'HEAL-LOG.md');
+  if (!fs.existsSync(healDir)) {
+    fs.mkdirSync(healDir, { recursive: true });
+  }
+  const yamlMod = await yaml();
+  const now = new Date().toISOString();
+
+  // Default frontmatter shape — extends substance "What you produce"
+  // shape with force_actions[] + cursor_rewinds[] arrays per cli-spec §5
+  // 2026-05-08 Addendum.
+  let frontmatter = {
+    schema_version: 1,
+    last_invocation: now,
+    inferred_phase: null,
+    confidence: null,
+    artifacts_recognized: [],
+    artifacts_unrecognized: [],
+    force_actions: [],
+    cursor_rewinds: [],
+  };
+  let body = '';
+
+  if (fs.existsSync(logPath)) {
+    const raw = fs.readFileSync(logPath, 'utf8');
+    const parsed = parseLogFrontmatter(raw);
+    if (parsed.frontmatter) {
+      // Merge — preserve existing fields, ensure arrays present.
+      frontmatter = {
+        ...frontmatter,
+        ...parsed.frontmatter,
+        last_invocation: now,
+      };
+      if (!Array.isArray(frontmatter.force_actions)) frontmatter.force_actions = [];
+      if (!Array.isArray(frontmatter.cursor_rewinds)) frontmatter.cursor_rewinds = [];
+      if (!Array.isArray(frontmatter.artifacts_recognized)) frontmatter.artifacts_recognized = [];
+      if (!Array.isArray(frontmatter.artifacts_unrecognized)) frontmatter.artifacts_unrecognized = [];
+    }
+    body = parsed.body;
+  }
+
+  // Append entry to the named array
+  if (arrayKey === 'force_actions' || arrayKey === 'cursor_rewinds') {
+    frontmatter[arrayKey].push(entry);
+  } else {
+    throw new Error(`appendHealLog: unknown arrayKey '${arrayKey}'`);
+  }
+
+  // Body append: human-readable line for the action
+  const bodyAppend = formatHealLogBodyLine(arrayKey, entry, now);
+  const nextBody = body.trimEnd() + (body.trim() ? '\n\n' : '') + bodyAppend + '\n';
+
+  const yamlText = yamlMod.dump(frontmatter, { lineWidth: 100, noRefs: true });
+  const out = `---\n${yamlText}---\n\n${nextBody}`;
+  fs.writeFileSync(logPath, out, 'utf8');
+  return logPath;
+}
+
+function parseLogFrontmatter(raw) {
+  // Tolerant of UTF-8 BOM + CRLF (mirrors extractFrontmatter helper at S9.2)
+  const stripped = raw.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const match = stripped.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: null, body: stripped };
+  }
+  try {
+    // Lazy require to avoid cycles; yaml() helper already initialised above
+    const yamlMod = require('js-yaml');
+    const fm = yamlMod.load(match[1]);
+    if (fm && typeof fm === 'object') {
+      return { frontmatter: fm, body: match[2] || '' };
+    }
+  } catch (e) {
+    // Frontmatter parse failed — preserve body, treat as no frontmatter
+  }
+  return { frontmatter: null, body: stripped };
+}
+
+function formatHealLogBodyLine(arrayKey, entry, now) {
+  if (arrayKey === 'force_actions') {
+    return `- **${now}** — \`state-force-set-phase\`: ${entry.prior_phase || '<missing>'} → ${entry.new_phase} — reason: ${entry.reason}`;
+  }
+  if (arrayKey === 'cursor_rewinds') {
+    if (entry.no_op) {
+      return `- **${now}** — \`cursor-rewind\`: no-op (cursor.yaml absent)`;
+    }
+    return `- **${now}** — \`cursor-rewind\`: cleared cursor (skill=${entry.prior_cursor_skill || 'null'}, step=${entry.prior_cursor_step || 'null'})`;
+  }
+  return `- **${now}** — heal action: ${arrayKey}`;
+}
+
+// ============================================================================
+// state-force-set-phase — heal-only illegal-phase recovery op per cli-spec §5
+// 2026-05-08 Addendum §1.6. Bypasses legal-transition assertion; preserves
+// canonical-phase-list validation on --value (drift symptom #2 closed at the
+// recovery boundary too). Recovery-only guard: refuses if current phase is
+// canonical AND state non-degraded (caller must use state-set-phase for normal
+// flow). Atomic-append to HEAL-LOG.md FIRST (audit-trail discipline), then
+// state.yaml write via writeState({force: true}).
+// ============================================================================
+async function stateForceSetPhase({ rawValue, reason, projectRoot }) {
+  const opName = 'state-force-set-phase';
+
+  if (rawValue === undefined || rawValue === null) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --value required`);
+  }
+  if (reason === undefined || reason === null) {
+    return emitFailure(EXIT_ARG_MISSING_OR_BAD, `essense-flow-tools ${opName}: --reason required`);
+  }
+  if (typeof reason !== 'string' || reason.trim() === '') {
+    return emitFailure(
+      EXIT_TYPE_MISMATCH,
+      `essense-flow-tools ${opName}: --reason rejected — empty or whitespace-only`,
+    );
+  }
+
+  const phases = await canonicalPhases();
+  if (!phases.includes(rawValue)) {
+    return emitFailure(
+      EXIT_TYPE_MISMATCH,
+      `essense-flow-tools ${opName}: --value rejected — '${rawValue}' not in canonical phases [${phases.join(', ')}]`,
+    );
+  }
+
+  validateProjectRoot(projectRoot, opName);
+
+  const { readState, writeState } = await stateLib();
+  const current = await readState(projectRoot);
+
+  // Recovery-only guard (validation step 4): refuse force-set when current
+  // phase is canonical AND state non-degraded. Force is for recovery, not for
+  // bypass of legal transitions. Closed decision 2026-05-08 sub-decision 3.
+  // Note: readState returns degraded='corrupt' when phase value is non-
+  // canonical (per stateLib readState last_check), and degraded='missing' when
+  // state.yaml absent. Guard fires only on the (!degraded && canonical) case.
+  if (!current.degraded && phases.includes(current.phase)) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: current phase '${current.phase}' is canonical; force-set is for illegal-phase recovery only; use state-set-phase for normal transitions`,
+    );
+  }
+
+  const priorPhase = current.degraded === 'missing'
+    ? null
+    : (current.phase ?? null);
+
+  // STEP 1 — append to HEAL-LOG.md FIRST (audit-trail-before-state-mutation
+  // discipline per cli-spec §5 2026-05-08 Addendum §1.6 Effect step 4).
+  const nowIso = new Date().toISOString();
+  let healLogPath;
+  try {
+    healLogPath = await appendHealLog(projectRoot, 'force_actions', {
+      at: nowIso,
+      prior_phase: priorPhase,
+      new_phase: rawValue,
+      reason: reason.trim(),
+    });
+  } catch (e) {
+    return emitFailure(
+      EXIT_GENERIC,
+      `essense-flow-tools ${opName}: HEAL-LOG.md write failed (${e.message})`,
+    );
+  }
+
+  // STEP 2 — write state.yaml. Two cases:
+  //   (a) state.yaml missing: build fresh state from defaults + new phase.
+  //   (b) state.yaml exists (canonical or degraded-corrupt): preserve fields,
+  //       overwrite phase. writeState's {force: true} bypasses both
+  //       degraded-block and legal-transition assertion.
+  let baseState;
+  if (current.degraded === 'missing') {
+    // Fresh-create from defaults
+    const defaultsPath = path.join(PLUGIN_ROOT, 'defaults', 'state.yaml');
+    let defaults;
+    try {
+      const yamlMod = await yaml();
+      defaults = yamlMod.load(fs.readFileSync(defaultsPath, 'utf8'));
+    } catch (e) {
+      return emitFailure(
+        EXIT_GENERIC,
+        `essense-flow-tools ${opName}: defaults/state.yaml unreadable (${e.message}); HEAL-LOG.md entry written but state.yaml not created`,
+      );
+    }
+    baseState = { ...defaults, phase: rawValue };
+  } else {
+    // current.degraded is 'corrupt' or null. Strip the read-helper fields.
+    const { degraded, path: _statePath, reason: _reason, ...stateCore } = current;
+    baseState = { ...stateCore, phase: rawValue };
+  }
+
+  const writeResult = await writeState(projectRoot, baseState, { force: true });
+  if (!writeResult.ok) {
+    return emitFailure(
+      EXIT_GENERIC,
+      `essense-flow-tools ${opName}: state.yaml write failed (${writeResult.reason}); HEAL-LOG.md entry stands as orphan audit signal`,
+    );
+  }
+
+  const after = await readState(projectRoot);
+  return emitSuccess({
+    ok: true,
+    op: 'state-force-set-phase',
+    prior_phase: priorPhase,
+    new_phase: rawValue,
+    heal_log_path: path.relative(projectRoot, healLogPath).replace(/\\/g, '/'),
+    last_updated: after.last_updated || null,
+  });
+}
+
+// ============================================================================
+// cursor-rewind — heal-only stuck-cursor repair op per cli-spec §5 2026-05-08
+// Addendum §1.7. Deletes .pipeline/cursor.yaml if present (idempotent: no-op
+// when absent). Atomic-append to HEAL-LOG.md cursor_rewinds[] for audit.
+// ============================================================================
+async function cursorRewind({ projectRoot }) {
+  const opName = 'cursor-rewind';
+  validateProjectRoot(projectRoot, opName);
+  const cursorPath = path.join(projectRoot, CURSOR_REL);
+
+  let priorSkill = null;
+  let priorStep = null;
+  let cursorWasPresent = false;
+
+  if (fs.existsSync(cursorPath)) {
+    cursorWasPresent = true;
+    try {
+      const raw = fs.readFileSync(cursorPath, 'utf8');
+      const yamlMod = await yaml();
+      const parsed = yamlMod.load(raw);
+      if (parsed && typeof parsed === 'object') {
+        priorSkill = parsed.skill || null;
+        priorStep = parsed.current_step || null;
+      }
+    } catch (e) {
+      return emitFailure(
+        EXIT_DEGRADED,
+        `essense-flow-tools ${opName}: cursor.yaml present but unreadable (${e.message}); not deleted; surface to user`,
+      );
+    }
+    try {
+      fs.unlinkSync(cursorPath);
+    } catch (e) {
+      return emitFailure(
+        EXIT_GENERIC,
+        `essense-flow-tools ${opName}: cursor.yaml present but delete failed (${e.message})`,
+      );
+    }
+  }
+
+  // Always log — even no-op case carries value as audit trail
+  const nowIso = new Date().toISOString();
+  let healLogPath;
+  try {
+    healLogPath = await appendHealLog(projectRoot, 'cursor_rewinds', {
+      at: nowIso,
+      prior_cursor_skill: priorSkill,
+      prior_cursor_step: priorStep,
+      no_op: !cursorWasPresent,
+    });
+  } catch (e) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: cursor ${cursorWasPresent ? 'deleted' : 'absent'} but HEAL-LOG.md write failed (${e.message}); audit-trail incomplete`,
+    );
+  }
+
+  return emitSuccess({
+    ok: true,
+    op: 'cursor-rewind',
+    cursor_was_present: cursorWasPresent,
+    prior_cursor_skill: priorSkill,
+    prior_cursor_step: priorStep,
+    heal_log_path: path.relative(projectRoot, healLogPath).replace(/\\/g, '/'),
+  });
+}
+
 // ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
@@ -1668,8 +2012,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initTriage(projectRoot);
     } else if (skill === 'elicit') {
       initJson = await initElicit(projectRoot);
+    } else if (skill === 'heal') {
+      initJson = await initHeal(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S9.6 spike scope`);
+      throw new Error(`init <${skill}> not implemented post-S9.7 (all 9 canonical skills should be wired)`);
     }
   } catch (e) {
     return emitFailure(
@@ -2466,10 +2812,11 @@ function printHelp() {
     [
       'essense-flow-tools — narrow CLI for essense-flow state ops + path lookups',
       '',
-      'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 + S9.4 + S9.5 — 2026-05-08):',
-      '  init context | architect | build | review | verify | research | triage',
+      'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 + S9.4 + S9.5 + S9.6 + S9.7 — 2026-05-08):',
+      '  init context | architect | build | review | verify | research | triage | elicit | heal',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
+      '        heal returns descriptive strings for phase_from/phase_to/transitions (D-2 closed).',
       '  step-advance --skill <name> --next-step <step> [--mode <init|status|next>] [--project-root <p>]',
       '      → advance per-skill cursor at <project-root>/.pipeline/cursor.yaml',
       '        monotonic-by-construction; --mode required for --skill=context only',
@@ -2490,9 +2837,16 @@ function printHelp() {
       '        Addendum required-key list (8 keys: schema_version, task_id, sprint, agent_claim,',
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
+      '  state-force-set-phase --value <phase> --reason <text>  [heal-only repair op]',
+      '      → illegal-phase recovery; bypasses legal-transition assertion BUT preserves',
+      '        canonical-phase-list validation. Recovery-only guard: refuses if current phase',
+      '        is canonical AND state non-degraded. Atomic-append HEAL-LOG.md FIRST, then state.yaml.',
+      '        Per cli-spec §5 2026-05-08 Addendum §1.6.',
+      '  cursor-rewind  [heal-only repair op]',
+      '      → delete .pipeline/cursor.yaml (idempotent; no-op when absent). Atomic-append',
+      '        HEAL-LOG.md cursor_rewinds[]. Per cli-spec §5 2026-05-08 Addendum §1.7.',
       '',
-      'Future S9.6-7 extends with: init <skill> for the remaining 2 skills',
-      '(elicit, heal).',
+      'All 9 canonical skills now wired (S9.7 closes the per-skill phase). S10 next.',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -2565,6 +2919,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'heal') {
+        const json = await initHeal(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -2577,10 +2936,13 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.6 spike scope
+      // S9.7 — last per-skill wire-up. All 9 canonical skills now have init
+      // dispatchers above. This branch should be unreachable; emit an
+      // internal-error if it fires (would indicate a SKILLS list / dispatcher
+      // table desync, the recurrence-pattern row 10 shape that S9.7 closes).
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.6 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research', 'triage', 'elicit' implemented; future S9.7 extends per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' is in canonical SKILLS list but no init dispatcher branch matched; internal error post-S9.7 (see redesign/STATE.md S9.7 row)`,
       );
     }
     case 'step-advance': {
@@ -2620,6 +2982,18 @@ function printHelp() {
           : undefined,
         projectRoot,
       });
+      return;
+    }
+    case 'state-force-set-phase': {
+      await stateForceSetPhase({
+        rawValue: args.value,
+        reason: args.reason,
+        projectRoot,
+      });
+      return;
+    }
+    case 'cursor-rewind': {
+      await cursorRewind({ projectRoot });
       return;
     }
     default:
