@@ -839,6 +839,59 @@ async function initTriage(projectRoot) {
 }
 
 // ============================================================================
+// Op: init elicit (S9.6 — per init-spec.md §1.1)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps for the elicit skill. Pure (no
+// writes). `sub_agents` is empty — elicit operates in main context only per
+// skill-substance/elicit.md "Sub-agent dispatches" verbatim ("None — elicit
+// operates in main context only"). `sprint_number: null` — elicit is whole-
+// project (pre-sprint). `required_inputs: []` — caller-provided pitch is text,
+// not a file path; existing SPEC.md on resume is a resume affordance, not a
+// hard prerequisite (per init-spec.md §1.1 "Source of truth").
+// ============================================================================
+async function initElicit(_projectRoot) {
+  return {
+    skill: 'elicit',
+    phase_from: ['idle', 'eliciting'],
+    phase_to: ['eliciting', 'research', 'architecture'],
+    transitions: [
+      { name: 'idle-to-eliciting', from: 'idle', to: 'eliciting',
+        auto_advance: false, requires: null },
+      { name: 'eliciting-to-eliciting', from: 'eliciting', to: 'eliciting',
+        auto_advance: false, requires: null },
+      { name: 'eliciting-to-research', from: 'eliciting', to: 'research',
+        auto_advance: true,
+        requires: '.pipeline/elicitation/SPEC.md exists with status: build-ready' },
+      { name: 'eliciting-to-architecture', from: 'eliciting', to: 'architecture',
+        auto_advance: false,
+        requires: '.pipeline/elicitation/SPEC.md exists with status: build-ready AND user routed around research' },
+    ],
+    canonical_paths: {
+      spec_md: '.pipeline/elicitation/SPEC.md',
+    },
+    ordered_steps: [
+      'read-pitch-or-resume',
+      'transition-or-resume',
+      'elicitation-loop',
+      'build-ready-reread',
+      'set-build-ready-status',
+      'assess-complexity',
+      'finalize',
+    ],
+    sprint_number: null,
+    required_inputs: [],
+    principles_cited: [
+      'Front-Loaded-Design',
+      'Diligent-Conduct',
+      'Graceful-Degradation',
+      'Fail-Soft',
+      'INST-13',
+    ],
+    sub_agents: [],
+  };
+}
+
+// ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
 // Setters share a common shape. Each setter declares: field name, value parser
@@ -1259,8 +1312,26 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
         operand: 0,
       });
     }
-    // Other content properties (build-ready, etc.) not yet exercised — defer to
-    // a later wire-up step (S9.6 elicit) per cli-spec §3.4.
+    // S9.6 elicit wire: `status: <scalar>` content-property predicate against
+    // SPEC.md frontmatter. Closes the eliciting→research and eliciting→
+    // architecture gates. The trailing `AND user routed around research`
+    // clause on the eliciting→architecture predicate is the manual-vs-auto
+    // signal — that transition is `auto_advance: false`, so the user-routing
+    // portion is enforced by the explicit user invocation, not by a content-
+    // property check. The CLI op enforces only the structural status portion
+    // (`status: build-ready`). Without this lock, master could call
+    // `state-set-phase --value research` while SPEC.md was `status: draft` —
+    // undermining the Front-Loaded-Design closure gate.
+    const statusMatch = predicate.match(/with status:\s*([a-z][a-z0-9-]*)/i);
+    if (statusMatch) {
+      return evalStatusPredicate({
+        fullPath,
+        expectedStatus: statusMatch[1],
+      });
+    }
+    // Other content properties not yet exercised — soft-pass with explicit
+    // kind name. Future wire-ups append a paired closed decision per
+    // cli-spec §5 addendum discipline before adding new branches here.
     if (predicate.includes(' with ')) {
       return { ok: true, kind: 'soft-pass-not-implemented' };
     }
@@ -1441,6 +1512,58 @@ function evalCountPredicate({ fullPath, key, operator, operand }) {
   return { ok: true, kind: 'count-predicate-pass' };
 }
 
+// S9.6 elicit wire — scalar `status:` content-property check against a
+// markdown file's YAML frontmatter. Used by eliciting→{research,architecture}
+// transitions where the `status: build-ready` predicate gates the close of
+// elicitation. Strict scalar string equality; type-mismatch (non-string) and
+// key-missing both fail with `predicate-false` plus a verbatim observed
+// payload.
+function evalStatusPredicate({ fullPath, expectedStatus }) {
+  let parsed;
+  try {
+    const raw = fs.readFileSync(fullPath, 'utf8');
+    const frontmatter = extractFrontmatter(raw);
+    if (frontmatter == null) {
+      return {
+        ok: false,
+        kind: 'predicate-false',
+        observed: `${path.basename(fullPath)} has no YAML frontmatter; cannot read 'status'`,
+      };
+    }
+    const yamlSync = require('js-yaml');
+    parsed = yamlSync.load(frontmatter);
+  } catch (e) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} unreadable (${e.message})`,
+    };
+  }
+  if (!parsed || typeof parsed !== 'object' || !('status' in parsed)) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} frontmatter missing 'status'`,
+    };
+  }
+  const observed = parsed.status;
+  if (typeof observed !== 'string') {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `${path.basename(fullPath)} 'status' is not a string (got ${JSON.stringify(observed)})`,
+    };
+  }
+  if (observed !== expectedStatus) {
+    return {
+      ok: false,
+      kind: 'predicate-false',
+      observed: `status="${observed}", predicate requires status == "${expectedStatus}"`,
+    };
+  }
+  return { ok: true, kind: 'status-predicate-pass' };
+}
+
 // Extract the raw YAML frontmatter string from a markdown file
 // (between leading `---` line and the next `---` line).
 // Returns null if no frontmatter found.
@@ -1543,8 +1666,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initResearch(projectRoot);
     } else if (skill === 'triage') {
       initJson = await initTriage(projectRoot);
+    } else if (skill === 'elicit') {
+      initJson = await initElicit(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S9.4 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S9.6 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -2435,6 +2560,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'elicit') {
+        const json = await initElicit(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -2447,10 +2577,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.5 spike scope
+      // Known skill but not yet implemented in S9.6 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.5 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research', 'triage' implemented; future S9.6-7 extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.6 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research', 'triage', 'elicit' implemented; future S9.7 extends per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
