@@ -28,8 +28,38 @@ Things we build need access from claude to be tested so we can build things like
 - Read `.pipeline/elicitation/SPEC.md` (required). On missing/corrupt: refuse to start, return `{ok: false, reason: "spec required"}`.
 - Verify `state.phase == research` (entered via finalize from elicit, or resumed).
 - On degraded state, surface warning, do not refuse.
-- Use `lib/dispatch.js` for parallel perspective agents. Quorum mode: `all-required` — every commissioned perspective must return a signal or its absence becomes a synthetic finding (never silent).
-- Use `lib/finalize.js` to atomically write REQ.md and transition state.
+- Call `essense-flow-tools init research` first thing. Parse the JSON; use `canonical_paths.req_md` for the REQ.md write, `transitions` to choose the legal target phase, `sub_agents` for the registered agent name.
+- Dispatch `essense-flow-perspective-agent` (per-lens parallel, all-required quorum) via the **registered agent dispatch** path (Agent tool with `subagent_type: essense-flow-perspective-agent`) — not `lib/dispatch.js`. Briefs assembled per-lens from `templates/perspective-brief.md` with placeholder substitution (`{{lens}}`, `{{project_context}}`, `{{open_questions}}`, `{{lens_specific_instructions}}`, `{{sentinel}}`).
+- Write REQ.md to the canonical path with ordinary `Write`; advance phase via `essense-flow-tools state-set-phase` (not `lib/finalize.js`); record the research-completed timestamp via `essense-flow-tools state-set-research-completed`; advance the round counter (on a `research → research` loop) via `essense-flow-tools state-set-research-round`. Step-cursor advances via `essense-flow-tools step-advance --skill research`.
+- Quorum mode `all-required` — every commissioned perspective must return a signal or its absence becomes a synthetic finding (never silent).
+
+## Skill operating mechanism (S9.4 redesign — 2026-05-08)
+
+This skill runs against the narrow CLI surface (`bin/essense-flow-tools.cjs`) and the registered subagent (`agents/essense-flow-perspective-agent.md`). The redesigned mechanism replaces the old `lib/dispatch.js` + `lib/finalize.js` advisory surface that allowed master to drift the schema, paths, extensions, and dispatch.
+
+**What you call (in order):**
+
+1. `essense-flow-tools init research` — JSON describing the research skill: `canonical_paths.req_md` (`.pipeline/requirements/REQ.md`), `transitions` (2 — `research-to-research`, `research-to-triaging`), `phase_from`/`phase_to`, `ordered_steps` (8 — `read-spec, identify-open-questions, formulate-perspective-briefs, dispatch-perspective-agents, synthesize-findings, convert-to-acceptance-criteria, reread-spec-and-req, finalize`), `sub_agents` (1 registered role — `essense-flow-perspective-agent`), `principles_cited` (5), `required_inputs` (1 — SPEC.md). `sprint_number` is `null` — research is whole-project (informs implementation decisions across the whole codebase, not a specific sprint).
+2. `essense-flow-tools step-advance --skill research --next-step <step>` — eight steps in order. The cursor file `.pipeline/cursor.yaml` enforces monotonic-by-construction order; calling out-of-order rejects with exit 13.
+3. **Read SPEC.md.** Identify every open question, every undefined dependency, every architecture decision the spec leaves to research. For each, formulate a perspective brief — a question to a parallel agent.
+4. **Dispatch `essense-flow-perspective-agent`** (Agent tool with `subagent_type: essense-flow-perspective-agent`), one per commissioned lens, **in parallel** (single message, multiple Agent tool calls). Brief assembled from `perspective-brief.md` template substituting `{{lens}}`, `{{project_context}}` (relevant SPEC sections), `{{open_questions}}`, `{{lens_specific_instructions}}` (per-lens framing), and `{{sentinel}}`. Each lens runs in a clean context. Per-lens findings return as structured markdown (5 sections — Findings, Recommendation, Trade-offs, Sources, Open follow-ups). Lenses get NO `Write`/`Edit`/`Bash` — synthesis is master's job.
+5. **Synthesize.** Collate findings — group by spec question. Reconcile contradictions — when two lenses recommend different paths, surface both with the trade-off, then make the closing call with rationale. Convert each functional requirement to a testable acceptance criterion. Re-read SPEC + draft REQ together; if new questions surface, **research them now** — do not push to triage.
+6. **Loop or finalize.** `research → research` (additional round, `research.round` advances) for resumption / additional rounds. Exit to `triaging` only when no new question surfaces on re-read.
+7. Write REQ.md to `canonical_paths.req_md` via ordinary `Write`. Frontmatter includes `schema_version`, `sources_consulted`, `perspectives_run`. Body covers Decisions made + rationale, FRs (with testable acceptance criteria), NFRs, Examples and references, Best-practice context, Risks and incurred costs, Open follow-ups.
+8. `essense-flow-tools state-set-research-round --value <int>` — advance the round counter (only on the `research → research` loop entry; not required on the exit-to-triaging path).
+9. `essense-flow-tools state-set-research-completed --value <iso8601>` — stamp the research exit timestamp (only on the exit-to-triaging path).
+10. `essense-flow-tools state-set-phase --value triaging` — advance phase. The deterministic gate fires here: for `research → triaging`, the CLI's predicate evaluator checks `.pipeline/requirements/REQ.md exists` (path-only existence; handled by the existing `path-exists` branch — no content-property predicate, contrast with review's `confirmed_unacknowledged_criticals == 0` and verify's `confirmed_gaps == 0`). REQ.md missing → exit 7 with `predicate '.pipeline/requirements/REQ.md exists' failed: file not present`.
+11. `essense-flow-tools step-advance --skill research --next-step skill-complete` — cursor deletes; skill exits.
+
+**What you write directly with `Write`** (not via CLI ops):
+
+- `.pipeline/requirements/REQ.md` (canonical path from init JSON; the artifact whose existence justifies the `research → triaging` transition).
+
+**What you do NOT touch:**
+
+- `lib/dispatch.js` — DEPRECATED for research (registered agent dispatch supersedes; old helpers remain in tree for unmigrated skills).
+- `lib/finalize.js` — DEPRECATED for research (CLI ops `state-set-phase` + `state-set-research-completed` + `state-set-research-round` supersede; old helper remains in tree).
+- `.pipeline/state.yaml` directly — never `Write` to it; the only legal mutators are `state-set-*` CLI ops.
 
 ## Core principle
 
@@ -125,11 +155,11 @@ Delegation keeps the rule loud at synthesis time. Each lens-agent returns findin
 
 ## Scripts
 
-- `lib/dispatch.js` — parallel agent fan-out (mode: `all-required`).
-- `lib/brief.js` — perspective brief assembly (per-lens template under `templates/perspective-brief.md`).
-- `lib/finalize.js` — atomic write+transition.
-- `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` — current library docs.
-- `WebSearch` / `WebFetch` — current articles, papers, official blogs.
+- `lib/dispatch.js` — DEPRECATED for research (replaced by registered `essense-flow-perspective-agent` dispatch via the Agent tool with `subagent_type`). Kept in tree for unmigrated skills until S9.7.
+- `lib/brief.js` — DEPRECATED for research (perspective briefs assembled inline from `templates/perspective-brief.md` with master-side placeholder substitution, then handed to the Agent tool). Kept in tree for unmigrated skills.
+- `lib/finalize.js` — DEPRECATED for research (replaced by `state-set-phase` + `state-set-research-completed` + `state-set-research-round` CLI ops + ordinary `Write` on the canonical path from init JSON).
+- `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` — current library docs (used by perspective agents per `~/.claude/CLAUDE.md` "Context7" rule).
+- `WebSearch` / `WebFetch` — current articles, papers, official blogs (used by perspective agents).
 
 ## State transitions
 
@@ -149,29 +179,41 @@ Last block — read it just before you act.
 
 Not legal: `researched`, `req-ready`, `done`.
 
-**The exact `finalize` call shape** for the research→triaging transition:
+**The exact CLI op sequence** for the research→triaging transition (post-S9.4 redesign):
 
-```js
-import { finalize } from "../../lib/finalize.js";
+```bash
+# Step 8 of 8 — finalize
+# (1) write REQ.md via ordinary Write at the canonical path from `init research`:
+#       .pipeline/requirements/REQ.md  (frontmatter MUST include schema_version,
+#                                        sources_consulted, perspectives_run)
 
-await finalize({
-  projectRoot,
-  writes: [
-    { path: ".pipeline/requirements/REQ.md", content: reqMd },
-  ],
-  nextState: { phase: "triaging", /* …the rest of state */ },
-});
+# (2) stamp the research-completed timestamp:
+essense-flow-tools state-set-research-completed --value 2026-05-08T12:34:56Z
+
+# (3) advance phase; CLI predicate evaluator checks REQ.md exists at the canonical
+#     path; missing → exit 7 with predicate-failed message:
+essense-flow-tools state-set-phase --value triaging
+
+# (4) cursor cleanup:
+essense-flow-tools step-advance --skill research --next-step skill-complete
 ```
 
-For an additional round (`research → research`), keep `phase: "research"` and advance `research.round`.
+For an additional round (`research → research`), do NOT advance phase. Instead:
+
+```bash
+essense-flow-tools state-set-research-round --value <int>
+# (cursor stays on the in-progress step; no skill-complete sentinel)
+```
+
+The round counter is monotonic-by-construction at the setter (parses non-neg int, writes the literal value); master is responsible for incrementing.
 
 **Self-check before the call:**
 
-1. Is `nextState.phase` exactly `research` or `triaging`?
-2. Does REQ.md exist in `writes[]` for the route-out (`research → triaging`)?
-3. Did **perspective agents** produce the per-lens findings, master synthesizes? If master wrote REQ.md from main-context recall, the high-confidence-sources rule has likely drifted.
-4. Are you calling `finalize`, not `Write` on `.pipeline/state.yaml`?
+1. Is `--value` for `state-set-phase` exactly `triaging` (the only legal exit target from research per the init JSON `phase_to`)?
+2. Does REQ.md exist at the canonical path before you call `state-set-phase --value triaging`? (The CLI's predicate evaluator will reject if not — but the self-check catches it before the rejection.)
+3. Did **perspective agents** produce the per-lens findings, master synthesizes? If master wrote REQ.md from main-context recall, the high-confidence-sources rule has likely drifted. Per Why-delegation-mandatory: master fetching pages inline burns context, the citation discipline drifts, the verification gate at downstream review/verify catches vague NFRs.
+4. Are you calling `state-set-phase`, not `Write` on `.pipeline/state.yaml`? The only legal state mutators are `state-set-*` CLI ops.
 
 If any answer is `no`, stop. Re-read.
 
-`finalize` emits a stderr advisory if `requires:` paths are missing — informational, never refuses.
+The CLI emits a one-line stderr message + exit 7 if the predicate fails (REQ.md missing); the failure is loud, not advisory.

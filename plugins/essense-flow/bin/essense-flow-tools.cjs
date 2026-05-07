@@ -31,6 +31,15 @@
 // phrase "with no confirmed gaps" maps to `confirmed_gaps == 0`.
 // essense-flow-extractor + essense-flow-item-verifier registered.
 //
+// S9.4 extension (2026-05-08): adds the research surface — `init research`.
+// Research is sprint-spanning (sprint_number: null). Predicate is path-only
+// existence (`.pipeline/requirements/REQ.md exists`) — no evaluatePredicate
+// extension needed (existing path-exists branch suffices). Both `case 'init':`
+// public switch + step-advance internal init dispatcher gain a `research`
+// branch in the SAME edit per S9.3 O-4 cross-impl-site preflight rule (closes
+// recurrence-pattern row 10 at preflight rather than at smoke).
+// essense-flow-perspective-agent registered.
+//
 // Spec sources (read-only — do not paraphrase or invent fields):
 //   redesign/cli-spec.md §1.1 (state-set-* family preamble + per-field blocks),
 //                       §1.2 (state-set-phase), §1.4 (step-advance + §5 D-3
@@ -38,22 +47,25 @@
 //                       §5 2026-05-06 Addendum required-key list sync),
 //                       §1.3 (record-task-completion + §5 2026-05-07 Addendum
 //                       dual-record shape), §3.4 (predicate evaluator).
-//   redesign/init-spec.md §1.4 (init architect), §1.5 (init build),
-//                         §1.6 (init review), §1.7 (init verify),
-//                         §1.9 (init context),
+//   redesign/init-spec.md §1.2 (init research), §1.4 (init architect),
+//                         §1.5 (init build), §1.6 (init review),
+//                         §1.7 (init verify), §1.9 (init context),
 //                         §7 Addendum 2026-05-06 (item-verifier brief_template
 //                         = null; extracted-item IS the brief input).
 //   redesign/agent-spec.md §1.1 (essense-flow-sub-architect — task spec shape),
 //                          §1.4 (validator), §1.5 (adversarial-lens),
 //                          §1.6 (extractor — verify Job 1),
+//                          §1.7 (perspective-agent — research per-lens),
 //                          §1.8 (task-agent — dual-record shape),
 //                          §1.9 (item-verifier — verify Job 2),
+//                          §3.1 (perspective-brief — outside brief pattern),
 //                          §3.3 (item-verifier — no dedicated template).
 //   redesign/06-decisions.md 2026-05-05 D-3, 2026-05-06 S6.5, 2026-05-06 S7,
 //                            2026-05-06 S8 (cli-spec §1.5 amend +
 //                            drift-5 amend), 2026-05-07 S9.1 (cli-spec §1.3
 //                            amend), 2026-05-07 S9.2 (impl-vs-spec gap),
-//                            2026-05-07 S9.3 (verify wire).
+//                            2026-05-07 S9.3 (verify wire),
+//                            2026-05-08 S9.4 (research wire).
 //
 // Conventions:
 //   - All ops emit JSON to stdout on success and exit 0.
@@ -660,6 +672,72 @@ async function initVerify(projectRoot) {
         // extracted-items.yaml entry IS the brief input; verification-report.md
         // is the report-output shape master uses, not a brief read by the agent.
         brief_template: null,
+        required: true,
+        quorum: 'all-required',
+      },
+    ],
+  };
+}
+
+// ============================================================================
+// Op: init research (S9.4 — per init-spec.md §1.2)
+// ----------------------------------------------------------------------------
+// Returns canonical paths + ordered_steps + sub_agents for the research skill.
+// Pure (no writes). `sprint_number: null` — research is whole-project (informs
+// implementation decisions across the whole codebase, not a specific sprint),
+// per skill-substance/research.md "Inputs" (SPEC.md required) + init-spec
+// §1.2's `sprint_number: null`. Source: redesign/init-spec.md §1.2 +
+// skill-substance/research.md "Outputs" + "Ordered steps" + "Sub-agent
+// dispatches".
+//
+// Predicate for `research → triaging` is `.pipeline/requirements/REQ.md exists`
+// — path-only existence, handled by existing `evaluatePredicate` path-exists
+// branch (no extension needed; contrast with S9.2 review's content-property
+// `confirmed_unacknowledged_criticals == 0` and S9.3 verify's `confirmed_gaps
+// == 0`, both of which required helper extensions).
+// ============================================================================
+async function initResearch(projectRoot) {
+  return {
+    skill: 'research',
+    phase_from: ['research'],
+    phase_to: ['research', 'triaging'],
+    transitions: [
+      { name: 'research-to-research', from: 'research', to: 'research',
+        auto_advance: false,
+        requires: null },
+      { name: 'research-to-triaging', from: 'research', to: 'triaging',
+        auto_advance: true,
+        requires: '.pipeline/requirements/REQ.md exists' },
+    ],
+    canonical_paths: {
+      req_md: '.pipeline/requirements/REQ.md',
+    },
+    ordered_steps: [
+      'read-spec',
+      'identify-open-questions',
+      'formulate-perspective-briefs',
+      'dispatch-perspective-agents',
+      'synthesize-findings',
+      'convert-to-acceptance-criteria',
+      'reread-spec-and-req',
+      'finalize',
+    ],
+    sprint_number: null,
+    required_inputs: [
+      '.pipeline/elicitation/SPEC.md',
+    ],
+    principles_cited: [
+      'Diligent-Conduct',
+      'Front-Loaded-Design',
+      'Fail-Soft',
+      'Graceful-Degradation',
+      'INST-13',
+    ],
+    sub_agents: [
+      {
+        name: 'essense-flow-perspective-agent',
+        cardinality: 'per-lens parallel (best-practices | ecosystem | examples | risks-and-costs | alternatives)',
+        brief_template: 'skills/research/templates/perspective-brief.md',
         required: true,
         quorum: 'all-required',
       },
@@ -1289,8 +1367,10 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot }) {
       initJson = await initReview(projectRoot);
     } else if (skill === 'verify') {
       initJson = await initVerify(projectRoot);
+    } else if (skill === 'research') {
+      initJson = await initResearch(projectRoot);
     } else {
-      throw new Error(`init <${skill}> not implemented in S9.3 spike scope`);
+      throw new Error(`init <${skill}> not implemented in S9.4 spike scope`);
     }
   } catch (e) {
     return emitFailure(
@@ -2112,8 +2192,8 @@ function printHelp() {
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
       '',
-      'Future S9.4-7 extends with: init <skill> for the remaining 4 skills',
-      '(research, triage, elicit, heal).',
+      'Future S9.5-7 extends with: init <skill> for the remaining 3 skills',
+      '(triage, elicit, heal).',
       'See redesign/cli-spec.md and redesign/init-spec.md.',
     ].join('\n') + '\n',
   );
@@ -2171,6 +2251,11 @@ function printHelp() {
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }
+      if (args._sub === 'research') {
+        const json = await initResearch(projectRoot);
+        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
+        process.exit(EXIT_OK);
+      }
       if (!args._sub) {
         return emitFailure(
           EXIT_ARG_MISSING_OR_BAD,
@@ -2183,10 +2268,10 @@ function printHelp() {
           `essense-flow-tools init: unknown skill '${args._sub}', expected one of [${SKILLS.join(', ')}]`,
         );
       }
-      // Known skill but not yet implemented in S9.3 spike scope
+      // Known skill but not yet implemented in S9.4 spike scope
       return emitFailure(
         EXIT_INIT_LOOKUP_FAIL,
-        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.3 spike scope (only 'context', 'architect', 'build', 'review', 'verify' implemented; future S9.4-7 extend per redesign/init-spec.md)`,
+        `essense-flow-tools init: skill '${args._sub}' not implemented in S9.4 spike scope (only 'context', 'architect', 'build', 'review', 'verify', 'research' implemented; future S9.5-7 extend per redesign/init-spec.md)`,
       );
     }
     case 'step-advance': {
