@@ -1681,6 +1681,31 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
     }
     return { ok: true, kind: 'path-exists' };
   }
+  // S10.5 Path A — verify-divergence phrase lookup. Each phrase maps to a
+  // VERIFICATION-REPORT.md frontmatter count field (missing|partial|drift);
+  // accept iff count > 0. Closes 3 of 4 verify-divergence soft-pass surfaces
+  // (the 4th — decomposing→architecture — is logged for S11 polish).
+  // Pre-authorized at S10.5 per 06-decisions.md 2026-05-08 first entry
+  // sub-decision 1 + cli-spec §5 2026-05-09 Addendum. Without this lock,
+  // master could call state-set-phase --value architecture from verifying
+  // against an empty / garbage VERIFICATION-REPORT.md — predicate evaluator
+  // would rubber-stamp via disposition-soft-pass.
+  if (VERIFY_DIVERGENCE_PHRASES.has(predicate)) {
+    const fieldKey = VERIFY_DIVERGENCE_PHRASES.get(predicate);
+    const verifyReportPath = path.join(
+      projectRoot,
+      '.pipeline/verify/VERIFICATION-REPORT.md',
+    );
+    if (!fs.existsSync(verifyReportPath)) {
+      return { ok: false, kind: 'path-missing', path: '.pipeline/verify/VERIFICATION-REPORT.md' };
+    }
+    return evalCountPredicate({
+      fullPath: verifyReportPath,
+      key: fieldKey,
+      operator: '>',
+      operand: 0,
+    });
+  }
   // S9.5 triage wire: disposition predicate (no path) phrase lookup.
   // Closes cli-spec §3.4 TBD per cli-spec §5 2026-05-08 Addendum +
   // 06-decisions.md 2026-05-08 closed decision. Each phrase maps to a
@@ -1715,6 +1740,21 @@ const TRIAGE_DISPOSITION_PHRASES = new Map([
   ['all triage dispositions resolved; no upstream routes', 'requirements-ready'],
   ['triage routed item to architecture', 'architecture'],
   ['post-build triage routed all items to spec-compliance audit', 'verifying'],
+]);
+
+// S10.5 Path A — verify-divergence content-property predicate phrase table.
+// Each entry: transitions.yaml verbatim `requires:` string → frontmatter key
+// to count-check (operator `>`, operand `0`). Reads canonical
+// .pipeline/verify/VERIFICATION-REPORT.md per init-spec §1.7 + cli-spec §5
+// 2026-05-09 Addendum. Pre-authorized at S10.5 per 06-decisions.md 2026-05-08
+// first entry sub-decision 1 (locked handler-shape table). Closes 3 of 4
+// verify-divergence soft-pass surfaces; the 4th (decomposing→architecture
+// `open design decision surfaced during decomposition`) is logged for S11
+// polish — less-common divergence, S10.5.1-5 do not exercise it.
+const VERIFY_DIVERGENCE_PHRASES = new Map([
+  ['VERIFICATION-REPORT.md confirms missing implementation', 'missing'],
+  ['VERIFICATION-REPORT.md surfaces items needing categorization', 'partial'],
+  ['VERIFICATION-REPORT.md confirms spec drift requiring elicit addendum', 'drift'],
 ]);
 
 // Evaluate a disposition predicate against a markdown file's YAML frontmatter
