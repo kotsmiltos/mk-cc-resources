@@ -1666,6 +1666,7 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
         key: 'confirmed_gaps',
         operator: cgMatch[1],
         operand: parseInt(cgMatch[2], 10),
+        subtractKey: 'acknowledged',
       });
     }
     if (/with no confirmed gaps/i.test(predicate)) {
@@ -1674,6 +1675,7 @@ function evaluatePredicate(predicate, projectRoot, sprint) {
         key: 'confirmed_gaps',
         operator: '==',
         operand: 0,
+        subtractKey: 'acknowledged',
       });
     }
     // S9.6 elicit wire: `status: <scalar>` content-property predicate against
@@ -1861,7 +1863,7 @@ function evalAllTaskSpecsClosed(manifestPath, sprintDir) {
 // Evaluate a numeric content-property predicate against a markdown file's
 // YAML frontmatter (or a full YAML file). Per cli-spec §3.4 step 4-6.
 // Used by reviewing-to-verifying / reviewing-to-triaging predicate (S9.2).
-function evalCountPredicate({ fullPath, key, operator, operand }) {
+function evalCountPredicate({ fullPath, key, operator, operand, subtractKey }) {
   let parsed;
   try {
     const raw = fs.readFileSync(fullPath, 'utf8');
@@ -1889,13 +1891,38 @@ function evalCountPredicate({ fullPath, key, operator, operand }) {
       observed: `${path.basename(fullPath)} frontmatter missing '${key}'`,
     };
   }
-  const observed = parsed[key];
-  if (!Number.isFinite(observed)) {
+  const rawObserved = parsed[key];
+  if (!Number.isFinite(rawObserved)) {
     return {
       ok: false,
       kind: 'predicate-false',
-      observed: `${path.basename(fullPath)} '${key}' is not a number (got ${JSON.stringify(observed)})`,
+      observed: `${path.basename(fullPath)} '${key}' is not a number (got ${JSON.stringify(rawObserved)})`,
     };
+  }
+  // S10.5 2026-05-09 third Addendum (Session 6): when `subtractKey` is supplied
+  // (currently only the `confirmed_gaps` predicate path passes 'acknowledged'),
+  // read the optional subtract field from the same frontmatter and compute
+  // effective = max(0, observed - subtract). The max-clamp prevents negative
+  // effective values from author error in frontmatter from crashing the gate;
+  // silly inputs become "no remaining gaps" which fails-soft toward letting the
+  // transition through, but the gate's reject still fires correctly when
+  // effective > 0. The subtractKey is OPTIONAL in frontmatter (defaults to 0).
+  // Closes the verifying→complete-with-acknowledged-deferred-missing surface
+  // caught at S10.5 Session 6 Step 4c terminal (per cli-spec §5 third 2026-05-09
+  // Addendum).
+  let observed = rawObserved;
+  let subtract = 0;
+  if (subtractKey && subtractKey in parsed) {
+    const rawSubtract = parsed[subtractKey];
+    if (!Number.isFinite(rawSubtract)) {
+      return {
+        ok: false,
+        kind: 'predicate-false',
+        observed: `${path.basename(fullPath)} '${subtractKey}' is not a number (got ${JSON.stringify(rawSubtract)})`,
+      };
+    }
+    subtract = rawSubtract;
+    observed = Math.max(0, rawObserved - subtract);
   }
   let pass;
   switch (operator) {
@@ -1907,10 +1934,13 @@ function evalCountPredicate({ fullPath, key, operator, operand }) {
     default: pass = false;
   }
   if (!pass) {
+    const effDescr = subtractKey
+      ? `effective_${key}=${observed} (=${rawObserved}-${subtract})`
+      : `${key}=${observed}`;
     return {
       ok: false,
       kind: 'predicate-false',
-      observed: `${key}=${observed}, predicate requires ${operator} ${operand}`,
+      observed: `${effDescr}, predicate requires ${operator} ${operand}`,
     };
   }
   return { ok: true, kind: 'count-predicate-pass' };
