@@ -1059,7 +1059,7 @@ function formatHealLogBodyLine(arrayKey, entry, now) {
 // flow). Atomic-append to HEAL-LOG.md FIRST (audit-trail discipline), then
 // state.yaml write via writeState({force: true}).
 // ============================================================================
-async function stateForceSetPhase({ rawValue, reason, projectRoot }) {
+async function stateForceSetPhase({ rawValue, reason, projectRoot, allowCanonicalRecovery }) {
   const opName = 'state-force-set-phase';
 
   if (rawValue === undefined || rawValue === null) {
@@ -1094,7 +1094,17 @@ async function stateForceSetPhase({ rawValue, reason, projectRoot }) {
   // Note: readState returns degraded='corrupt' when phase value is non-
   // canonical (per stateLib readState last_check), and degraded='missing' when
   // state.yaml absent. Guard fires only on the (!degraded && canonical) case.
-  if (!current.degraded && phases.includes(current.phase)) {
+  //
+  // S10.5 2026-05-09 Addendum: --allow-canonical-recovery flag bypasses the
+  // guard for adversarial-stress-test scenarios (e.g. S10.5 brief Task §11
+  // late-stage user-injected requirement post-terminal). Default behavior
+  // unchanged (refuse-if-canonical); flag is opt-in only. Bypass recorded
+  // in HEAL-LOG.md atomic-append entry as allow_canonical_recovery: true.
+  const canonicalRecoveryFiring =
+    !current.degraded &&
+    phases.includes(current.phase) &&
+    allowCanonicalRecovery === true;
+  if (!current.degraded && phases.includes(current.phase) && !allowCanonicalRecovery) {
     return emitFailure(
       EXIT_VALIDATION_FAIL,
       `essense-flow-tools ${opName}: current phase '${current.phase}' is canonical; force-set is for illegal-phase recovery only; use state-set-phase for normal transitions`,
@@ -1110,12 +1120,16 @@ async function stateForceSetPhase({ rawValue, reason, projectRoot }) {
   const nowIso = new Date().toISOString();
   let healLogPath;
   try {
-    healLogPath = await appendHealLog(projectRoot, 'force_actions', {
+    const entry = {
       at: nowIso,
       prior_phase: priorPhase,
       new_phase: rawValue,
       reason: reason.trim(),
-    });
+    };
+    if (canonicalRecoveryFiring) {
+      entry.allow_canonical_recovery = true;
+    }
+    healLogPath = await appendHealLog(projectRoot, 'force_actions', entry);
   } catch (e) {
     return emitFailure(
       EXIT_GENERIC,
@@ -1149,7 +1163,13 @@ async function stateForceSetPhase({ rawValue, reason, projectRoot }) {
     baseState = { ...stateCore, phase: rawValue };
   }
 
-  const writeResult = await writeState(projectRoot, baseState, { force: true });
+  // state-force-set-phase is a heal-only repair op — bypass both degraded-
+  // block AND legal-transition assertion. Per S10.5 2026-05-09 lib/state.js
+  // amendment, the bypassLegalTransition flag explicitly opts in to the
+  // "force everything" semantic (closes impl-vs-spec gap noted at this site:
+  // earlier inline comment claimed force=true bypassed both checks; in fact
+  // it only bypassed the degraded-block).
+  const writeResult = await writeState(projectRoot, baseState, { force: true, bypassLegalTransition: true });
   if (!writeResult.ok) {
     return emitFailure(
       EXIT_GENERIC,
@@ -2877,7 +2897,7 @@ function printHelp() {
       '        Addendum required-key list (8 keys: schema_version, task_id, sprint, agent_claim,',
       '        runner_verification, verified, task_started_at, task_completed_at);',
       '        atomic tmp+rename; idempotency rejection; sprinting-phase-only.',
-      '  state-force-set-phase --value <phase> --reason <text>  [heal-only repair op]',
+      '  state-force-set-phase --value <phase> --reason <text> [--allow-canonical-recovery]  [heal-only repair op]',
       '      → illegal-phase recovery; bypasses legal-transition assertion BUT preserves',
       '        canonical-phase-list validation. Recovery-only guard: refuses if current phase',
       '        is canonical AND state non-degraded. Atomic-append HEAL-LOG.md FIRST, then state.yaml.',
@@ -3028,6 +3048,10 @@ function printHelp() {
       await stateForceSetPhase({
         rawValue: args.value,
         reason: args.reason,
+        // S10.5 2026-05-09 Addendum: opt-in flag bypasses recovery-only guard
+        // for adversarial-stress-test scenarios (see cli-spec §5 2026-05-09
+        // Addendum). parseArgs returns true for bare flags (no value follows).
+        allowCanonicalRecovery: args['allow-canonical-recovery'] === true,
         projectRoot,
       });
       return;

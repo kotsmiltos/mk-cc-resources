@@ -131,7 +131,15 @@ export async function writeState(projectRoot, nextState, options = {}) {
   const fromPhase = current.degraded ? null : current.phase;
   const toPhase = nextState.phase;
 
-  if (fromPhase !== null && fromPhase !== undefined) {
+  // S10.5 2026-05-09 — bypassLegalTransition option for heal-only repair ops
+  // (state-force-set-phase). The comment in essense-flow-tools.cjs documented
+  // intent "{force: true} bypasses both degraded-block AND legal-transition
+  // assertion", but the implementation only bypassed the degraded-block. This
+  // option closes the impl-vs-spec gap explicitly: callers that need full
+  // recovery semantics pass both flags. Default behavior (force only) still
+  // enforces legal-transition assertion to preserve finalize.js / legacy
+  // caller correctness.
+  if (fromPhase !== null && fromPhase !== undefined && !options.bypassLegalTransition) {
     const legal = await assertLegalTransition(fromPhase, toPhase);
     if (!legal.ok) {
       return { ok: false, reason: legal.reason };
