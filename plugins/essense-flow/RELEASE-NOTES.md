@@ -1,5 +1,40 @@
 # Release notes — essense-flow
 
+## 0.12.0 — Trust-model docs + drift-audit harness + dogfood pipeline
+
+A minor increment along the 0.x line. The contract surface still evolves; this release lands the trust-model docs, the substantive drift-audit harness (drift-6/7/8/9 promoted from pending-spec to real checks), and two end-to-end dogfood runs that drove the pipeline idle→complete on fresh projects. v1 declaration deferred to a later release, by the operator, when the operator chooses.
+
+### Move 1 — Trust-model docs as first-class artifacts
+
+`SECURITY.md` and `TRUST.md` are now part of the install, not an afterthought. SECURITY.md names the threat model (operator-trusted infrastructure, not a sandbox), the reporting channel (mk-cc-resources GitHub issues, `[security]` prefix), the mitigations actually in place at 0.12 (finalize-only state writes, dual-record self-reports, evidence-bound findings, fail-soft hooks, no silent stubbing in heal, gitignore re-include negations), and the known limitations operators must absorb (no SAST, no sandbox, no signed releases, single-maintainer bus factor, Resolution A inline-substance dogfood gap from T-1029). TRUST.md makes the trust boundaries explicit: what the plugin trusts (marketplace source, finalize.js, transitions.yaml), what it actively distrusts (sub-agent self-reports, review findings without evidence, architect sprint-packing claims), how phase handoff works (artifact-mediated, atomic finalize, per-prompt re-grounding), and the calibrated assumptions on Claude behavior (drift, premature finish, shortcuts under pressure, recency bias). No future skill author can silently widen trust without contradicting these documents.
+
+### Move 2 — README + architecture docs at D-A6 depth
+
+`README.md` rewritten against the D-A6 doc-depth target: Purpose, Setup, Usage, API reference, Known limitations, Trust model pointer, License, Citation. Eight H2 sections, 150-300 lines. The "Versioning" prose that floated as a single H2 in 0.11.0 is now `## Known limitations` (honest about what 0.12 does not do) plus version history elsewhere. `docs/architecture.md` lands as a new artifact: Module map, Per-module (one subsection per top-level dir), Data flow walkthrough (state.yaml + finalize trace), Key abstractions (closed contracts, dual-record, evidence-bound findings, fail-soft hooks), Propagation. Operators no longer have to grep SKILL.md to understand the lib/skills/hooks topology.
+
+### Move 3 — Doc structure locked by architecture decision
+
+The D-A6 decision (Resolution A) freezes doc depth targets: SECURITY.md ~75 lines, TRUST.md per-section coverage of trust boundaries, README.md ~220 lines with 8 H2 sections, docs/architecture.md ~300 lines with 5 H2 sections. T-1030's test_completion_contract enforces these via grep + wc-l acceptance checks. Future doc edits that drift outside the bands fail the audit. The 0.x pattern of "doc by vibe" closes.
+
+### Move 4 — Substantive drift-audit + end-to-end dogfood
+
+drift-6 (SHA-256 fingerprint integrity), drift-7 (decompose triple-witness), drift-8 (audit-time dispatch-count defense), drift-9 (cursor-phase divergence) all promoted from pending-spec stubs to real checks at `redesign/scripts/drift-audit.py`. Two fresh-project pipelines (bookmarx + mdlinks) ran idle→complete this increment, each terminating with drift-audit 11/11 PASS. `claude plugin install essense-flow` from marketplace.json registry verified working (cold + warm both exit 0). Increment is substantive; v1 declaration intentionally deferred — the operator declares v1 when ready, not at every contract-surface change.
+
+### Verifiable checks
+
+- `SECURITY.md` exists with 4 required H2 sections (`Threat model`, `Reporting`, `Mitigations`, `Known limitations`) + propagation footer; line count 50-100.
+- `TRUST.md` exists with 4 required H2 sections (`What trusts`, `What distrusts`, `Handoff between phases`, `Assumptions on Claude`) + propagation footer.
+- `README.md` line count 150-300; 8 H2 sections matching the D-A6 spec.
+- `docs/architecture.md` line count 200-400; 5 H2 sections.
+- `RELEASE-NOTES.md` leads with `## 0.12.0`; 4 `### Move ` subsections; existing `## 0.11.0` entry preserved verbatim below.
+- T-1029 + T-1031 ship-gate acceptance criteria remain green (see their completion records).
+- `node scripts/self-test.js` + `node scripts/validate-plugin.js` both pass.
+
+### Version bump
+
+Plugin `0.11.0` → `0.12.0` (minor — additive: trust-model docs + drift-audit substance + dogfood evidence; contract surface unchanged).
+Marketplace `2.4.0` → `2.5.0` (minor — coincides with plugin minor bump).
+
 ## 0.11.0 — Contracts at the point of action
 
 The 0.10.0 master/sub-agent rewrite cut context dilution but left a class of failures in place: master could still bypass `lib/finalize.js` and write `state.yaml` directly with an invented phase value (e.g. `phase: building`), or improvise the on-disk schema (single `SPRINT-MANIFEST.yaml` instead of one per sprint, `tasks/*.md` instead of `sprints/<n>/tasks/*.yaml`). Downstream skills (build) then halted because canonical paths were absent.

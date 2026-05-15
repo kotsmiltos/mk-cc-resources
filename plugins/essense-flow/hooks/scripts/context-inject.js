@@ -55,8 +55,15 @@ function renderContext(state, projectRoot) {
   const lines = [];
   lines.push(`<essense-flow-context>`);
   if (state.degraded) {
+    // D-Rd12-1: degraded marker family now includes 'corrupt' (post-parse
+    // shape-validation failure) alongside 'missing' (state.yaml absent).
+    // readState returns the marker shape directly — no shape-error throw to
+    // catch here — so this branch handles all degraded variants uniformly.
     lines.push(`status: DEGRADED (${state.degraded})`);
     if (state.reason) lines.push(`reason: ${state.reason}`);
+    if (state.shape_error) {
+      lines.push(`shape_error: ${state.shape_error.message || state.shape_error.name || 'shape validation failed'}`);
+    }
     if (state.path) lines.push(`state_file: ${state.path}`);
     lines.push(`recommendation: run /heal to reconcile prior state, or /init for a fresh start`);
     lines.push(`hook posture: advisory only — tool calls are NOT blocked`);

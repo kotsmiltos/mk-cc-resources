@@ -25,6 +25,162 @@ const STATE_PATH_REL = ".pipeline/state.yaml";
 const TRANSITIONS_PATH = join(PLUGIN_ROOT, "references/transitions.yaml");
 const DEFAULT_STATE_PATH = join(PLUGIN_ROOT, "defaults/state.yaml");
 
+// ---- T-956 / D-Rd11-11 / R2-HS8: state.yaml shape validator ----
+//
+// Post-parse shape validation rejects malformed state.yaml at the parse
+// boundary instead of letting downstream consumers hit undefined-field at
+// runtime far from the failure site. Closes Surprise-2 regression (mis-
+// indented tool_results_paths silently accepted as partial structure).
+//
+// Contract per D-Rd11-11 (closed 2026-05-14):
+//   - REQUIRED: schema_version (=1), phase (in transitions.phases),
+//               last_updated (ISO8601 string).
+//   - OPTIONAL: sprint, wave, sprint_complete_at, sprint_summary,
+//               known_open_concerns, elicitation, research, triage,
+//               architecture, sprinting, decomposition, verify,
+//               halt_resolution-history (literal hyphenated key).
+//   - Required missing OR type-mismatch -> throw ShapeValidationError
+//     (with observed-shape diagnostic; tools.cjs main catch exits 17).
+//   - Unknown top-level key -> WARN to stderr; do NOT throw (preserves
+//     Graceful-Degradation + forward-compat).
+
+const REQUIRED_SCHEMA_VERSION = 1;
+const ISO8601_RX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+// ALLOWED_PHASES is sourced fresh from references/transitions.yaml on the
+// first validate call (canonical transitions module per cli-spec §3.1).
+// loadTransitions() below caches the parsed yaml; we mirror that cache here
+// to avoid sync-vs-async re-entry. If transitions yaml is unreadable at
+// validate time the validator surfaces an explicit ShapeValidationError
+// naming the canonical-source failure rather than silently inventing a list.
+const REQUIRED_KEYS = new Set(["schema_version", "phase", "last_updated"]);
+const OPTIONAL_KEYS = new Set([
+  "sprint",
+  "wave",
+  "sprint_complete_at",
+  "sprint_summary",
+  "known_open_concerns",
+  "elicitation",
+  "research",
+  "triage",
+  "architecture",
+  "sprinting",
+  "decomposition",
+  "verify",
+  "halt_resolution-history",
+  // D-Rd12-2 (closed 2026-05-14): halt_* keys legitimately ship in
+  // defaults/state.yaml + are runtime-emitted by halt-recovery / drift-
+  // tracking surfaces. Enumerate here to eliminate spurious WARN on every
+  // CLI invocation against /init-fresh state. Forward-compat WARN-but-don't-
+  // fail on unknown keys preserved per D-Rd11-11.
+  "halt_resolution",
+  "halted_on_drift",
+  "halt_reason",
+]);
+
+export class ShapeValidationError extends Error {
+  constructor(message, details) {
+    super(message);
+    this.name = "ShapeValidationError";
+    this.code = "ESHAPE";
+    this.details = details || {};
+  }
+}
+
+// validateStateShape — synchronous post-parse validator. `allowedPhases`
+// MUST be provided by the caller (typically readState, which already
+// awaits loadTransitions()). Synchronous to keep the throw site one step
+// away from the parse — no async boundary swallows the diagnostic.
+export function validateStateShape(stateObj, allowedPhases) {
+  // Top-level type guard. Null / non-object inputs are an immediate shape
+  // failure — distinct from "empty state.yaml" which readState handles via
+  // its own degraded path BEFORE calling validate.
+  if (stateObj === null || typeof stateObj !== "object" || Array.isArray(stateObj)) {
+    throw new ShapeValidationError(
+      `state-shape: expected object at top level; got ${stateObj === null ? "null" : typeof stateObj}`,
+      { expected: "object", observed: stateObj === null ? "null" : typeof stateObj },
+    );
+  }
+
+  const observedKeys = Object.keys(stateObj);
+
+  // Required-key presence. Throw on FIRST missing key; include observed
+  // top-level key list in the diagnostic so failure points name the
+  // surrounding shape (critical for surprise-2-style mis-indented YAML
+  // where the wrong keys are surfaced at top level).
+  for (const k of REQUIRED_KEYS) {
+    if (!(k in stateObj)) {
+      throw new ShapeValidationError(
+        `state-shape: missing required key '${k}'; observed top-level keys: [${observedKeys.join(", ")}]`,
+        {
+          missing: k,
+          expected: Array.from(REQUIRED_KEYS),
+          observed: observedKeys,
+        },
+      );
+    }
+  }
+
+  // schema_version must equal the locked constant.
+  if (stateObj.schema_version !== REQUIRED_SCHEMA_VERSION) {
+    throw new ShapeValidationError(
+      `state-shape: schema_version must equal ${REQUIRED_SCHEMA_VERSION}; got ${JSON.stringify(stateObj.schema_version)} (type ${typeof stateObj.schema_version})`,
+      {
+        field: "schema_version",
+        expected: REQUIRED_SCHEMA_VERSION,
+        observed: stateObj.schema_version,
+      },
+    );
+  }
+
+  // phase must be one of the canonical transitions phases. If the caller
+  // failed to pass an allowedPhases list, that's a programming error in
+  // the caller (readState always passes it). Surface as ShapeValidationError
+  // so the diagnostic propagates the same way as data-shape failures.
+  if (!Array.isArray(allowedPhases) || allowedPhases.length === 0) {
+    throw new ShapeValidationError(
+      "state-shape: validator invoked without allowedPhases; canonical transitions list unavailable",
+      { field: "phase", expected: "non-empty array", observed: allowedPhases },
+    );
+  }
+  if (!allowedPhases.includes(stateObj.phase)) {
+    throw new ShapeValidationError(
+      `state-shape: phase '${stateObj.phase}' not in canonical transitions; allowed: [${allowedPhases.join(", ")}]`,
+      {
+        field: "phase",
+        expected: allowedPhases,
+        observed: stateObj.phase,
+      },
+    );
+  }
+
+  // last_updated must be an ISO8601 UTC string. The transitions.yaml +
+  // record format both stamp ISO8601 with milliseconds; accept either
+  // millisecond-precision or seconds-precision forms via the regex.
+  if (typeof stateObj.last_updated !== "string" || !ISO8601_RX.test(stateObj.last_updated)) {
+    throw new ShapeValidationError(
+      `state-shape: last_updated must be an ISO8601 UTC string (e.g. '2026-05-14T07:30:00.000Z'); got ${JSON.stringify(stateObj.last_updated)} (type ${typeof stateObj.last_updated})`,
+      {
+        field: "last_updated",
+        expected: "ISO8601 UTC string",
+        observed: stateObj.last_updated,
+      },
+    );
+  }
+
+  // Unknown top-level keys: WARN-only, do NOT throw. Forward-compat per
+  // D-Rd11-11 (Graceful-Degradation principle preserved).
+  const unknownKeys = observedKeys.filter(
+    (k) => !REQUIRED_KEYS.has(k) && !OPTIONAL_KEYS.has(k),
+  );
+  if (unknownKeys.length > 0) {
+    process.stderr.write(
+      `state-shape WARN: unknown top-level key(s) in state.yaml: [${unknownKeys.join(", ")}]; ignoring (forward-compat). If these are intentional, add to lib/state.js OPTIONAL_KEYS.\n`,
+    );
+  }
+
+  return true;
+}
+
 let _transitionsCache = null;
 
 export async function loadTransitions() {
@@ -52,6 +208,10 @@ export async function readState(projectRoot) {
   try {
     raw = await readFile(path, "utf8");
   } catch (err) {
+    // Filesystem read errors (permission, EIO) stay on the degraded='corrupt'
+    // path — they are I/O failures, not shape failures. Heal/recovery flows
+    // that read with {force: true} expect this branch to still surface a
+    // structured object rather than throw.
     return {
       phase: "idle",
       degraded: "corrupt",
@@ -63,29 +223,69 @@ export async function readState(projectRoot) {
   try {
     parsed = yaml.load(raw);
   } catch (err) {
-    return {
-      phase: "idle",
-      degraded: "corrupt",
-      reason: `yaml parse failed: ${err.message}`,
-      path,
-    };
+    // T-956 / AC-7: yaml-parse failure is wrapped as ShapeValidationError
+    // (was: degraded='corrupt'). Per D-Rd11-11 the parse-error case shares
+    // the same exit-17 fate as shape-validation failures — both surface
+    // structural state.yaml problems that downstream consumers must NOT
+    // silently inherit.
+    throw new ShapeValidationError(
+      `state-shape: yaml parse failed for ${path}: ${err.message}`,
+      { field: "yaml", reason: err.message, path },
+    );
   }
-  if (!parsed || typeof parsed !== "object") {
-    return {
-      phase: "idle",
-      degraded: "corrupt",
-      reason: "state file is empty or not an object",
-      path,
-    };
+  if (parsed === null || parsed === undefined || typeof parsed !== "object") {
+    // Empty file or scalar root — same fate as parse failure.
+    throw new ShapeValidationError(
+      `state-shape: state file is empty or not an object at ${path}`,
+      { field: "root", observed: typeof parsed, path },
+    );
   }
+  // Canonical transitions list sourced fresh from references/transitions.yaml
+  // (loadTransitions caches in-process). Synchronous validateStateShape runs
+  // post-parse.
+  //
+  // D-Rd12-1 (closed 2026-05-14): shape-validation failure no longer raises
+  // through readState. Catch the ShapeValidationError and return a degraded
+  // marker so downstream consumers (writeState force:true recovery,
+  // state-force-set-phase handler, context-inject + next-step hooks) can
+  // branch on `degraded === 'corrupt'` without try/catch. Layered defense
+  // preserved: stderr WARN carries the diagnostic; tools.cjs catch sites
+  // previously exiting on ShapeValidationError throw retained for IMPORT-
+  // time failures only (path NOT FOUND, parse error pre-shape-validation).
+  //
+  // Throw sites preserved (NOT wrapped here):
+  //   - yaml.load throw -> rewrapped as ShapeValidationError (field:'yaml')
+  //     at L223 above; still throws (parse-error path).
+  //   - empty/non-object root -> ShapeValidationError (field:'root') at
+  //     L230 above; still throws.
+  // Only the validateStateShape(...) post-parse-success branch converts.
   const transitions = await loadTransitions();
-  if (!transitions.phases.includes(parsed.phase)) {
-    return {
-      ...parsed,
-      degraded: "corrupt",
-      reason: `unknown phase: ${parsed.phase}`,
-      path,
-    };
+  try {
+    validateStateShape(parsed, transitions.phases);
+  } catch (err) {
+    if (err && err.name === "ShapeValidationError") {
+      process.stderr.write(
+        `state-shape WARN: ${err.message} (returning degraded marker per D-Rd12-1)\n`,
+      );
+      // Conditional spread: if parsed somehow fails the object guard (defensive
+      // — validateStateShape already gates this), spread an empty object so the
+      // returned shape stays addressable. Consumers branch on degraded='corrupt'
+      // + shape_error fields; they MUST tolerate absent canonical keys.
+      const safeParsed =
+        parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      return {
+        ...safeParsed,
+        degraded: "corrupt",
+        shape_error: {
+          name: err.name,
+          code: err.code,
+          message: err.message,
+          details: err.details || {},
+        },
+        path,
+      };
+    }
+    throw err;
   }
   return { ...parsed, degraded: null, path };
 }

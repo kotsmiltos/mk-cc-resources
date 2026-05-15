@@ -167,6 +167,83 @@ After the walk-forward completes:
 - HEAL-LOG.md captures the audit trail.
 - Recommended next action surfaces (typically the slash command for the now-current phase).
 
+### Job 6 — Stale-claim sweep (per DD-19)
+
+*Authored under closure-plan round-9 DD-19 (coverage-guarantee mechanism for outstanding-work-register stale claims) + D-Rd9-6 (default threshold = 24h) + DD-10 (preservation discipline — backward-compat for legacy entries lacking `claimed_at`).*
+
+**Verbatim contract.** Heal-op MUST read `.pipeline/outstanding-work-register.yaml`; for each entry where `status == "in_progress"` AND `claimed_at` field present AND `(now - claimed_at) > threshold_hours`, the entry is **STALE**.
+
+**Threshold reading rule (HARD CHECK: D-Rd9-6).** `threshold_hours = SKILL.md frontmatter \`stale_claim_threshold_hours\` field for the skill that owns the entry (per entry's owning skill — derived from \`added_by\` / \`target_phase\` per the canonical phase→skill table); fallback to 24 (DEFAULT_STALE_THRESHOLD_HOURS) when frontmatter absent or unparseable`. The constant `DEFAULT_STALE_THRESHOLD_HOURS = 24` lives in `plugins/essense-flow/lib/staleness.cjs` (shared with M4 drift-11 audit per D-Rd9-10 / CMC-Rd9-M6-1 shared-helper verdict).
+
+**Owner-skill resolution.** The register entry schema (cli-spec §1.7.5) does not carry a top-level `skill` field. Heal-op derives owner skill from:
+
+1. `entry.added_by` substring match against the canonical 9-skill list (e.g. `"round-2 elicit"` → `elicit`).
+2. Fallback: `entry.target_phase` mapped through the canonical phase→skill table (`eliciting → elicit`, `research → research`, `triaging → triage`, `architecture → architect`, `sprinting → build`, `reviewing → review`, `verifying → verify`).
+3. Fallback: `null` — `readSkillThreshold(null)` safely returns DEFAULT_STALE_THRESHOLD_HOURS because the SKILL.md path resolution fails the existence check.
+
+**Default behavior (flag absent).** Heal-op surfaces each stale item via `AskUserQuestion` with closed options `["unclaim", "keep claimed (mark not-stale)", "keep but flag as stale-acknowledged"]`. Per **Front-Loaded-Design**: heal does NOT silently choose disposition; user picks per item.
+
+**`--auto-release` flag behavior.** When the flag is present, heal-op batch-releases ALL stale items without per-item user surface — flips `entry.status` from `in_progress` to `open`, clears `entry.claimed_at` to `null`, and writes one HEAL-LOG entry per release with disposition `unclaimed-by-auto-release` (audit-trailed reason: "auto-release sweep, threshold=<N>h").
+
+**HEAL-LOG entry shape per sweep** (append-only, body line per release; frontmatter arrays untouched — `force_actions[]` and `cursor_rewinds[]` belong to other ops):
+
+```text
+[<iso_timestamp>] STALE_SWEEP item_id=<id> claimed_at=<iso> threshold_hours=<N> disposition=<disp>
+```
+
+Disposition is one of the closed enum:
+
+- `unclaimed-by-user` — default-mode user picked "unclaim".
+- `unclaimed-by-auto-release` — `--auto-release` flag-mode batch-released.
+- `kept-by-user` — default-mode user picked "keep claimed (mark not-stale)".
+- `kept-but-flagged-stale` — default-mode user picked "keep but flag as stale-acknowledged".
+
+**Backward-compat HARD CHECK (DD-10).** Entries lacking the `claimed_at` field are SKIPPED — not stale-eligible. Never throw, never warn-fail. This preserves the cli-spec §1.7.5 backward-compatibility contract: legacy entries persisted before T-919 read cleanly through every consumer (`register-list`, drift-11 audit, this stale-claim sweep). Re-emphasized: `entry.claimed_at === undefined` is treated as `null`, the entry is silently passed over, and the sweep proceeds.
+
+**Layered-defense pairing (DD-19).** This Job 6 sweep is the **repair side** of the layered defense; the **detection side** is the M4 drift-11 audit (T-913) which surfaces stale claims read-only into the audit report. Both sides consume `plugins/essense-flow/lib/staleness.cjs` for parity — a stale claim is the same stale claim from either lens.
+
+**CLI op invocation.** Per DD-12 (a) inclusion criterion (replaces deterministic-LLM-task; structural-check grade), heal-op exposes the sweep through its existing `heal` op surface with the required `--sweep-stale-claims` flag (DD-18 conservative-args policy: explicit flag, no inference). Optional `--auto-release` toggles batch mode. Invocation:
+
+```bash
+essense-flow-tools heal --sweep-stale-claims [--auto-release] [--project-root <p>]
+```
+
+### Job 7 — Apply disposition (per-item)
+
+*Authored under closure-plan round-10 D-Rd10-11 (per-item op shape verbatim) + DD-19 (stale-claim coverage-guarantee — writer-side surface) + DD-10 (audit-trail evidence preservation). Pairs with Job 6 as the writer/mutator half of the DD-19 reader/writer pair.*
+
+**Op surface (D-Rd10-11 verbatim).** Master invokes this op once per stale item after Job 6 surfaces an `AskUserQuestion` block. The user's chosen action routes here as a single CLI call:
+
+```bash
+essense-flow-tools heal --apply-disposition --item-id <id> --action <release|keep|escalate> [--project-root <p>]
+```
+
+Both `--item-id` and `--action` are required flags (DD-18 conservative-args: no inference from cursor / state / prior context). `--apply-disposition` is mutually exclusive with `--sweep-stale-claims` — one sub-op per invocation. Combining the two flags fails with exit 4 + a diagnostic citing DD-18.
+
+**Allowed actions (closed enum per D-Rd10-11).** The action whitelist is exhaustive over the DD-19 coverage gate — every stale item observed by Job 6 gets exactly one writer-side disposition through one of these three actions OR through the `--sweep-stale-claims --auto-release` shortcut (which is equivalent to bulk `release`).
+
+| Action      | Register mutation                                                          | Audit-trail intent                                |
+|-------------|-----------------------------------------------------------------------------|---------------------------------------------------|
+| `release`   | `entry.status = 'open'`; `entry.claimed_at = null`.                          | reclaim work back to the open queue.              |
+| `keep`      | no mutation to status / claimed_at (explicit no-op).                         | user-affirmed keep — preserves existing claim.    |
+| `escalate`  | `entry.status = 'escalated'`; `entry.escalated_at = now`; `claimed_at` preserved (DD-10 evidence). | hand off to architect / triage; provenance preserved. |
+
+The `keep` action is intentionally a no-op on register state — the HEAL-LOG line is the entire artifact of the disposition. Job 6 cannot tell whether the user looked at a stale item and confirmed "this is still the right person on it" vs. silently ignored the surface; the explicit `keep` action through Job 7 closes that gap (DD-19 coverage). On `escalate`, `claimed_at` is preserved as evidence per DD-10 audit-trail integrity — the architect picking up the escalation needs to know who held the stale claim.
+
+**Audit-trail line shape (DD-19 verbatim, mirrors Job 6 STALE_SWEEP for grep parity over HEAL-LOG.md).** Each invocation appends exactly one body line to `.pipeline/heal/HEAL-LOG.md`:
+
+```text
+[<iso_timestamp>] APPLY_DISPOSITION item_id=<id> prior_status=<observed> prior_claimed_at=<iso-or-null> action=<release|keep|escalate> new_status=<post>
+```
+
+The token order is grep-stable — a single grep over HEAL-LOG.md for `APPLY_DISPOSITION item_id=<id>` returns one line per disposition applied to that item across all invocations. Combined with Job 6's `STALE_SWEEP item_id=<id>` lines, master can reconstruct the full lifecycle of any stale claim by grepping a single file.
+
+**Register write atomicity (DD-10 audit-trail integrity).** Routes through the canonical `writeStateAndFingerprint` wrapper — tmp+rename + SHA-256 fingerprint sidecar refresh. A crash mid-write leaves either the prior register intact (no-op) or the post-write register + matching fingerprint (success). Torn writes are structurally precluded.
+
+**Item-not-found surface (DD-18 explicit-args).** If `--item-id` does not match any `entries[].item_id` in the register, the op exits non-zero with a diagnostic naming the missing id. No fuzzy match, no prefix match, no inference — DD-18 conservative-args policy holds end-to-end.
+
+**Layered-defense pairing (DD-19).** Job 6 (read side) + Job 7 (write side) close the stale-claim coverage gate together; the M4 drift-10/11 audit (T-913) is the orthogonal detection surface that surfaces stale claims as a read-only audit signal. The shared `lib/staleness.cjs` constants ensure all three lenses see the same staleness — a stale claim is the same stale claim from sweep, audit, and disposition.
+
 ## Discovery confidence behavior
 
 - **High confidence**: walk-forward proposal is concrete, applies cleanly. User confirms once.

@@ -7,6 +7,16 @@ schema_version: 1
 
 # Review skill
 
+## Read this before doing anything
+
+Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics. Refuse to "wrap up" when work isn't done.
+
+Positive mindset: every gap solvable. Find the way by working carefully.
+
+Quality ownership: this work matters. Take ownership.
+
+Propagation requirement: every descendant artifact MUST carry these same 4 instructions.
+
 ## Conduct
 
 You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
@@ -116,6 +126,30 @@ The op validates legality (`reviewing → verifying` and `reviewing → triaging
 This is the **deterministic gate** the redesign exists to keep loud — enforced structurally at the CLI op rather than relying on master's gut-check.
 
 The op writes only the `phase:` field; `--sprint` is NOT accepted for these targets (review's transitions are not sprint-targeted; sprint stays at the value carried from build).
+
+## Skip-IFF rule for lens dispatch (DD-2 / D-Sprint10-5)
+
+See `skill-substance/review.md` for rule rationale + amendment history.
+
+## DD-2 review-lens-dispatch Skip-IFF rule (D-Sprint10-5)
+
+The default discipline: review-skill lens dispatch count >= 6 (canonical lens count per DD-20 + per the existing review skill body — `correctness`, `contract-compliance`, `hidden-state`, `failure-modes`, `spec-drift`, `functional-testing`, with adaptive additions per INST-13). Master review MAY skip the 6-lens dispatch ONLY IFF EITHER:
+
+1. **task_count <= 2** — the sprint under review has <= 2 tasks in the manifest. Rationale: a 1-2 task sprint cannot exercise 6 distinct review lenses with non-trivial verdict; condensed review is a substance-justified shortcut.
+
+OR
+
+2. **rule-allowed-substance-quote cited** — the `QA-REPORT.md` frontmatter or master synthesize note carries a verbatim rule quote from `skill-substance/review.md` or from a closed DD authorizing the condensed-lens path for this sprint. Citation MUST include the rule-quote text + source decision ID.
+
+IF NEITHER condition holds → 6-LENS DISPATCH IS MANDATORY; the `transitions.yaml` `requires` predicate at the `reviewing → verifying` boundary refuses exit if `lenses_dispatched.length < 6` and no rule-allowed-skip flag is set.
+
+**Predicate enforcement.** `evalDispatchPredicate` recognizes the phrase `with sufficient lens dispatch` (declared in the `DISPATCH_PHRASES` table at `tools.cjs:1795` per the closed task spec citation; substrate-verified locus is the `DISPATCH_PHRASES` declaration at `bin/essense-flow-tools.cjs:1918` with the phrase entry at `bin/essense-flow-tools.cjs:1920`, `sourceKey: 'lens'`). The evaluator checks count vs threshold via `cursorState.alignment_lens_dispatches_per_round`. T-1020 extends this to honor the rule-allowed-skip path when a verbatim rule-quote citation is present in the QA-REPORT frontmatter.
+
+**Drift detection.** The `drift-7` substantive check (M4 module, T-1024) scans `QA-REPORT.md` frontmatter post-hoc to confirm that any sprint exiting `reviewing → verifying` with `lenses_dispatched.length < 6` carries a valid skip justification (`task_count <= 2` OR rule-quote citation). Mis-justified skips surface as drift findings, not silent advances.
+
+**Verifiable check.** Spawn review skill on a fixture sprint with `task_count=10` + `lenses_dispatched=[]` + no rule-quote citation. The `state-set-phase reviewing → verifying` op refuses with `EXIT_ALIGNMENT_DRIFT` (exit code 19), diagnostic naming `"DD-2 review-lens-dispatch Skip-IFF rule"`.
+
+See `skill-substance/review.md` for rule rationale + amendment history.
 
 ## Core principle
 
@@ -300,3 +334,102 @@ For `reviewing → triaging`, swap `--value triaging`. **Do NOT pass `--sprint`*
 7. Are you calling `state-set-phase`, NOT `Write` on `.pipeline/state.yaml` and NOT `lib/finalize.js`?
 
 If any answer is `no`, stop. Re-read.
+
+## Numbered step sequence (per DD-15 ordered_steps)
+
+The six blocks below are the addressable anchors consumed by
+`essense-flow-tools next-step --skill review`. Each `## N. <step-name>`
+heading mirrors a slot in the `ordered_steps` array returned by
+`essense-flow-tools init review` (verbatim). Bodies above remain the
+source-of-truth for the step's substance; these blocks point back into
+them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
+can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
+parser stays canonical, only the SKILL.md files carry numbered headings.
+
+## 1. read-inputs-and-ledgers
+
+Step 1 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Read all required inputs (per `init review` `required_inputs`). Read
+the prior false-positive ledger — those rejections are remembered. Read
+the prior acknowledged ledger — those items already accepted. If any
+input missing, refuse to start with the specific path missing.
+
+See the existing skill body section "How you work" → "Setup (`read-
+inputs-and-ledgers`)" for the full substance. This heading is the
+addressable anchor for `next-step --skill review` body emission bounded
+by the next numbered heading.
+
+## 2. extract-spec-claims
+
+Step 2 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Walk SPEC.md + ARCH.md + decisions.yaml top-down. Emit one claim per
+design decision with a locator hint pointing at where in the codebase
+the check applies.
+
+See the existing skill body section "How you work" → "Job 1 — Extract
+spec claims (`extract-spec-claims`)" for the full substance. This
+heading is the addressable anchor for `next-step --skill review` body
+emission bounded by the next numbered heading.
+
+## 3. audit-adversarial-lenses
+
+Step 3 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Spawn parallel agents via `subagent_type=essense-flow-adversarial-lens`,
+each through a distinct lens (correctness | contract-compliance |
+hidden-state | failure-modes | spec-drift | functional-testing —
+adaptive). Each finding carries `finding_id`, `lens`, `severity`,
+`file_path`, `line_number`, `verbatim_quote`, `context_window`,
+`claim`, `proposed_check`. Findings without `verbatim_quote` and
+`file_path:line_number` are not findings.
+
+See the existing skill body section "How you work" → "Job 2 — Audit
+(`audit-adversarial-lenses`)" for the full substance. This heading is
+the addressable anchor for `next-step --skill review` body emission
+bounded by the next numbered heading.
+
+## 4. validate-findings-against-disk
+
+Step 4 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Spawn one `subagent_type=essense-flow-validator` per finding (parallel,
+single message). Quote drift check — read the cited file, look for the
+verbatim quote within the cited window; if the quote does not appear,
+auto-flag as `false_positive` with reason `quote_drift`. Claim
+evaluation produces one of `confirmed | needs_context | false_positive`.
+
+See the existing skill body section "How you work" → "Job 3 — Validate
+(`validate-findings-against-disk`)" + "Anti-fabrication discipline" for
+the full substance. This heading is the addressable anchor for `next-
+step --skill review` body emission bounded by the next numbered heading.
+
+## 5. compute-deterministic-gate
+
+Step 5 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Count `confirmed_unacknowledged_criticals`. That number — and only that
+number — decides advance. Zero → sprint passes review, route to
+`verifying`. Non-zero → sprint blocks, route to `triaging`.
+
+See the existing skill body section "How you work" → "Job 4 — Decide
+(`compute-deterministic-gate`)" for the full substance. This heading is
+the addressable anchor for `next-step --skill review` body emission
+bounded by the next numbered heading.
+
+## 6. finalize
+
+Step 6 of 6 for the review skill (DD-15 ordered_steps anchor).
+
+Write QA-REPORT.md, spec-compliance.yaml, and the updated ledgers via
+ordinary `Write` to the canonical paths from `init review`. Advance
+phase via `state-set-phase --value verifying` (pass-review) or `--value
+triaging` (block-review). Cursor cleanup via `step-advance --skill
+review --next-step skill-complete`.
+
+See the existing skill body section "How you work" → "Finalize
+(`finalize`)" + "Before you finalize" for the full substance. This
+heading is the addressable anchor for `next-step --skill review` body
+emission; since this is the last step (N == K == 6), the emission
+window runs from this heading to end-of-file.

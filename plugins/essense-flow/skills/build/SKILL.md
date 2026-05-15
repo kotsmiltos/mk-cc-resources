@@ -122,7 +122,7 @@ If the agent reports it cannot satisfy the task spec (pseudocode won't compile, 
 
 1. The agent surfaces the contradiction in `agent_claim.surfaced_concerns` (also reflected in `agent_claim.notes`).
 2. Build records the contradiction in the completion record (status: `partial-with-surfaced-concern` or `blocked` per agent's call).
-3. **Sprint pauses.** Surface the contradiction. The architect (or the user via triage routing) decides how to resolve. Build does not silently rewrite scope.
+3. **Sprint pauses.** Surface the contradiction. The architect (or the user via per-task triage disposition once the sprint reaches `sprint-complete` and the canonical `sprint-complete → reviewing → triaging` chain has run) decides how to resolve. Build does not silently rewrite scope. **Note:** "via triage routing" here refers to per-task pause disposition reached through the canonical chain — it does NOT authorize writing `/triage` as the sprint-level recommended-next-move in SPRINT-REPORT.md. The sprint-level next move from `sprint-complete` is `review` (or `architecture` if drift is widespread); see "What you write directly with `Write`" section above for the legal-transition citation.
 
 ### Auto-synthesis safety net (master-side)
 
@@ -172,7 +172,7 @@ The op enforces the per-task-record gate: counts files matching `.pipeline/build
 
 One artifact has no dedicated CLI op — it is a document write per `redesign/cli-spec.md` §2.1:
 
-- `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — the synthesized rollup. Path comes from `init build.canonical_paths.sprint_report_md` with `<n>` substituted. Use ordinary `Write`. Frontmatter shape per "What you produce" below; body lists per-task verdicts (verified / drifted / paused / contradiction / synthetic), out-of-contract writes summary, recommended next move (review, or back to architecture if drift is widespread).
+- `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — the synthesized rollup. Path comes from `init build.canonical_paths.sprint_report_md` with `<n>` substituted. Use ordinary `Write`. Frontmatter shape per "What you produce" below; body lists per-task verdicts (verified / drifted / paused / contradiction / synthetic), out-of-contract writes summary, recommended next move (**`review` is the only legal sprint-level next move from `sprint-complete`, or back to `architecture` if drift is widespread** — per `references/transitions.yaml:205-207` the sole legal exit from `sprint-complete` is `sprint-complete-to-reviewing`; **never write `/triage` as the sprint-level recommended next move**, as `sprint-complete → triaging` is not a legal transition — triage is reachable only via `reviewing → triaging` or `verifying → triaging`).
 
 The SPRINT-REPORT.md's existence is verified by `state-set-phase`'s prerequisite-artifact predicate at the `sprinting → sprint-complete` transition; if you call `state-set-phase --value sprint-complete --sprint 1` and the report is missing, the op rejects with exit 7 and names the missing path.
 
@@ -270,7 +270,7 @@ If the agent reports it cannot satisfy the task spec (pseudocode won't compile, 
 
 1. The agent surfaces the contradiction in its claim notes.
 2. Build records the contradiction in the completion record.
-3. **Sprint pauses.** Surface the contradiction. The architect (or the user via triage routing) decides how to resolve. Build does not silently rewrite scope.
+3. **Sprint pauses.** Surface the contradiction. The architect (or the user via per-task triage disposition once the sprint reaches `sprint-complete` and the canonical `sprint-complete → reviewing → triaging` chain has run) decides how to resolve. Build does not silently rewrite scope. **Note:** "via triage routing" here refers to per-task pause disposition reached through the canonical chain — it does NOT authorize writing `/triage` as the sprint-level recommended-next-move in SPRINT-REPORT.md. The sprint-level next move from `sprint-complete` is `review` (or `architecture` if drift is widespread); see "What you write directly with `Write`" section above for the legal-transition citation.
 
 ### Sprint complete
 
@@ -283,7 +283,7 @@ assemble SPRINT-REPORT.md:
 - Summary of what was attempted.
 - Per task: verdict (verified / drifted / paused / contradiction).
 - List of out-of-contract writes (if any).
-- Recommended next move (review, or back to architecture if drift is widespread).
+- Recommended next move (`review`, or back to `architecture` if drift is widespread). **Legal-transition gate:** per `references/transitions.yaml:205-207`, the sole legal exit from `sprint-complete` is `sprint-complete-to-reviewing`. Never write `/triage` here — `sprint-complete → triaging` is not a legal transition; triage is reachable only via `reviewing → triaging` (line 213) or `verifying → triaging` (line 255). If a sprint surfaced contradictions that need triage routing, the canonical chain is `sprint-complete → reviewing → triaging`, not a direct jump.
 
 Then advance:
 - `state-set-phase --value sprint-complete --sprint <n>` (op enforces the per-task-record gate; rejects if count_recorded < count_declared per manifest).
@@ -359,3 +359,128 @@ node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase \
 If any answer is `no`, stop. Re-read.
 
 `record-task-completion` and `state-set-phase` emit JSON success on stdout (op + record_path / sprint + verified / sprint_progress) and one-line stderr error on rejection. Read both — the `sprint_progress: {recorded, declared}` field on `record-task-completion` returns is your countdown to gate-clearing.
+
+## Numbered step sequence (per DD-15 ordered_steps)
+
+The eight blocks below are the addressable anchors consumed by
+`essense-flow-tools next-step --skill build`. Each `## N. <step-name>`
+heading mirrors a slot in the `ordered_steps` array returned by
+`essense-flow-tools init build` (verbatim). Bodies above remain the
+source-of-truth for the step's substance; these blocks point back into
+them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
+can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
+parser stays canonical, only the SKILL.md files carry numbered headings.
+
+## 1. read-manifest
+
+Step 1 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+Read `.pipeline/architecture/sprints/<n>/manifest.yaml`. Confirm every
+task referenced has a spec file. If anything missing, refuse to start
+with a clear error.
+
+See the existing skill body section "How you work" → "Setup" step 1 for
+the full substance. This heading is the addressable anchor for `next-
+step --skill build` body emission bounded by the next numbered heading.
+
+## 2. build-wave-order
+
+Step 2 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+Build the wave order from `manifest.waves` (already dependency-ordered
+by architect). Confirm each task spec exists at
+`architecture/sprints/<n>/tasks/<task-id>.yaml`.
+
+See the existing skill body section "How you work" → "Setup" step 2 for
+the full substance. This heading is the addressable anchor for `next-
+step --skill build` body emission bounded by the next numbered heading.
+
+## 3. per-wave-dispatch
+
+Step 3 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+For every task in the wave, in parallel: brief the task agent with the
+full task spec (goal, requirements_traced, file_write_contract,
+behavioral_pseudocode, test_completion_contract, agency_level +
+rationale); record `task_started_at` before dispatch; dispatch via
+`Agent` tool with `subagent_type: essense-flow-task-agent`. No
+concurrency cap per INST-13.
+
+See the existing skill body section "How you work" → "Per wave" for the
+full substance. This heading is the addressable anchor for `next-step
+--skill build` body emission bounded by the next numbered heading.
+
+## 4. per-task-return-and-verify
+
+Step 4 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+For each task agent that returns: parse the completion claim; compute
+`runner_verification` against disk per "Re-validate every claim against
+disk"; stage the dual-record YAML at a temp path; call `record-task-
+completion --sprint <n> --task-id <id> --content-file <staged-path>` to
+persist atomically.
+
+See the existing skill body section "How you work" → "Per task return"
+steps 1-4 for the full substance. This heading is the addressable
+anchor for `next-step --skill build` body emission bounded by the next
+numbered heading.
+
+## 5. out-of-contract-write-check
+
+Step 5 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+Compare `runner_verification.files_validated` against the task spec's
+`file_write_contract.paths`. Any path written that's not in `paths` (or
+is in `forbidden`) — flag in the completion record. Do not silently
+re-permit. Per Fail-Soft: flags travel to review, not blocked at build.
+
+See the existing skill body section "How you work" → "Per task return"
+step 5 for the full substance. This heading is the addressable anchor
+for `next-step --skill build` body emission bounded by the next
+numbered heading.
+
+## 6. drift-pause-or-continue
+
+Step 6 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+When `runner_verification.drift.files` or
+`runner_verification.drift.criteria` is non-empty: mark the task
+`paused` (verified: false in the dual-record); persist with drift
+visible; pause the sprint and surface to user/review/heal. Build does
+NOT re-dispatch / silently retry / soften criteria.
+
+See the existing skill body section "How you work" → "On drift" + "On
+contradiction in task spec" for the full substance. This heading is the
+addressable anchor for `next-step --skill build` body emission bounded
+by the next numbered heading.
+
+## 7. assemble-sprint-report
+
+Step 7 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+Once every task has either `verified: true` or a paused completion
+record, assemble SPRINT-REPORT.md: summary of attempts; per-task
+verdict (verified / drifted / paused / contradiction); out-of-contract
+writes list; recommended next move (`review` or `architecture`). Never
+write `/triage` — `sprint-complete → triaging` is not a legal
+transition.
+
+See the existing skill body section "How you work" → "Sprint complete"
+for the full substance. This heading is the addressable anchor for
+`next-step --skill build` body emission bounded by the next numbered
+heading.
+
+## 8. finalize
+
+Step 8 of 8 for the build skill (DD-15 ordered_steps anchor).
+
+Advance phase via `state-set-phase --value sprint-complete --sprint <n>`
+(op enforces the per-task-record gate; rejects if count_recorded <
+count_declared per manifest). Cursor cleanup via `step-advance --skill
+build --next-step skill-complete`.
+
+See the existing skill body section "Before you finalize" + the
+canonical CLI sequence block for the full substance. This heading is
+the addressable anchor for `next-step --skill build` body emission;
+since this is the last step (N == K == 8), the emission window runs
+from this heading to end-of-file.

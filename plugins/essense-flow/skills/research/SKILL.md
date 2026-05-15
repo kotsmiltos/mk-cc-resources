@@ -217,3 +217,121 @@ The round counter is monotonic-by-construction at the setter (parses non-neg int
 If any answer is `no`, stop. Re-read.
 
 The CLI emits a one-line stderr message + exit 7 if the predicate fails (REQ.md missing); the failure is loud, not advisory.
+
+## Numbered step sequence (per DD-15 ordered_steps)
+
+The eight blocks below are the addressable anchors consumed by
+`essense-flow-tools next-step --skill research`. Each `## N. <step-
+name>` heading mirrors a slot in the `ordered_steps` array returned by
+`essense-flow-tools init research` (verbatim). Bodies above remain the
+source-of-truth for the step's substance; these blocks point back into
+them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
+can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
+parser stays canonical, only the SKILL.md files carry numbered headings.
+
+## 1. read-spec
+
+Step 1 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Read `.pipeline/elicitation/SPEC.md` (required). On missing/corrupt:
+refuse to start. Identify every open question, every undefined
+dependency, every architecture decision the spec leaves to research.
+
+See the existing skill body section "How you work" → "Setup" step 1 for
+the full substance. This heading is the addressable anchor for `next-
+step --skill research` body emission bounded by the next numbered
+heading.
+
+## 2. identify-open-questions
+
+Step 2 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Enumerate the spec gaps that need research-driven closure: each open
+question, each undefined dependency, each architecture decision the spec
+defers.
+
+See the existing skill body section "How you work" → "Setup" step 1
+(open-question enumeration) for the full substance. This heading is the
+addressable anchor for `next-step --skill research` body emission
+bounded by the next numbered heading.
+
+## 3. formulate-perspective-briefs
+
+Step 3 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+For each open question, formulate a perspective brief — a question to a
+parallel agent — using `templates/perspective-brief.md` with placeholder
+substitution (`{{lens}}`, `{{project_context}}`, `{{open_questions}}`,
+`{{lens_specific_instructions}}`, `{{sentinel}}`).
+
+See the existing skill body section "How you work" → "Setup" steps 2-3
++ "Perspective lenses" for the full substance. This heading is the
+addressable anchor for `next-step --skill research` body emission
+bounded by the next numbered heading.
+
+## 4. dispatch-perspective-agents
+
+Step 4 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Dispatch `essense-flow-perspective-agent` (Agent tool with
+`subagent_type: essense-flow-perspective-agent`), one per commissioned
+lens, in parallel (single message, multiple Agent tool calls). Quorum
+`all-required`.
+
+See the existing skill body section "How you work" → "Dispatch" for the
+full substance. This heading is the addressable anchor for `next-step
+--skill research` body emission bounded by the next numbered heading.
+
+## 5. synthesize-findings
+
+Step 5 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Collate findings — group by spec question. Reconcile contradictions —
+when two lenses recommend different paths, surface both with the trade-
+off, then make the closing call with rationale.
+
+See the existing skill body section "How you work" → "Synthesis" steps
+1-2 for the full substance. This heading is the addressable anchor for
+`next-step --skill research` body emission bounded by the next numbered
+heading.
+
+## 6. convert-to-acceptance-criteria
+
+Step 6 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Convert each functional requirement to a testable acceptance criterion.
+"Should be fast" is not a criterion. "p95 < 200ms on 1k concurrent
+reads" is.
+
+See the existing skill body section "How you work" → "Synthesis" step 3
+for the full substance. This heading is the addressable anchor for
+`next-step --skill research` body emission bounded by the next numbered
+heading.
+
+## 7. reread-spec-and-req
+
+Step 7 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Re-read SPEC + draft REQ together. If new questions surface, research
+them now — do not push to triage. Loop `research → research` for
+additional rounds via `state-set-research-round --value <int>`.
+
+See the existing skill body section "How you work" → "Synthesis" step 4
++ "Loop until closed" for the full substance. This heading is the
+addressable anchor for `next-step --skill research` body emission
+bounded by the next numbered heading.
+
+## 8. finalize
+
+Step 8 of 8 for the research skill (DD-15 ordered_steps anchor).
+
+Write REQ.md to `canonical_paths.req_md` via ordinary `Write`. Stamp
+`state-set-research-completed`. Advance phase via `state-set-phase
+--value triaging`. Cursor cleanup via `step-advance --skill research
+--next-step skill-complete`.
+
+See the existing skill body section "Before you finalize" + "Finalize"
+for the full substance. This heading is the addressable anchor for
+`next-step --skill research` body emission; since this is the last step
+(N == K == 8), the emission window runs from this heading to end-of-
+file.

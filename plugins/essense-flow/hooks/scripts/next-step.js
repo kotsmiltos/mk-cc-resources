@@ -34,6 +34,11 @@ async function main() {
 
   if (state.degraded) {
     // Don't suggest a phase command from a degraded state — surface and exit.
+    // Degraded marker family (per D-Rd12-1, closed 2026-05-14):
+    //   - 'missing' — state.yaml absent
+    //   - 'corrupt' — post-parse shape-validation failure; readState returns
+    //     {degraded:'corrupt', shape_error, ...} marker directly (no throw).
+    //     Truthy check below catches both variants uniformly.
     process.stdout.write(
       `<essense-flow-next>\n` +
         `state: degraded (${state.degraded})\n` +

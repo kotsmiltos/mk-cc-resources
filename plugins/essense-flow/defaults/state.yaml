@@ -16,8 +16,27 @@ triage:
   completed_at: null
 architecture:
   completed_at: null
+  # M-5 round budget per D-Sprint10-4 (closure-plan Sprint 10):
+  # `round` tracks architecture-phase round count (incremented by
+  # architect-round-close write op). `escalation_signoff` is null by
+  # default; user must populate it (verdict quote) to authorize round 3+.
+  # state-force-set-phase --value architecture (or decomposing) refuses
+  # round 3+ with EXIT_ALIGNMENT_DRIFT (19) when escalation_signoff is
+  # null / undefined / empty string.
+  round: 0
+  escalation_signoff: null
 decomposition:
   round: 0
 verify:
   completed_at: null
+
+# --- Round-3 runner-managed state fields (D-Rd3-2 ratification per closure SPEC DD-4) ---
+# Runtime-emitted by halt-recovery + sprint-complete CLI ops; absent values default to null per YAML semantics.
+sprint_complete_at: null
+sprint_summary: null
+known_open_concerns: null
+halt_resolution-history: null
+halted_on_drift: null
+halt_resolution: null
+halt_reason: null
 last_updated: null

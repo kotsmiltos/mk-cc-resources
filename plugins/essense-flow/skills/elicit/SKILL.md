@@ -218,3 +218,109 @@ essense-flow-tools state-set-elicitation-round --value <int>
 If any answer is `no`, stop. Re-read.
 
 The CLI emits a one-line stderr message + exit 7 if the predicate fails (SPEC.md missing or status != build-ready); the failure is loud, not advisory.
+
+## Numbered step sequence (per DD-15 ordered_steps)
+
+The seven blocks below are the addressable anchors consumed by
+`essense-flow-tools next-step --skill elicit`. Each `## N. <step-name>`
+heading mirrors a slot in the `ordered_steps` array returned by
+`essense-flow-tools init elicit` (verbatim). Bodies above remain the
+source-of-truth for the step's substance; these blocks point back into
+them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
+can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
+parser stays canonical, only the SKILL.md files carry numbered headings.
+
+## 1. read-pitch-or-resume
+
+Step 1 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Read the project pitch from the caller (or ask via `AskUserQuestion` if
+missing), OR if `state.phase == eliciting`, load the existing SPEC.md and
+identify open threads to resume from.
+
+See the existing skill body section "How you work" → "Entry from `idle`"
++ "Entry from `eliciting` (resume)" for the full substance. This heading
+is the addressable anchor for `essense-flow-tools next-step --skill
+elicit` which emits the body bounded between this H2 and the next
+numbered step heading.
+
+## 2. transition-or-resume
+
+Step 2 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+On fresh entry, transition `idle → eliciting` via `state-set-phase
+--value eliciting`; stamp `state-set-elicitation-started`. On resume, no
+phase write — phase already `eliciting`.
+
+See the existing skill body section "Skill operating mechanism" step 4
+("Transition `idle → eliciting`...") for the full substance. This
+heading is the addressable anchor for `next-step --skill elicit` body
+emission bounded by the next numbered heading.
+
+## 3. elicitation-loop
+
+Step 3 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Iterate the open-thread loop (problem → goals → non-goals → constraints
+→ design → risks): pick the next thread, close from existing inputs
+where possible, otherwise emit `AskUserQuestion` with arrow-key options
+(never inline A/B/C); recurse on deeper gaps; re-read SPEC after every
+user answer.
+
+See the existing skill body section "How you work" → "Elicitation loop"
+for the full substance. This heading is the addressable anchor for
+`next-step --skill elicit` body emission bounded by the next numbered
+heading.
+
+## 4. build-ready-reread
+
+Step 4 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Re-read the SPEC end-to-end. If a new question surfaces on re-read, the
+work is NOT done — recurse on that question.
+
+See the existing skill body section "How you work" → "Build-ready close"
+steps 1-2 for the full substance. This heading is the addressable
+anchor for `next-step --skill elicit` body emission bounded by the next
+numbered heading.
+
+## 5. set-build-ready-status
+
+Step 5 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Once the re-read is clean, set `status: build-ready` in the SPEC.md
+frontmatter (the load-bearing field for the CLI predicate evaluator at
+`state-set-phase --value research|architecture`).
+
+See the existing skill body section "How you work" → "Build-ready close"
+step 3 for the full substance. This heading is the addressable anchor
+for `next-step --skill elicit` body emission bounded by the next
+numbered heading.
+
+## 6. assess-complexity
+
+Step 6 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Decide complexity (`flat | shallow | deep`) and stamp `complexity`,
+`touch_surface`, `unknown_count` into the SPEC.md frontmatter.
+
+See the existing skill body section "How you work" → "Build-ready close"
+step 4 for the full substance. This heading is the addressable anchor
+for `next-step --skill elicit` body emission bounded by the next
+numbered heading.
+
+## 7. finalize
+
+Step 7 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+
+Write SPEC.md to the canonical path via ordinary `Write`. Stamp
+`state-set-elicitation-completed`. Advance phase via `state-set-phase
+--value research` (default) or `--value architecture` (route-around-
+research alternative). Cursor cleanup via `step-advance --skill elicit
+--next-step skill-complete`.
+
+See the existing skill body section "Before you finalize" + "Skill
+operating mechanism" steps 7-11 for the full substance. This heading is
+the addressable anchor for `next-step --skill elicit` body emission;
+since this is the last step (N == K == 7), the emission window runs
+from this heading to end-of-file.

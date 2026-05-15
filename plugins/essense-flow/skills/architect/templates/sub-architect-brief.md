@@ -63,6 +63,7 @@ goal: "<one sentence stating what changes>"
 requirements_traced: [FR-X, NFR-Y, ...]
 file_write_contract:
   allowed: ["<paths>"]
+  scratch_space: ["os.tmpdir()"]   # NEW (D-M1-6 ii) — see "scratch_space semantics" below
   forbidden: []
 behavioral_pseudocode: |
   # only when implementation shape matters
@@ -77,6 +78,28 @@ dependencies: [<task-id-from-this-module-or-others>, ...]   # cross-module deps 
 agency_level: prescribed | guided | open
 agency_rationale: "<why this level fits this work>"
 ```
+
+### scratch_space semantics (D-M1-6 ii)
+
+`file_write_contract.scratch_space` is a sub-field of `file_write_contract` (the canonical 10-key list is stable; `scratch_space` is a sub-field of the existing `file_write_contract` key, not a new top-level key). Its value is an **array** of path prefixes or sentinel strings the build agent may write to **outside the declared `allowed:` set without triggering out-of-contract drift**. The runner-verify-extended snapshot-diff (D-M1-6 layer i, shipped at T-m1-007) honors this field: any path matching one of the entries here is treated as transient by the runner's snapshot-diff and excluded from drift accounting.
+
+**Allowed entries:**
+
+- `"os.tmpdir()"` — sentinel for the OS temp directory (resolved by the runner at verify time via Node's `os.tmpdir()`). Use for transient state: temp dirs the test/build code mkdtemps into, scratch files created and torn down within a single run, etc.
+- `"<absolute-prefix>"` — an explicit absolute path prefix. Any write under this prefix is treated as transient. Use sparingly; prefer the `os.tmpdir()` sentinel when the work genuinely is transient.
+
+**The empty array `[]` is REQUIRED, not optional.** If a task genuinely needs zero transient state (pure documentation edits, single-file rename, etc.), the spec MUST still ship `scratch_space: []` — the absence of transient writes is an **explicit declaration**, not a silent default. `task-spec-write` rejects specs missing the field (per `redesign/cli-spec.md` §1.5 + the 2026-05-12 addendum).
+
+**Worked example** (a task that writes one allowed file and uses `os.tmpdir()` for test scratch):
+
+```yaml
+file_write_contract:
+  allowed: ["redesign/scripts/example.cjs", "redesign/scripts/tests/m1/example.test.cjs"]
+  scratch_space: ["os.tmpdir()"]
+  forbidden: []
+```
+
+**Why this exists:** Wave 2 of the closure-plan saw a test agent destroy `redesign/scripts/.test-fixtures/` via unconditional `fs.rmSync` teardown — paths the agent's `file_write_contract.allowed` did not cover, yet the agent treated test-runtime fs ops as outside the contract's scope. D-M1-6 closes that hole with two layers: (i) snapshot-diff at the runner level (shipped at T-m1-007); (ii) this `scratch_space` declaration on the spec side (wired by T-rd2-m1-001 — this template edit + the `task-spec-write` validator). Together: transient writes are explicit, and everything else is drift.
 
 ## Required return shape
 

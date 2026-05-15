@@ -232,7 +232,7 @@ transitions:
     from: verifying
     to: complete
     triggered_by: verify-skill
-    requires: ".pipeline/verify/VERIFICATION-REPORT.md exists with no confirmed gaps"
+    requires: ".pipeline/verify/VERIFICATION-REPORT.md exists with confirmed_gaps == 0"
     auto_advance: true
     fields_changed: [phase, verify.completed_at, last_updated]
 
@@ -269,3 +269,56 @@ transitions:
     requires: null
     auto_advance: false
     fields_changed: [phase, sprint, wave, last_updated]
+
+# ----------------------------------------------------------------------------
+# per_skill_skip_threshold — per NFR-8 + D-Sprint10-5 (Sprint 10 W6).
+#
+# Single lookup source for getSkillSkipThreshold(skill) helper in
+# lib/cursor-schema.cjs. No fallback constants anywhere — this is the
+# canonical threshold table. Amendments require closed decision entry per
+# cli-spec §5 addendum discipline.
+#
+# Propagation requirement (carries to readers of this block):
+#   - Limits-awareness: Claude drifts, loses context, finishes prematurely,
+#     defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
+#   - Positive mindset: every gap solvable. Find the way by working carefully.
+#   - Quality ownership: this work matters. Take ownership.
+#   - Propagation requirement: every descendant artifact must carry these
+#     same four instructions.
+# ----------------------------------------------------------------------------
+
+per_skill_skip_threshold:
+  architect:
+    threshold: 1
+    # threshold = decomposition.modules.length per DD-2 rule; encoded as 1
+    # here means "≥ module count" with module count supplied at predicate-
+    # evaluation time via cursorState. The literal value '1' is a structural
+    # placeholder — the rule is
+    # "observed >= max(threshold, decomposition.modules.length)".
+    rule_id: DD-2
+    rule_phrase: 'with sufficient sub-architect dispatch'
+    rule_quote_required: true
+    skip_iff_substance: |
+      modules.length == 1 AND scope == 'condensed' AND
+      user-prior-ratification cited (per skill-substance/architect.md
+      DD-2 sub-architect-dispatch Skip-IFF rule)
+
+  review:
+    threshold: 6
+    rule_id: DD-2
+    rule_phrase: 'with sufficient lens dispatch'
+    rule_quote_required: true
+    skip_iff_substance: |
+      task_count <= 2 OR rule-allowed-substance-quote cited
+      (per skill-substance/review.md DD-2 review-lens-dispatch Skip-IFF rule)
+
+  verify:
+    threshold: 1
+    # threshold = items_total per DD-2 rule; structural placeholder
+    # like architect.threshold above.
+    rule_id: DD-2
+    rule_phrase: 'with sufficient verifier dispatch'
+    rule_quote_required: true
+    skip_iff_substance: |
+      items_total == 0 OR rule-allowed-substance-quote cited
+      (per skill-substance/verify.md DD-2 verifier-dispatch Skip-IFF rule)

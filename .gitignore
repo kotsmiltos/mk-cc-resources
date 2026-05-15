@@ -13,6 +13,12 @@ artifacts/scope/
 # macOS
 .DS_Store
 
+# Serena MCP server cache (per-workspace; editor metadata)
+.serena/
+
+# essense-flow runtime audit trail (timestamped log; regenerated on heal runs)
+plugins/essense-flow/HEAL-LOG.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
