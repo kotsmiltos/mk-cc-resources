@@ -1,5 +1,39 @@
 # Release notes — essense-flow
 
+## 0.13.1 — Sprint-id predicate hardening + baseline test maintenance
+
+Hotfix per 2026-05-16 closure-reopening decision in `redesign/06-decisions.md`. Surfaces from real-project failures in `D:\Diploma\Unity\Scalable Crowd` using cached `0.13.0`; root causes verified against cached source line-by-line before any code touch. Three concrete fixes + baseline test green; no new public API; additive `sprint_iteration` state field.
+
+**Fix-1+2 — `<n>` predicate substitution diagnostic (`bin/essense-flow-tools.cjs:2154-2178` + `:1845-1872`).** When a transition's `requires:` predicate references `<n>` (e.g. `.pipeline/build/sprints/<n>/SPRINT-REPORT.md exists`) and the resolved sprint is null (state.sprint absent or non-number, `--sprint` arg not accepted for the target phase), the CLI no longer emits a misleading "not on disk" diagnostic pointing at the literal-`<n>` path. New kind `sprint-template-unresolved` surfaces from `evaluatePredicate`; call site translates to a diagnostic naming the resolution failure + the observed `state.sprint` value + a recovery hint pointing to either `--sprint <int>` (for sprint-accepting targets) or `state-set-sprint --value <int>` (for non-sprint targets that read state.sprint instead). Exit code unchanged (7 = `EXIT_PREREQ_MISSING`).
+
+**Fix-3 — sprint shape type-check (`lib/state.js` `validateStateShape`).** When `sprint` is present in `state.yaml`, it must be `null` or a positive integer. Closes the asymmetry between the CLI write op `state-set-sprint` (which already enforces `parsePositiveIntOrNull`) and the shape validator (previously accepted any value). Direct YAML writes that introduced string sprint ids like `"3-PATCH-2"` previously passed shape validation and broke `<n>` substitution downstream; they now surface as `degraded:'corrupt'` with `shape_error.field === 'sprint'` at `readState` time.
+
+**DD-15 — `sprint_iteration` field (additive; default `null`).** New optional positive-integer counter for re-runs of the *same* sprint number (fix-only follow-up passes). Sprint id stays positive int; iteration counts independently. Closes the user pattern of inventing string sprint labels like `3-PATCH-2`. Added to `OPTIONAL_KEYS` in `lib/state.js`; type-checked in `validateStateShape`; defaulted to `null` in `defaults/state.yaml`. Predicate path templates remain on `<n>` for sprint id only — `sprint_iteration` does not enter canonical paths in this release.
+
+**Baseline test maintenance (17 ACs across 4 CJS test files + 4 ESM test files).** Discovered during this hotfix: plugin source main HEAD shipped `0.13.0` with 17 failing test ACs. Pattern was tests trailing implementation contract changes (D-Rd11-11 + D-Rd12-1 + D-Rd12-5). All updated to match landed contracts; **no implementation rollbacks**.
+- `tests/state.test.js` (4) — readState contract for yaml-parse-failure (throws) vs shape-validation-failure (returns degraded with `shape_error`); writeState callers must pass full canonical state (incl. `schema_version`).
+- `tests/finalize.test.js` (2) — finalize `nextState` arg now requires `schema_version: 1` (post D-Rd11-11 shape contract).
+- `tests/hooks.test.js` (3) — seed YAML for hook tests must quote ISO timestamps (otherwise js-yaml parses as `Date` object and shape validator fails `typeof === 'string'`).
+- `tests/conduct-preamble.test.js` (2) — frontmatter regex + canonical-preamble `includes()` checks now normalize CRLF → LF before matching (Windows-checked-in SKILL.md files use CRLF).
+- `test/heal-apply-disposition.test.cjs` (3) — envelope keys are now `[ok, op, item_id, action, prior_status, new_status, heal_log_path, last_updated]` per D-Rd12-4 (i); drift keys `claimed_at` + `exit_code` removed from envelope; semantic claimed_at assertions moved to register entry on disk.
+- `test/heal-sweep-log-atomic.test.cjs` (2) — atomicity proof is now byte-identical hash + no-orphan-tmp (cleanup hook fires per T-952 + D-Rd11-8); STALE_SWEEP token renamed to STALE_SWEEP_AUTO_RELEASE per T-962 / D-Rd12-6.
+- `redesign/scripts/.test-fixtures/arch-alignment-check/pass*.md` (7 fixtures × ~8 ACs) — pass-fixtures now carry `sprint: 10` + `architect_round: 13` so the reader finds the `bootstrap_exemption_round_13: true` flag in `tmp-spike-CLOSURE/.pipeline/architecture/sprints/10/manifest.yaml` and emits zero findings per D-Rd12-5 (ii).
+
+**New tests added with the hotfix.**
+- `test/sprint-template-unresolved.test.cjs` — 3 ACs: undefined sprint + reviewing target emits sprint-resolution diagnostic; string sprint surfaces observed-type; regression guard against pre-hotfix `<n>... not on disk` wording.
+- `test/sprint-shape-validation.test.cjs` — 10 ACs: sprint accepts null + positive int; rejects string / 0 / negative / non-integer; sprint_iteration accepts null / positive int; rejects strings.
+
+**Cumulative test counts.** CJS: 43/43 pass (was 41/41 with 17 hidden failures pre-hotfix); ESM: 62/62 pass. `npm test` exits 0 cleanly for the first time since `0.13.0` shipped.
+
+**Version source-of-record cleanup.** Plugin `package.json:3` bumped from `0.11.0` → `0.13.1` to reconcile a multi-version stale drift discovered during this hotfix; the Claude Code installer reads `.claude-plugin/marketplace.json:15` and `.claude-plugin/plugin.json:3` (both bumped to `0.13.1`), not `package.json`, so the stale value never affected installation behavior — but it misled human readers. Now consistent across all three.
+
+**Scope NOT addressed by this hotfix** (per closure-reopening decision verbatim).
+- Drift-6 audit substance (closure-plan SPEC DD-4): direct-YAML-write bypass detection. This hotfix adds *evidence* that drift-6 fires in real projects (28+ unknown `manual_transition_round_N` keys observed in user's `state.yaml`) but does NOT implement the substantive audit check. Still owed by a future increment.
+- Drift-7/8/9 audit substance: still owed by a future increment.
+- writeState's no-merge behavior with caller's `nextState`: writeState writes exactly what the caller passes (overlaid with `last_updated`), so callers must supply full canonical shape. Tests updated to match; latent gap for a future increment if production callers ever start passing partial state.
+
+---
+
 ## 0.13.0 — Round-loop closure (Move 1-4 + L-7 + L-8 + annotation contract)
 
 Additive feature work landed under `round-loop-closure/` in the meta-repo. Closes the round-N amendment loop pattern observed externally (Unity-shape project showed 8 review rounds on Sprint 3 with 5 of 6 confirmed criticals pre-existing, debt pool emptying one element per round). The framework now surfaces the FAMILY of a rule violation in a single round instead of staging across N rounds.

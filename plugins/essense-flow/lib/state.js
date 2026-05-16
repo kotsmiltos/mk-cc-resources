@@ -55,6 +55,13 @@ const ISO8601_RX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 const REQUIRED_KEYS = new Set(["schema_version", "phase", "last_updated"]);
 const OPTIONAL_KEYS = new Set([
   "sprint",
+  // Hotfix v0.13.1 DD-15 (per 2026-05-16 closure-reopening decision in
+  // redesign/06-decisions.md): sprint_iteration is a positive-int counter
+  // for re-runs of the same sprint number (fix-only follow-ups). Closes
+  // the user pattern of inventing string sprint labels like "3-PATCH-2".
+  // Type-checked in validateStateShape below; default null per defaults/
+  // state.yaml until first iteration is recorded by a CLI op.
+  "sprint_iteration",
   "wave",
   "sprint_complete_at",
   "sprint_summary",
@@ -165,6 +172,56 @@ export function validateStateShape(stateObj, allowedPhases) {
         observed: stateObj.last_updated,
       },
     );
+  }
+
+  // Hotfix v0.13.1 Fix-3 (per 2026-05-16 closure-reopening decision in
+  // redesign/06-decisions.md): when present, `sprint` must be a positive
+  // integer. Closes the asymmetry between the CLI write op
+  // `state-set-sprint` (which already enforces parsePositiveIntOrNull at
+  // bin/essense-flow-tools.cjs:1707) and the shape validator (previously
+  // accepted any value for sprint). Direct YAML writes that placed string
+  // sprint ids like "3-PATCH-2" into state.yaml previously passed shape
+  // validation and broke `<n>` substitution downstream at
+  // bin/essense-flow-tools.cjs:1844 + :2159.
+  if ("sprint" in stateObj && stateObj.sprint !== null) {
+    if (
+      typeof stateObj.sprint !== "number" ||
+      !Number.isInteger(stateObj.sprint) ||
+      stateObj.sprint < 1
+    ) {
+      throw new ShapeValidationError(
+        `state-shape: sprint must be null or a positive integer; got ${JSON.stringify(stateObj.sprint)} (type ${typeof stateObj.sprint}). Set via 'state-set-sprint --value <int>' rather than direct YAML edit. Re-runs of the same sprint number use the sprint_iteration field (DD-15, optional int) instead of suffix naming like '3-PATCH-2'.`,
+        {
+          field: "sprint",
+          expected: "null | positive integer",
+          observed: stateObj.sprint,
+        },
+      );
+    }
+  }
+
+  // Hotfix v0.13.1 DD-15 (per 2026-05-16 closure-reopening decision):
+  // `sprint_iteration` is an optional positive-integer counter for re-runs
+  // of the SAME sprint number (e.g. fix-only sprint follow-ups). Sprint id
+  // stays a positive int; iteration counts independently. Closes the user
+  // pattern of inventing string sprint labels like "3-PATCH-2". Predicate
+  // path templates remain on `<n>` for sprint id only — iteration does NOT
+  // enter canonical paths unless a future increment adds it.
+  if ("sprint_iteration" in stateObj && stateObj.sprint_iteration !== null) {
+    if (
+      typeof stateObj.sprint_iteration !== "number" ||
+      !Number.isInteger(stateObj.sprint_iteration) ||
+      stateObj.sprint_iteration < 1
+    ) {
+      throw new ShapeValidationError(
+        `state-shape: sprint_iteration must be null or a positive integer; got ${JSON.stringify(stateObj.sprint_iteration)} (type ${typeof stateObj.sprint_iteration})`,
+        {
+          field: "sprint_iteration",
+          expected: "null | positive integer",
+          observed: stateObj.sprint_iteration,
+        },
+      );
+    }
   }
 
   // Unknown top-level keys: WARN-only, do NOT throw. Forward-compat per

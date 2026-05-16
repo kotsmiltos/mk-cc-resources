@@ -20,8 +20,19 @@ const PRINCIPLES_PATH = join(PLUGIN_ROOT, "references/principles.md");
 
 // Extract canonical Conduct preamble from principles.md — between the
 // "## Conduct" heading and the next "---" or "##".
+//
+// CRLF/LF normalization: every read here strips \r\n → \n so regex anchors
+// and `raw.includes(canonical)` checks work the same on Windows-checked-in
+// SKILL.md files (CRLF) as on Unix (LF). Without this, every Windows-
+// authored SKILL.md fails the frontmatter `/^---\n/` regex + the verbatim-
+// preamble `includes` check.
+async function readNormalized(path) {
+  const raw = await readFile(path, "utf8");
+  return raw.replace(/\r\n/g, "\n");
+}
+
 async function loadCanonicalConduct() {
-  const raw = await readFile(PRINCIPLES_PATH, "utf8");
+  const raw = await readNormalized(PRINCIPLES_PATH);
   const m = raw.match(/##\s+Conduct\n\n([\s\S]+?)\n---\n/);
   assert.ok(m, "principles.md must contain a '## Conduct' section terminated by '---'");
   return m[1].trim();
@@ -41,7 +52,7 @@ test("every SKILL.md contains the canonical Conduct preamble verbatim", async ()
     const skillPath = join(SKILLS_DIR, skill, "SKILL.md");
     let raw;
     try {
-      raw = await readFile(skillPath, "utf8");
+      raw = await readNormalized(skillPath);
     } catch (err) {
       failures.push(`${skill}: cannot read SKILL.md — ${err.message}`);
       continue;
@@ -62,7 +73,7 @@ test("every SKILL.md frontmatter has required fields", async () => {
   const failures = [];
   for (const skill of skills) {
     const skillPath = join(SKILLS_DIR, skill, "SKILL.md");
-    const raw = await readFile(skillPath, "utf8");
+    const raw = await readNormalized(skillPath);
     const fm = raw.match(/^---\n([\s\S]+?)\n---/);
     if (!fm) {
       failures.push(`${skill}: missing frontmatter`);

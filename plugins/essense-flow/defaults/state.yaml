@@ -4,6 +4,11 @@
 schema_version: 1
 phase: idle
 sprint: null
+# sprint_iteration: positive-int counter for re-runs of the SAME sprint
+# number (e.g. fix-only follow-up passes). Hotfix v0.13.1 DD-15 (per
+# redesign/06-decisions.md 2026-05-16 closure-reopening). Defaults null;
+# bumped by a CLI op when a fix-only re-run starts on the same sprint.
+sprint_iteration: null
 wave: null
 elicitation:
   round: 0

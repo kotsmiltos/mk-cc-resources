@@ -22,7 +22,7 @@ test("finalize: legal transition writes both artifact and state", async () => {
     const r = await finalize({
       projectRoot: root,
       writes: [{ path: artifactPath, content: "# SPEC\n\nbody\n" }],
-      nextState: { phase: "eliciting" },
+      nextState: { schema_version: 1, phase: "eliciting" },
     });
     assert.equal(r.ok, true);
     assert.ok(existsSync(artifactPath));
@@ -41,7 +41,7 @@ test("finalize: illegal transition writes neither artifact nor state", async () 
     const r = await finalize({
       projectRoot: root,
       writes: [{ path: artifactPath, content: "should not persist" }],
-      nextState: { phase: "complete" },
+      nextState: { schema_version: 1, phase: "complete" },
     });
     assert.equal(r.ok, false);
     assert.match(r.reason, /no legal transition/);
@@ -64,7 +64,7 @@ test("finalize: malformed write entry rolls back tmp files", async () => {
         { path: goodPath, content: "good" },
         { path: null, content: "bad" }, // malformed
       ],
-      nextState: { phase: "eliciting" },
+      nextState: { schema_version: 1, phase: "eliciting" },
     });
     assert.equal(r.ok, false);
     assert.equal(existsSync(goodPath), false, "good tmp must be rolled back");
@@ -83,7 +83,7 @@ test("finalize: empty writes array is allowed (state-only transition)", async ()
     const r = await finalize({
       projectRoot: root,
       writes: [],
-      nextState: { phase: "eliciting" },
+      nextState: { schema_version: 1, phase: "eliciting" },
     });
     assert.equal(r.ok, true);
     const s = await readState(root);
@@ -101,7 +101,7 @@ test("finalize: degraded current state blocks finalize without force", async () 
     const r = await finalize({
       projectRoot: root,
       writes: [],
-      nextState: { phase: "idle" },
+      nextState: { schema_version: 1, phase: "idle" },
     });
     assert.equal(r.ok, false);
     assert.match(r.reason, /degraded/);
@@ -118,7 +118,7 @@ test("finalize: writes go to declared paths verbatim, not relative to .pipeline"
     await finalize({
       projectRoot: root,
       writes: [{ path: explicit, content: "abc" }],
-      nextState: { phase: "eliciting" },
+      nextState: { schema_version: 1, phase: "eliciting" },
     });
     const content = await readFile(explicit, "utf8");
     assert.equal(content, "abc");
@@ -134,13 +134,13 @@ async function walkTo(root, targetPhase) {
   await finalize({
     projectRoot: root,
     writes: [{ path: join(root, ".pipeline/elicitation/SPEC.md"), content: "spec" }],
-    nextState: { phase: "eliciting" },
+    nextState: { schema_version: 1, phase: "eliciting" },
   });
   if (targetPhase === "eliciting") return;
   await finalize({
     projectRoot: root,
     writes: [{ path: join(root, ".pipeline/elicitation/SPEC.md"), content: "spec" }],
-    nextState: { phase: "research" },
+    nextState: { schema_version: 1, phase: "research" },
   });
   if (targetPhase === "research") return;
   throw new Error(`walkTo: unsupported target ${targetPhase}`);
@@ -166,7 +166,7 @@ test("finalize: requires advisory warns to stderr, never refuses", async () => {
       r = await finalize({
         projectRoot: root,
         writes: [],
-        nextState: { phase: "triaging" },
+        nextState: { schema_version: 1, phase: "triaging" },
       });
     } finally {
       process.stderr.write = origWrite;
@@ -200,7 +200,7 @@ test("finalize: requires advisory silent when path is in writes", async () => {
         writes: [
           { path: join(root, ".pipeline/requirements/REQ.md"), content: "# REQ\n" },
         ],
-        nextState: { phase: "triaging" },
+        nextState: { schema_version: 1, phase: "triaging" },
       });
     } finally {
       process.stderr.write = origWrite;
@@ -223,27 +223,27 @@ test("finalize: requires advisory expands <n> to nextState.sprint", async () => 
     await finalize({
       projectRoot: root,
       writes: [{ path: join(root, ".pipeline/elicitation/SPEC.md"), content: "s" }],
-      nextState: { phase: "eliciting" },
+      nextState: { schema_version: 1, phase: "eliciting" },
     });
     await finalize({
       projectRoot: root,
       writes: [{ path: join(root, ".pipeline/elicitation/SPEC.md"), content: "s" }],
-      nextState: { phase: "research" },
+      nextState: { schema_version: 1, phase: "research" },
     });
     await finalize({
       projectRoot: root,
       writes: [{ path: join(root, ".pipeline/requirements/REQ.md"), content: "r" }],
-      nextState: { phase: "triaging" },
+      nextState: { schema_version: 1, phase: "triaging" },
     });
     await finalize({
       projectRoot: root,
       writes: [],
-      nextState: { phase: "requirements-ready" },
+      nextState: { schema_version: 1, phase: "requirements-ready" },
     });
     await finalize({
       projectRoot: root,
       writes: [],
-      nextState: { phase: "architecture" },
+      nextState: { schema_version: 1, phase: "architecture" },
     });
 
     // architecture -> sprinting requires
@@ -259,7 +259,7 @@ test("finalize: requires advisory expands <n> to nextState.sprint", async () => 
       await finalize({
         projectRoot: root,
         writes: [],
-        nextState: { phase: "sprinting", sprint: 7 },
+        nextState: { schema_version: 1, phase: "sprinting", sprint: 7 },
       });
     } finally {
       process.stderr.write = origWrite;

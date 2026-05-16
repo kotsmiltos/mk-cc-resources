@@ -191,14 +191,21 @@ try {
     const postContent = fs.readFileSync(logPath, 'utf8');
     assert.strictEqual(postContent, PRE_EXISTING_HEAL_LOG, 'HEAL-LOG.md content not byte-equal to pre-state');
 
-    // A .tmp-* file (PID+ms+4hex suffix per D-Rd10-13) must exist in the
-    // heal dir — proves the writer reached the tmp-write step but not rename.
+    // Tmp-file linger is no longer the atomicity proof: D-Rd11-4 routed
+    // HEAL-LOG body writes through `appendAuditLine` (O_APPEND atomic
+    // primitive — no tmp file involved); and the register-write path
+    // (`writeStateAndFingerprint` at tools.cjs:~350) that
+    // ESF_TEST_FAIL_AFTER_TMP injects into now best-effort-cleans-up its
+    // own tmp before throwing per T-952 + D-Rd11-8. Atomicity proof is
+    // now the byte-identical hash check above (HEAL-LOG unchanged) plus
+    // the no-orphan-tmp check below (proves the cleanup hook fired).
     const healDir = path.join(sb, '.pipeline', 'heal');
     const dirEntries = fs.readdirSync(healDir);
     const tmpFiles = dirEntries.filter((f) => f.includes('HEAL-LOG.md.tmp-'));
-    assert.ok(
-      tmpFiles.length >= 1,
-      `expected at least 1 HEAL-LOG.md.tmp-* file in ${healDir}; saw entries=${JSON.stringify(dirEntries)}`,
+    assert.strictEqual(
+      tmpFiles.length,
+      0,
+      `expected 0 HEAL-LOG.md.tmp-* files post-cleanup-hook; saw: ${JSON.stringify(tmpFiles)}`,
     );
   });
 
@@ -221,10 +228,16 @@ try {
     const logPath = path.join(sb, HEAL_LOG_REL);
     assert.ok(fs.existsSync(logPath), 'HEAL-LOG.md should exist after successful sweep');
     const logContent = fs.readFileSync(logPath, 'utf8');
-    // Canonical line shape: '[<iso>] STALE_SWEEP item_id=<id> claimed_at=<iso> threshold_hours=<n> disposition=<disp>'
+    // Canonical line shape per T-962 (D-Rd12-6 user verdict 2026-05-14):
+    //   '[<iso>] STALE_SWEEP_AUTO_RELEASE item_id=<id> prior_status=in_progress
+    //    new_status=open threshold_hours=<n>'
+    // The legacy STALE_SWEEP token was renamed to STALE_SWEEP_AUTO_RELEASE
+    // to surface the disposition in the audit line itself (heal-sweep-stale-
+    // claims.test.cjs AC-3 covers the full shape; this test only asserts
+    // the prefix + item-id match).
     assert.ok(
-      /STALE_SWEEP item_id=t925-stale-item/.test(logContent),
-      `HEAL-LOG.md should contain STALE_SWEEP item_id=t925-stale-item; got: ${logContent.slice(0, 600)}`,
+      /STALE_SWEEP_AUTO_RELEASE item_id=t925-stale-item/.test(logContent),
+      `HEAL-LOG.md should contain STALE_SWEEP_AUTO_RELEASE item_id=t925-stale-item; got: ${logContent.slice(0, 600)}`,
     );
 
     // No .tmp-* file should linger after a successful rename.

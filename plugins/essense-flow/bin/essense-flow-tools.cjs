@@ -1844,6 +1844,29 @@ async function stateSetPhase({ rawValue, sprintArg, projectRoot }) {
       : (typeof current.sprint === 'number' ? current.sprint : null);
     const predResult = evaluatePredicate(legal.requires, projectRoot, sprintForPredicate);
     if (!predResult.ok) {
+      // Hotfix v0.13.1 (per 2026-05-16 closure-reopening decision): when
+      // the predicate template references `<n>` but state.sprint is absent
+      // or non-number, the prior path-missing diagnostic pointed at the
+      // literal `<n>` path and misdirected the caller toward "file is
+      // missing." Surface sprint resolution as the named root cause and
+      // tell the caller how to recover (--sprint arg or state-set-sprint
+      // op, depending on target-phase acceptance).
+      if (predResult.kind === 'sprint-template-unresolved') {
+        const observedSprint =
+          current.sprint === undefined
+            ? 'undefined'
+            : current.sprint === null
+              ? 'null'
+              : `${JSON.stringify(current.sprint)} (type ${typeof current.sprint})`;
+        const sprintTargets = ['sprinting', 'sprint-complete'];
+        const recovery = sprintTargets.includes(rawValue)
+          ? `pass --sprint <int> to this op`
+          : `set state.sprint via state-set-sprint --value <int> first (target phase '${rawValue}' does not accept --sprint per cli-spec; predicate auto-resolves from state.sprint)`;
+        return emitFailure(
+          EXIT_PREREQ_MISSING,
+          `essense-flow-tools ${opName}: transition ${current.phase}→${rawValue} predicate template '${predResult.template}' contains '<n>' but state.sprint is ${observedSprint}; expected positive integer. Sprint resolution failed BEFORE path existence check; the literal-<n> path '${predResult.path}' was NOT checked on disk. To recover: ${recovery}.`,
+        );
+      }
       // Differentiate path-missing (exit 7) from predicate-false (exit 7 with different msg)
       if (predResult.kind === 'path-missing') {
         return emitFailure(
@@ -2156,9 +2179,28 @@ function evaluatePredicate(predicate, projectRoot, sprint, cursorState = null, r
   const pathRegex = /\.pipeline\/[^\s]+/g;
   const paths = predicate.match(pathRegex);
   if (paths && predicate.includes(' exists')) {
+    // Hotfix v0.13.1 (per 2026-05-16 closure-reopening decision in
+    // redesign/06-decisions.md): when the predicate path template contains
+    // `<n>` but the resolved sprint is null (state.sprint absent or non-
+    // number, and --sprint arg not accepted for the target phase), the
+    // substitution silently falls through to a literal `<n>` path and
+    // fs.existsSync returns false. Pre-hotfix surface emitted "path-missing"
+    // pointing at the literal `<n>` path — misdirects the caller toward
+    // "file is missing" when the real failure is sprint resolution. Detect
+    // this case explicitly and surface a distinct kind so the call site
+    // can emit a diagnostic naming sprint resolution as the root cause.
+    const containsSprintTemplate = /<n>/.test(paths[0]);
     const subbed = sprint != null ? paths[0].replace(/<n>/g, String(sprint)) : paths[0];
     const fullPath = path.join(projectRoot, subbed);
     if (!fs.existsSync(fullPath)) {
+      if (containsSprintTemplate && sprint == null) {
+        return {
+          ok: false,
+          kind: 'sprint-template-unresolved',
+          path: subbed,
+          template: paths[0],
+        };
+      }
       return { ok: false, kind: 'path-missing', path: subbed };
     }
     // Content-property predicate: e.g. "exists with status: build-ready"

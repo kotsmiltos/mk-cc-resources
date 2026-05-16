@@ -62,7 +62,7 @@ test("context-inject: valid state surfaces phase + canonical artifact paths", as
     await mkdir(join(root, ".pipeline"), { recursive: true });
     await writeFile(
       join(root, ".pipeline/state.yaml"),
-      "schema_version: 1\nphase: eliciting\nlast_updated: 2026-05-01T00:00:00Z\n",
+      "schema_version: 1\nphase: eliciting\nlast_updated: \"2026-05-01T00:00:00Z\"\n",
       "utf8",
     );
     const r = runHook(CONTEXT_INJECT, root);
@@ -94,7 +94,7 @@ test("next-step: idle phase recommends /elicit", async () => {
     await mkdir(join(root, ".pipeline"), { recursive: true });
     await writeFile(
       join(root, ".pipeline/state.yaml"),
-      "schema_version: 1\nphase: idle\nlast_updated: 2026-05-01T00:00:00Z\n",
+      "schema_version: 1\nphase: idle\nlast_updated: \"2026-05-01T00:00:00Z\"\n",
       "utf8",
     );
     const r = runHook(NEXT_STEP, root);
@@ -108,12 +108,20 @@ test("next-step: idle phase recommends /elicit", async () => {
 });
 
 test("next-step: complete phase recommends /status", async () => {
+  // Quote the ISO timestamp so js-yaml loads it as a string scalar, not
+  // a Date object. Per D-Rd11-11 validateStateShape requires
+  // `typeof last_updated === 'string'`; an unquoted YAML 1.1 timestamp
+  // would parse as Date and fail the shape check → degraded read →
+  // hook emits `/heal` instead of `/status`. Other tests in this suite
+  // route through initState() which writes via yaml.dump() and round-
+  // trips cleanly as string; this test seeds the YAML by hand so the
+  // quote is load-bearing.
   const root = await tmpProject();
   try {
     await mkdir(join(root, ".pipeline"), { recursive: true });
     await writeFile(
       join(root, ".pipeline/state.yaml"),
-      "schema_version: 1\nphase: complete\nlast_updated: 2026-05-01T00:00:00Z\n",
+      'schema_version: 1\nphase: complete\nlast_updated: \"2026-05-01T00:00:00Z\"\n',
       "utf8",
     );
     const r = runHook(NEXT_STEP, root);

@@ -45,18 +45,21 @@ const HEAL_LOG_REL_FWD = '.pipeline/heal/HEAL-LOG.md';
 const HOURS_AGO_SEEDED = 48;
 const MS_PER_HOUR = 3600000;
 
-// Envelope contract per per-op spec L106 (D-Rd11-2):
-// { item_id, action, prior_status, new_status, claimed_at,
-//   heal_log_path, last_updated, exit_code }.
+// Envelope contract per per-op spec L106-117 (D-Rd11-2 + D-Rd12-4 (i)
+// 2026-05-14T14:30Z drift-keys-removed alignment): canonical envelope is
+// { ok, op, item_id, action, prior_status, new_status, heal_log_path,
+// last_updated }. Drift keys `claimed_at` + `exit_code` were removed in
+// favor of canonical `ok` + `op`. Tests that need claimed_at semantic
+// checks read it from the register entry on disk, not the stdout envelope.
 const ENVELOPE_KEYS = [
+  'ok',
+  'op',
   'item_id',
   'action',
   'prior_status',
   'new_status',
-  'claimed_at',
   'heal_log_path',
   'last_updated',
-  'exit_code',
 ];
 const ENVELOPE_KEY_COUNT = ENVELOPE_KEYS.length; // 8
 
@@ -302,11 +305,14 @@ try {
 
     assert.strictEqual(typeof envelope.new_status, 'string', 'new_status must be string');
 
-    // claimed_at is string-or-null per spec — null on release, ISO on
-    // keep/escalate. For the keep action here, it must be an ISO string.
+    // Per D-Rd12-4 (i) envelope no longer carries claimed_at — semantic
+    // assertion shifts to the register entry on disk (verified below).
+    const registerAfterKeep = readRegister(sb);
+    const keepEntry = findEntry(registerAfterKeep, 'j2');
+    const keepClaimedAt = toIsoString(keepEntry && keepEntry.claimed_at);
     assert.ok(
-      typeof envelope.claimed_at === 'string' && ISO_REGEX.test(envelope.claimed_at),
-      `claimed_at on keep must be ISO string, got: ${envelope.claimed_at}`,
+      typeof keepClaimedAt === 'string' && ISO_REGEX.test(keepClaimedAt),
+      `claimed_at on keep must be ISO string in register entry, got: ${keepClaimedAt}`,
     );
 
     assert.strictEqual(typeof envelope.heal_log_path, 'string', 'heal_log_path must be string');
@@ -324,8 +330,16 @@ try {
       `last_updated must be ISO-8601, got: ${envelope.last_updated}`,
     );
 
-    assert.strictEqual(typeof envelope.exit_code, 'number', 'exit_code must be number');
-    assert.strictEqual(envelope.exit_code, 0, 'exit_code on success must be 0');
+    // Per D-Rd12-4 (i) canonical-envelope shape: `ok: true` + `op` echo
+    // replace the removed `exit_code` numeric field. Success signal is
+    // the boolean `ok` plus the process exit code (0) which is checked
+    // separately above via `r.status` in AC-2/AC-3 spawnSync.
+    assert.strictEqual(envelope.ok, true, 'ok must be true on success');
+    assert.strictEqual(
+      envelope.op,
+      'heal --apply-disposition',
+      `op must echo canonical op name, got: ${envelope.op}`,
+    );
   });
 
   // ---------------------------------------------------------------------
@@ -358,12 +372,9 @@ try {
       'open',
       `release must set new_status=open in envelope, got: ${envelope.new_status}`,
     );
-    // claimed_at on release MUST be null per spec (no other allowed value).
-    assert.strictEqual(
-      envelope.claimed_at,
-      null,
-      `release must set claimed_at=null in envelope, got: ${JSON.stringify(envelope.claimed_at)}`,
-    );
+    // Per D-Rd12-4 (i) envelope no longer carries claimed_at — release-
+    // sets-null semantic is verified via the register entry on disk below
+    // (entry.claimed_at MUST be null per spec).
 
     // Register on disk reflects the same.
     const register = readRegister(sb);
@@ -426,11 +437,9 @@ try {
     const envelope = JSON.parse(trimmed);
     assert.strictEqual(envelope.action, 'escalate', 'envelope action must echo escalate');
     assert.strictEqual(envelope.new_status, 'escalated', 'envelope new_status must be escalated');
-    assert.strictEqual(
-      envelope.claimed_at,
-      seededClaimedAt,
-      `envelope claimed_at must echo preserved value, got: ${envelope.claimed_at}`,
-    );
+    // Per D-Rd12-4 (i) envelope no longer carries claimed_at — the
+    // DD-10 preservation invariant is verified via the register entry
+    // (above: `assert.strictEqual(claimedAt, seededClaimedAt, ...)`).
   });
 } finally {
   _cleanup();
