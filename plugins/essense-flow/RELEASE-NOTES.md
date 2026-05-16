@@ -1,5 +1,63 @@
 # Release notes — essense-flow
 
+## 0.13.0 — Round-loop closure (Move 1-4 + L-7 + L-8 + annotation contract)
+
+Additive feature work landed under `round-loop-closure/` in the meta-repo. Closes the round-N amendment loop pattern observed externally (Unity-shape project showed 8 review rounds on Sprint 3 with 5 of 6 confirmed criticals pre-existing, debt pool emptying one element per round). The framework now surfaces the FAMILY of a rule violation in a single round instead of staging across N rounds.
+
+**Move 1 — rules as executable checks.** `references/decision-schema.yaml` locks the schema for rule-decisions. `lib/decision-schema-validator.cjs` validates every decision; rule-decisions (those with `applies_to:`) must have machine-checkable encoding OR explicit `unchecked-rule` acknowledgment. CLI op `spec-rule-validate --decisions-file <path>` rejects non-conformant decisions with exit 7.
+
+**Move 2 — per-hit validator dispatch.** `essense-flow-validator` agent extended with verdict `intentional_exception` and Step 1.5 annotation re-read. Every sweep candidate gets a clean-context validator pass; raw grep is never trusted directly.
+
+**Move 3 — annotation contract.** `references/annotation-shape.yaml` locks the grammar `[EssenseFlow: exempts <rule-id>, reason: <text>]`. `lib/annotation-parser.cjs` exposes `parseAnnotation` + `findAnnotations`. Validator honors annotations on Step 1.5; sweep marks candidates near annotations as `intentional_exception_candidate: true`.
+
+**Move 4 — two new lenses.**
+- `essense-flow-rule-completeness-lens` (L-7): iterates every rule with `applies_to`, calls `review-rule-sweep` per rule, emits findings per non-exempt sibling.
+- `essense-flow-pattern-debt-lens` (L-8): reads prior-sprint QA-REPORT files; re-runs each cited rule's sweep against current substrate; emits findings only for NEW hits.
+
+Both registered at `plugins/essense-flow/agents/` + mirrored at `~/.claude/agents/`. Tools allowlist tight (Read, Grep, Glob, Bash).
+
+**CLI surface additions** (3 new ops; existing 17 unchanged):
+- `spec-rule-validate --decisions-file <path>`
+- `review-rule-sweep --rule-id <id> --project-root <abs> [--decisions-file <path>] [--output-format json|md] [--budget-timeout-ms <int>]`
+- `review-pattern-debt-sweep --project-root <abs> [--max-rounds <int>] [--budget-timeout-ms <int>] [--output-format json|md]`
+
+**Review SKILL.md amended** to dispatch L-7 + L-8 alongside the 6 existing adversarial lenses in the same parallel-dispatch step. Existing 6-lens substance preserved verbatim. Bootstrap-baseline mechanism (DD-RLC-5) + budget caps (DD-RLC-6) documented.
+
+**Architect alignment-lens criterion 7d added.** Validates `applies_to.kind` in closed list; `target` regex compiles; `scope_glob` non-empty; `violation_check.detect` non-empty; `unchecked-rule` ack fields present. Lens-side mirror of `spec-rule-validate`.
+
+### Backward compatibility
+
+- Existing v0.12 projects without `applies_to` blocks on rules see L-7 emit zero findings (graceful degradation). No regression.
+- 12 canonical phases unchanged.
+- 11-key state schema unchanged.
+- Existing 17 CLI ops unchanged.
+- 6 existing adversarial lenses unchanged.
+- 10 existing registered agents unchanged.
+
+### Verifiable checks landed
+
+- `node test/annotation-parser.test.cjs` → 7/7 PASS
+- `node test/decision-schema-validator.test.cjs` → 8/8 PASS
+- `node test/rule-sweep.test.cjs` → 5/5 PASS
+- `node test/pattern-debt-sweep.test.cjs` → 2/2 PASS
+- CLI smoke fixtures at `round-loop-closure/.test-fixtures/r5-good`, `r5-bad`, `r6-regex`, `r6-absence`, `r6-xref`, `r7-debt`, `unity-shape`
+- End-to-end Unity-shape fixture: round 1 sweep surfaces 1 confirmed + 1 exempt (kind=absence look_direction=before); round 2 (post-patch) returns 0 confirmed; L-8 replay returns 0 new_hits. Full notes at `round-loop-closure/spike-notes/R13-end-to-end.md`.
+
+### Honest gaps in this increment
+
+1. **Real Agent dispatch of L-7 + L-8 not verified end-to-end.** CLI mechanisms verified; lens agents registered; but no `Agent` tool dispatch of either lens fired during the build session. Real verification requires a user-driven `/essense-flow:review` run on a project with `applies_to`-encoded rules.
+2. **Master orchestration of 8 lenses parallel not verified end-to-end.** Substance amendment to review/SKILL.md made; orchestration happens when master invokes the skill on a real project. Deferred to user-driven invocation.
+3. **Bootstrap-baseline `--acknowledge-baseline` flag NOT implemented.** Documented in DD-RLC-5 + review/SKILL.md but `state-set-phase` does not yet accept the flag. Follow-up needed.
+4. **Marketplace install on a third fresh project NOT smoke-tested.** Plugin source modifications uncommitted in mk-cc-resources at this session's end. Smoke install + R13 fixture re-run from marketplace-installed plugin is the final R14 verifiable check, deferred to user invocation.
+5. **paired-xref kind** stub-implemented (behaves identically to xref for now). `pair_by` heuristic enforcement deferred.
+6. **Annotation co-location heuristic** scans ±3 lines around candidate. Sufficient for most idiomatic placements; complex multi-line annotations may need future tuning.
+
+### Where the design lives
+
+`round-loop-closure/` at the meta-repo root contains the full plan + spec + state + decisions + spike-notes + test fixtures.
+
+---
+
 ## 0.12.0 — Trust-model docs + drift-audit harness + dogfood pipeline
 
 A minor increment along the 0.x line. The contract surface still evolves; this release lands the trust-model docs, the substantive drift-audit harness (drift-6/7/8/9 promoted from pending-spec to real checks), and two end-to-end dogfood runs that drove the pipeline idle→complete on fresh projects. v1 declaration deferred to a later release, by the operator, when the operator chooses.

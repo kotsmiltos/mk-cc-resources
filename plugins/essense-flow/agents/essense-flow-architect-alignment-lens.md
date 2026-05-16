@@ -107,6 +107,15 @@ Verbatim phrasing: Walk every task spec's `behavioral_pseudocode` top-down using
 
 **7c. file_write_contract.paths coverage.** Every path declared in `file_write_contract.paths` MUST appear as a target of at least one pseudocode write step. A path declared but never written is a contract lie → FLAG. A pseudocode write to a path NOT in `file_write_contract.paths` is an OOC violation surfaced for master.
 
+**7d. Rule-encoding completeness (round-loop-closure DD-RLC-2 / DD-RLC-6 lens-side mirror).** For each decision in `decisions.yaml` that the sub-architect introduced as a rule (carries an `applies_to:` block):
+- `applies_to.kind` MUST be in the closed list `{regex, absence, xref, paired-xref, unchecked-rule}`. Anything else → FLAG misaligned-by-criterion-7d, sub_check `7d.kind-invalid`.
+- For `kind ∈ {regex, absence, xref, paired-xref}`: `applies_to.target` (or `target_a` + `target_b` for xref kinds) MUST compile as a valid JavaScript `RegExp`. The lens compiles each via `new RegExp(target)` in a try/catch; thrown error → FLAG sub_check `7d.regex-compile-fail` with the thrown message.
+- `applies_to.scope_glob` (or `scope_a_glob` + `scope_b_glob`) MUST be a non-empty string. Empty → FLAG sub_check `7d.scope-missing`.
+- `violation_check.detect` MUST be a non-empty prose string. Empty → FLAG sub_check `7d.violation-check-missing`.
+- For `kind: unchecked-rule`: `acknowledged_by` AND `acknowledged_at` MUST be present (ISO-8601 string). Missing → FLAG sub_check `7d.unchecked-missing-ack`.
+
+This sub-check is the lens-side mirror of `essense-flow-tools spec-rule-validate` (R5) — lens flags semantically what the CLI op rejects structurally. Both must agree; disagreement is a structural bug to surface. Closes the round-loop pattern at architect-time: rule-decisions that ship un-checkable into the codebase escape L-7's sweep, which is the failure mode `META-GAP-ROUND-LOOP.md` (now archived) named without closing.
+
 - **What to read:** every task spec's `behavioral_pseudocode` block, paired with its `test_completion_contract.acceptance_criteria` and `file_write_contract.paths`; the declared fixture inputs (environment variables, file paths, test fixtures) listed in the task spec.
 - **Deterministic vs semantic split:** there is no M1 deterministic counterpart for criterion 7 — this is a semantic-judgment overlay introduced by D-Sprint10-5. Lens reads pseudocode + ACs + file_write_contract and cross-references them by prose walk.
 - **Finding shape on failure:** `{criterion_id: 7, sub_check: '7a' | '7b' | '7c', verdict: 'flag' | 'misaligned', location: {task_id: <id>, line_in_pseudocode: <line> (for 7a), AC_id: <id> (for 7b), path: <path> (for 7c)}, rationale: <textual explanation tying the flag to the substrate>}`.

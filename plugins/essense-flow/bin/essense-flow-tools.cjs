@@ -6710,6 +6710,174 @@ if (require.main === module) (async () => {
         `essense-flow-tools heal: one of --sweep-stale-claims (T-918) or --apply-disposition (T-940) is required (see --help; DD-18 conservative-args policy).`,
       );
     }
+    case 'review-pattern-debt-sweep': {
+      // round-loop-closure R7 (Move 4 L-8 core). Re-runs prior-sprint rule sweeps;
+      // emits recurrence-findings for NEW hits not in prior round's resolved set.
+      const projectRoot = args['project-root'] || process.cwd();
+      const maxRounds = args['max-rounds'] ? parseInt(args['max-rounds'], 10) : undefined;
+      const timeoutMs = args['budget-timeout-ms'] ? parseInt(args['budget-timeout-ms'], 10) : undefined;
+      const decisionsFile = args['decisions-file'] || path.join(projectRoot, '.pipeline', 'architecture', 'decisions.yaml');
+      const outputFormat = args['output-format'] || 'json';
+      const fsLocal = require('node:fs');
+      const yamlLocal = await yaml();
+      const debtSweeper = require('../lib/pattern-debt-sweep.cjs');
+      let decisions = [];
+      try {
+        const text = fsLocal.readFileSync(decisionsFile, 'utf8');
+        const parsed = yamlLocal.load(text);
+        decisions = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.decisions) ? parsed.decisions : []);
+      } catch (err) {
+        // Non-fatal: empty decisions means no rules to replay; pattern-debt still surfaces
+        // "rule-not-in-current-decisions" advisories.
+      }
+      const result = debtSweeper.sweepPatternDebt({projectRoot, decisions, maxRounds, timeoutMs});
+      if (!result.ok) {
+        return emitFailure(EXIT_VALIDATION_FAIL, `essense-flow-tools review-pattern-debt-sweep: ${result.error}`);
+      }
+      if (outputFormat === 'json') {
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      } else {
+        process.stdout.write(`[review-pattern-debt-sweep] prior_rounds_found: ${result.prior_rounds_found}\n`);
+        for (const r of result.replays) {
+          process.stdout.write(`  [round ${r.round}] ${r.rule_id} status=${r.status} new_hits=${r.new_hits ? r.new_hits.length : 0}\n`);
+          if (r.new_hits) {
+            for (const h of r.new_hits) {
+              process.stdout.write(`    - ${h.file_path}:${h.line}\n`);
+            }
+          }
+        }
+        process.stdout.write(`[review-pattern-debt-sweep] result: ${result.sweep_partial ? 'PARTIAL' : 'COMPLETE'}\n`);
+      }
+      return;
+    }
+    case 'review-rule-sweep': {
+      // round-loop-closure R6 (Move 4 L-7 core). Run a rule's applies_to sweep
+      // across project source; emit candidate hits annotated with intentional_exception.
+      const ruleId = args['rule-id'];
+      const projectRoot = args['project-root'] || process.cwd();
+      const outputFormat = args['output-format'] || 'json';
+      const timeoutMs = args['budget-timeout-ms'] ? parseInt(args['budget-timeout-ms'], 10) : undefined;
+      const decisionsFile = args['decisions-file'] || path.join(projectRoot, '.pipeline', 'architecture', 'decisions.yaml');
+      if (!ruleId) {
+        return emitFailure(
+          EXIT_ARG_MISSING_OR_BAD,
+          "essense-flow-tools review-rule-sweep: --rule-id <id> is required",
+        );
+      }
+      const fsLocal = require('node:fs');
+      const yamlLocal = await yaml();
+      const sweeper = require('../lib/rule-sweep.cjs');
+      const validator = require('../lib/decision-schema-validator.cjs');
+      let text;
+      try {
+        text = fsLocal.readFileSync(decisionsFile, 'utf8');
+      } catch (err) {
+        return emitFailure(
+          EXIT_PROJECT_ROOT_BAD,
+          `essense-flow-tools review-rule-sweep: cannot read ${decisionsFile}: ${err.message}`,
+        );
+      }
+      let parsed;
+      try { parsed = yamlLocal.load(text); }
+      catch (err) {
+        return emitFailure(EXIT_YAML_PARSE, `essense-flow-tools review-rule-sweep: YAML parse failed: ${err.message}`);
+      }
+      const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.decisions) ? parsed.decisions : null);
+      if (!list) {
+        return emitFailure(EXIT_REQUIRED_KEY, `essense-flow-tools review-rule-sweep: ${decisionsFile} must contain decision list`);
+      }
+      const rule = list.find((d) => d && d.id === ruleId);
+      if (!rule) {
+        return emitFailure(EXIT_PREREQ_MISSING, `essense-flow-tools review-rule-sweep: rule '${ruleId}' not found in ${decisionsFile}`);
+      }
+      const validation = validator.validateDecision(rule);
+      if (!validation.ok) {
+        return emitFailure(EXIT_VALIDATION_FAIL, `essense-flow-tools review-rule-sweep: rule '${ruleId}' failed schema validation: ${validation.errors.join('; ')}`);
+      }
+      const result = sweeper.sweepRule(rule, projectRoot, {timeoutMs});
+      if (!result.ok) {
+        return emitFailure(EXIT_VALIDATION_FAIL, `essense-flow-tools review-rule-sweep: ${result.error}`);
+      }
+      if (outputFormat === 'json') {
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      } else {
+        process.stdout.write(`[review-rule-sweep] rule_id: ${result.rule_id}\n`);
+        process.stdout.write(`[review-rule-sweep] kind: ${result.kind}\n`);
+        process.stdout.write(`[review-rule-sweep] files_scanned: ${result.files_scanned}\n`);
+        process.stdout.write(`[review-rule-sweep] candidates: ${result.candidates.length}\n`);
+        for (const c of result.candidates) {
+          const tag = c.intentional_exception_candidate ? '[EXEMPT]' : '[CANDIDATE]';
+          process.stdout.write(`  ${tag} ${c.file_path}:${c.line}: ${c.surrounding_text}\n`);
+        }
+        process.stdout.write(`[review-rule-sweep] result: ${result.sweep_partial ? 'PARTIAL' : 'COMPLETE'}\n`);
+      }
+      return;
+    }
+    case 'spec-rule-validate': {
+      // round-loop-closure R5 (DD-RLC-2). Validates each decision in a
+      // decisions.yaml file against references/decision-schema.yaml. Used by
+      // L-7 lens before sweep + by alignment-lens criterion-7 (R12).
+      const decisionsFile = args['decisions-file'];
+      if (!decisionsFile) {
+        return emitFailure(
+          EXIT_ARG_MISSING_OR_BAD,
+          "essense-flow-tools spec-rule-validate: --decisions-file <path> is required",
+        );
+      }
+      const fsLocal = require('node:fs');
+      const yamlLocal = await yaml();
+      const validator = require('../lib/decision-schema-validator.cjs');
+      let text;
+      try {
+        text = fsLocal.readFileSync(decisionsFile, 'utf8');
+      } catch (err) {
+        return emitFailure(
+          EXIT_PROJECT_ROOT_BAD,
+          `essense-flow-tools spec-rule-validate: cannot read ${decisionsFile}: ${err.message}`,
+        );
+      }
+      let parsed;
+      try {
+        parsed = yamlLocal.load(text);
+      } catch (err) {
+        return emitFailure(
+          EXIT_YAML_PARSE,
+          `essense-flow-tools spec-rule-validate: YAML parse failed for ${decisionsFile}: ${err.message}`,
+        );
+      }
+      const list = Array.isArray(parsed)
+        ? parsed
+        : (parsed && Array.isArray(parsed.decisions) ? parsed.decisions : null);
+      if (!list) {
+        return emitFailure(
+          EXIT_REQUIRED_KEY,
+          `essense-flow-tools spec-rule-validate: ${decisionsFile} must be a YAML list or have top-level 'decisions:' array`,
+        );
+      }
+      const result = validator.validateDecisionsList(list);
+      // Report per-decision PASS/FAIL.
+      const lines = [];
+      lines.push(`[spec-rule-validate] decisions_file: ${decisionsFile}`);
+      lines.push(`[spec-rule-validate] decisions_total: ${result.per_decision.length}`);
+      let passCount = 0;
+      let failCount = 0;
+      for (const d of result.per_decision) {
+        if (d.ok) {
+          lines.push(`[spec-rule-validate] PASS ${d.id}`);
+          passCount++;
+        } else {
+          lines.push(`[spec-rule-validate] FAIL ${d.id}`);
+          for (const e of d.errors) {
+            lines.push(`  - ${e}`);
+          }
+          failCount++;
+        }
+      }
+      lines.push(`[spec-rule-validate] result: ${result.ok ? 'PASS' : 'FAIL'} (${passCount} pass, ${failCount} fail)`);
+      process.stdout.write(lines.join('\n') + '\n');
+      if (!result.ok) process.exit(EXIT_PREREQ_MISSING);
+      return;
+    }
     default:
       return emitFailure(
         EXIT_UNKNOWN_OP,

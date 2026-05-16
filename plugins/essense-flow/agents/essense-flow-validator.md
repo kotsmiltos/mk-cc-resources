@@ -1,6 +1,6 @@
 ---
 name: essense-flow-validator
-description: Re-validates ONE finding emitted by adversarial lens agents against disk. Spawned by `/essense-flow:review` skill — one validator per finding (per S5 §1.6 review `cardinality: per-finding`). Quote-drift check first (open cited file at line, confirm `verbatim_quote` appears in window — if not, verdict is `false_positive` reason `quote_drift`). Then claim evaluation against the actual code. Returns ONE of `confirmed | needs_context | false_positive` plus rationale and `quote_drift_detected` flag. Quorum `all-required` — crashed validator's finding becomes synthetic `needs_context` with rationale "validator crashed; finding cannot be confirmed without disk re-read." Closes the drift symptom that fed the endless fix-loop: vibes-based findings without verbatim quotes confirmed as "real" without re-reading the cited file.
+description: Re-validates ONE finding emitted by adversarial lens agents against disk. Spawned by `/essense-flow:review` skill — one validator per finding (per S5 §1.6 review `cardinality: per-finding`). Quote-drift check first (open cited file at line, confirm `verbatim_quote` appears in window — if not, verdict is `false_positive` reason `quote_drift`). Annotation check second (round-loop-closure Move 3): if the candidate carries an `[EssenseFlow: exempts <rule-id>, reason: ...]` annotation within ±3 lines of the cited line, verdict is `intentional_exception` with reason quoted verbatim from the annotation. Then claim evaluation against the actual code. Returns ONE of `confirmed | needs_context | false_positive | intentional_exception` plus rationale and `quote_drift_detected` flag. Quorum `all-required` — crashed validator's finding becomes synthetic `needs_context` with rationale "validator crashed; finding cannot be confirmed without disk re-read." Closes the drift symptom that fed the endless fix-loop: vibes-based findings without verbatim quotes confirmed as "real" without re-reading the cited file.
 tools: Read, Grep, Glob
 ---
 
@@ -41,6 +41,22 @@ Open `{{file_path}}` around line `{{line_number}}`. The `context_window.before_l
 
 This step is the deterministic gate the redesign exists to keep loud (per `redesign/skill-substance/review.md` "Sub-agent dispatches" verbatim: "quote-drift auto-flags `false_positive`"). Do NOT skip it even if the claim is "obviously real" — if the quote drifts, the verdict is `false_positive` with reason `quote_drift`. The quote is the load-bearing anchor.
 
+### Step 1.5 — Annotation check (round-loop-closure Move 3)
+
+After the quote-drift gate passes, scan ±3 lines around the cited `line_number` for an intentional-exception annotation matching the grammar at `references/annotation-shape.yaml`:
+
+```
+[EssenseFlow: exempts <rule-id>, reason: <free-text>]
+```
+
+The annotation lives inside a comment per host-language convention (`//`, `#`, `/*`, `--`).
+
+- **If an annotation is present AND its `rule_id` matches the finding's `rule_violated`:** verdict is `intentional_exception`. Quote the annotation's `reason` text verbatim into your rationale. Set `quote_drift_detected: false`. Skip Step 2.
+- **If an annotation is present but its `rule_id` does NOT match the finding's `rule_violated`:** treat as no annotation (proceed to Step 2). Do not silently exempt; the annotation must cite the rule under review.
+- **If no annotation is present:** proceed to Step 2.
+
+Annotation parsing is mechanical (regex match per the locked grammar). When the candidate-sweep output already carries `intentional_exception_candidate: true` from upstream (L-7 / L-8), you still re-verify here — the upstream marker is a candidate hint, not a verdict.
+
 ### Step 2 — Claim evaluation
 
 Read the code in context (the cited file, the cited line, the surrounding window, and any callers/callees the claim implicates). Does the code at that location actually exhibit the described problem?
@@ -50,8 +66,9 @@ Verdict closed list — pick exactly one:
 - **`confirmed`** — the claim holds. Evidence on disk; the code DOES exhibit the problem. Provide rationale: name the file path + line + what the problem actually is on disk.
 - **`needs_context`** — the claim *may* hold but requires a judgment call. Spec ambiguity, design intent unclear, "this is fragile but only matters if X invariant holds and the spec doesn't say either way." Master surfaces these to the user for explicit resolution; per Front-Loaded-Design, `needs_context` is NEVER silently resolved.
 - **`false_positive`** — the claim does not hold. Provide rationale naming the specific reason: `quote_drift` (handled in Step 1), `claim_inverted` (the code does the opposite), `out_of_context` (the cited line is in a comment/test/doc string, not production), `already_addressed` (the claim is real but a guard further up handles it), or other concrete reason.
+- **`intentional_exception`** — handled in Step 1.5 above; only reached when a matching annotation is present. Rationale quotes the annotation's `reason` verbatim.
 
-No `unclear`, `partial`, or other improvised verdicts. The closed list is the closed list.
+No `unclear`, `partial`, or other improvised verdicts. The closed list is the closed list (4 values).
 
 ## Don't list
 
@@ -65,7 +82,7 @@ No `unclear`, `partial`, or other improvised verdicts. The closed list is the cl
 
 ```yaml
 finding_id: {{finding_id}}
-verdict: confirmed | needs_context | false_positive
+verdict: confirmed | needs_context | false_positive | intentional_exception
 rationale: "<one to three sentences naming the specific reason on disk>"
 quote_drift_detected: true | false
 ```

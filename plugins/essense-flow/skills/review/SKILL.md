@@ -87,9 +87,43 @@ Dispatch every lens for the current sprint in a SINGLE message — parallel, no 
 - `failure-modes` — what happens at the edges? unhandled errors? race conditions?
 - `spec-drift` — does the implementation match the spec claim at the cited locator?
 - `functional-testing` — read the tests for what they actually verify.
+- `rule-completeness` (round-loop-closure L-7) — iterates every rule with `applies_to` in `.pipeline/architecture/decisions.yaml`; runs `review-rule-sweep` per rule; emits one finding per non-exempt sibling. Dispatched via `subagent_type=essense-flow-rule-completeness-lens` (registered at `plugins/essense-flow/agents/essense-flow-rule-completeness-lens.md`).
+- `pattern-debt` (round-loop-closure L-8) — re-runs prior-sprint QA-REPORT rule sweeps; emits one finding per NEW hit not in prior round's resolved set. Dispatched via `subagent_type=essense-flow-pattern-debt-lens` (registered at `plugins/essense-flow/agents/essense-flow-pattern-debt-lens.md`).
 - (Adaptive — master may add a lens for what the sprint touched; INST-13 — no cap.)
 
 Each lens returns a list of findings. **Findings without `verbatim_quote` and `file_path:line_number` are rejected at master's evidence-policy step.** Quotes shorter than `{{min_quote_length}}` auto-flag inconclusive.
+
+### Round-loop-closure lens dispatch (L-7 + L-8) — Move 4
+
+Dispatch the two round-loop-closure lenses in the SAME parallel-dispatch message as the 6 adversarial lenses. They share the parallel cardinality semantics (per S5 `cardinality: per-lens parallel`). Briefs:
+
+**L-7 (`essense-flow-rule-completeness-lens`):**
+- `project_root` — absolute path to project under review.
+- `sprint_number` — current sprint.
+- `decisions_path` — `.pipeline/architecture/decisions.yaml`.
+- `budget_timeout_ms` — default 30000 per rule.
+- `max_rules` — default 50.
+
+The lens calls `essense-flow-tools spec-rule-validate --decisions-file <decisions_path>` first; on non-zero exit it halts and surfaces (rule encoding upstream is structurally broken). Then per rule it calls `essense-flow-tools review-rule-sweep --rule-id <id> --project-root <project_root> --decisions-file <decisions_path> --output-format json --budget-timeout-ms <budget_timeout_ms>`. Findings emit with `rule_id`, `file_path:line`, `verbatim_quote`, `severity`, `sweep_pattern` (the rule's `applies_to` block, carried so L-8 can replay this round next time).
+
+**L-8 (`essense-flow-pattern-debt-lens`):**
+- `project_root`, `sprint_number`, `decisions_path` as above.
+- `max_rounds` — default 20.
+- `budget_timeout_ms` — default 30000 total.
+
+The lens calls `essense-flow-tools review-pattern-debt-sweep --project-root <project_root> --decisions-file <decisions_path> --max-rounds <max_rounds> --budget-timeout-ms <budget_timeout_ms> --output-format json`. Recurrence findings emit one per new_hit. Advisories (`status: rule-not-in-current-decisions`) emit at minor severity.
+
+### Bootstrap-baseline for adopting on mature projects (DD-RLC-5)
+
+When L-7 first runs on a project that did not previously have it (no prior `baseline-ledger.yaml` at `.pipeline/review/baseline-ledger.yaml`), all current rule-completeness findings get tagged `status: pre-existing-acknowledged` automatically. Master writes the ledger after dispatching `state-set-phase reviewing → triaging --acknowledge-baseline` (the flag turns the first round's L-7 findings into baseline entries instead of blocking criticals). Subsequent rounds only surface NEW violations (file modified since baseline OR not in baseline-ledger). This prevents the bootstrap-flood failure mode where L-7 first-run on a 50-rule mature project produces 200 findings and grinds triage.
+
+### Budget caps (DD-RLC-6)
+
+Per round:
+- L-7: max 50 rules processed per round; sweep timeout 30s per rule. Overflow → emit `sweep_partial: true` finding per unprocessed rule; surface to master; never silent skip.
+- L-8: max 20 prior rounds replayed; sweep timeout 30s total. Overflow → emit `sweep_partial: true`; surface; never silent skip.
+
+Both caps overridable via `init review` JSON (extension lands in init's L-7/L-8 fields when the init op next updates for these lenses).
 
 ### Dispatch per-finding validators via the registered agent
 
@@ -99,12 +133,12 @@ Dispatch every validator (one per finding) in a SINGLE message — parallel, no 
 
 ```yaml
 finding_id: <slug>
-verdict: confirmed | needs_context | false_positive
+verdict: confirmed | needs_context | false_positive | intentional_exception
 rationale: "<one to three sentences>"
 quote_drift_detected: true | false
 ```
 
-**Master computes the deterministic gate from the verdicts** — `confirmed_unacknowledged_criticals = count(verdict == confirmed AND severity == critical AND finding_id NOT IN acknowledged-ledger)`. The count is the gate; honour it.
+**Master computes the deterministic gate from the verdicts** — `confirmed_unacknowledged_criticals = count(verdict == confirmed AND severity == critical AND finding_id NOT IN acknowledged-ledger)`. `intentional_exception` verdicts (round-loop-closure Move 3) count as acknowledged-via-annotation and never contribute to the critical count; their findings get persisted in QA-REPORT.md with `status: intentional_exception` and the annotation's `reason` quoted verbatim. The count is the gate; honour it.
 
 ### Advance phase via `state-set-phase`
 
