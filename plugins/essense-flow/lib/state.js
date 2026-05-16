@@ -93,6 +93,64 @@ export class ShapeValidationError extends Error {
   }
 }
 
+// Hotfix v0.13.2 F1 helpers — module-scope so they allocate once at module
+// load rather than on every validateStateShape call. Each helper throws
+// ShapeValidationError with details.field naming the offender (dotted form
+// for nested fields). Used by validateStateShape below to mirror the typed-
+// parser contracts enforced by the SETTERS map at
+// bin/essense-flow-tools.cjs:1704-1748.
+
+function checkOptionalObject(stateObj, parentName) {
+  if (!(parentName in stateObj)) return null;
+  const v = stateObj[parentName];
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "object" || Array.isArray(v)) {
+    throw new ShapeValidationError(
+      `state-shape: ${parentName} must be null or an object; got ${JSON.stringify(v)} (type ${typeof v})`,
+      {
+        field: parentName,
+        expected: "null | object",
+        observed: v,
+      },
+    );
+  }
+  return v;
+}
+
+function checkNestedNonNegInt(parent, parentName, field) {
+  if (parent === null) return;
+  if (!(field in parent)) return;
+  const v = parent[field];
+  if (v === null) return;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0) {
+    throw new ShapeValidationError(
+      `state-shape: ${parentName}.${field} must be null or a non-negative integer; got ${JSON.stringify(v)} (type ${typeof v}). Set via the matching state-set-* CLI op rather than direct YAML edit.`,
+      {
+        field: `${parentName}.${field}`,
+        expected: "null | non-negative integer",
+        observed: v,
+      },
+    );
+  }
+}
+
+function checkNestedIso8601(parent, parentName, field) {
+  if (parent === null) return;
+  if (!(field in parent)) return;
+  const v = parent[field];
+  if (v === null) return;
+  if (typeof v !== "string" || !ISO8601_RX.test(v)) {
+    throw new ShapeValidationError(
+      `state-shape: ${parentName}.${field} must be null or an ISO8601 UTC string (e.g. '2026-05-14T07:30:00.000Z'); got ${JSON.stringify(v)} (type ${typeof v}). Set via the matching state-set-* CLI op rather than direct YAML edit.`,
+      {
+        field: `${parentName}.${field}`,
+        expected: "null | ISO8601 UTC string",
+        observed: v,
+      },
+    );
+  }
+}
+
 // validateStateShape — synchronous post-parse validator. `allowedPhases`
 // MUST be provided by the caller (typically readState, which already
 // awaits loadTransitions()). Synchronous to keep the throw site one step
@@ -223,6 +281,84 @@ export function validateStateShape(stateObj, allowedPhases) {
       );
     }
   }
+
+  // Hotfix v0.13.2 F1 (per 2026-05-16 v0.13.2 closure-reopening decision in
+  // redesign/06-decisions.md): mirror the typed-parser contracts enforced by
+  // the SETTERS map at bin/essense-flow-tools.cjs:1704-1748. Closes BS-4
+  // asymmetry pattern-class beyond v0.13.1 Fix-3 sprint — wave, the 3 round
+  // fields (elicitation.round / research.round / decomposition.round), and
+  // the 6 ISO8601 *_at fields (elicitation.started_at + elicitation.
+  // completed_at + research.completed_at + triage.completed_at + architecture
+  // .completed_at + verify.completed_at) all carried CLI-write-op contracts
+  // (parsePositiveIntOrNull / parseNonNegInt / parseIso8601) that were not
+  // mirrored in the shape validator; direct YAML writes that bypassed the
+  // state-set-* family could place malformed values that broke downstream
+  // consumers silently — same structural shape as sprint asymmetry which
+  // Fix-3 closed for one field at a time.
+  //
+  // Type-mismatch surfaces as ShapeValidationError with details.field naming
+  // the offender — dotted form for nested fields (e.g. 'elicitation.round',
+  // 'architecture.completed_at'). Field-check order: wave first (top-level),
+  // then per-parent block (elicitation, research, triage, architecture,
+  // decomposition, verify). Within each parent: validate parent is null or
+  // object, then validate each contracted child field. Each parent key is
+  // OPTIONAL at the top level + each child key is OPTIONAL within the
+  // parent — absence is accepted (defaults/state.yaml carries each parent
+  // with null child values).
+
+  // wave: null or positive integer (mirrors parsePositiveIntOrNull at
+  // bin/essense-flow-tools.cjs:1711).
+  if ("wave" in stateObj && stateObj.wave !== null) {
+    if (
+      typeof stateObj.wave !== "number" ||
+      !Number.isInteger(stateObj.wave) ||
+      stateObj.wave < 1
+    ) {
+      throw new ShapeValidationError(
+        `state-shape: wave must be null or a positive integer; got ${JSON.stringify(stateObj.wave)} (type ${typeof stateObj.wave}). Set via 'state-set-wave --value <int>' rather than direct YAML edit.`,
+        {
+          field: "wave",
+          expected: "null | positive integer",
+          observed: stateObj.wave,
+        },
+      );
+    }
+  }
+
+  // Nested-field checks. Each parent key may be absent / null / a populated
+  // object; only populated-object case triggers child-field checks. Helpers
+  // hoisted to module scope above to avoid per-call re-allocation.
+
+  const elicitation = checkOptionalObject(stateObj, "elicitation");
+  checkNestedNonNegInt(elicitation, "elicitation", "round");
+  checkNestedIso8601(elicitation, "elicitation", "started_at");
+  checkNestedIso8601(elicitation, "elicitation", "completed_at");
+
+  const research = checkOptionalObject(stateObj, "research");
+  checkNestedNonNegInt(research, "research", "round");
+  checkNestedIso8601(research, "research", "completed_at");
+
+  const triage = checkOptionalObject(stateObj, "triage");
+  checkNestedIso8601(triage, "triage", "completed_at");
+
+  const architecture = checkOptionalObject(stateObj, "architecture");
+  checkNestedIso8601(architecture, "architecture", "completed_at");
+  // architecture.round + architecture.escalation_signoff have NO CLI write op
+  // — per D-Sprint10-4 M-5 round budget, the round counter is read at
+  // bin/essense-flow-tools.cjs:1376 with a defensive
+  // `Number.isInteger(archBlock.round) ? archBlock.round : 0` guard so non-
+  // int values default to 0 (no silent breakage of the round-budget gate).
+  // BS-4 mirror does NOT apply here because there is no write-op contract
+  // to mirror. Out of v0.13.2 F1 scope; future-increment may add either a
+  // state-set-architecture-round op + mirror, OR validator-only enforcement
+  // without a CLI op. Same reasoning applies to escalation_signoff (read at
+  // :1379 expecting null or non-empty string).
+
+  const decomposition = checkOptionalObject(stateObj, "decomposition");
+  checkNestedNonNegInt(decomposition, "decomposition", "round");
+
+  const verify = checkOptionalObject(stateObj, "verify");
+  checkNestedIso8601(verify, "verify", "completed_at");
 
   // Unknown top-level keys: WARN-only, do NOT throw. Forward-compat per
   // D-Rd11-11 (Graceful-Degradation principle preserved).

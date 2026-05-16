@@ -72,7 +72,7 @@ test("readState: unknown phase value returns degraded with shape_error", async (
     // canonical transitions list" → shape_error.field === 'phase'.
     await writeFile(
       join(root, ".pipeline/state.yaml"),
-      "schema_version: 1\nphase: invented-phase\nlast_updated: 2026-05-16T12:00:00.000Z\n",
+      "schema_version: 1\nphase: invented-phase\nlast_updated: \"2026-05-16T12:00:00.000Z\"\n",
       "utf8",
     );
     const s = await readState(root);
@@ -190,7 +190,7 @@ test("writeState: force=true allows recovery from degraded state", async () => {
     await mkdir(join(root, ".pipeline"), { recursive: true });
     await writeFile(
       join(root, ".pipeline/state.yaml"),
-      "schema_version: 1\nphase: invented-phase\nlast_updated: 2026-05-16T12:00:00.000Z\n",
+      "schema_version: 1\nphase: invented-phase\nlast_updated: \"2026-05-16T12:00:00.000Z\"\n",
       "utf8",
     );
     const r = await writeState(root, { schema_version: 1, phase: "idle" }, { force: true });

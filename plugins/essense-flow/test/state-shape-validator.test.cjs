@@ -697,6 +697,204 @@ async function loadStateLib() {
     );
   });
 
+  // ------------------------------------------------------------------
+  // AC-11 (v0.13.2 F1): wave shape — null or positive integer.
+  // Mirrors parsePositiveIntOrNull at bin/essense-flow-tools.cjs:1711.
+  // ------------------------------------------------------------------
+  await record('AC-11: wave accepts null and positive integer; rejects others with shape_error.field=wave', () => {
+    // Accept cases.
+    for (const good of [null, 1, 7, 100]) {
+      const obj = makeValidStateObject({ wave: good });
+      assert.doesNotThrow(
+        () => validateStateShape(obj, ALLOWED_PHASES),
+        `validator must accept wave=${JSON.stringify(good)}`,
+      );
+    }
+    // Reject cases.
+    const rejects = [
+      { val: 'abc', label: 'string' },
+      { val: '3', label: 'string-int' },
+      { val: 0, label: 'zero' },
+      { val: -1, label: 'negative' },
+      { val: 1.5, label: 'non-integer' },
+      { val: true, label: 'boolean' },
+      { val: [], label: 'array' },
+    ];
+    for (const { val, label } of rejects) {
+      const obj = makeValidStateObject({ wave: val });
+      let thrown = null;
+      try {
+        validateStateShape(obj, ALLOWED_PHASES);
+      } catch (e) {
+        thrown = e;
+      }
+      assert.ok(thrown, `validator did not throw on wave=${label} (${JSON.stringify(val)})`);
+      assert.strictEqual(thrown.name, 'ShapeValidationError', `expected ShapeValidationError for wave=${label}`);
+      assert.strictEqual(
+        thrown.details && thrown.details.field,
+        'wave',
+        `shape_error.details.field must equal 'wave' for wave=${label}; got: ${thrown.details && thrown.details.field}`,
+      );
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // AC-12 (v0.13.2 F1): nested parent (e.g. elicitation) must be null or
+  // an object; non-object value rejected with parent-named shape_error.
+  // ------------------------------------------------------------------
+  await record('AC-12: nested parent keys reject non-object values with shape_error.field=<parent>', () => {
+    const parents = ['elicitation', 'research', 'triage', 'architecture', 'decomposition', 'verify'];
+    const bads = ['scalar', 42, true, []];
+    for (const parent of parents) {
+      for (const bad of bads) {
+        const obj = makeValidStateObject({ [parent]: bad });
+        let thrown = null;
+        try {
+          validateStateShape(obj, ALLOWED_PHASES);
+        } catch (e) {
+          thrown = e;
+        }
+        assert.ok(thrown, `validator did not throw on ${parent}=${JSON.stringify(bad)}`);
+        assert.strictEqual(thrown.name, 'ShapeValidationError', `expected ShapeValidationError for ${parent}=${JSON.stringify(bad)}`);
+        assert.strictEqual(
+          thrown.details && thrown.details.field,
+          parent,
+          `shape_error.details.field must equal '${parent}' for ${parent}=${JSON.stringify(bad)}; got: ${thrown.details && thrown.details.field}`,
+        );
+      }
+      // Null parent accepted.
+      const objNull = makeValidStateObject({ [parent]: null });
+      assert.doesNotThrow(
+        () => validateStateShape(objNull, ALLOWED_PHASES),
+        `validator must accept ${parent}=null`,
+      );
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // AC-13 (v0.13.2 F1): nested *.round fields — null or non-negative integer.
+  // Mirrors parseNonNegInt at bin/essense-flow-tools.cjs:1715/:1727/:1743.
+  //
+  // Deliberate omission: architecture.round is NOT covered here. It has no
+  // CLI write op (no entry in SETTERS at bin/essense-flow-tools.cjs:1704-
+  // 1748); the round counter is read defensively at :1376 with
+  // `Number.isInteger(archBlock.round) ? archBlock.round : 0` so non-int
+  // values default to 0. BS-4 mirror does not apply without a write-op
+  // contract; out of v0.13.2 F1 scope. See lib/state.js F1 block comment
+  // for forward-implication notes (state-set-architecture-round op +
+  // mirror is a candidate future increment).
+  // ------------------------------------------------------------------
+  await record('AC-13: nested round fields accept null and non-neg int; reject others with shape_error.field=<parent>.round', () => {
+    const roundParents = [
+      { parent: 'elicitation', extra: { started_at: null, completed_at: null } },
+      { parent: 'research', extra: { completed_at: null } },
+      { parent: 'decomposition', extra: {} },
+    ];
+    for (const { parent, extra } of roundParents) {
+      // Accept cases.
+      for (const good of [null, 0, 1, 25]) {
+        const obj = makeValidStateObject({ [parent]: Object.assign({ round: good }, extra) });
+        assert.doesNotThrow(
+          () => validateStateShape(obj, ALLOWED_PHASES),
+          `validator must accept ${parent}.round=${JSON.stringify(good)}`,
+        );
+      }
+      // Reject cases.
+      const rejects = [
+        { val: 'abc', label: 'string' },
+        { val: -1, label: 'negative' },
+        { val: 1.5, label: 'non-integer' },
+        { val: true, label: 'boolean' },
+      ];
+      for (const { val, label } of rejects) {
+        const obj = makeValidStateObject({ [parent]: Object.assign({ round: val }, extra) });
+        let thrown = null;
+        try {
+          validateStateShape(obj, ALLOWED_PHASES);
+        } catch (e) {
+          thrown = e;
+        }
+        assert.ok(thrown, `validator did not throw on ${parent}.round=${label} (${JSON.stringify(val)})`);
+        assert.strictEqual(thrown.name, 'ShapeValidationError', `expected ShapeValidationError for ${parent}.round=${label}`);
+        assert.strictEqual(
+          thrown.details && thrown.details.field,
+          `${parent}.round`,
+          `shape_error.details.field must equal '${parent}.round' for ${label}; got: ${thrown.details && thrown.details.field}`,
+        );
+      }
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // AC-14 (v0.13.2 F1): nested ISO8601 *_at fields — null or valid ISO8601
+  // UTC string. Mirrors parseIso8601 at bin/essense-flow-tools.cjs:1719,
+  // :1723, :1731, :1735, :1739, :1747 across 6 fields.
+  // ------------------------------------------------------------------
+  await record('AC-14: nested ISO8601 *_at fields accept null and valid ISO; reject malformed with shape_error.field=<parent>.<field>', () => {
+    const iso8601Fields = [
+      { parent: 'elicitation', field: 'started_at', base: { round: 0, completed_at: null } },
+      { parent: 'elicitation', field: 'completed_at', base: { round: 0, started_at: null } },
+      { parent: 'research', field: 'completed_at', base: { round: 0 } },
+      { parent: 'triage', field: 'completed_at', base: {} },
+      { parent: 'architecture', field: 'completed_at', base: {} },
+      { parent: 'verify', field: 'completed_at', base: {} },
+    ];
+    const goodIsos = [null, '2026-05-14T07:30:00.000Z', '2026-05-14T07:30:00Z'];
+    const badIsos = [
+      { val: 'not-iso', label: 'arbitrary string' },
+      { val: '2026-05-14 07:30:00', label: 'space-separated' },
+      { val: '2026-05-14T07:30:00+00:00', label: 'offset-not-Z' },
+      { val: 1234567890, label: 'numeric' },
+      { val: true, label: 'boolean' },
+    ];
+    for (const { parent, field, base } of iso8601Fields) {
+      // Accept cases.
+      for (const good of goodIsos) {
+        const nested = Object.assign({}, base, { [field]: good });
+        const obj = makeValidStateObject({ [parent]: nested });
+        assert.doesNotThrow(
+          () => validateStateShape(obj, ALLOWED_PHASES),
+          `validator must accept ${parent}.${field}=${JSON.stringify(good)}`,
+        );
+      }
+      // Reject cases.
+      for (const { val, label } of badIsos) {
+        const nested = Object.assign({}, base, { [field]: val });
+        const obj = makeValidStateObject({ [parent]: nested });
+        let thrown = null;
+        try {
+          validateStateShape(obj, ALLOWED_PHASES);
+        } catch (e) {
+          thrown = e;
+        }
+        assert.ok(thrown, `validator did not throw on ${parent}.${field}=${label} (${JSON.stringify(val)})`);
+        assert.strictEqual(thrown.name, 'ShapeValidationError', `expected ShapeValidationError for ${parent}.${field}=${label}`);
+        assert.strictEqual(
+          thrown.details && thrown.details.field,
+          `${parent}.${field}`,
+          `shape_error.details.field must equal '${parent}.${field}' for ${label}; got: ${thrown.details && thrown.details.field}`,
+        );
+      }
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // AC-15 (v0.13.2 F1): defaults/state.yaml passes validator after F1.
+  // Regression guard — initState writes defaults+last_updated; readState
+  // must read back with degraded:null. F1 must not break this path.
+  // ------------------------------------------------------------------
+  await record('AC-15: defaults/state.yaml round-trip (initState then readState) returns degraded:null after F1', async () => {
+    const sandbox = makeSandbox();
+    // initState() writes defaults to .pipeline/state.yaml + stamps last_updated.
+    const { initState } = lib;
+    const initResult = await initState(sandbox);
+    assert.strictEqual(initResult.ok, true, `initState must return ok=true; got: ${JSON.stringify(initResult)}`);
+    // readState now triggers validateStateShape (post-F1) against the written file.
+    const s = await readState(sandbox);
+    assert.strictEqual(s.degraded, null, `readState on initialized state must return degraded:null; got: ${JSON.stringify(s)}`);
+    assert.strictEqual(s.phase, 'idle', `defaults phase must be 'idle'; got: ${s.phase}`);
+  });
+
   // --- Summary -----------------------------------------------------
   cleanupSandboxes();
   const total = PASS.length + FAIL.length;
