@@ -58,6 +58,10 @@ proposed_check: "<the test/grep/inspection that would prove the claim>"
 
 Multiple findings = multiple records in your response. Empty findings list is valid (the lens may legitimately find nothing — better that than fabricated findings).
 
+## Returns
+
+A YAML list of finding records using the shape declared in `## Job` above. Required fields per finding: `finding_id`, `lens` (substituted from brief), `severity` ∈ `{critical, major, minor}`, `file_path`, `line_number`, `verbatim_quote` (≥`{{min_quote_length}}` chars), `context_window.{before_lines,after_lines}`, `claim`, `proposed_check`. Empty list is valid. End response with `{{sentinel}}`.
+
 ## Discipline rules
 
 - **Findings without `verbatim_quote` and `file_path:line_number` will be rejected.** Master's evidence-policy step refuses findings missing these fields; rejected findings do not flow to validators.

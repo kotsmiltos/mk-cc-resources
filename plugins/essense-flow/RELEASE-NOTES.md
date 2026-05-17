@@ -1,5 +1,44 @@
 # Release notes — essense-flow
 
+## 0.13.3 — Context-engineering adherence enforcement + propagation-block consolidation
+
+Audit-driven hotfix per 2026-05-17 v0.13.3 closure-reopening decision in `redesign/06-decisions.md`. User invoked `/field-to-ship` against a meta-audit prompt; runner researched Anthropic canonical context-engineering guidance (synthesized 15 tenets T1..T15 from anthropic.com/engineering/effective-context-engineering-for-ai-agents + equipping-agents-for-the-real-world-with-agent-skills + Anthropic Skills repo Skill Writing Guide via Context7 + WebFetch); compared plugin practices against the tenets; user verdicts: (1) propagation-block conflict → *"Consolidate to principles.md + cite (canonical T11)"*; (2) sprint scope → *"All 4 tests (T-ENF-1..4) + propagation-block decision"*; (3) deprioritize T11 SKILL.md body <500 lines.
+
+**Propagation-block consolidation (canonical T11).** Pre-v0.13.3, the 4-bullet "Read this before doing anything" block (Limits-awareness / Positive mindset / Quality ownership / Propagation requirement) was duplicated verbatim in 3 of 9 SKILL.md files and absent in the other 6 — inconsistent + duplicative per Anthropic T1/T3/T11 (smallest high-signal token set; tight informative context; SKILL.md body ideally <500 lines via progressive disclosure). Block moved to `references/principles.md` as a new `## Read This Before Doing Anything` section; each of 9 SKILL.md now carries the single-line citation `See \`references/principles.md\` \`## Read This Before Doing Anything\``. `tests/conduct-preamble.test.js` extended with a 4th test enforcing the citation pattern + canonical section presence + 4-bullet content. Existing Conduct preamble verbatim test unchanged.
+
+**T-ENF-1 — description consistency (`tests/description-consistency.test.js`).** Per-skill check: SKILL.md frontmatter description shares >=50% significant-word overlap with `commands/<skill>.md` frontmatter description. Catches major drift (different verbs / different scope) while tolerating minor wording shifts. Context skill has no `commands/context.md` counterpart (uses /status + /next; not /context) — informational-skip per Fail-Soft, not failure. **9 skill-description-pairs surveyed; 8 pairs pass; 1 informational-skip.**
+
+**T-ENF-2 V1 — brief↔agent return-shape presence (`tests/brief-vs-agent-returns.test.js`).** Per-pair check: brief MUST declare an output-shape section (`## Required output` | `## Required return shape` | `## Output`); agent MUST declare a return-shape section (`## Returns` | `## Output shape` | `## Output format`). 7 brief↔agent pairs covered. First-run surfaced 3 real drift findings, all fixed in this commit:
+- `agents/essense-flow-adversarial-lens.md` — added `## Returns` section pointing at the per-finding YAML shape declared in `## Job` (was inline, no formal header).
+- `agents/essense-flow-sub-architect.md` — renamed `## Your return shape` → `## Returns` for naming consistency.
+- `skills/verify/templates/extraction-brief.md` — extracted YAML shape into new `## Required output` section with named-field list (was inline under `## Your job`, no formal output-shape header).
+
+T-ENF-2 V2 (content-overlap check: brief-required field names ⊆ agent-emit field names) is deferred to future-increment — requires both sides normalized to a single section name + structured fields.
+
+**T-ENF-3 — governance ledger compaction policy (`tests/ledger-compaction.test.js`).** Per Anthropic T7 (compaction): scan `redesign/SURPRISES.md` + `redesign/06-decisions.md` for H2 entries with `**Status:**` ∈ {resolved, ratified, complete} AND date >30 days old; fail with archive-list. V1 iteration is fail-with-list; auto-archive script deferred to future-increment. Today passes (all entries ≤30 days old, post-v0.13.2 ship); gate installed for future entries. Fail-Soft: if `essense-flow-re-imagined/redesign/` workspace absent on consumer machine, test skips with stderr note (other plugin consumers don't need the redesign workspace).
+
+**T-ENF-4 — skill-substance README presence (`tests/skill-substance-readme.test.js`).** If `plugins/essense-flow/skill-substance/` contains ≥1 *.md substance file, README.md must be present + reference closure-plan SPEC DD-2 + name the redesign workspace location of the full 9-file source-of-truth set. Authored `skill-substance/README.md` explaining the 3-vs-9 ship rationale: 3 dispatch-substance-rule skills (architect / review / verify) ship as runtime-needed; 6 non-shipped (build / context / elicit / heal / research / triage) live as design-time source-of-truth in `essense-flow-re-imagined/redesign/skill-substance/` with `FROZEN-SHA.yaml` hash-pin.
+
+**Cumulative test counts.**
+- CJS: 43/43 pass (unchanged from v0.13.2).
+- ESM: 67/67 pass (was 62/62 pre-v0.13.3; +5 new tests: 1 in `tests/conduct-preamble.test.js` for citation pattern; 4 new test files `tests/{description-consistency,brief-vs-agent-returns,ledger-compaction,skill-substance-readme}.test.js`).
+- Total: 110 ACs green. `npm test` exit 0 cleanly.
+
+**Version source-of-record.** Bumped together: `mk-cc-resources/.claude-plugin/marketplace.json:15` + `plugins/essense-flow/.claude-plugin/plugin.json:3` + `plugins/essense-flow/package.json:3` all read `"version": "0.13.3"`.
+
+**Scope NOT addressed.**
+- T11 SKILL.md body <500 lines (architect/SKILL.md at 601) — user-deprioritized via verbatim verdict *"i don't think 1 is important"*.
+- T14 scenario-specific content extraction from SKILL.md bodies — paired with T11; deferred.
+- T-ENF-2 V2 content-overlap check — requires both sides normalized + structured; future-increment.
+- T-ENF-3 auto-archive mechanism — V1 is fail-with-list; auto-archive script is future-increment.
+- T-ENF-1 threshold tuning (0.5 word overlap is loose; misses single-word drift like architect's `align` step missing in commands preamble) — could tighten to 0.7+ with false-positive risk trade-off; future-increment if drift accumulates.
+- Drift-6/7/8/9 audit substance (closure-plan SPEC DD-4) — STILL owed by future increment (unchanged from S10.8/S10.9).
+- `architecture.round` + `escalation_signoff` + `halt_*` + `sprint_complete_at` + `sprint_summary` + `known_open_concerns` validator type-checks (BS-4 pattern-class extension) — unchanged from v0.13.2 footnote.
+- T10 just-in-time loading architectural shift — out of scope; would require redesign.
+- Propagation-rule scope (every descendant artifact) test only enforces SKILL.md citation; briefs / agents / tests / governance entries are NOT enforced. Test scope narrower than rule scope — future-increment can broaden.
+- T-ENF-2 V1 brief↔agent pair list is hardcoded (7 pairs); new pair additions require test maintenance — future-increment could derive from agent-spec.md programmatically.
+
+
 ## 0.13.2 — Validator contract symmetry + test timestamp quoting
 
 Hotfix per 2026-05-16 v0.13.2 closure-reopening decision in `redesign/06-decisions.md`. Surfaces from `field-to-ship` skill proactive audit-mode invocation against `plugins/essense-flow/` (bin/ + lib/ + skills/ + tests/) using the pattern library at `~/.claude/skills/field-to-ship/patterns.yaml`. Two findings; both verified against current source line-by-line before any code touch. No new public API; pure validator extension + test cleanup.

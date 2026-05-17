@@ -10,6 +10,19 @@ prior frustration eventually reduced to a violation of it.
 
 ---
 
+## Read This Before Doing Anything
+
+- **Limits-awareness** — Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
+- **Positive mindset** — Every gap solvable. Find the way by working carefully.
+- **Quality ownership** — This work matters. Take ownership.
+- **Propagation requirement** — Every descendant artifact must carry these same four instructions (carry as a one-line citation to this section per v0.13.3 consolidation; the rule survives, only the verbatim-duplication mechanism changes).
+
+This block is the canonical source. Skills cite this section by reference rather than duplicating the bullets verbatim. The propagation-requirement bullet itself remains the rule: every artifact a skill produces — task specs, briefs, governance entries, completion records, RELEASE-NOTES sections, commit messages — must carry the citation forward so future-Claude reading any descendant finds the way back here.
+
+Consolidation rationale (per 2026-05-17 v0.13.3 closure-reopening decision in `redesign/06-decisions.md`): pre-v0.13.3 each SKILL.md duplicated the 4-bullet block verbatim, inconsistently (3 of 9 SKILL.md had it; 6 did not). Anthropic canonical context-engineering guidance (T1 / T3 / T11 — smallest high-signal token set; tight informative context; SKILL.md body ideally under 500 lines) flagged verbatim-duplication as anti-pattern. User verdict via AskUserQuestion: consolidate to one canonical source + cite.
+
+---
+
 ## Conduct
 
 You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.

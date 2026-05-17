@@ -96,6 +96,49 @@ test("every SKILL.md frontmatter has required fields", async () => {
   }
 });
 
+// v0.13.3 propagation-block consolidation: the 4-bullet "Read this before
+// doing anything" block (Limits-awareness / Positive mindset / Quality
+// ownership / Propagation requirement) was duplicated verbatim in 3 of 9
+// SKILL.md files pre-v0.13.3 and absent in the other 6 — inconsistent.
+// Anthropic canonical context-engineering guidance (T11 — SKILL.md body
+// ideally <500 lines via progressive disclosure) flagged verbatim
+// duplication as anti-pattern. Per 2026-05-17 v0.13.3 closure-reopening
+// decision, the block lives once at principles.md `## Read This Before
+// Doing Anything`; each SKILL.md cites it by reference. This test enforces:
+//   (a) principles.md HAS the canonical section with the 4 bullets named.
+//   (b) every SKILL.md cites the section verbatim.
+test("propagation-block consolidation: principles.md carries canonical 4-bullet block + every SKILL.md cites it", async () => {
+  const principlesRaw = await readNormalized(PRINCIPLES_PATH);
+  const sectionMatch = principlesRaw.match(/##\s+Read This Before Doing Anything\n([\s\S]+?)(?:\n##\s|\n---\n)/);
+  assert.ok(
+    sectionMatch,
+    "principles.md must contain a '## Read This Before Doing Anything' section",
+  );
+  const sectionBody = sectionMatch[1];
+  for (const required of ["Limits-awareness", "Positive mindset", "Quality ownership", "Propagation requirement"]) {
+    assert.ok(
+      sectionBody.includes(required),
+      `principles.md '## Read This Before Doing Anything' section must name '${required}'`,
+    );
+  }
+
+  const citationPattern = "See `references/principles.md` `## Read This Before Doing Anything`";
+  const skills = await listSkills();
+  const failures = [];
+  for (const skill of skills) {
+    const skillPath = join(SKILLS_DIR, skill, "SKILL.md");
+    const raw = await readNormalized(skillPath);
+    if (!raw.includes(citationPattern)) {
+      failures.push(`${skill}: SKILL.md does not cite principles.md '## Read This Before Doing Anything' (expected verbatim substring: ${citationPattern})`);
+    }
+  }
+  if (failures.length > 0) {
+    assert.fail(
+      `propagation-block citation drift in ${failures.length} skill(s):\n  ${failures.join("\n  ")}`,
+    );
+  }
+});
+
 test("expected skills present: elicit, research, triage, architect, build, review, verify, context, heal", async () => {
   const skills = new Set(await listSkills());
   for (const expected of [

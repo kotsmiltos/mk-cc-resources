@@ -9,13 +9,7 @@ schema_version: 1
 
 ## Read this before doing anything
 
-Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics. Refuse to "wrap up" when work isn't done.
-
-Positive mindset: every gap solvable. Find the way by working carefully.
-
-Quality ownership: this work matters. Take ownership.
-
-Propagation requirement: every descendant artifact MUST carry these same 4 instructions.
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
 
 ## Conduct
 

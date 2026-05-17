@@ -106,7 +106,7 @@ agent-decides, TODO, [TODO], XXX, FIXME, ???,
 
 If you find yourself wanting to write any of these, **STOP**. Either close the question by reasoning further from your inputs, or surface it as `cross_module_concern` / `boundary_concern` to the master — never defer in the task spec itself.
 
-## Your return shape
+## Returns
 
 Wrap your output in YAML with two top-level fields:
 
