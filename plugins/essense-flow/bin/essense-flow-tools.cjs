@@ -2224,11 +2224,22 @@ function evaluatePredicate(predicate, projectRoot, sprint, cursorState = null, r
       /confirmed_unacknowledged_criticals\s*(==|>=|<=|>|<)\s*(-?\d+)/,
     );
     if (cucMatch) {
+      // v0.13.4 L1 extension: subtract class_acknowledged count from the
+      // observed confirmed_unacknowledged_criticals before comparison. Master
+      // computes class_acknowledged by matching each confirmed critical
+      // finding against `match_pattern:` entries in acknowledged-ledger.yaml
+      // (sprint-spanning ledger keyed by class pattern, not finding_id).
+      // Without this, every sprint manufactures new finding_ids and per-id
+      // acks never carry forward — the loop self-perpetuates. Field is
+      // OPTIONAL in frontmatter; absence defaults to 0 (back-compat with
+      // pre-0.13.4 QA-REPORT.md). Mirrors the verify predicate's existing
+      // subtractKey: 'acknowledged' pattern (L2250).
       return evalCountPredicate({
         fullPath,
         key: 'confirmed_unacknowledged_criticals',
         operator: cucMatch[1],
         operand: parseInt(cucMatch[2], 10),
+        subtractKey: 'class_acknowledged',
       });
     }
     // S9.3 verify wire: `confirmed_gaps (==|>|<|>=|<=) <int>` with explicit
@@ -6439,6 +6450,13 @@ module.exports = {
   // body lines land — the lock-substance preservation contract per
   // CMC-Rd11-1 extended to M1 per the substance (i) ruling.
   appendHealLog,
+  // v0.13.4 L1: expose evalCountPredicate so the class-pattern-ack regression
+  // test can stage frontmatter fixtures via mkdtempSync and assert the
+  // subtractKey semantics directly without spawning a full CLI op. The
+  // function is pure (reads file, returns {ok, kind, observed}); no I/O beyond
+  // the explicit `fullPath`. Mirrors evalDispatchPredicate's test-export
+  // convention above (pure-function, I/O-injected).
+  evalCountPredicate,
 };
 
 // ============================================================================

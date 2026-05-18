@@ -380,6 +380,74 @@ notes: |
 
 Then for each task in each wave, write the task spec via `task-spec-write` (one CLI invocation per spec). Stage each spec at `<project-root>/.tmp-task-spec-<id>.yaml` (or any non-canonical staging location), then `task-spec-write` reads + validates + writes to the canonical destination.
 
+### Canon-tax emission (v0.13.4 L4 — mandatory pack-step task)
+
+**Rule.** Before writing the sprint manifest at pack-step, master MUST:
+
+1. Read `ARCH.md` frontmatter's `canon_files:` array (from `init architect.canonical_paths.arch_md`).
+2. Count decisions closed during the current architect round (count of `decisions.yaml` entries whose `round:` field equals the current round, OR — for round 1 — every decision in `decisions.yaml` since `init architect` is the first round).
+3. **IF** `canon_files` is non-empty **AND** `decisions_closed_this_round > 0`:
+   - Emit a `T-CANON-<round>` task as the **first task of wave 1** of the sprint (wave 1 because all subsequent tasks may reference the closed decisions; canon-tax must land before downstream tasks read).
+   - `file_write_contract.allowed:` lists every path in `canon_files` (one entry per canon file).
+   - `goal:` is one sentence: "Append one row per master-decision-closed-round-N to each project-canon mirror."
+   - `behavioral_pseudocode:` enumerates each closed decision (id + one-line summary) and the row shape per canon file (master must read each canon file's existing entries during pack to derive the row shape — substrate-verify before prescribing).
+   - `test_completion_contract:` includes `check: type: grep` entries asserting each closed decision id appears in each canon file after the task runs.
+   - `dependencies:` is `[]` (canon-tax has no deps; it's wave-1 first task).
+   - `agency_level: prescribed` (the canon row shape is mechanical — no design judgment).
+4. **IF** `canon_files` is empty (`[]`) OR `decisions_closed_this_round == 0`: skip emission. Record `canon_tax_skipped: true` with reason in the sprint manifest's `notes:` field for the drift-audit trail.
+5. **IF** `canon_files` is `null` OR missing from ARCH.md frontmatter: STOP. Refuse pack-step. Surface to user via `AskUserQuestion` asking whether to declare `canon_files: []` (no project-canon mirrors) or to populate the array. Silent default to `[]` is rejected — the declaration must be explicit.
+
+**Why this exists.** Pre-v0.13.4, architect closed master decisions in `decisions.yaml` but did not emit any task that propagated those decisions to project-canonical doc files (e.g. `docs/DECISIONS-INDEX.md`, `docs/MASTER-DECISIONS.md`). Build skill did not touch architect docs. Next review's spec-drift lens found the gap every sprint — pattern repeated 6+ rounds in observed pipeline runs. Canon-tax closes the recurrence at source: every closed master decision gets a propagation task automatically.
+
+**Worked example.** Architect round 3 closes MD-92..MD-98 (7 decisions). ARCH.md frontmatter declares `canon_files: ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]`. Pack-step emits:
+
+```yaml
+schema_version: 1
+task_id: T-CANON-3
+module: doc-canon
+goal: "Append one row per master-decision-closed-round-3 to each project-canon mirror (DECISIONS-INDEX.md + MASTER-DECISIONS.md)."
+requirements_traced: []   # canon-tax has no FR/NFR mapping; it's pipeline discipline, not feature work
+file_write_contract:
+  allowed: ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]
+  scratch_space: ["os.tmpdir()"]
+  forbidden: []
+behavioral_pseudocode: |
+  # For each MD closed this round (MD-92..MD-98, 7 decisions):
+  #   1. Read .pipeline/architecture/decisions.yaml for the round-3 entry shape.
+  #   2. Read docs/DECISIONS-INDEX.md to learn its row shape (read at least the
+  #      most recent 3 rows; substrate-verify before prescribing).
+  #   3. Append a row to docs/DECISIONS-INDEX.md per MD with: id, title, round,
+  #      one-line summary, link to decisions.yaml.
+  #   4. Read docs/MASTER-DECISIONS.md row shape.
+  #   5. Append a row to docs/MASTER-DECISIONS.md per MD with: id, title,
+  #      round, rationale-excerpt, alternatives-rejected-count.
+test_completion_contract:
+  - id: AC-1
+    description: "All 7 MD ids appear in DECISIONS-INDEX.md after task runs"
+    check:
+      type: grep
+      spec: '^.*MD-9[2-8].*$ in docs/DECISIONS-INDEX.md; count == 7'
+  - id: AC-2
+    description: "All 7 MD ids appear in MASTER-DECISIONS.md after task runs"
+    check:
+      type: grep
+      spec: '^.*MD-9[2-8].*$ in docs/MASTER-DECISIONS.md; count == 7'
+dependencies: []
+agency_level: prescribed
+agency_rationale: "Canon row shape is mechanical; the build agent reads existing rows + closed decisions and appends. No design judgment needed."
+```
+
+Master writes this task spec via `task-spec-write` like any other; it lands at `architecture/sprints/<n>/tasks/T-CANON-<round>.yaml`. The sprint manifest's `waves[0].tasks` array MUST list `T-CANON-<round>` as the first entry.
+
+**Verifiable check.** After pack-step, for any architect round N where ARCH.md `canon_files: [...]` is non-empty and N decisions closed:
+
+```bash
+test -f .pipeline/architecture/sprints/<sprint>/tasks/T-CANON-<round>.yaml \
+  && grep -q 'task_id: T-CANON-<round>' .pipeline/architecture/sprints/<sprint>/manifest.yaml
+```
+
+Both must succeed. Drift-audit script (future-increment per closure-plan) will codify this as `drift-canon-tax-emission`.
+
 ### Agency level rules (pass-through to sub-architects)
 
 Sub-architects pick `agency_level` per task. You audit the rationale.

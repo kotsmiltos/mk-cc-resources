@@ -57,7 +57,7 @@ Where the templates contain `<n>` (sprint number), substitute with the literal s
 - `qa_report_md` (`.pipeline/review/sprints/<n>/QA-REPORT.md`) → ordinary `Write` after substituting `<n>`. Master writes this directly with `Write`; the prerequisite-predicate evaluator at `state-set-phase` reads its frontmatter to enforce the deterministic gate.
 - `spec_compliance_yaml` (`.pipeline/review/sprints/<n>/spec-compliance.yaml`) → ordinary `Write` after substituting `<n>`.
 - `false_positive_ledger_yaml` (`.pipeline/review/false-positive-ledger.yaml`) → ordinary `Write`. Sprint-spanning (no `<n>`); read prior contents, append this run's false positives, write back.
-- `acknowledged_ledger_yaml` (`.pipeline/review/acknowledged-ledger.yaml`) → ordinary `Write`. Sprint-spanning (no `<n>`); read prior contents, accept user's explicit acks, write back.
+- `acknowledged_ledger_yaml` (`.pipeline/review/acknowledged-ledger.yaml`) → ordinary `Write`. Sprint-spanning (no `<n>`); read prior contents, accept user's explicit acks, write back. **Two entry shapes are honored — see "Acknowledged-ledger schema" below for the v0.13.4 class-pattern extension that closes the per-sprint loop where finding_ids regenerate.**
 
 ### Advance the per-skill cursor at each step
 
@@ -199,6 +199,7 @@ sprint: <n>
 findings_total: <count>
 confirmed_critical: <count>
 confirmed_unacknowledged_criticals: <count>   # the deterministic gate — read by state-set-phase
+class_acknowledged: <count>                   # v0.13.4: count of confirmed criticals matched by class-pattern in acknowledged-ledger.yaml; CLI subtracts before gate eval
 acknowledged: <count>
 needs_context: <count>
 false_positives: <count>
@@ -207,7 +208,49 @@ lenses_missing: [...]                         # never hidden
 ---
 ```
 
-The `confirmed_unacknowledged_criticals` field is the gate — `state-set-phase --value verifying` requires it to be `0`; `state-set-phase --value triaging` requires it to be `> 0`. The predicate evaluator reads it directly from this frontmatter.
+The `confirmed_unacknowledged_criticals` field is the gate input — `state-set-phase --value verifying` requires `effective_confirmed_unacknowledged_criticals == 0`; `state-set-phase --value triaging` requires `effective > 0`. The CLI predicate evaluator computes `effective = max(0, confirmed_unacknowledged_criticals - class_acknowledged)` per `subtractKey: 'class_acknowledged'` (`bin/essense-flow-tools.cjs:2227-2245`). Pre-0.13.4 frontmatter without `class_acknowledged:` defaults to 0 (back-compat preserved).
+
+### Acknowledged-ledger schema (v0.13.4 — closes the per-sprint loop)
+
+`.pipeline/review/acknowledged-ledger.yaml` is sprint-spanning. Two entry shapes are honored:
+
+```yaml
+- entry_id: ACK-001
+  finding_id: SPRINT-7-FFR-hash-stale-diag-1   # per-finding ack (legacy)
+  ack_reason: |
+    User accepted finding SPRINT-7-FFR-hash-stale-diag-1; tracked in TODO.md.
+  acknowledged_at: <iso8601>
+
+- entry_id: ACK-002
+  match_pattern: 'MD-97-style-behavioral-test-uncoverable-without-seam'   # v0.13.4: CLASS pattern
+  pattern_type: literal | regex                                            # literal (substring) or regex against finding.claim / finding.lens / finding.proposed_check
+  match_against: ['claim', 'lens', 'proposed_check']                       # which finding fields to match (any-match = matched)
+  ack_reason: |
+    Behavioral testing of MD-97 catch-arms requires injectable IDisposable
+    test seams at build-level (architect MD-99 scope). Class-acked until
+    seam infrastructure ships; future sprints auto-skip these findings.
+  decision_ref: 06-decisions.md#2026-05-18-L1-L2-L4
+  acknowledged_at: <iso8601>
+  expires_at: <iso8601-or-null>                                            # optional auto-expiry; null = no expiry
+```
+
+**Why the class-pattern shape exists.** Pre-v0.13.4, `acknowledged-ledger.yaml` was finding_id-keyed only. Each sprint generated fresh finding_ids (sprint-N prefixed), so per-id acks never carried forward. Same-class findings (e.g. "MD-97 behavioral test uncoverable without test seam") re-surfaced every sprint as fresh confirmed criticals — the loop self-perpetuated. The `match_pattern` shape lets master tag a CLASS of findings as known-debt once; every subsequent sprint's confirmed criticals matching the pattern get counted toward `class_acknowledged` and subtracted from the gate.
+
+**Master's count-computation (Job 4 — Decide).** After validators return verdicts, master:
+
+1. Counts `confirmed_critical = count(verdict == confirmed AND severity == critical)`.
+2. For each confirmed critical finding, checks acknowledged-ledger:
+   - If `finding_id` matches any ledger entry's `finding_id:` field → counted as `acknowledged` (per-id ack, legacy path).
+   - ELSE if any ledger entry has `match_pattern:`, evaluate the pattern against the finding's declared `match_against:` fields (default `['claim', 'lens', 'proposed_check']`); if any match → counted as `class_acknowledged` (NEW v0.13.4 path).
+   - ELSE the finding remains in `confirmed_unacknowledged_criticals`.
+3. Writes BOTH `confirmed_unacknowledged_criticals: <count>` AND `class_acknowledged: <count>` to QA-REPORT.md frontmatter. The CLI predicate evaluator subtracts; master does NOT subtract before writing.
+4. `acknowledged: <count>` retains its legacy meaning (per-finding-id acks); does not duplicate `class_acknowledged`.
+
+**When to add a class-pattern entry.** During triage (after a sprint blocks), if a class of findings recurs each sprint because the substrate fix is scoped to a separate architect-sprint (e.g. test-seam infrastructure does not exist yet, doc-canon-tax task not yet emitted), author a class-pattern ledger entry referencing the closed decision that authorizes the deferral. Without `decision_ref:`, the class-pattern entry is REJECTED at next-sprint review's setup step — preventing silent class-acks that have no governance trace.
+
+**Pattern evaluation safety.** `pattern_type: literal` does a case-insensitive substring match; `pattern_type: regex` compiles the pattern with a 5-second timeout per finding (master enforces; CLI does not — CLI only reads the precomputed count from frontmatter). Malformed regex or timeout → ledger entry is logged as `inert: true` for the current run and surfaced to user; does NOT auto-match.
+
+**Milestone-level gate vs sprint-level gate.** Pre-v0.13.4 review treated `confirmed_unacknowledged_criticals == 0` as a per-sprint shipping binary; substrate-test-uncoverable findings made the gate unreachable in finite sprints. With class-pattern acks, the gate effectively shifts to milestone-level: a sprint ships when (a) sprint-introduced criticals close OR (b) recurring class-criticals carry a decision-referenced class-ack. Acknowledged class-debt rolls forward in the ledger; the ledger IS the milestone-debt registry. When the substrate fix lands (e.g. test-seam infrastructure ships), the corresponding class-pattern entry is removed from the ledger and the next review surfaces those findings naturally.
 
 ## How you work
 
@@ -270,12 +313,14 @@ For drift-lens findings: each spec claim verdicts as one of `implemented`, `part
 
 ### Job 4 — Decide (`compute-deterministic-gate`)
 
-Count: `confirmed_unacknowledged_criticals`. That number — and only that number — decides advance.
+Compute `effective_confirmed_unacknowledged_criticals = max(0, confirmed_unacknowledged_criticals - class_acknowledged)`. That number — and only that number — decides advance.
 
 - **Zero** → sprint passes review. Route to `verifying`.
 - **Non-zero** → sprint blocks. Route to `triaging` (which routes to upstream phases based on per-finding categorization).
 
-Acknowledged-but-still-confirmed items live in their own ledger; the next review knows they were seen and accepted.
+Per-finding-id acks AND class-pattern acks both reduce the effective count. The per-id acks live in `acknowledged-ledger.yaml` under `finding_id:` entries (counted in `acknowledged:` field of frontmatter); the class-pattern acks live in the SAME ledger under `match_pattern:` entries (counted in `class_acknowledged:` field). See "Acknowledged-ledger schema (v0.13.4 — closes the per-sprint loop)" above for entry shape + count-computation steps + governance requirement (`decision_ref:` mandatory for class-pattern entries).
+
+The CLI predicate evaluator at `bin/essense-flow-tools.cjs:2227-2245` reads both fields from QA-REPORT.md frontmatter and applies the subtraction. Master writes BOTH counts (does not pre-subtract).
 
 ### Anti-fabrication discipline
 
