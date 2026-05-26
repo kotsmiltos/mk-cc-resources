@@ -6,13 +6,14 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 
 | Plugin | Version | What it does |
 |---|---|---|
-| **essense-flow** | 0.11.0 | Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, **no resource caps**. Nine skills drive a state machine from project pitch to shipped code. Master / sub-agent orchestration pattern: master orchestrates, sub-agents do substance, master synthesizes with the discipline rule still in working memory. Architect mandatory delegates per-module to sub-architects → packs sprints from dependency-graph depth (not theme). Research / build / review / verify already delegate; their SKILL.md now names *why*. Triage and heal carry optional delegation when item volume is large. Every SKILL.md carries the verbatim Conduct preamble + cites all 5 principles. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report re-validated against disk. v0.7.0 archived on `archive/essense-flow-v0.7`. |
-| **essense-autopilot** | 0.2.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold, unplanned sprints. Diagnostic stderr on every halt. Opt-in per project. |
+| **essense-flow** | 0.13.4 | Multi-phase AI development pipeline. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
+| **essense-autopilot** | 0.3.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
+| **session-lifecycle** | 1.0.0 | Session lifecycle tools — handoff (capture session state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (metrics-driven retrospective), meta-review (analyze session patterns → skill improvement proposals). |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
-| **thorough-mode** | 1.3.2 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`. Inject behavioral rules for thoroughness, doc checks, interactive questions. |
+| **thorough-mode** | 1.4.0 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`, `@debug`, `@verify`, `@fresh`. Inject behavioral rules for thoroughness, doc checks, interactive questions, root-cause investigation, paranoid verification, context refresh. |
 | **project-note-tracker** | 1.8.0 | Track questions per handler/department. Auto-detects handler, researches in background, logs to Excel, generates meeting agendas. |
 | **alert-sounds** | 1.1.0 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
-| **mk-cc-all** | 2.0.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
+| **mk-cc-all** | 2.1.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
 
 ## Benched plugins
 
@@ -35,12 +36,15 @@ Or browse the branch directly on GitHub.
 # Add the marketplace (one time)
 claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
 
-# Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker
+# Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle
 claude plugin install mk-cc-all
 
 # Install hook-based plugins separately
 claude plugin install essense-autopilot
 claude plugin install alert-sounds
+
+# Or install session-lifecycle standalone
+claude plugin install session-lifecycle
 ```
 
 ### Install plugins individually
@@ -157,8 +161,11 @@ claude plugin install thorough-mode
 | `++` or `@thorough` | Be careful and unhurried; read fully before acting; don't skip or take shortcuts; include rather than exclude |
 | `@ship` | Pre-push checklist — verify README, CHANGELOG, version bumps, CLAUDE.md, docs |
 | `@present` | Force all choices through `AskUserQuestion` with arrow-key navigation |
+| `@debug` | Root cause investigation — read code first, trace to origin, check patterns, propose fix with rationale before implementing |
+| `@verify` | Paranoid verification — prove every claim, run tests after each change, state verifiable check not "done" |
+| `@fresh` | Context refresh — re-read key files, don't trust compressed reads, verify each constraint against current disk |
 
-Add the keyword anywhere in your message. Modifiers stack — `++ @ship` fires both. If you describe the intent without the keyword ("don't skip anything", "push it"), you get a one-line hint reminding you of the shorthand.
+Add the keyword anywhere in your message. Modifiers stack — `++ @verify` fires both. If you describe the intent without the keyword ("root cause", "prove it", "re-read the file"), you get a one-line hint reminding you of the shorthand.
 
 ## Project Note Tracker
 
@@ -227,6 +234,33 @@ Edit `config.json` in the plugin directory to toggle features per event:
 ```
 
 Set `"sound"` to a file path (mp3/wav/ogg/aiff) for a custom sound. `"beep": false` disables sounds for an event.
+
+## Session Lifecycle — Cross-Session Continuity
+
+Five skills for maintaining context across sessions and improving your workflow over time.
+
+```bash
+claude plugin install session-lifecycle
+```
+
+### Skills
+
+| Skill | Command | What it does |
+|---|---|---|
+| **handoff** | `/handoff` | Capture session state at end of work — what was done, what remains, critical context, blockers. Triggers `/claude-md-sync` if CLAUDE.md is stale. Saves to `.claude/handoff.md`. |
+| **resume** | `/resume` | Restore context from previous handoff. Validates branch/pipeline state match, reports discrepancies, suggests first action. Archives consumed handoffs. |
+| **claude-md-sync** | `/claude-md-sync` | Scan git diff, identify stale CLAUDE.md sections (impact map, modules, file locations), propose specific edits. Approve each change individually. Callable by handoff or standalone. |
+| **retro** | `/retro` | Metrics-driven retrospective from git + pipeline + QA data. Gaps before strengths. Accepts `sprint-N`, `session`, or `all` scope. |
+| **meta-review** | `/meta-review` | Analyze session patterns to find automation opportunities. Proposes improvements to existing skills or specs for new ones, ranked by value/effort. |
+
+### Workflow
+
+```
+Session end:    /handoff → saves .claude/handoff.md (optionally triggers /claude-md-sync)
+Session start:  /resume  → restores context, validates state, suggests first action
+After sprint:   /retro   → metrics-driven retrospective with concrete recommendations
+Periodically:   /meta-review → find workflow patterns worth automating into skills
+```
 
 ## Credits
 

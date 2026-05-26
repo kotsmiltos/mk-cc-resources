@@ -11,265 +11,141 @@
                             # to discover skills inside plugins/ (no root skills/ duplication)
 
 plugins/
+  essense-flow/             # Multi-phase AI development pipeline (headline plugin)
+    .claude-plugin/plugin.json
+    lib/                    # 25 Node.js modules (state-machine, brief-assembly, dispatch, etc.)
+    hooks/                  # context-inject.js, review-guard.js, yaml-validate.js, session-orient.js
+    skills/
+      elicit/               # Pitch → SPEC.md through collaborative ideation
+      research/             # Multi-perspective analysis → REQ.md
+      triage/               # Categorize findings, route to correct phase
+      architect/            # Decide → delegate → synthesize → pack. Produces ARCH.md + task specs
+      build/                # Execute task specs in dependency-ordered waves
+      review/               # Adversarial QA — bug-finding + drift-finding
+      verify/               # Top-down spec compliance audit
+      context/              # State plumbing — init, status, next-step
+      heal/                 # Pipeline self-heal from any degraded state
+    commands/               # 12 slash commands (/init, /elicit, /research, etc.)
+    defaults/               # config.yaml, state.yaml templates
+    references/             # transitions.yaml, phase-command-map.yaml
+
+  essense-autopilot/        # Stop-hook autopilot for essense-flow
+    .claude-plugin/plugin.json
+    hooks/
+      hooks.json            # Stop hook config
+      autopilot.js          # Phase → command mapping, halt conditions
+
+  session-lifecycle/        # Session continuity + workflow improvement
+    .claude-plugin/plugin.json
+    skills/
+      handoff/              # Capture session state → .claude/handoff.md
+      resume/               # Restore context from handoff, validate state
+      claude-md-sync/       # Propose CLAUDE.md updates for stale sections
+      retro/                # Metrics-driven retrospective (gaps before strengths)
+      meta-review/          # Analyze session patterns → skill improvement proposals
+
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
     skills/schema-scout/
       SKILL.md
-      tool/                 # Standalone Python CLI package
-        pyproject.toml
-        schema_scout/
-          __init__.py       # Package version
-          analyzer.py       # Core schema analysis engine
-          cli.py            # Typer CLI entrypoint
-          index_io.py       # Index serialization (JSON)
-          models.py         # SchemaNode, FieldStats dataclasses
-          readers.py        # XLSX / CSV / JSON file readers
+      tool/                 # Standalone Python CLI package (typer + openpyxl + rich)
 
-  miltiaze/                 # Multi-dimensional idea exploration
+  thorough-mode/            # Prompt modifiers (++, @thorough, @ship, @present)
     .claude-plugin/plugin.json
-    skills/miltiaze/
+    skills/thorough-mode/
       SKILL.md
-      references/           # research-dimensions.md, presentation-standards.md
-      templates/            # exploration-report.md
-      workflows/            # full-exploration.md, drill-deeper.md
-
-  ladder-build/             # Incremental build pipeline
-    .claude-plugin/plugin.json
-    skills/ladder-build/
-      SKILL.md
-      references/           # milestone-design.md, verification-standards.md, impact-analysis.md
-      templates/            # build-plan.md, milestone-report.md
-      workflows/            # kickoff.md, build-milestone.md, continue.md
-
-  mk-flow/                  # Unified workflow system — intent detection, state, intake
-    .claude-plugin/plugin.json
-    hooks/
-      hooks.json            # UserPromptSubmit hook config
-      intent-inject.sh      # Reads stdin JSON, injects context (intents, state, vocab, xrefs, rules)
-    defaults/
-      rules.yaml            # Default behavioral rules shipped with plugin
-    intent-library/
-      defaults.yaml         # Default intents shipped with mk-flow
-    skills/
-      intake/               # Dense input decomposition + assumption tables
-        SKILL.md
-        references/         # parsing-rules.md
-        templates/          # assumption-table.md
-      state/                # Per-project state tracking + session continuity
-        SKILL.md
-        workflows/          # status.md, pause.md, resume.md
-        templates/          # state.md, continue-here.md, vocabulary.yaml, cross-references.yaml
-        scripts/            # drift-check.sh — detects state/codebase drift
-      mk-flow-init/         # Project setup with context scanning
-        SKILL.md
-      mk-flow-update/       # Sync latest plugin defaults (rules, intents, cross-references) into project
-        SKILL.md
-      mk-flow-update-rules/ # DEPRECATED — superseded by mk-flow-update/
-        SKILL.md
-
-  alert-sounds/             # Cross-platform audio + visual alerts for Claude Code events
-    .claude-plugin/plugin.json
-    hooks/
-      hooks.json            # Stop, Notification (permission_prompt + idle_prompt matchers), UserPromptSubmit (clear state) hooks
-      alert.py              # Main hook script — beeps, notifications, taskbar flash
-      config.json           # User config — volume, mute, per-event toggles
-      statusline.sh         # Status line integration
-      notify_windows.ps1    # Windows notification helper
-    skills/alert-sounds/
-      SKILL.md              # /alert-sounds config skill
-
-  safe-commit/              # Secret scanning + identity verification before commits
-    .claude-plugin/plugin.json
-    skills/safe-commit/
-      SKILL.md
-      references/           # commit-checks.md, secret-patterns.md
-      scripts/              # scan-secrets.sh
 
   project-note-tracker/     # Question + bug tracker with Excel backend
     .claude-plugin/plugin.json
     skills/note/
       SKILL.md
-      workflows/            # init, research-question, bug, bugs, investigate, agenda,
-                            # meeting, review, resolve, quick, add-handler, dump, doctor
+      workflows/            # init, research-question, bug, agenda, meeting, resolve, etc.
       scripts/              # tracker.py — Excel I/O via uvx --with openpyxl
 
-  project-structure/        # Project structure mapping
+  alert-sounds/             # Cross-platform audio + visual alerts
     .claude-plugin/plugin.json
-    skills/project-structure/
-      SKILL.md
-
-  repo-audit/               # Repo audit (distributable skill for other repos)
-    .claude-plugin/plugin.json
-    skills/repo-audit/
-      SKILL.md
-      workflows/            # audit.md, amend.md
-      references/           # enforcement-spec.md, amendment-fields.md
-      templates/            # amendment-record.md
-      scripts/              # Portable enforcement files (copied to target repos)
-
-  architect/                # Multi-agent technical leadership
-    .claude-plugin/plugin.json
-    skills/architect/
-      SKILL.md
-      workflows/            # plan.md, review.md, ask.md, audit.md, scope-decompose.md, scope-discover.md
-      templates/            # plan.md, task-spec.md, audit-report.md, index.md,
-                            # agent-brief-decompose.md, agent-brief-implement.md,
-                            # system-map.md, decision-record.md, interface-contract.md,
-                            # cross-cutting-pattern.md, consistency-check.md
-      references/           # architecture-patterns.md, sprint-management.md, team-culture.md,
-                            # scope-decomposition.md
-
-context/                    # Per-project mk-flow context (created by /mk-flow-init)
-  STATE.md                  # Living project state — current focus, done, blocked, next
-  rules.yaml                # Behavioral corrections — injected every message by hook
-  vocabulary.yaml           # Term disambiguation — auto-populated from corrections
-  cross-references.yaml     # "Change X, also check Y" — grows from corrections
-  notes/                    # Auto-saved analysis and forward-notes
+    hooks/
+      hooks.json            # Stop, Notification, UserPromptSubmit hooks
+      alert.py              # Platform-native beeps, notifications, taskbar flash
+      config.json           # Per-event toggles (beep, sound, notify, flash)
+    skills/alert-sounds/
+      SKILL.md              # /alert-sounds config skill
 ```
 
-## mk-flow Context Injection
+Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
 
-The mk-flow hook (`intent-inject.sh`) runs on every UserPromptSubmit and injects 5 context files into the conversation as a system-reminder:
+## essense-flow Pipeline
 
-| File | Tag | Purpose |
-|------|-----|---------|
-| `.claude/mk-flow/intents.yaml` | `<intents_config>` | Intent definitions + corrections for classification |
-| `context/STATE.md` | `<project_state>` | Current project state |
-| `context/vocabulary.yaml` | `<vocabulary>` | Term disambiguation |
-| `context/cross-references.yaml` | `<cross_references>` | Change consistency rules |
-| `context/rules.yaml` | `<rules>` | Hard behavioral rules — unconditional |
-
-The hook reads the prompt from stdin JSON, skips short messages (<2 chars) and slash commands. Classification is done inline by the main Claude, not by a separate API call.
-
-## Pipeline: miltiaze → architect → ladder-build
-
-The full automated dev team pipeline:
+The headline plugin. State machine + per-phase skills + verification discipline.
 
 ```
-NEW PROJECT:      /miltiaze (requirements mode) → /architect (plan) → /ladder-build (execute) → /architect (review) → loop
-EXISTING PROJECT: /architect audit → /architect (plan) → /ladder-build (execute) → /architect (review) → loop
-STANDALONE:       /miltiaze (exploration) → /ladder-build (kickoff) — existing standalone flow, still works
+/init → /elicit → /research → /triage → /architect → /build → /review → /verify → complete
 ```
 
-| Stage | Skill | Mode | Output | Next |
-|-------|-------|------|--------|------|
-| Research | miltiaze | `workflows/requirements.md` | `artifacts/explorations/*-requirements.md` | /architect |
-| Audit | architect | `workflows/audit.md` | `artifacts/audits/*-audit-report.md` | /architect |
-| Design | architect | `workflows/plan.md` | `artifacts/designs/[slug]/PLAN.md` + sprint task specs | /ladder-build |
-| Execute | ladder-build | `workflows/execute.md` | `artifacts/designs/[slug]/sprints/sprint-N/COMPLETION.md` | /architect |
-| Review | architect | `workflows/review.md` | `artifacts/designs/[slug]/sprints/sprint-N/QA-REPORT.md` | /ladder-build (next sprint) |
+| Phase | Command | Output | Next |
+|-------|---------|--------|------|
+| Elicit | `/elicit` | `.pipeline/elicitation/SPEC.md` | `/research` |
+| Research | `/research` | `.pipeline/requirements/REQ.md` | `/triage` or `/architect` |
+| Triage | `/triage` | `.pipeline/triage/TRIAGE-REPORT.md` | Routes to earliest needed phase |
+| Architecture | `/architect` | `.pipeline/architecture/ARCH.md` + task specs + sprint manifest | `/build` |
+| Build | `/build` | `.pipeline/sprints/sprint-N/` completion records | `/review` |
+| Review | `/review` | `.pipeline/reviews/QA-REPORT.md` | `/triage` or `/verify` |
+| Verify | `/verify` | `VERIFICATION-REPORT.md` | `complete` or `/triage` |
+| Heal | `/heal` | State recovery via legal transitions | Returns to correct phase |
 
-mk-flow tracks pipeline position in STATE.md and suggests the next skill based on the current stage.
+### Hooks (all fail-soft — never block tool calls)
 
-### Scope Pipeline (cascading decomposition)
+| Hook | Event | Purpose |
+|------|-------|---------|
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings |
+| review-guard.js | PreToolUse (Write/Edit/Bash) | Gates file modifications during review/verify phases |
+| yaml-validate.js | PostToolUse (Write/Edit) | Validates YAML integrity after writes |
+| session-orient.js | SessionStart | Drift check, suggests next command |
 
-```
-GREENFIELD:  /miltiaze (scope requirements) → /architect scope level-0 → /architect scope level-1+ → /ladder-build (scope execute) → /architect (review) → loop
-FEATURE:     /miltiaze (scope requirements) → /architect scope discover → /architect scope level-0 → level-1+ → /ladder-build → review
-```
+## Session Lifecycle
 
-| Stage | Skill | Mode | Output | Next |
-|-------|-------|------|--------|------|
-| Scope Research | miltiaze | `workflows/requirements.md` (scope mode) | `artifacts/scope/brief/` + INDEX.md | /architect scope level-0 |
-| Discovery (features only) | architect | `workflows/scope-discover.md` | `artifacts/scope/features/<slug>/discovery/` | /architect scope level-0 |
-| Architecture (L0) | architect | `workflows/scope-decompose.md` | `artifacts/scope/architecture/` | /architect scope level-1 |
-| Decomposition (L1+) | architect | `workflows/scope-decompose.md` | `artifacts/scope/modules/*/` | /architect scope level-N or /ladder-build |
-| Implementation | ladder-build | `workflows/execute.md` (scope mode) | source code + `reports/` | /architect review |
+Five skills for cross-session continuity and workflow self-improvement.
+
+| Skill | Trigger | What it does |
+|-------|---------|-------------|
+| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → `.claude/handoff.md`. Triggers `/claude-md-sync` if CLAUDE.md stale. |
+| `/resume` | Session start | Reads handoff, validates branch/pipeline state, reports discrepancies, suggests first action. Archives consumed handoffs. |
+| `/claude-md-sync` | After changes | Scans git diff, identifies stale CLAUDE.md sections, proposes edits for approval. Callable standalone or by handoff. |
+| `/retro` | After sprint/session | Metrics-driven retrospective. Gaps before strengths. Accepts `sprint-N`, `session`, or `all`. |
+| `/meta-review` | Periodically | Analyzes session patterns → proposes skill improvements or new skill candidates with effort/value ranking. |
 
 ## Cross-Reference Patterns
 
-When changing files that follow these patterns, CHECK the related files for consistency. Only modify them if actually broken by your change.
+When changing files that follow these patterns, CHECK the related files for consistency.
 
 | Pattern | When Triggered | Check These | Why |
 |---------|---------------|-------------|-----|
-| Plugin layout | Changing the FORMAT of plugin.json | All `plugins/*/.claude-plugin/plugin.json` | All plugins must use same metadata format |
-| SKILL.md convention | Changing section structure (adding/removing XML tags) | All `plugins/*/skills/*/SKILL.md` | Shared convention across all skills |
+| Plugin layout | Changing FORMAT of plugin.json | All `plugins/*/.claude-plugin/plugin.json` | All plugins must use same metadata format |
+| SKILL.md convention | Changing section structure (XML tags, frontmatter fields) | All `plugins/*/skills/*/SKILL.md` | Shared convention across all skills |
 | Marketplace registry | Adding, removing, or renaming a plugin | `.claude-plugin/marketplace.json` | Must list every plugin in `plugins/` |
-| Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference the new workflow |
-| mk-flow hook | Adding a new context file type (like rules.yaml) | `plugins/mk-flow/hooks/intent-inject.sh` | Hook script must read and inject the new file |
-| mk-flow init | Adding a new context file type | `plugins/mk-flow/skills/mk-flow-init/SKILL.md` | Init must create the new file |
-| Scope templates | Changing section structure in scope templates | `references/scope-decomposition.md`, `workflows/scope-decompose.md`, `workflows/scope-discover.md` | Templates, reference, and workflows must agree on structure |
-| INDEX.md template | Changing INDEX.md fields or structure | `workflows/scope-decompose.md`, `workflows/scope-discover.md`, `miltiaze/workflows/requirements.md`, `ladder-build/workflows/execute.md` | Four skills read/write INDEX.md |
-| Agent brief format | Changing agent brief YAML/XML structure | `workflows/scope-decompose.md`, `templates/consistency-check.md`, `references/scope-decomposition.md` | Brief format validated at assembly, check, and reference |
-| Scope output path | Changing where miltiaze writes scope briefs | `workflows/scope-decompose.md`, `templates/index.md` | miltiaze output is scope-decompose input |
-
-Per-project cross-references live in `context/cross-references.yaml` (created by mk-flow init, grows from corrections).
+| mk-cc-all bundle | Adding a new bundled plugin | `.claude-plugin/plugin.json` skills array + description | Bundle must reference new skills path |
+| Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference new workflow |
+| essense-flow hooks | Adding/changing context injection | `plugins/essense-flow/hooks/` | All 4 hooks must stay consistent |
+| Session-lifecycle interop | Changing handoff output format | `plugins/session-lifecycle/skills/resume/SKILL.md` | Resume reads what handoff writes |
 
 ## Dependency Highlights
 
 | Component | Dependencies |
 |-----------|-------------|
+| essense-flow | Node.js (CommonJS modules in `lib/`) |
+| essense-autopilot | Node.js (reads essense-flow state) |
+| session-lifecycle | None (pure SKILL.md + `!`command`` shell injection) |
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
-| miltiaze, ladder-build, project-structure, mk-flow, architect | None (pure SKILL.md + markdown workflows) |
-| mk-flow hook | bash, one of: jq / python3 / python (for JSON parsing) |
-| alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
+| thorough-mode | None (pure SKILL.md) |
 | project-note-tracker | Python >= 3.10, openpyxl (via uvx) |
-| safe-commit | bash |
-| repo-audit (enforcement scripts) | Python >= 3.10, stdlib only |
+| alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
 | Build system | hatchling (schema-scout packaging) |
 
 ## Conventions
 
-- **Skill definitions** use YAML frontmatter + XML-like section tags
+- **Skill definitions** use YAML frontmatter + XML-like section tags (`<objective>`, `<context>`, `<instructions>`)
 - **Python source** (schema-scout) requires Python >= 3.10, uses openpyxl + typer + rich
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
-- **Behavioral corrections** go in `context/rules.yaml` (hook-injected), not auto-memory files
-- **Metadata convention** — Every pipeline template output includes a blockquote metadata block as the first content (before `# Title`). Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. All field names use snake_case. Domain-specific fields may follow. Format: `> **field_name:** value`
-- **Scope artifacts** live in `artifacts/scope/` (gitignored by default per D2). Every scope artifact has dual representation (`.md` human + `.agent.md` agent)
-
-## Adopting Architecture-Aware Builds in Your Projects
-
-ladder-build now traces cross-file dependencies and protects against context degradation. mk-flow-init can bootstrap cross-references from your CLAUDE.md. Here's how to get these working.
-
-### New project (mk-flow not yet initialized)
-
-Just run `/mk-flow-init`. It will:
-1. Scan your CLAUDE.md for a **Change Impact Map** section (tables with "Touch" / "Also update" columns)
-2. Convert those tables into `context/cross-references.yaml` rules automatically
-3. Set up STATE.md, vocabulary, rules — the full mk-flow context
-
-Then use `/ladder-build` to start building. The kickoff workflow will read your impact map and cross-references, build a file manifest, and shape milestones around coupled files.
-
-### Existing project (mk-flow already initialized)
-
-If you already ran `/mk-flow-init` before this update, your `context/cross-references.yaml` exists but doesn't have rules from your CLAUDE.md Change Impact Map. Two options:
-
-**Option A — Re-init (recommended if cross-references.yaml has few manual rules):**
-Delete `context/cross-references.yaml` and run `/mk-flow-init` again. It's idempotent — it won't overwrite your STATE.md, intents, or other context files. It will only recreate missing files, and cross-references.yaml will now include rules parsed from your CLAUDE.md.
-
-**Option B — Manual merge (if cross-references.yaml has valuable manual rules you want to keep):**
-The init won't overwrite existing cross-references.yaml. To get the impact map rules added:
-1. Open your CLAUDE.md and find the Change Impact Map section
-2. For each concern table, add a rule to `context/cross-references.yaml` following this format:
-   ```yaml
-   rules:
-     concern-slug:
-       when: "description of what triggers this rule"
-       check:
-         - "file/path.py — reason"
-       source: "CLAUDE.md Change Impact Map"
-   ```
-
-### Project with no Change Impact Map in CLAUDE.md
-
-Everything still works — the impact analysis falls back to manual import/consumer discovery per-milestone. To get the full benefit, add a Change Impact Map to your CLAUDE.md:
-
-```markdown
-## Change Impact Map
-
-### Concern Name
-| Touch | Also update |
-|---|---|
-| `path/file.py` — what it does | `path/coupled.py` (reason), `path/other.py` (reason) |
-```
-
-Then re-run `/mk-flow-init` (delete cross-references.yaml first) to bootstrap the rules.
-
-### What changes in ladder-build behavior
-
-After this update, `/ladder-build` automatically:
-- **Kickoff**: Reads your impact map, builds a full file manifest, ensures coupled files stay in the same milestone
-- **Each milestone**: Traces impact before building, checks context health before verifying, verifies all coupled files were updated
-- **Completion**: Reassembly verification — checks every file in the manifest, re-verifies original intent, detects silent scope reduction
-- **Context fatigue**: If the session is getting stale, saves progress and hands off cleanly instead of producing degraded work
+- **Metadata convention** — pipeline template outputs include a blockquote metadata block as first content. Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. Format: `> **field_name:** value`
+- **Session artifacts** — handoff writes to `.claude/handoff.md`, retro writes to `.planning/retros/` or `.claude/retros/`
