@@ -10,6 +10,9 @@
  *   ++ / @thorough  — exhaustive processing, no skipping
  *   @ship           — pre-push documentation and versioning checklist
  *   @present        — use AskUserQuestion for all choices
+ *   @debug          — root cause investigation before fixing
+ *   @verify         — paranoid verification of every claim
+ *   @fresh          — context refresh, re-read key files
  */
 
 const MODIFIERS = [
@@ -57,6 +60,50 @@ const MODIFIERS = [
 - The tool always includes an "Other" option for free text — no need to add one yourself.
 - Plain text is only acceptable for genuinely open-ended questions with no finite option set.`,
   },
+  {
+    name: "debug",
+    triggers: [
+      /(?:^|\s)@debug(?:\s|$)/i,  // @debug as standalone token
+    ],
+    injection: `[debug-mode] Root cause investigation — understand before fixing:
+- Do NOT immediately start writing a fix. Read the relevant code first.
+- Understand what the code does and WHY it was written that way.
+- Find the ROOT CAUSE, not just the symptom. Trace the issue back to its origin.
+- Check if this is part of a pattern — are there similar issues in related files?
+- Propose the fix with rationale BEFORE implementing. For trivial/obvious fixes, fix and explain simultaneously.
+- Never add a patch on top of a patch. If the underlying design is wrong, say so and propose a proper fix.
+- When dispatching sub-agents for investigation, pass these constraints through.`,
+  },
+  {
+    name: "verify",
+    triggers: [
+      /(?:^|\s)@verify(?:\s|$)/i,  // @verify as standalone token
+    ],
+    injection: `[verify-mode] Paranoid verification — prove every claim with evidence:
+- Before claiming ANYTHING is done, working, or complete — VERIFY the result, not what you wrote.
+- "Init is complete" → did you check every file was actually created?
+- "Hook is configured" → did you verify it actually fires?
+- "All tests pass" → did you RUN them? Show the output.
+- "Fixed" → did you confirm the fix works? How?
+- If you cannot verify, say "I wrote X but haven't confirmed it works yet."
+- State the VERIFIABLE CHECK that proves work done. "Done" is a vibe; "tests pass + parseX returns Y for input Z" is a check.
+- Run the test suite after EACH substantive change, not at the end of a batch.
+- Verify by reading code, not by checking that a file exists. Existence ≠ implementation.`,
+  },
+  {
+    name: "fresh",
+    triggers: [
+      /(?:^|\s)@fresh(?:\s|$)/i,  // @fresh as standalone token
+    ],
+    injection: `[fresh-mode] Context refresh — re-read before acting:
+- Re-read key files NOW — do not trust earlier reads that may have been compressed or summarized.
+- After implementing multi-step work, run available verification tools to catch what you missed.
+- If you notice you are skimming, simplifying, or forgetting earlier instructions — STOP and re-read the source files.
+- When instructions reference multiple files or constraints, verify EACH one against current disk state.
+- More context is better than less — do not limit what you read to save time.
+- Verify that what you read is still what you are acting on — files may have changed during this session.
+- When in a long conversation, assume your mental model has drifted. Check, don't assume.`,
+  },
 ];
 
 // Patterns that suggest a modifier would help, but the user didn't use it.
@@ -82,6 +129,27 @@ const HINTS = [
       /\b(present.{0,15}options|show.{0,10}choices|interactive.{0,10}question|arrow.{0,10}key|navigate.{0,10}option|nice.{0,10}way|select.{0,10}from)\b/i,
     ],
     hint: `[hint] Tip: add \`@present\` to force interactive arrow-key question format.`,
+  },
+  {
+    name: "debug",
+    patterns: [
+      /\b(root cause|investigate|why is.{0,15}broken|trace.{0,10}(it|the|this)|understand.{0,10}(first|before)|don'?t just fix|read the code|what'?s causing)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@debug\` to enforce root-cause investigation before any fix.`,
+  },
+  {
+    name: "verify",
+    patterns: [
+      /\b(prove it|actually check|confirm it works|did you (verify|test|run|check)|make sure.{0,10}(works|passes|fires)|verify.{0,10}(it|that|this)|are you sure)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@verify\` to enforce paranoid verification of every claim.`,
+  },
+  {
+    name: "fresh",
+    patterns: [
+      /\b(re-?read|check again|fresh eyes|context.{0,10}stale|read.{0,10}again|re-?examine|look at.{0,10}again|you'?re (drifting|losing|forgetting))\b/i,
+    ],
+    hint: `[hint] Tip: add \`@fresh\` to force a context refresh — re-read key files before acting.`,
   },
 ];
 

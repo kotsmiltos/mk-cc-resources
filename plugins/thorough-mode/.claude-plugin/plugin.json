@@ -1,7 +1,7 @@
 {
   "name": "thorough-mode",
-  "version": "1.3.2",
-  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present) that inject behavioral rules for thoroughness, documentation checks, interactive questions, and more.",
+  "version": "1.4.0",
+  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, and context refresh.",
   "author": {
     "name": "kotsmiltos"
   }

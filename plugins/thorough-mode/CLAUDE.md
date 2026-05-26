@@ -29,6 +29,29 @@ Forces all choices and decisions through `AskUserQuestion` with arrow-key naviga
 - Batches up to 4 independent decisions per call
 - Recommended option listed first
 
+### `@debug` — Root Cause Investigation
+Enforces investigation before fixing:
+- Read relevant code first — understand what it does and WHY
+- Find the ROOT CAUSE, not just the symptom — trace back to origin
+- Check for patterns — similar issues in related files?
+- Propose fix with rationale BEFORE implementing
+- Never layer patches on patches — fix the design if wrong
+
+### `@verify` — Paranoid Verification
+Proves every claim with evidence before declaring done:
+- Verify the RESULT, not what you wrote — check files exist, tests pass, hooks fire
+- State the verifiable check: "tests pass + parseX returns Y" not "done"
+- Run test suite after EACH change, not at end of batch
+- Verify by reading code, not by checking file exists (existence ≠ implementation)
+- If you can't verify, say so explicitly
+
+### `@fresh` — Context Refresh
+Forces re-reading key files and verifying against current state:
+- Re-read key files NOW — don't trust compressed/summarized earlier reads
+- After multi-step work, run verification tools
+- When instructions reference multiple files, verify EACH against current disk
+- Assume mental model has drifted in long conversations — check, don't assume
+
 ## Smart Hints
 
 When you describe the intent without using the keyword (e.g., "don't skip anything", "push it", "show me choices with arrows"), the hook shows a one-line hint suggesting the relevant modifier. Hints are suppressed when the modifier is already active — no nagging.
