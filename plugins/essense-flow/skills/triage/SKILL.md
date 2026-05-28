@@ -1,6 +1,6 @@
 ---
 name: triage
-description: The sorting hat. Looks at items the pipeline produced (research gaps, review findings, verify drift) and answers one question per item — which phase needs to handle this. Categorizes, never resolves. Surfaces ambiguity to the user, never papers over it.
+description: Route findings to the right phase. Reads items from /research, /review, or /verify (gaps, findings, drift) and categorizes each — one disposition per item. Routes to /elicit, /research, /architect, or /build depending on what the item needs. Categorizes, never resolves. Surfaces ambiguity to the user.
 version: 1.0.0
 schema_version: 1
 ---

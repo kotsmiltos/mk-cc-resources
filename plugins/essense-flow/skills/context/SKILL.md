@@ -1,6 +1,6 @@
 ---
 name: context
-description: State plumbing for the pipeline — init, status, next-step. Reads pipeline state, validates against transitions.yaml, surfaces degraded states clearly. Used by /init, /status, /next.
+description: Show pipeline state. Three modes — init (create state file), status (show current phase + sprint), next (recommend next command). Reads .pipeline/state.yaml, validates against legal transitions, flags degraded states. Backs /init, /status, /next commands.
 version: 1.0.0
 schema_version: 1
 ---

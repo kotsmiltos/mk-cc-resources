@@ -1,6 +1,6 @@
 ---
 name: heal
-description: Pipeline self-heal. Picks up from any prior state — fresh project, mid-flight pause, prior tool's artifacts, code-without-spec. Walks the working directory, infers phase from on-disk artifacts (reading shapes, not just listings), proposes a walk-forward, applies via legal transitions only on user confirm.
+description: Pipeline self-heal. Two jobs — (1) recover from any state (fresh, mid-flight, corrupt, code-without-spec) by reading artifacts and proposing walk-forward via legal transitions; (2) sweep stale claims from outstanding work register and disposition each per user confirm. Applies only on user confirm — never silent mutations.
 version: 1.0.0
 schema_version: 1
 ---

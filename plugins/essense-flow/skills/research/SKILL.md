@@ -1,6 +1,6 @@
 ---
 name: research
-description: Research what could inform the best implementation. Multi-perspective parallel agents (best-practices, ecosystem, examples, risks, costs) synthesize into REQ.md with rationale, references, and testable acceptance criteria. Not vague — focused on the specific decisions the spec leaves open.
+description: Research what could inform the best implementation. Multi-perspective parallel agents (best-practices, ecosystem, examples, risks, costs) synthesize into REQ.md with rationale, references, and testable acceptance criteria. Focused on the specific decisions the spec leaves open — never vague. Run after /elicit, before /architect.
 version: 1.0.0
 schema_version: 1
 ---

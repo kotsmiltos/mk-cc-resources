@@ -1,6 +1,6 @@
 ---
 name: review
-description: Adversarial QA. Disagrees with what came before. Bug-finding (does the code work?) plus drift-finding (does the code match what the spec said?). Path-evidence with verbatim quotes; quotes re-validated against disk; deterministic block-or-pass count is the gate.
+description: Code review on current sprint. Hunts bugs (does the code work?) and drift (does the code match the spec?). Every finding has file:line + verbatim quote, re-validated against disk. Confirmed critical findings block sprint advance. Run after /build, before /verify.
 version: 1.0.0
 schema_version: 1
 ---

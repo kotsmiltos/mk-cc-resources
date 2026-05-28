@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Bridge between intent and execution. Master architect orchestrates — decide → delegate → synthesize → align → pack → finalize (round-10+ adds the `align` step per DD-20 (a)). Top-level decisions close in main context; per-module substance delegates to sub-architects in parallel; an alignment-lens sub-agent reviews every sub-arch return against 6 DD-20 (b) criteria before pack; master packs sprints from the dependency graph with discipline rule still loud. Produces ARCH.md + decisions index + per-task specs + sprint manifest. After architect runs, every remaining question is an implementation question, not a design question.
+description: Design the sprint from requirements. Decides module boundaries, delegates per-module architecture to sub-architects in parallel, packs closed task specs into dependency-ordered sprints. Produces ARCH.md, decisions index, per-task specs, sprint manifest. Run after /research, before /build. After architect finishes, every remaining question is implementation, not design.
 version: 1.0.0
 schema_version: 1
 ---
@@ -34,6 +34,63 @@ Things we build need access from claude to be tested so we can build things like
 - Architect is the **last** phase that can ask the user a design question without violating Front-Loaded-Design. If a decision can't be closed from inputs, ask the user via `AskUserQuestion` OR route back to `eliciting` with a specific addendum request — never push the question to build.
 - **Use the `essense-flow-tools` CLI ops for every state-advancing write and for canonical path lookup.** Direct `lib/finalize.js` calls and direct `lib/state.js writeState` calls from this skill body are deprecated for state advancement; the CLI surface is the only path master interacts with for state writes. (Internal helpers are still used inside the CLI's own implementation; you, the master, don't touch them.)
 - The decomposition loop has no fixed iteration count. Loop until convergence (no node changes class for two iterations) — convergence is the gate, not a counter.
+
+## Pre-flight & finalization checks
+
+Apply throughout the work — verify before any state-mutating call (`Write` to canonical paths, `state-set-phase`, `task-spec-write`). These checks are the gate. Read them now before working the body; re-check before each state advance. Do not "remember" them — apply them directly.
+
+**Phase targets** (verbatim from `references/transitions.yaml` — no synonyms, no English):
+
+- `requirements-ready → architecture` — initial entry from triage / requirements
+- `architecture → decomposing` — entering the decomposition loop
+- `decomposing → decomposing` — next decomposition iteration
+- `decomposing → architecture` — open design decision surfaced; re-decide
+- `architecture → sprinting` — sprint manifest closed, task specs closed
+- `decomposing → sprinting` — decomposition converged, packing complete
+
+If your target phase is not in the list above, you have invented it — `state-set-phase` will reject it with exit 3 and the canonical phase list in the error. Common invented values seen in the wild: `building`, `built`, `done`, `architected`. None are legal.
+
+**The exact CLI sequence** for the architecture→sprinting transition (replace placeholders, keep the structure):
+
+```bash
+# Final pre-write verification (substance check; all done by you, master)
+# (re-read every task spec for closure, every FR/NFR for traceability, every sprint > 1 for data_dependency)
+
+# 1. Stamp completion timestamp
+node plugins/essense-flow/bin/essense-flow-tools.cjs \
+    state-set-architecture-completed \
+    --value "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+    --project-root <root>
+
+# 2. Advance phase (atomically writes phase + sprint; enforces all-task-specs-closed prereq)
+node plugins/essense-flow/bin/essense-flow-tools.cjs \
+    state-set-phase \
+    --value sprinting \
+    --sprint 1 \
+    --project-root <root>
+
+# 3. Finalize cursor
+node plugins/essense-flow/bin/essense-flow-tools.cjs \
+    step-advance \
+    --skill architect \
+    --next-step skill-complete \
+    --project-root <root>
+```
+
+**Self-check before the call** — answer each, out loud if needed:
+
+1. Is `--value` for `state-set-phase` a string from the legal phases list above? Spelled exactly? (`state-set-phase` rejects invented values; this is belt-and-braces.)
+2. Did you `Write` `manifest.yaml` for sprint(s) at `architecture/sprints/<n>/manifest.yaml` using the **literal** sprint number, never the placeholder `<n>`? (`canonical_paths.sprint_manifest_template` returns the template; you substitute the integer.)
+3. Did you call `task-spec-write` for every task in `manifest.waves[].tasks`? (Not `Write` directly — `task-spec-write` does the marker scan + key check + atomic write.)
+4. Are task spec files under `architecture/sprints/<n>/tasks/<task-id>.yaml` with `.yaml` extension? (`task-spec-write` always writes `.yaml`; no risk of `.md` here.)
+5. Is there one `manifest.yaml` per sprint directory (`sprints/<n>/manifest.yaml`), **not** a single `SPRINT-MANIFEST.yaml` at the architecture root?
+6. Did **sub-architects** produce the per-module task specs and module-internal decisions? If you authored task specs in main context, the master/sub-architect contract was bypassed — stop and dispatch.
+7. Are you using `state-set-phase` for phase advancement, NOT `Write` directly on `state.yaml`? `state-set-phase` is the only path that advances phase legally + enforces prerequisites + (for sprint-targeting transitions) the per-task-record gate.
+8. Did you call `step-advance` at the start of every step (decide, delegate, synthesize, align, pack, finalize) and `step-advance --next-step skill-complete` at the very end? The cursor enforces monotonic step order. The `align` step (round-10+ per DD-20 (a)) sits between `synthesize` and `pack`; skipping it is rejected by the cursor as non-monotonic AND fails the `with sufficient alignment lens dispatch` predicate at pack-phase completion.
+
+If any answer is `no`, do not proceed. Re-read the relevant section above and fix the gap. The cost of pausing here is small; the cost of advancing on a malformed contract is the build skill halting because it cannot find the manifest, OR worse, master inventing a `phase: building` and downstream skills choking on the canonical-but-illegal transition.
+
+`state-set-phase` will reject the transition outright if any prerequisite-artifact is missing — the rejection is your signal to fix the gap, not to bypass.
 
 ## Skill operating mechanism (S8 redesign — 2026-05-06)
 
@@ -608,59 +665,3 @@ Architect-phase rounds are capped at 2 per sprint. Round 1 = initial architect d
 | architecture | sprinting | task specs closed | yes |
 | decomposing | sprinting | decomposition complete, all leaves packaged | yes |
 
-## Before you finalize
-
-This block is at the bottom of the skill on purpose — it is the last thing you read before you act. Apply it directly, do not "remember" it.
-
-**Phase targets** (verbatim from `references/transitions.yaml` — no synonyms, no English):
-
-- `requirements-ready → architecture` — initial entry from triage / requirements
-- `architecture → decomposing` — entering the decomposition loop
-- `decomposing → decomposing` — next decomposition iteration
-- `decomposing → architecture` — open design decision surfaced; re-decide
-- `architecture → sprinting` — sprint manifest closed, task specs closed
-- `decomposing → sprinting` — decomposition converged, packing complete
-
-If your target phase is not in the list above, you have invented it — `state-set-phase` will reject it with exit 3 and the canonical phase list in the error. Common invented values seen in the wild: `building`, `built`, `done`, `architected`. None are legal.
-
-**The exact CLI sequence** for the architecture→sprinting transition (replace placeholders, keep the structure):
-
-```bash
-# Final pre-write verification (substance check; all done by you, master)
-# (re-read every task spec for closure, every FR/NFR for traceability, every sprint > 1 for data_dependency)
-
-# 1. Stamp completion timestamp
-node plugins/essense-flow/bin/essense-flow-tools.cjs \
-    state-set-architecture-completed \
-    --value "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
-    --project-root <root>
-
-# 2. Advance phase (atomically writes phase + sprint; enforces all-task-specs-closed prereq)
-node plugins/essense-flow/bin/essense-flow-tools.cjs \
-    state-set-phase \
-    --value sprinting \
-    --sprint 1 \
-    --project-root <root>
-
-# 3. Finalize cursor
-node plugins/essense-flow/bin/essense-flow-tools.cjs \
-    step-advance \
-    --skill architect \
-    --next-step skill-complete \
-    --project-root <root>
-```
-
-**Self-check before the call** — answer each, out loud if needed:
-
-1. Is `--value` for `state-set-phase` a string from the legal phases list above? Spelled exactly? (`state-set-phase` rejects invented values; this is belt-and-braces.)
-2. Did you `Write` `manifest.yaml` for sprint(s) at `architecture/sprints/<n>/manifest.yaml` using the **literal** sprint number, never the placeholder `<n>`? (`canonical_paths.sprint_manifest_template` returns the template; you substitute the integer.)
-3. Did you call `task-spec-write` for every task in `manifest.waves[].tasks`? (Not `Write` directly — `task-spec-write` does the marker scan + key check + atomic write.)
-4. Are task spec files under `architecture/sprints/<n>/tasks/<task-id>.yaml` with `.yaml` extension? (`task-spec-write` always writes `.yaml`; no risk of `.md` here.)
-5. Is there one `manifest.yaml` per sprint directory (`sprints/<n>/manifest.yaml`), **not** a single `SPRINT-MANIFEST.yaml` at the architecture root?
-6. Did **sub-architects** produce the per-module task specs and module-internal decisions? If you authored task specs in main context, the master/sub-architect contract was bypassed — stop and dispatch.
-7. Are you using `state-set-phase` for phase advancement, NOT `Write` directly on `state.yaml`? `state-set-phase` is the only path that advances phase legally + enforces prerequisites + (for sprint-targeting transitions) the per-task-record gate.
-8. Did you call `step-advance` at the start of every step (decide, delegate, synthesize, align, pack, finalize) and `step-advance --next-step skill-complete` at the very end? The cursor enforces monotonic step order. The `align` step (round-10+ per DD-20 (a)) sits between `synthesize` and `pack`; skipping it is rejected by the cursor as non-monotonic AND fails the `with sufficient alignment lens dispatch` predicate at pack-phase completion.
-
-If any answer is `no`, do not proceed. Re-read the relevant section above and fix the gap. The cost of pausing here is small; the cost of advancing on a malformed contract is the build skill halting because it cannot find the manifest, OR worse, master inventing a `phase: building` and downstream skills choking on the canonical-but-illegal transition.
-
-`state-set-phase` will reject the transition outright if any prerequisite-artifact is missing — the rejection is your signal to fix the gap, not to bypass.

@@ -1,6 +1,6 @@
 ---
 name: build
-description: Execution phase. Closed task specs in, working code out. Dispatches task agents in dependency-ordered waves with no concurrency cap. Verifies every agent's completion record against disk before persisting it. Drift surfaces loudly, never silently.
+description: Execute the sprint. Reads task specs from /architect, dispatches task agents in dependency-ordered waves, writes code + tests, verifies each agent's output against disk before recording completion. Drift surfaces loudly. Produces sprint completion records + SPRINT-REPORT.md. Run after /architect, before /review.
 version: 1.0.0
 schema_version: 1
 ---

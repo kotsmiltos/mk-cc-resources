@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Top-down spec compliance audit. Walks SPEC.md from start to finish; for every design decision, verifies the implementation matches by reading code at the cited locator. Distinct from review (which is adversarial bug-hunt on sprint output) — verify is the final gate before complete.
+description: Spec compliance audit before shipping. Walks SPEC.md top to bottom; for every design decision, reads code at the cited locator and verifies implementation matches. Distinct from /review (bug-hunt on sprint output) — verify is the final gate before complete. Run after /review passes, before marking project complete.
 version: 1.0.0
 schema_version: 1
 ---
