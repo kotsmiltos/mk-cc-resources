@@ -1,5 +1,15 @@
 # Release notes — essense-flow
 
+## 0.14.0 — Skill description rewrites + elicit consolidation + architect pre-flight hoist
+
+**Skill description rewrites (all 9 skills).** Frontmatter descriptions rewritten with use-case-first phrasing, no internal jargon (DD-20, M1-Rd10, alignment-lens, sorting hat, etc. all removed), and explicit pipeline position ("Run after /X, before /Y"). Improves skill discoverability — Claude reads listings and matches user intent against descriptions; jargon-heavy descriptions failed to surface for natural queries like "design my sprint" (architect) or "review my code" (review). Affected skills: architect, build, context, elicit, heal, research, review, triage, verify. Heal description also closes a discoverability gap — now explicitly lists both responsibilities (state-recovery + stale-claim sweep) where the prior version mentioned only the former.
+
+**elicit body consolidation.** Three redundant sections describing the same 7-step flow (Skill operating mechanism + How you work + Before you finalize) consolidated to one canonical "How you work" section with bash blocks at action points. CLI-as-truth preserved (structural gates remain enforced at the CLI op layer, not by master gut-check). Single source of truth eliminates drift risk between sections. 331 → 294 lines. Numbered step parser anchors untouched.
+
+**architect pre-flight hoist.** "Before you finalize" section (legal phase targets + exact CLI sequence + 8-point self-check) hoisted from line 611 (end-of-file) to line 38 as "Pre-flight & finalization checks." Reframed intro from "last block before you act" to "apply throughout the work — verify before any state-mutating call." Claude now reads gating rules BEFORE the 400+ line body procedure, not after.
+
+No behavioral changes to CLI op surface or state machine. Pure SKILL.md content changes; no `lib/`, `bin/`, or `references/` modifications. Existing tests pass unchanged.
+
 ## 0.13.4 — Pipeline review-loop termination (L1 class-pattern ack + L4 canon-tax emission) + L2 test-seam architect brief
 
 Hotfix per `redesign/06-decisions.md` 2026-05-18 closure-reopening decision "Decision: terminate pipeline review-loop via L1+L2+L4 structural fix (skip L3 lens-scope change)" + paired in-session authorization "Decision: in-session authorization granted to execute L1+L4+L2 surgery (refusal-protocol waived for this session only)". Surfaces via `/field-to-ship` invocation against a meta-pipeline diagnosis prompt: Unity-diploma application of essense-flow in sprint-7 with review counts growing (Sprint 6: 22 items → Sprint 7: 23 items → backlog growing, not draining). Three-cause structural collapse (per paired SURPRISES.md entry 2026-05-18 META-PIPELINE-LOOP):

@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.7.0"
+    "version": "2.8.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
       "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report is re-validated against disk — drift is auditable, not silent. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state — never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
-      "version": "0.13.4"
+      "version": "0.14.0"
     },
     {
       "name": "essense-autopilot",
@@ -47,14 +47,14 @@
     {
       "name": "session-lifecycle",
       "source": "./plugins/session-lifecycle",
-      "description": "Session lifecycle tools — handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (analyze session patterns → skill improvement proposals). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review proposes skill evolution from observed patterns.",
-      "version": "1.0.0"
+      "description": "Session lifecycle tools — handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns.",
+      "version": "1.1.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.1.0"
+      "version": "2.2.0"
     }
   ]
 }
