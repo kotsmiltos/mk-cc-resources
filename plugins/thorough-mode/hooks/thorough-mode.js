@@ -38,8 +38,9 @@ const MODIFIERS = [
     injection: `[pre-ship checklist] Before pushing, verify ALL of the following:
 - README.md — does it mention new features, changed behavior, or new commands/skills? Update if not.
 - CHANGELOG / RELEASE-NOTES — are the changes being pushed documented? Add entries if not.
-- Version numbers — are package.json, plugin.json, marketplace.json bumped appropriately? (patch for fixes, minor for features)
+- Version numbers — are package.json, plugin.json, marketplace.json bumped appropriately? (patch for fixes, minor for features). If this is an mk-cc-resources plugin and a version bump is warranted, invoke /version-bump (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES in one go.
 - CLAUDE.md — does it reflect new patterns, structure, or conventions introduced?
+- Cross-doc consistency — if this is an mk-cc-resources plugin repo, consider invoking /docs-audit (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state.
 - New skills/commands/hooks — are they listed and described in the appropriate docs?
 - Marketplace versions — if this is a plugin repo, does marketplace.json match the plugin version?
 - DO NOT push until every applicable item is verified or confirmed not applicable.

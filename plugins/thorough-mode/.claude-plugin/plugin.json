@@ -1,7 +1,7 @@
 {
   "name": "thorough-mode",
-  "version": "1.4.0",
-  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, and context refresh.",
+  "version": "1.5.0",
+  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, and context refresh. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
   "author": {
     "name": "kotsmiltos"
   }

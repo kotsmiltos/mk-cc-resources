@@ -42,7 +42,15 @@ plugins/
       resume/               # Restore context from handoff, validate state
       claude-md-sync/       # Propose CLAUDE.md updates for stale sections
       retro/                # Metrics-driven retrospective (gaps before strengths)
-      meta-review/          # Analyze session patterns → skill improvement proposals
+      meta-review/          # Diagnose session friction → multi-step chains + skill friction + coverage gaps
+
+  plugin-toolkit/           # Plugin/skill dev + maintenance toolkit
+    .claude-plugin/plugin.json
+    skills/
+      skill-heal/           # Audit plugin's skill set against best practices
+      plugin-scaffold/      # Bootstrap new plugin: dirs + cross-refs in one invocation
+      version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + RELEASE-NOTES
+      docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -112,7 +120,20 @@ Five skills for cross-session continuity and workflow self-improvement.
 | `/resume` | Session start | Reads handoff, validates branch/pipeline state, reports discrepancies, suggests first action. Archives consumed handoffs. |
 | `/claude-md-sync` | After changes | Scans git diff, identifies stale CLAUDE.md sections, proposes edits for approval. Callable standalone or by handoff. |
 | `/retro` | After sprint/session | Metrics-driven retrospective. Gaps before strengths. Accepts `sprint-N`, `session`, or `all`. |
-| `/meta-review` | Periodically | Analyzes session patterns → proposes skill improvements or new skill candidates with effort/value ranking. |
+| `/meta-review` | Periodically | Diagnose session friction — multi-step workflow chains, skill friction, plugin coverage gaps. Diagnostic only. |
+
+## Plugin Toolkit
+
+Four composable skills for working ON plugins (not within them).
+
+| Skill | Trigger | What it does |
+|-------|---------|-------------|
+| `/skill-heal <plugin>` | Reviewing a plugin's skill quality | Dispatches parallel review agents, scores skills against rubric (Anthropic best practices + token efficiency + architecture coherence), produces per-skill scorecard + ranked fixes. Diagnostic only. |
+| `/plugin-scaffold <name> <skills>` | Starting a new plugin | Generates directory tree + plugin.json + SKILL.md skeletons + marketplace.json entry + bundle update + README/CLAUDE.md additions + RELEASE-NOTES. |
+| `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
+| `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
+
+Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills.
 
 ## Cross-Reference Patterns
 

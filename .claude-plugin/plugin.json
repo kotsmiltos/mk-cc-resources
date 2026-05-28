@@ -1,7 +1,7 @@
 {
   "name": "mk-cc-all",
-  "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, and session-lifecycle. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins are preserved on the archive/benched-plugins branch.",
-  "version": "2.2.0",
+  "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, and plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins are preserved on the archive/benched-plugins branch.",
+  "version": "2.3.0",
   "author": {
     "name": "kotsmiltos"
   },
@@ -13,7 +13,8 @@
     "./plugins/schema-scout/skills/",
     "./plugins/thorough-mode/skills/",
     "./plugins/project-note-tracker/skills/",
-    "./plugins/session-lifecycle/skills/"
+    "./plugins/session-lifecycle/skills/",
+    "./plugins/plugin-toolkit/skills/"
   ],
   "keywords": [
     "skills",
@@ -28,6 +29,11 @@
     "session-lifecycle",
     "handoff",
     "retrospective",
-    "meta-review"
+    "meta-review",
+    "plugin-toolkit",
+    "skill-audit",
+    "plugin-scaffold",
+    "version-bump",
+    "docs-audit"
   ]
 }

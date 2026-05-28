@@ -17,8 +17,9 @@ Be thorough, not hasty — take the time to do it right:
 Enforces documentation and versioning hygiene before pushing:
 - README.md reflects new features and changed behavior
 - CHANGELOG / RELEASE-NOTES have entries for the changes
-- Version numbers are bumped (package.json, plugin.json, marketplace.json)
+- Version numbers are bumped (package.json, plugin.json, marketplace.json). In mk-cc-resources plugin repo, invoke `/version-bump` (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES in one go.
 - CLAUDE.md reflects new patterns or conventions
+- Cross-doc consistency: in mk-cc-resources plugin repo, consider `/docs-audit` (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state
 - New skills/commands/hooks are documented
 - Reports what was checked and updated before pushing
 
