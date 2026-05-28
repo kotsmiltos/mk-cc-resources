@@ -1,105 +1,118 @@
 ---
 name: meta-review
-description: Mine session for automation opportunities. Identifies repeated manual steps, pain points (corrections, retries, "like before"), unused skills (bad trigger? wrong description?), and process gaps. Produces ranked proposals — improve existing SKILL.md (specific diff) or new skill spec (name, trigger, inputs, outputs, effort/value). Max 5 proposals, evidence-backed from session patterns.
+description: Diagnose this session — find multi-step workflow chains you did manually, friction with skills that fired badly or should have fired, mk-cc-resources plugins that fit but went unused, and clear coverage gaps. Reads conversation + git activity (session scope) or also handoffs + memory + recent commits (wide scope). Output is diagnostic — issues with evidence + root causes + where to look for fixes. Does NOT propose diffs or apply changes. Use when something felt off, when reviewing what worked, or periodically to find workflow gaps.
 disable-model-invocation: true
-argument-hint: "[optional: focus area e.g. 'build workflow' or 'testing']"
+argument-hint: "[session | wide | <focus topic>]"
 ---
 
 <objective>
-Mine the current session for automation opportunities. Produce actionable proposals: specific changes to existing skills, or specs for new skills. Each proposal backed by evidence from session patterns.
+Diagnose session friction. Identify multi-step workflow chains worth automating, friction with existing skills, plugin coverage gaps. Output is analysis — never diffs, never applied fixes. User decides what to do.
 </objective>
 
-## Session commits
+## Session activity
 
 ```!
 git log --oneline -20 2>/dev/null || echo "no git"
 ```
 
-## Files touched this session
-
 ```!
 git diff --name-only HEAD~20..HEAD 2>/dev/null || echo "unknown"
 ```
 
+## Available mk-cc-resources plugins
+
+```!
+ls -d C:/Users/mkots/mk-cc-resources/plugins/*/ 2>/dev/null | xargs -n1 basename || echo "mk-cc-resources not found at expected path"
+```
+
 <instructions>
 
-## 1. Analyze session patterns
+## 1. Scope
 
-Review the conversation history and injected git data. Identify:
+Based on `$ARGUMENTS`:
+- `session` (default) or no arg: review THIS conversation + current session's git activity
+- `wide`: also read `.claude/handoff-*.md`, memory files at `~/.claude/projects/<project>/memory/`, recent commits beyond session
+- specific topic (e.g., "build workflow", "testing"): focus diagnosis on that area
 
-**Repeated manual steps:**
-- Same sequence of commands run multiple times
-- Same type of file created/edited with similar structure
-- Same checks performed before/after actions
-- Copy-paste patterns (same text/config reused)
+## 2. Identify multi-step workflow chains
 
-**Pain points:**
-- Where did the user correct course? (indicates unclear process)
-- Where did things fail and need retry? (indicates fragile process)
-- Where did the user say "again" or "like before"? (indicates missing automation)
-- What took multiple back-and-forth turns that could be one command?
+A workflow chain = a sequence of 3+ related actions performed deliberately as a unit.
 
-**Tool usage gaps:**
-- Were existing skills used? If not, why? (bad description? wrong trigger? missing feature?)
-- Were tools used in ways their docs don't cover? (indicates skill gap)
-- Were manual workarounds used instead of available automation?
+**Examples that ARE chains:**
+- Scaffold new plugin: create dirs → write plugin.json → write SKILL.md(s) → update marketplace.json → update bundle → update README → update CLAUDE.md
+- Review skillset: dispatch lens agents → score against rubric → consolidate findings → present scorecard
+- Audit documentation drift: read CLAUDE.md → compare to disk state → find stale refs → propose updates
 
-**Process patterns:**
-- What workflow was followed? (linear, iterative, exploratory?)
-- Where were decisions made? (could decisions be templated?)
-- What context was gathered repeatedly? (could be injected via hooks?)
+**NOT chains** (single-step, ignore):
+- One `git log`, one Edit, one Read
+- A single tool call no matter how long
 
-If `$ARGUMENTS` specifies a focus area, prioritize patterns in that area.
+For each chain found in session, note:
+- What the chain does (the macro-process, one sentence)
+- Number of times performed in scope (1× rare, 2× pattern, 3+ recurring)
+- Whether a skill exists for it (search marketplace.json descriptions)
+- If no skill exists, is the chain repeatable or one-off?
 
-## 2. Review existing skills
+## 3. Diagnose existing skill usage
 
-Read the available skills (use `Glob` to find SKILL.md files in `~/.claude/skills/` and `.claude/skills/`).
-For each existing skill relevant to session patterns:
-- Was it used? If not, is description too narrow or trigger wrong?
-- Did it cover the full workflow, or did manual steps fill gaps?
-- Are there missing features that would have helped?
+**For each skill invoked this session:**
+- Did it deliver what its description promises?
+- Did the user need to correct course mid-execution?
+- Did manual steps fill gaps the skill should have covered?
+- Was the friction from the skill's body, its description, or external factors?
 
-## 3. Generate proposals
+**For each mk-cc-resources skill NOT invoked this session:**
+- Read its description (from `.claude-plugin/marketplace.json` or its SKILL.md)
+- Did session work fit that skill's domain?
+- If yes, why didn't it fire? (description mismatch / wrong trigger / unknown to user / disabled?)
 
-Produce proposals in two categories:
+## 4. Identify coverage gaps
 
-### Improve Existing Skills
+A coverage gap = a workflow chain done manually with no skill match.
+- Read the natural-language intent the user expressed when doing the chain
+- Search marketplace.json descriptions for fit
+- If no fit: this is a gap. Note the chain, the intent, the user's natural phrasing.
 
-For each improvement:
+## 5. Output format
+
 ```markdown
-#### Improve: <skill-name>
+## Diagnosis: <session | wide | topic>
 
-**Evidence:** <what happened in session that shows this gap>
-**Current behavior:** <what the skill does now>
-**Proposed change:** <specific modification — new step, better trigger, added template>
-**Effort:** <small (frontmatter tweak) | medium (new section) | large (new workflow)>
-**Value:** <how often this pattern recurs, time saved per occurrence>
+### Multi-step chains observed
+- **<chain name>**: <what it did, # times performed>
+  - Skill exists? <yes — /skill-name | no>
+  - Repeatable? <yes/no, evidence>
+
+### Skill friction
+- **<skill name>** fired but didn't help — <evidence: user said "X" or corrected to Y>
+  - Root cause: <description vs intent? body unclear? wrong trigger?>
+  - Where to look: <SKILL.md section, frontmatter field>
+- **<skill name>** should have fired but didn't — <intent: "Z">
+  - Root cause: <description doesn't surface this use case / unknown to model>
+  - Where to look: SKILL.md `description:` field
+
+### Underused plugins (mk-cc-resources)
+- **<plugin>**: installed, fits session work (<evidence>), never invoked
+  - Possible reasons: <description gap | not discoverable | unknown to user>
+
+### Coverage gaps
+- **<chain done manually>** — no skill covers this
+  - User intent phrasing: "<verbatim quote>"
+  - No mk-cc-resources match found
+  - Where to look: candidate for new skill in mk-cc-resources
+
+### Where fixes live
+- Skill friction → `plugins/<name>/skills/<skill>/SKILL.md` (description or body)
+- Coverage gaps → new plugin or new skill under existing plugin
+- Underused plugins → description rewriting (see thorough-mode for natural-language patterns)
 ```
 
-### New Skill Candidates
+## Constraints
 
-For each new skill:
-```markdown
-#### New: /<proposed-name>
-
-**Evidence:** <session pattern that motivates this>
-**What it would do:** <one paragraph>
-**Trigger:** <when user/Claude should invoke it>
-**Inputs:** <what it reads>
-**Outputs:** <what it produces>
-**Effort:** <small | medium | large>
-**Value:** <frequency x time-saved estimate>
-**Conflicts with:** <any existing skill overlap>
-```
-
-## 4. Prioritize
-
-Rank all proposals by value/effort ratio. Present top 5 max. If fewer than 5 are worth proposing, present fewer — don't pad.
-
-## 5. Offer to act
-
-For each accepted proposal:
-- **Existing skill improvement:** Open the SKILL.md, show proposed diff, apply on approval.
-- **New skill:** Generate SKILL.md skeleton in appropriate location, ready for refinement.
+- NEVER show diffs or write SKILL.md changes. Pure diagnosis.
+- NEVER propose more than 5 items per section. If fewer real findings exist, return fewer — don't pad.
+- ALWAYS quote evidence verbatim from session (or cite where evidence lives if file-based).
+- IF a finding can't be backed by specific evidence, drop it.
+- IF session was trivial (no chains, no friction), say so and stop. Don't manufacture issues.
 
 </instructions>
