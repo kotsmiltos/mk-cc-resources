@@ -178,3 +178,26 @@ class Glossary:
     generator_version: str = "2.0.0.dev0"
     metadata: dict[str, Any] = field(default_factory=dict)
     glossary: list[GlossaryEntry] = field(default_factory=list)
+
+
+@dataclass
+class CandidateCluster:
+    """Stage 3 output: a group of records that share at least one signal.
+
+    Intermediate form between Stage 2 (signals) and Stage 4 (render).
+    Stage 4 turns one CandidateCluster into one GlossaryEntry by adding
+    canonical_signature, proposed_module, invariant_skeleton, variant_axis
+    (which require LLM judgment via Pass B).
+
+    primary_signal indicates which signal seeded the cluster — the
+    one with highest priority for grouping (structural > signature > label).
+    signal_agreement records which OTHER signals also confirm the cluster.
+    """
+
+    id: str  # cluster-NNN
+    member_record_ids: list[str]
+    primary_signal: str  # structural | signature | label | fuzzy_label
+    signal_agreement: dict[str, bool] = field(default_factory=dict)
+    extractability_score: float = 0.0
+    extractability_confidence: str = "low"  # high | medium | low
+    notes: str = ""
