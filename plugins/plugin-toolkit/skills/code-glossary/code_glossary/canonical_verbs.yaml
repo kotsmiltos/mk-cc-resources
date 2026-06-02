@@ -1,0 +1,194 @@
+# Canonical verb vocabulary for code-glossary v2 functionality labels.
+#
+# The indexer (Stage 1) MUST pick one verb from this list as the first
+# kebab-case token of every functionality_label. This single rule kills
+# the bulk of label drift observed in the Scalable Crowd v1 dogfood
+# (where one functionality got 4 different labels because the LLM
+# free-associated verbs like "register" vs "registerOnLoad" vs
+# "registerAtModuleInit").
+#
+# If you need a verb that's not on this list, EITHER add it here AND
+# bump the verb_vocab_version below, OR pick the closest existing verb
+# and use the description field to capture the nuance.
+#
+# Project-specific extensions: override via
+#   glossary/config.yaml -> clustering.canonical_verbs
+# which can point to a custom YAML file (this format) or inline the list.
+
+verb_vocab_version: 2
+
+verbs:
+  # --- I/O ---
+  fetch:        Pull data from an external source (API, network, remote service).
+  load:         Read data from durable storage into memory (file, DB).
+  read:         Read data from a stream or input source.
+  write:        Write data to durable storage (file, DB).
+  save:         Persist current state (often a wrapper around write).
+  persist:      Save data with explicit durability semantics.
+  send:         Transmit data to another process/system.
+  publish:      Broadcast data to subscribers/channel.
+  subscribe:    Register interest in incoming data from a channel.
+  upload:       Push data to a remote storage target.
+  download:     Pull data from a remote storage target.
+
+  # --- Data transformation ---
+  parse:        Convert structured text into a typed/object representation.
+  extract:      Pull a specific field/subset out of a larger structure.
+  transform:    Apply a mapping that changes shape or representation.
+  normalize:    Apply a canonical form (case, encoding, whitespace, units).
+  serialize:    Convert in-memory object to a transport/storage format.
+  deserialize:  Convert transport/storage format back to in-memory object.
+  convert:      Change type or unit without changing logical content.
+  format:       Apply a presentation transformation (typically for display).
+  render:       Produce final output (UI, image, document) from a model.
+  encode:       Apply an encoding (base64, URL, etc.).
+  decode:       Reverse an encoding.
+
+  # --- Computation ---
+  compute:      Derive a value from inputs via algorithmic steps.
+  calculate:    Apply a closed-form mathematical operation.
+  derive:       Compute a value implied by another (often without independent input).
+  project:      Map an input onto a target space/coordinate system.
+  sample:       Probe a function/field at specific input point(s).
+  aggregate:    Combine multiple values into a summary (sum, avg, max, etc.).
+  reduce:       Collapse a collection to a single value via a binary op.
+  accumulate:   Build up a running total/list across iterations.
+  integrate:    Numerically integrate a function or simulation step.
+  estimate:     Compute an approximate value (statistical or heuristic).
+
+  # --- Validation ---
+  validate:     Check whether input meets all required criteria.
+  check:        Test a single condition.
+  verify:       Confirm a claim against external evidence.
+  assert:       Hard-enforce a precondition (throws/aborts on fail).
+  ensure:       Make a postcondition true (apply correction if needed).
+  sanitize:     Remove or neutralize unsafe content.
+  escape:       Make characters safe for a target context (HTML, SQL, shell).
+
+  # --- Lifecycle ---
+  init:         First-time setup of an object or subsystem.
+  initialize:   Alias for init when phase is one-shot/non-trivial.
+  dispose:      Release resources owned by an object (IDisposable.Dispose).
+  allocate:     Acquire memory or other native resource.
+  release:      Return a previously-allocated resource.
+  register:     Add to a registry/factory/dispatch table.
+  unregister:   Remove from a registry/dispatch table.
+  mount:        Attach a UI/component into its parent context.
+  unmount:      Remove a UI/component from its parent context.
+  attach:       Connect a handler/listener to a source.
+  detach:       Disconnect a previously-attached handler/listener.
+
+  # --- Control flow ---
+  start:        Begin a process or background task.
+  stop:         Terminate a running process or task.
+  pause:        Suspend execution to be resumed later.
+  resume:       Continue a previously-paused execution.
+  trigger:      Cause an event/handler to fire.
+  dispatch:     Route an action to its handler.
+  schedule:     Place a job on a timeline for later execution.
+  execute:      Run a prepared command/plan.
+  invoke:       Call a function (often via indirection like a delegate).
+  retry:        Re-attempt a failed operation under defined conditions.
+
+  # --- Comparison & query ---
+  compare:      Determine ordering or equivalence between two values.
+  match:        Test whether input fits a pattern/criterion.
+  contains:     Test set/collection membership.
+  find:         Locate the first matching element.
+  search:       Locate one or more matching elements (potentially broad).
+  lookup:       Resolve a key to a value in a map/index.
+  locate:       Find the position/location of a target.
+  count:        Tally matching elements.
+
+  # --- Modification ---
+  update:       Mutate existing state.
+  set:          Assign a value to a property/field.
+  add:          Append a new element to a collection.
+  remove:       Delete a specific element from a collection.
+  delete:       Permanently remove an entity.
+  insert:       Add at a specific position.
+  append:       Add at the end.
+  prepend:      Add at the beginning.
+  replace:      Substitute one element for another.
+  merge:        Combine two structures into one.
+  apply:        Apply a transformation in-place.
+
+  # --- Selection ---
+  filter:       Keep only elements satisfying a predicate.
+  select:       Choose a subset by criterion.
+  pick:         "Choose one element by policy (random, first, best, etc.)."
+  sort:         Reorder a collection by a comparator.
+  group:        Partition a collection by a key.
+  partition:    Split a collection into disjoint subsets.
+
+  # --- Special composites / catch-alls ---
+  guard:        Enforce a precondition by throwing on violation (lifecycle, contract).
+  log:          Emit a diagnostic record.
+  report:       Produce a structured summary for external consumption.
+  emit:         Send out an event/value through an established channel.
+  spawn:        Create a new instance/process/agent.
+  build:        Construct a complex object from inputs (often a builder pattern).
+  configure:    Apply settings to an existing object.
+  resolve:      Look up or compute a final value from candidates.
+
+  # --- Added in v2 from Scalable Crowd dogfood (verbs the v1 LLM reached for but weren't in v1 vocab) ---
+  construct:    Build a structured value or instance from raw inputs.
+  create:       Construct a new instance via a factory or constructor.
+  instantiate:  Create an instance of a named type (often via reflection or factory).
+  get:          Return a value from an internal field (accessor/getter).
+  expose:       Make an internal value available via a public property/method.
+  open:         Acquire a handle or session to a resource.
+  close:        Release a previously-acquired handle/session.
+  bind:         Connect one object to another (data binding, port binding, event binding).
+  unbind:       Reverse a previous bind.
+  reset:        Restore state to an initial or known-good value.
+  query:        Run a parameterized lookup against a data source.
+  scan:         Walk through a collection or stream applying a check or extraction.
+  snapshot:     Capture current state into an immutable copy.
+  stage:        Place a value into a pending area for later commit.
+  repaint:      Re-render visual state in response to a change.
+  solve:        Find a value satisfying a set of constraints (numerical or symbolic).
+  tick:         Advance a simulation/animation by one time step.
+  noop:         Do nothing (intentional pass-through, often required by an interface).
+  splat:        Distribute a value across cells/pixels with a kernel (graphics/sim).
+  hydrate:      Populate an empty structure from a serialized source.
+  sync:         Make two stores agree (cache to source, GPU to CPU, etc.).
+  cache:        Store a computed value for later reuse.
+  warm:         Pre-populate a cache or initialize before first use.
+  flush:        Write any pending changes immediately.
+
+  # --- Added in v2 round 2 (more missing verbs from Scalable Crowd dogfood) ---
+  refresh:      Recompute a value or view from current inputs.
+  run:          Execute a top-level task or simulation step.
+  drive:        Push a state machine forward through one or more transitions.
+  discard:      Drop a value without further processing.
+  populate:     Fill an empty structure with computed values.
+  destroy:      Tear down an object, releasing all resources and references.
+  push:         Append to a stack/queue or send into a pipeline.
+  bake:         Pre-compute and store a heavy result for runtime reuse.
+  test:         Verify a hypothesis with a probe (predicate or check).
+  detect:       Identify the presence of a pattern or condition.
+  compose:      Combine pieces (functions, structures, configs) into a whole.
+  collect:      Accumulate values into a container as they arrive.
+  bootstrap:    Perform first-time setup of a system, often from defaults.
+  advance:      Move forward by one step (state, time, position, etc.).
+  seed:         Initialize state from a starting value (RNG seed, initial points).
+  toggle:       Flip a boolean state.
+  swap:         Exchange two values or buffers.
+  submit:       Queue an item for processing by another subsystem.
+  step:         Execute one unit of a multi-step process (similar to tick).
+  wire:         Connect components together at startup.
+  unwire:       Reverse a previous wire.
+  tear:         Tear down (alias commonly used as 'teardown' in tests).
+  draw:         Issue rendering commands for visual output.
+  predict:      Compute a forecasted value from current state.
+  warn:         Emit a non-fatal diagnostic about an unusual condition.
+
+# Notes on usage:
+# - Indexer prompt MUST present this list and instruct: "your functionality_label
+#   starts with one of these verbs; lowercase, kebab-case; max 4 tokens total".
+# - "unclear" remains a valid escape hatch (described in briefs/indexer.md);
+#   it indicates the indexer cannot fit the unit into any verb on this list.
+# - For composite entries (kind == composite), the verb of the composite label
+#   should reflect the OUTER intent (e.g. "compare-date-against-threshold" is
+#   a "compare" composite even though it internally fetches and extracts).
