@@ -9,12 +9,12 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 | **essense-flow** | 0.13.4 | Multi-phase AI development pipeline. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
 | **essense-autopilot** | 0.3.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
 | **session-lifecycle** | 1.1.0 | Session lifecycle tools — handoff (capture session state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (metrics-driven retrospective), meta-review (diagnose session friction). |
-| **plugin-toolkit** | 1.0.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check). Composable with @ship. |
+| **plugin-toolkit** | 1.1.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary (functionality glossary + DRY audit for any codebase). Composable with @ship. |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
 | **thorough-mode** | 1.5.0 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`, `@debug`, `@verify`, `@fresh`. Inject behavioral rules. `@ship` integrates with plugin-toolkit (`/version-bump` + `/docs-audit`) when in mk-cc-resources plugin repo. |
 | **project-note-tracker** | 1.8.0 | Track questions per handler/department. Auto-detects handler, researches in background, logs to Excel, generates meeting agendas. |
 | **alert-sounds** | 1.1.0 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
-| **mk-cc-all** | 2.3.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
+| **mk-cc-all** | 2.4.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
 
 ## Benched plugins
 
@@ -265,7 +265,7 @@ Periodically:   /meta-review → find workflow patterns worth automating into sk
 
 ## Plugin Toolkit — Skill Dev + Maintenance
 
-Four composable skills for working ON plugins (not within them).
+Five composable skills for working ON plugins (and the codebases they ship in).
 
 ```bash
 claude plugin install plugin-toolkit
@@ -279,6 +279,7 @@ claude plugin install plugin-toolkit
 | **plugin-scaffold** | `/plugin-scaffold <name> <skills>` | Bootstrap a new plugin: directory tree + plugin.json + SKILL.md skeletons + marketplace.json + bundle + README + CLAUDE.md + RELEASE-NOTES. 9-step chain in one invocation. |
 | **version-bump** | `/version-bump <plugin> <patch\|minor\|major>` | Cascade version updates across plugin.json + marketplace.json entry + mk-cc-all bundle + metadata + RELEASE-NOTES. Validates semver consistency. |
 | **docs-audit** | `/docs-audit [plugin\|all]` | Cross-check CLAUDE.md + README + marketplace.json against disk. Find version mismatches, stale references, missing entries. Propose fixes per file. |
+| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary for any codebase. Labels every function by canonical functionality (verb-object-qualifier, decoupled from how it's written), clusters duplicates across files, identifies extractable DRY candidates with proposed signature + target helper module. Polyglot (LLM-read, no AST dep). Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Glossary-only — does not execute refactors. |
 
 ### Composition
 

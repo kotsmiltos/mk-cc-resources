@@ -1,0 +1,14 @@
+# Python build/dev artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# uv lockfile is intentionally committed (reproducible installs)
+# uv.lock <-- NOT ignored

@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.9.0"
+    "version": "2.10.0"
   },
   "plugins": [
     {
@@ -53,14 +53,14 @@
     {
       "name": "plugin-toolkit",
       "source": "./plugins/plugin-toolkit",
-      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. Composable — @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
-      "version": "1.0.0"
+      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary audits any codebase for DRY violations — labels every function by canonical functionality (verb-object-qualifier, decoupled from how it's written), clusters duplicate logic across files, and writes GLOSSARY.yaml + GLOSSARY.md with extractable candidates and proposed shared-helper homes. Polyglot via LLM-read; glossary-only (no refactor execution). Composable — @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
+      "version": "1.1.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.3.0"
+      "version": "2.4.0"
     }
   ]
 }

@@ -1,5 +1,20 @@
 # Release notes — plugin-toolkit
 
+## 1.1.0 — Add /code-glossary
+
+New skill: **code-glossary** — audits any codebase for DRY violations and writes a functionality glossary.
+
+- Reads source files via LLM (polyglot — no AST dep): Python, TypeScript, JavaScript, Go, Rust, Java, and others.
+- 5-phase workflow: scope → index (parallel sub-agents) → block scan → cluster → write artifacts.
+- Each function gets a canonical functionality label (`verb-object-qualifier`, kebab-case) decoupled from how it's written. Identical labels across files cluster into one glossary entry.
+- For clusters with ≥2 instances and a clear variant axis, identifies invariant skeleton + variant parameters and proposes a `canonical_signature` + `proposed_module` (helper home anchored to existing project dirs).
+- Sub-block scanner finds 3+ line duplicated patterns inside functions as secondary instances.
+- Substrate-verify discipline — every instance carries `file:line` + verbatim `body_excerpt`; master rejects entries failing the quote check on disk re-read.
+- Output: `GLOSSARY.yaml` (frozen schema, machine-readable for downstream tools) + `GLOSSARY.md` (human-readable summary, top extractables first).
+- Glossary-only — does NOT execute refactors. Future `/dry-refactor <gloss-id>` and essense-flow `/architect` pre-check would consume the YAML.
+
+Use when the codebase feels WET, before a refactor pass, or before designing a new module that may overlap with existing code.
+
 ## 1.0.0 — Initial release
 
 Plugin/skill development + maintenance toolkit. Four composable skills:

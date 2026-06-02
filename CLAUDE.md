@@ -51,6 +51,7 @@ plugins/
       plugin-scaffold/      # Bootstrap new plugin: dirs + cross-refs in one invocation
       version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + RELEASE-NOTES
       docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
+      code-glossary/        # Functionality glossary + DRY audit for any codebase (LLM-read, polyglot)
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -124,7 +125,7 @@ Five skills for cross-session continuity and workflow self-improvement.
 
 ## Plugin Toolkit
 
-Four composable skills for working ON plugins (not within them).
+Five composable skills for working ON plugins (and the codebases they ship in).
 
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
@@ -132,8 +133,9 @@ Four composable skills for working ON plugins (not within them).
 | `/plugin-scaffold <name> <skills>` | Starting a new plugin | Generates directory tree + plugin.json + SKILL.md skeletons + marketplace.json entry + bundle update + README/CLAUDE.md additions + RELEASE-NOTES. |
 | `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
 | `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
+| `/code-glossary [path]` | Auditing a codebase for DRY violations | Labels every function by canonical functionality (verb-object-qualifier, decoupled from how it's written), clusters duplicates across files, identifies extractable candidates with proposed signature + target helper module. Polyglot via LLM-read. Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Glossary-only — does not execute refactors. |
 
-Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills.
+Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary` is consumed by future `/dry-refactor` (v2) and an essense-flow `/architect` pre-check (planned) that surfaces existing functionality before designing new modules.
 
 ## Cross-Reference Patterns
 

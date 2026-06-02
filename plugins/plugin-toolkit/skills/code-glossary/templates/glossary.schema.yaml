@@ -1,0 +1,119 @@
+# Frozen schema — GLOSSARY.yaml
+#
+# This schema is the contract between /code-glossary phases and any downstream
+# consumer (future /dry-refactor, essense-flow /architect pre-check, /review lens).
+#
+# DO NOT change field names or required-status without a schema_version bump.
+# Extra fields are permitted (forward compatibility); missing required fields
+# cause master to reject the entry.
+
+schema_version: 1
+
+# ---- Top-level document shape ----
+#
+# glossary:
+#   - <entry>
+#   - <entry>
+# metadata:
+#   <fields>
+
+# ---- Per-entry schema ----
+
+entry:
+  required:
+    - id                  # string, unique within document, format: gloss-NNN
+    - name                # kebab-case canonical functionality label
+    - description         # one-sentence: what the functionality DOES (not how)
+    - extractable         # bool
+    - instances           # array, length >= 1
+  conditional:
+    # If extractable: true, the following are required:
+    when_extractable_true:
+      - canonical_signature   # pseudocode signature with role-named params
+      - proposed_module       # path under existing/sibling helper dir
+      - invariant_skeleton    # multi-line pseudocode of shared structure
+      - variant_axis          # array, length >= 1
+      - extractability_confidence  # enum: high | medium | low
+    # If extractable: false, the following are required:
+    when_extractable_false:
+      - notes                 # free-text explanation
+  optional:
+    - related_functionalities  # array of other gloss-ids
+    - notes                    # always allowed
+    - primary_unit             # enum: function | block (default: function)
+
+instance:
+  required:
+    - file              # path, relative to scope root
+    - line              # int, where unit starts
+    - body_excerpt      # verbatim quote, indentation preserved
+  optional:
+    - instance_type     # enum: function | block (default: function)
+    - function          # string, function/method name (required when instance_type: function)
+    - parent_function_id # required when instance_type: block — points to indexed_functions id
+    - variant_values    # map: parameter -> literal value for this instance
+    - language          # string, e.g. python
+
+variant_axis_entry:
+  required:
+    - parameter         # string, name of the parameter the extracted function would take
+    - instance_values   # array, one value per instance
+  optional:
+    - inferred_type     # string, e.g. int, str, bool, comparison-op, date
+
+# ---- Metadata block ----
+
+metadata:
+  required:
+    - generated_at      # ISO 8601 timestamp
+    - scope             # object: { paths, excludes, include_tests }
+    - total_functions_indexed
+    - total_clusters
+    - total_extractable
+  optional:
+    - language_mix      # object: { python: 0.7, typescript: 0.3, ... }
+    - skill_version     # the /code-glossary version that produced this artifact
+
+# ---- Example entry (illustrative, not part of the schema) ----
+
+example:
+  - id: gloss-001
+    name: compare-current-date-with-target-date
+    description: Checks days delta between now and a target date against a threshold.
+    extractable: true
+    extractability_confidence: high
+    canonical_signature: "is_date_distance_exceeded(target_date: date, threshold_days: int, comparison: str) -> bool"
+    proposed_module: src/utils/date_utils.py
+    invariant_skeleton: |
+      diff_days = (date.today() - target_date).days
+      return diff_days <comparison> threshold_days
+    variant_axis:
+      - parameter: threshold_days
+        instance_values: [20, 30]
+        inferred_type: int
+      - parameter: comparison
+        instance_values: [">=", "<"]
+        inferred_type: str
+    instances:
+      - instance_type: function
+        file: src/script1.py
+        function: is_overdue
+        line: 42
+        language: python
+        body_excerpt: |
+          def is_overdue(target):
+              days = (date.today() - target).days
+              return days >= 20
+        variant_values: { threshold_days: 20, comparison: ">=" }
+      - instance_type: function
+        file: src/script2.py
+        function: is_recent
+        line: 17
+        language: python
+        body_excerpt: |
+          def is_recent(target):
+              days = (date.today() - target).days
+              return days < 30
+        variant_values: { threshold_days: 30, comparison: "<" }
+    related_functionalities: [gloss-002]
+    notes: "Both instances also call fetch_apixyz_date — see gloss-002 for fetch extraction"
