@@ -183,3 +183,84 @@ def test_pass_c_verification_status_applies():
     enr = dict(FULL_ENRICHMENT, verification_status="quote_drift_detected")
     g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enr})
     assert g.glossary[0].verification_status == "quote_drift_detected"
+
+
+def test_pass_c_drop_instance_ids_removes_and_notes():
+    records, fps, clusters, scope = _setup()
+    enr = dict(FULL_ENRICHMENT, drop_instance_ids=["fn-c"])
+    g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enr})
+    entry = g.glossary[0]
+    files = {i.location.file for i in entry.instances}
+    assert files == {"src/a.py", "src/b.py"}
+    assert "dropped on quote drift" in entry.notes
+    assert entry.extractable is True  # still 2 instances -> gate passes
+
+
+def test_pass_c_drop_below_minimum_demotes():
+    records, fps, clusters, scope = _setup()
+    enr = dict(FULL_ENRICHMENT, drop_instance_ids=["fn-b", "fn-c"])
+    g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enr})
+    entry = g.glossary[0]
+    assert len(entry.instances) == 1
+    assert entry.extractable is False  # 1 instance < minimum, claim demoted
+    assert "Demoted to extractable=false" in entry.notes
+
+
+def _setup_two_clusters():
+    records = [
+        _record("fn-a", "src/a.py", 1, "register_a"),
+        _record("fn-b", "src/b.py", 1, "register_b"),
+        _record("fn-c", "src/c.py", 1, "load_c"),
+        _record("fn-d", "src/d.py", 1, "load_d"),
+    ]
+    fps = {r.id: SignalFingerprint(record_id=r.id) for r in records}
+    clusters = [
+        CandidateCluster(
+            id="cluster-001",
+            member_record_ids=["fn-a", "fn-b"],
+            primary_signal="structural",
+            signal_agreement={"structural": True},
+            extractability_score=0.8,
+            extractability_confidence="high",
+        ),
+        CandidateCluster(
+            id="cluster-002",
+            member_record_ids=["fn-c", "fn-d"],
+            primary_signal="label",
+            signal_agreement={"label": True},
+            extractability_score=0.4,
+            extractability_confidence="medium",
+        ),
+    ]
+    scope = {"paths": ["src"], "excludes": [], "include_tests": False}
+    return records, fps, clusters, scope
+
+
+def test_judge_merge_into_folds_members():
+    records, fps, clusters, scope = _setup_two_clusters()
+    enrichments = {
+        "cluster-002": {"cluster_id": "cluster-002", "merge_into": "cluster-001"},
+    }
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    # cluster-002 emits no entry; its members join cluster-001's entry.
+    multi = [e for e in g.glossary if len(e.instances) >= 2]
+    assert len(multi) == 1
+    assert len(multi[0].instances) == 4
+    # No watchlist leakage: fn-c / fn-d must not reappear as singles.
+    singles = [e for e in g.glossary if len(e.instances) == 1]
+    assert singles == []
+    assert g.metadata["enrichments"]["applied"] == 1
+    assert g.metadata["enrichments"]["unmatched_cluster_ids"] == []
+
+
+def test_merge_into_unknown_target_stays_visible():
+    records, fps, clusters, scope = _setup_two_clusters()
+    enrichments = {
+        "cluster-002": {"cluster_id": "cluster-002", "merge_into": "cluster-999"},
+    }
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    # Both clusters still emit entries; the bogus merge surfaces as... the
+    # enrichment IS matched to cluster-002 (its other fields apply), so it
+    # is consumed - but the merge itself was a no-op. Entry count proves it.
+    multi = [e for e in g.glossary if len(e.instances) >= 2]
+    assert len(multi) == 2

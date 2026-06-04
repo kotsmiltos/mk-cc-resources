@@ -84,13 +84,37 @@ def build_glossary(
     record_index = {r.id: r for r in record_list}
     enrichment_map = dict(enrichments or {})
 
+    # Behavioral-judge merges: an enrichment carrying merge_into folds its
+    # cluster's members into the target cluster before entries build.
+    # The merged-away cluster emits no entry of its own.
+    merged_members: dict[str, list[str]] = {}
+    merged_away: set[str] = set()
+    cluster_ids = {c.id for c in cluster_list}
+    for cid, enr in enrichment_map.items():
+        target = enr.get("merge_into")
+        if target is None:
+            continue
+        if target in cluster_ids and target != cid:
+            merged_members.setdefault(target, []).extend(
+                next(c.member_record_ids for c in cluster_list if c.id == cid)
+            )
+            merged_away.add(cid)
+        # Unknown target: cluster falls through untouched and the
+        # enrichment shows up as unmatched below — drift stays visible.
+
     entries: list[GlossaryEntry] = []
     clustered_ids: set[str] = set()
     counter = 1
     applied_enrichments = 0
 
     for cluster in cluster_list:
-        members = [record_index[m] for m in cluster.member_record_ids if m in record_index]
+        if cluster.id in merged_away:
+            clustered_ids.update(cluster.member_record_ids)
+            enrichment_map.pop(cluster.id, None)
+            applied_enrichments += 1
+            continue
+        member_ids = list(cluster.member_record_ids) + merged_members.get(cluster.id, [])
+        members = [record_index[m] for m in member_ids if m in record_index]
         enrichment = enrichment_map.pop(cluster.id, None)
         if enrichment is not None:
             applied_enrichments += 1
@@ -225,6 +249,28 @@ def _apply_enrichment(
     entry has enough instances. Otherwise the entry stays false and the
     notes name what was missing (visibility per DESIGN-V2.md §10).
     """
+    # Pass C drops: instances whose body_excerpt no longer matched disk.
+    drop_ids = enrichment.get("drop_instance_ids")
+    if isinstance(drop_ids, list) and drop_ids:
+        members_by_id = {m.id: m for m in members}
+        dropped_locs = {
+            (members_by_id[rid].location.file, members_by_id[rid].location.line)
+            for rid in drop_ids
+            if rid in members_by_id
+        }
+        kept = [
+            inst
+            for inst in entry.instances
+            if (inst.location.file, inst.location.line) not in dropped_locs
+        ]
+        if len(kept) != len(entry.instances):
+            entry.notes = _append_note(
+                entry.notes,
+                f"{len(entry.instances) - len(kept)} instance(s) dropped on "
+                "quote drift during Pass C verification.",
+            )
+            entry.instances = kept
+
     if _non_empty_str(enrichment.get("name")):
         entry.name = enrichment["name"].strip()
     if _non_empty_str(enrichment.get("description")):

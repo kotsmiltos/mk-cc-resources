@@ -1,153 +1,168 @@
 ---
 name: code-glossary
-description: (v1 — DEPRECATED, will be deleted when v2 ships) Build a functionality glossary for a codebase. For every function and every duplicated sub-block, assign a canonical functionality label (verb + object + qualifiers) decoupled from how it's written, cluster instances of the same functionality across files, and identify which clusters are extractable into shared helpers. Produces GLOSSARY.yaml (machine-readable, frozen schema) + GLOSSARY.md (human summary). Use when the codebase feels WET (same logic in many slightly-different spots), before a refactor pass, before /architect when designing a new module that may overlap with existing code, or as part of a code-review lens that catches DRY violations. Polyglot via LLM-read — no AST dependency. Glossary-only — does NOT execute refactors (downstream skills consume the YAML).
-argument-hint: "[path] [language-hint?]"
+description: Build a functionality glossary + DRY audit for a codebase. A deterministic Python engine indexes every function (Python/TS/JS/C# via AST, tree-sitter), fingerprints 5 signals, and clusters duplicate implementations; Claude sub-agents label functionalities against a controlled verb vocabulary, review each cluster (Pass B), and substrate-verify instances (Pass C). Produces GLOSSARY.yaml (frozen schema, consumed by future /dry-refactor) + GLOSSARY.md. Use when the codebase feels WET, before a refactor pass, or before /architect when a new module may overlap existing code.
+argument-hint: "[path]"
 ---
-
-> **DEPRECATED — v1 of /code-glossary.**
-> Real-world dogfood on Scalable Crowd (~826 C# functions) showed the single-LLM clusterer can't handle large projects without manual Python helper intervention. v2 redesign replaces the single-pass LLM clusterer with a deterministic Pass A + parallel LLM Pass B + master verification Pass C, adds tree-sitter for first-class TS+C# support, and integrates with essense-flow via two new phases (`/organize` post-architect, `/glossary` post-build).
->
-> **Source of truth:** [`DESIGN-V2.md`](./DESIGN-V2.md) in this folder.
->
-> **Until v2 ships:** v1 still works in the "indexer-only" path (run indexer, then manually curate clustering as the user did for Scalable Crowd). Not recommended for new use cases.
->
-> **This file will be deleted when v2 ships.**
-
----
-
 
 <objective>
-Read a codebase, label every function and notable sub-block by canonical functionality (what it does, not how it's written), cluster instances across files, and write a frozen-schema glossary. Substrate-verify every claim with file:line + verbatim body excerpt. Glossary-only — no refactor execution.
+Read a codebase, identify what each function DOES (decoupled from how it's written), cluster duplicate implementations across files, and write a frozen-schema glossary with extraction proposals. Every claim substrate-verified with file:line + verbatim body. Glossary-only — no refactor execution.
 </objective>
 
-## Disk hints
+<context>
+**Architecture (DESIGN-V2.md is the source of truth — read it for any design question):**
 
-```!
-pwd 2>/dev/null
+- **Deterministic engine** (`code_glossary/` Python package in this skill folder): walking, AST parsing (Python stdlib ast; TS/JS/C# tree-sitter), signal fingerprints, Pass A clustering, schema validation, rendering. Driven via Bash, one stage per invocation.
+- **LLM layer** (this file): functionality labeling, Pass B cluster review, behavioral judging, Pass C verification. ALL LLM work happens as Claude Code Agent-tool sub-agent dispatches **in this session**. NO external LLM SDKs, NO API keys, NO Anthropic/OpenAI calls — ever (DESIGN-V2.md lock row 15).
+
+**Engine invocation.** Resolve the skill folder: `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary` (in development: `plugins/plugin-toolkit/skills/code-glossary` inside the marketplace repo). Then:
+
+```
+uv run --project <skill_folder> python -m code_glossary.runner <stage> ...
 ```
 
-```!
-ls -d */ 2>/dev/null | head -20
-```
+Runner subcommands: `index`, `apply-labels`, `signal`, `cluster`, `slices`, `render`. Each prints `key: value` summary lines and exits 2 on hard failure. Working artifacts live in `<target>/glossary/.work/` (kept after the run for debuggability).
+</context>
 
 <instructions>
 
-## 1. Scope
+## 1. Scope + config
 
-`$ARGUMENTS`:
-- First token (optional) = target path (default: current working directory)
-- Second token (optional) = language hint (e.g. `python`, `ts`, `polyglot`); default `polyglot`
+`$ARGUMENTS`: first token (optional) = target path, default current working directory. Resolve; abort with a clear message if it doesn't exist.
 
-Resolve target path. Confirm exists; abort with a clear message if not.
+Read `<target>/glossary/config.yaml` if present. If absent, this is a first run: write the default config there (scope paths/excludes/include_tests, clustering helper_home_candidates + min_instances, execution max_parallel_agents=20 + estimate_and_confirm, output settings — defaults per DESIGN-V2.md §9).
 
-Detect project conventions by listing top-level dirs and reading any `pyproject.toml`, `package.json`, or `Cargo.toml`. Note candidate "shared helper" homes already present (e.g. `src/utils/`, `src/common/`, `lib/`, `app/helpers/`). These become hints for the `proposed_module` field — never invent new top-level dirs.
+Detect helper-home candidates: list top-level dirs, note existing shared-code homes (`src/utils/`, `src/common/`, `lib/`, `Shared/`, etc.). These feed `proposed_module` — never invent new top-level dirs.
 
-Build an exclude set:
-- `.git`, `node_modules`, `__pycache__`, `.venv`, `venv`, `dist`, `build`, `.next`, `.pytest_cache`, `target`, `.serena`
-- Any path matching `*.min.js`, `*.lock`, `*generated*`
-- User's `.gitignore` entries if available
-- Test directories ONLY if user opts out — by default INCLUDE tests (duplicate test fixtures are also DRY candidates)
+Confirm via `AskUserQuestion`: target path, excludes, include_tests, output dir (`<target>/glossary/`). Do NOT proceed unconfirmed.
 
-Show the user the scope plan via `AskUserQuestion`:
-- Confirm target path + excludes + include-tests setting
-- Confirm output location (default: `<target>/GLOSSARY.yaml` + `<target>/GLOSSARY.md`)
+## 2. Stage 1 — index (deterministic)
 
-Do NOT proceed until confirmed.
+```
+runner index --root <target> --out <work>/records.yaml [--include-tests] [--exclude <pat> ...]
+```
 
-## 2. Enumerate source files
+Exit 2 = zero functions indexed: abort, relay the runner's diagnostic (scope empty, all excluded, or unreadable). Note `languages_skipped` — those files get no deterministic records; mention them in the final report as LLM-sketch candidates (not dispatched by default; offer only if the user asks).
 
-Walk the target path. Collect files matching common source extensions (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.go`, `.rs`, `.java`, `.kt`, `.rb`, `.cs`, `.php`, `.swift`, `.cpp`, `.c`, `.h`). Skip excludes.
+## 3. Estimate + confirm (lock row 16 — before ANY dispatch)
 
-Batch into groups of ~10-20 files (or 1 directory each, whichever is smaller) for parallel indexing. Report total files + batch count before dispatch.
+From the index summary compute:
+- **labeler agents** = ceil(records / 40)
+- **Pass B agents** ≈ multi-instance cluster count (known precisely after stage 5; use the index-time estimate `records / 8` for the upfront number, then re-confirm at step 6 if actual exceeds estimate by >50%)
 
-## 3. Phase 1 — Index (parallel)
+Report: "N records → ~K labeler + ~M reviewer dispatches, runs on session tokens." Ask the user to confirm before kickoff (`AskUserQuestion`). No hard cap — the user decides.
 
-Read the brief at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/briefs/indexer.md` (in development this resolves to `plugins/plugin-toolkit/skills/code-glossary/briefs/indexer.md`; when installed via plugin marketplace, `find ~/.claude/plugins -path "*/code-glossary/briefs/indexer.md" -type f` discovers it).
+## 4. Labeling (LLM — parallel sub-agents)
 
-Dispatch one `Explore` sub-agent per batch via the Agent tool in a single message (parallel). Each agent receives:
-- The brief content (verbatim from `briefs/indexer.md`)
-- The batch's file paths
-- The detected project conventions (helper home candidates)
+Build batches of ≤40 records. For each batch, dispatch one sub-agent (single message, parallel) with:
+- The brief at `briefs/labeler.md` (verbatim)
+- The batch's record table: `id | file | line | function | signature` (from `records.yaml`)
+- The vocabulary file path: `<skill_folder>/code_glossary/canonical_verbs.yaml`
+- Helper-home candidates
 
-Each indexer returns YAML with `indexed_functions` array. Wait for all to return.
+Merge all returns into `<work>/labels.yaml` (top-level `labels:` list). A crashed agent's batch is re-dispatched once; if it crashes again, its records stay unlabeled (they cluster by structural/signature signals only) and the failure is reported — never silently.
 
-Merge returns into a single `indexed_functions` master list. Reject any entry missing `file`, `line`, `function_name`, `body_excerpt`, or `functionality_label`. Log rejections.
+```
+runner apply-labels --records <work>/records.yaml --labels <work>/labels.yaml
+```
 
-## 4. Phase 2 — Block scan (single agent)
+Report `labels_normalized_to_unclear` and `unknown_record_id` counts — both are agent drift the user should see.
 
-Read the brief at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/briefs/block-scanner.md` (same discovery pattern as phase 1). Dispatch one `Explore` sub-agent with:
-- The brief content
-- The `indexed_functions` master list (so block hits can be tied to parent function)
-- A token-budget cap of ~50 candidate blocks (block scan is secondary — function-level is primary)
+## 5. Stages 2–3 — signal + cluster (deterministic)
 
-The agent returns `block_instances` — duplicated/near-duplicated multi-line patterns (3+ consecutive lines, 2+ occurrences across files). Each block instance points to its parent function via `parent_function_id`.
+```
+runner signal  --records <work>/records.yaml --out <work>/fingerprints.yaml
+runner cluster --records <work>/records.yaml --fingerprints <work>/fingerprints.yaml --out <work>/clusters.yaml
+runner slices  --records <work>/records.yaml --clusters <work>/clusters.yaml --out-dir <work>/slices
+```
 
-## 5. Phase 3 — Cluster (single agent)
+## 6. Pass B — cluster review (LLM — parallel sub-agents)
 
-Read the brief at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/briefs/clusterer.md` (same discovery pattern as phase 1). Dispatch one `Explore` sub-agent with:
-- The brief content
-- The `indexed_functions` master list (every label per function)
-- The `block_instances` list (secondary instances)
-- The frozen schema at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/templates/glossary.schema.yaml`
+One sub-agent per slice file (re-confirm count with the user if it exceeds the step-3 estimate by >50%). Each gets:
+- The brief at `briefs/cluster-reviewer.md` (verbatim)
+- Its slice file path
+- Helper-home candidates
 
-The agent merges similar labels into canonical clusters, identifies variant axis (the parts that differ across instances — operators, constants, identifiers, calls), invariant skeleton (the parts that match), and proposes `canonical_signature` + `proposed_module` per extractable cluster (N≥2 instances).
+Cap concurrency at `max_parallel_agents` from config (default 20); dispatch in waves if needed.
 
-Returns `glossary` array conforming to the frozen schema.
+Collect returns. Malformed YAML: retry that agent once with a stricter prompt; still malformed → that cluster keeps its deterministic baseline (extractable=false, pending note) and is logged. Merge all `enrichments:` entries into `<work>/enrichments.yaml` — reject duplicate cluster_ids (keep the first, log the collision).
 
-## 6. Phase 4 — Write artifacts
+## 7. Behavioral judge — borderline pairs (LLM — parallel sub-agents)
 
-Validate the returned `glossary` against the frozen schema at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/templates/glossary.schema.yaml` (same discovery pattern as phase 1). For each entry:
-- Required fields present: `id`, `name`, `description`, `instances`, `extractable`
-- Each instance has `file`, `function`, `line`, `body_excerpt`
-- If `extractable: true`: `canonical_signature`, `proposed_module`, `variant_axis`, `invariant_skeleton` all present and non-empty
-- If `extractable: false`: at minimum 1 instance, `notes` populated explaining why (single-instance, language-idiomatic, security-critical, etc.)
+Identify near-miss pairs from `clusters.yaml`: two multi-instance clusters whose labels share the same first two kebab tokens (same verb + object) but were not merged by Pass A. For each pair (usually a handful), dispatch one judge with `briefs/behavioral-judge.md` + both slice paths.
 
-Re-validate a random sample of 3 instances: open the cited file, confirm `body_excerpt` appears at/near the cited line (±5 lines). Drop instances where the quote doesn't match — log as drift.
+Verdict `merge` → add `merge_into: <cluster_a>` to cluster B's entry in `enrichments.yaml` (the renderer folds members; B emits no separate entry). `distinct`/`inconclusive` → no change; note inconclusive pairs in the report.
 
-Write `<target>/GLOSSARY.yaml` per the schema. Include `metadata` block with: `generated_at`, `scope` (paths + excludes), `total_functions_indexed`, `total_clusters`, `total_extractable`, `language_mix`.
+## 8. Pass C — master substrate-verify (you, inline)
 
-Render `<target>/GLOSSARY.md` from the template at `${CLAUDE_PLUGIN_ROOT}/skills/code-glossary/templates/report.md.tmpl` (same discovery pattern as phase 1). The template is illustrative — render the same sections, but fill from the actual glossary data rather than trying to substitute `{{...}}` literally. Order clusters by:
-1. `extractable: true` first
-2. Within extractable, descending by instance count
-3. Then single-instance entries (alphabetical by name)
+For every enrichment entry (and every merge target), sample 3 instances (all, if fewer): Read the cited file at the cited line, confirm the slice's verbatim body still matches the disk (±5 lines tolerance for drift in line numbers).
 
-## 7. Report
+- Instance body not found → add its record id to that entry's `drop_instance_ids`.
+- >50% of sampled instances fail → set `verification_status: quote_drift_detected` on the entry (kept in the glossary, flagged — never suppressed).
+- All sampled pass → `verification_status: verified`.
+
+Write the updated `enrichments.yaml`. This step is yours — do not delegate it; fresh context is the point.
+
+## 9. Stage 4 — render (deterministic)
+
+```
+runner render --records <work>/records.yaml --fingerprints <work>/fingerprints.yaml \
+  --clusters <work>/clusters.yaml --enrichments <work>/enrichments.yaml \
+  --out-dir <target>/glossary --target-path <project-name> \
+  --scope-path <p> [--scope-exclude <e> ...] [--include-tests]
+```
+
+Check the summary: `enrichments_unmatched` non-empty means an agent returned a cluster id that doesn't exist — report it.
+
+## 10. Report
 
 ```
 Code glossary: <target>
 
-Indexed:    <N> functions across <M> files
-Clusters:   <total_clusters> canonical functionalities
-Extractable: <K> clusters (≥2 instances, parametric variant axis)
+Indexed:     <N> functions across <M> files (<language mix>)
+Clusters:    <K> multi-instance (of <T> total entries)
+Extractable: <E> promoted by Pass B review
+Dispatches:  <L> labelers + <R> reviewers + <J> judges
 
-Top extractables (by reuse count):
-  1. <name> — <N> instances — proposed: <proposed_module>
-  2. ...
-  3. ...
+Top 3 extractables (by score):
+  1. <name> — <n> instances — proposed: <module>
+  ...
+
+Verification: <V> verified, <D> quote-drift flagged, <I> instances dropped
+Failures:     <unlabeled batches, malformed returns, skipped languages — or "none">
 
 Outputs:
-  - <target>/GLOSSARY.yaml  (machine-readable, frozen schema)
-  - <target>/GLOSSARY.md    (human summary)
-
-Next:
-  - Review GLOSSARY.md, focus on top extractables
-  - Feed GLOSSARY.yaml to a refactor skill (v2) or hand-extract via /architect
+  <target>/glossary/GLOSSARY.yaml   (frozen schema v1 — /dry-refactor input)
+  <target>/glossary/GLOSSARY.md     (human summary, sorted by score)
+  <target>/glossary/.work/          (stage artifacts, kept for inspection)
 ```
 
-## Composition
-
-- Standalone use: most common — "audit my codebase for DRY violations"
-- Future v2 — `/dry-refactor <glossary.yaml> <gloss-id>` would execute extractions with test-after-each
-- essense-flow integration (future) — `/architect` could read an existing GLOSSARY.yaml before designing new modules, surfacing existing functionality that overlaps with planned work
-- `/review` lens (future) — a new adversarial lens could flag commits that add an Nth instance of a known gloss-id (DRY regression)
-
-## Constraints
-
-- DO NOT modify any source file. This skill produces glossary artifacts only.
-- DO NOT invent file paths, function names, or line numbers. Every instance is sourced from a sub-agent return; sub-agents are required to quote verbatim.
-- DO NOT propose new top-level helper directories that don't exist. `proposed_module` must point to an existing dir OR an obvious sibling of one (e.g. `src/utils/dates.py` is OK if `src/utils/` exists; inventing `src/lib/` when only `src/utils/` exists is not).
-- DO NOT mark a cluster `extractable: true` with fewer than 2 instances.
-- DO NOT proceed past phase 1 if zero functions are indexed — abort with a clear message (target may be empty, all excluded, or unreadable).
-- DO NOT auto-execute refactors. v1 is glossary-only by design.
-
 </instructions>
+
+<failure_handling>
+Never silent (DESIGN-V2.md §10):
+
+| Failure | Behavior |
+|---|---|
+| Unreadable/unparseable file | Engine logs + counts it; surfaces in index summary |
+| Zero records indexed | Hard abort with diagnostic |
+| Labeler/reviewer agent crash | One re-dispatch; then degrade (unlabeled / deterministic baseline) + report |
+| Malformed agent YAML | One stricter retry; then drop that return, log it |
+| Off-vocabulary label | Demoted to `unclear` by apply-labels, counted, reported |
+| Unknown record/cluster id in a return | Surfaced in runner output + metadata, never merged |
+| Pass C quote drift | Instance dropped; entry flagged `quote_drift_detected` if >50% fail |
+</failure_handling>
+
+<constraints>
+- NO external LLM SDKs or API calls. All LLM work = Agent-tool dispatches in this session. The engine stays deterministic.
+- DO NOT modify any source file in the target. Glossary artifacts only.
+- DO NOT invent file paths, record ids, or line numbers. Everything traces to engine output or a verified agent return.
+- DO NOT mark extractable with <2 instances (the renderer enforces this too).
+- DO NOT propose helper modules outside existing helper homes.
+- DO NOT dispatch before the step-3 estimate is confirmed.
+</constraints>
+
+<composition>
+- Standalone: "audit my codebase for DRY violations".
+- essense-flow: `/organize` (post-architect, spec mode) and `/glossary` (post-build, code mode) reuse this engine — waves 8–10.
+- Future `/dry-refactor` (v3, designed in DESIGN-V2.md Appendix A) executes extractions from GLOSSARY.yaml.
+</composition>
