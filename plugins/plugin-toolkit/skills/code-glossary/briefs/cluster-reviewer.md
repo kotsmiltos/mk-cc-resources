@@ -41,7 +41,11 @@ thing, and if so, design the extraction.
 
 ## Return format
 
-Return ONLY this YAML — one enrichment entry for the cluster:
+WRITE this YAML to the output path you were given (Write tool) — one
+enrichment entry for the cluster. Your final MESSAGE is one line only:
+`<output path> — <cluster_id>, extractable: <true|false>`. Do NOT paste
+the YAML into the message — pasted returns burned ~40% of the session
+context in the v2 acceptance run; the file IS the return.
 
 ```yaml
 enrichments:
@@ -82,7 +86,7 @@ enrichments:
 
 ## Constraints
 
-- Read-only. Do NOT modify any file.
+- Modify NOTHING except your own output file.
 - Member record IDs come from the slice, verbatim. Never invent IDs.
 - Do NOT mark extractable on fewer than 2 members.
 - `instance_values` must come from the actual bodies in the slice —

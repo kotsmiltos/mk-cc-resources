@@ -59,8 +59,9 @@ Build batches of ≤40 records. For each batch, dispatch one sub-agent (single m
 - The batch's record table: `id | file | line | function | signature` (from `records.yaml`)
 - The vocabulary file path: `<skill_folder>/code_glossary/canonical_verbs.yaml`
 - Helper-home candidates
+- **Its output path**: `<work>/returns/labels-<batch>.yaml` — agents WRITE their YAML there and return only `path — N labels` (pasted returns burned ~40% of session context in the v2 acceptance run)
 
-Merge all returns into `<work>/labels.yaml` (top-level `labels:` list). A crashed agent's batch is re-dispatched once; if it crashes again, its records stay unlabeled (they cluster by structural/signature signals only) and the failure is reported — never silently.
+Read each return file (NOT the agent's message) and concatenate the `labels:` lists into `<work>/labels.yaml`; verify the per-file count against the agent's one-line message — a mismatch means a malformed write, re-dispatch that batch once. A crashed agent's batch is re-dispatched once; if it crashes again, its records stay unlabeled (they cluster by structural/signature signals only) and the failure is reported — never silently.
 
 ```
 runner apply-labels --records <work>/records.yaml --labels <work>/labels.yaml
@@ -82,10 +83,11 @@ One sub-agent per slice file (re-confirm count with the user if it exceeds the s
 - The brief at `briefs/cluster-reviewer.md` (verbatim)
 - Its slice file path
 - Helper-home candidates
+- **Its output path**: `<work>/returns/review-<cluster_id>.yaml`
 
 Cap concurrency at `max_parallel_agents` from config (default 20); dispatch in waves if needed.
 
-Collect returns. Malformed YAML: retry that agent once with a stricter prompt; still malformed → that cluster keeps its deterministic baseline (extractable=false, pending note) and is logged. Merge all `enrichments:` entries into `<work>/enrichments.yaml` — reject duplicate cluster_ids (keep the first, log the collision).
+Read each return FILE (the agent's message carries only the path + a one-line summary). Malformed YAML in a file: retry that agent once with a stricter prompt; still malformed → that cluster keeps its deterministic baseline (extractable=false, pending note) and is logged. Merge all `enrichments:` entries into `<work>/enrichments.yaml` — reject duplicate cluster_ids (keep the first, log the collision).
 
 ## 7. Behavioral judge — near-miss candidates (LLM — parallel sub-agents)
 
@@ -99,6 +101,8 @@ Three candidate kinds, each mapped to a v2-acceptance recall loss:
 - **label-pair** — two multi-instance clusters whose labels share the first two kebab tokens (the split build-factory family). Dispatch one judge with `briefs/behavioral-judge.md` + both slice paths.
 - **singleton-adoption** — an unclustered record whose function name matches a cluster member's (the dropped ClosestPointOnSegment variants). Dispatch one judge with the cluster's slice path + the record's `id | file | line | body` block from `records.yaml`.
 - **bucket-sample** — a deterministic sample from a big signature-only bucket (the unreviewed n=143 parameterless-void bucket). Dispatch one judge with the sampled members' bodies; question is "does a real cluster hide in here" — a `merge`-family answer means slice + review that subset in a follow-up Pass B dispatch.
+
+Every judge also gets **its output path**: `<work>/returns/judge-<n>.yaml`; verdicts are read from the files, not from agent messages.
 
 Verdict handling in `enrichments.yaml`:
 - `merge` → add `merge_into: <cluster_a>` to cluster B's entry (the renderer folds members; B emits no separate entry).

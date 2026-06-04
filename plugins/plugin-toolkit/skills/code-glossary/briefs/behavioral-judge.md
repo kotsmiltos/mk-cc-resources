@@ -41,7 +41,9 @@ You will be dispatched in one of three modes (the dispatch says which):
 
 ## Return format
 
-Return ONLY this YAML:
+WRITE this YAML to the output path you were given (Write tool). Your
+final MESSAGE is one line only: `<output path> — <verdict>`. Do NOT
+paste the YAML into the message; the file IS the return.
 
 ```yaml
 judgement:
@@ -56,7 +58,7 @@ judgement:
 
 ## Constraints
 
-- Read-only. Do NOT modify any file.
+- Modify NOTHING except your own output file.
 - Default to **distinct** when uncertain — a wrong merge/adopt corrupts
   the glossary; a missed one only loses one suggestion.
 - Rationale must reference concrete evidence from the bodies (a call,

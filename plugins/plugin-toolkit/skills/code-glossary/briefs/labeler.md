@@ -15,6 +15,7 @@ say what each function DOES, in problem-domain terms.
   FIRST. Every label's first token MUST be one of these verbs.
 - **Helper-home candidates**: existing shared-code dirs in this project.
   Context only.
+- **Output path**: the YAML file you will WRITE your labels to.
 
 ## Procedure
 
@@ -47,7 +48,7 @@ guess a confident-sounding label for code you did not understand.
 
 ## Return format
 
-Return ONLY this YAML (no prose, no fences around the whole message):
+WRITE this YAML to the output path you were given (Write tool):
 
 ```yaml
 labels:
@@ -58,9 +59,14 @@ labels:
 
 Every record ID from your table must appear exactly once.
 
+Your final MESSAGE is one line only: `<output path> — <N> labels`.
+Do NOT paste the YAML into the message — sixty pasted returns burned
+~40% of the session context in the v2 acceptance run; the file IS the
+return.
+
 ## Constraints
 
-- Read-only. Do NOT modify any file.
+- Modify NOTHING except your own output file.
 - Do NOT skip records silently — `unclear` + description is the escape hatch.
 - Do NOT use verbs outside the vocabulary file (the merge step demotes
   off-vocabulary labels to `unclear`, wasting your work).
