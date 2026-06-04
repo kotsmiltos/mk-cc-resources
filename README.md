@@ -1,20 +1,20 @@
 # mk-cc-resources
 
-Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI development pipeline (Elicit → Research → Triage → Architecture → Build → Review → Verify) — plus supporting tools for data exploration, prompt modifiers, project question tracking, and cross-platform alerts.
+Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI development pipeline (Elicit → Research → Triage → Architecture → [Organize] → Build → [Glossary] → Review → Verify) — plus supporting tools for data exploration, prompt modifiers, project question tracking, and cross-platform alerts.
 
 ## Active plugins
 
 | Plugin | Version | What it does |
 |---|---|---|
-| **essense-flow** | 0.13.4 | Multi-phase AI development pipeline. Nine skills (elicit, research, triage, architect, build, review, verify, context, heal) drive a state machine from project pitch to shipped code. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
-| **essense-autopilot** | 0.3.0 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates, real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
+| **essense-flow** | 0.15.0 | Multi-phase AI development pipeline. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize + /glossary are optional DRY phases powered by the code-glossary engine. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
+| **essense-autopilot** | 0.3.1 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
 | **session-lifecycle** | 1.1.0 | Session lifecycle tools — handoff (capture session state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (metrics-driven retrospective), meta-review (diagnose session friction). |
-| **plugin-toolkit** | 1.1.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary (functionality glossary + DRY audit for any codebase). Composable with @ship. |
+| **plugin-toolkit** | 1.2.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary v2 (deterministic engine + in-session sub-agents; functionality glossary + DRY audit for Python/TS/JS/C# and beyond). Composable with @ship. |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
 | **thorough-mode** | 1.5.0 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`, `@debug`, `@verify`, `@fresh`. Inject behavioral rules. `@ship` integrates with plugin-toolkit (`/version-bump` + `/docs-audit`) when in mk-cc-resources plugin repo. |
 | **project-note-tracker** | 1.8.0 | Track questions per handler/department. Auto-detects handler, researches in background, logs to Excel, generates meeting agendas. |
 | **alert-sounds** | 1.1.0 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
-| **mk-cc-all** | 2.4.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
+| **mk-cc-all** | 2.5.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
 
 ## Benched plugins
 
@@ -81,7 +81,9 @@ Then in any project:
 | Research | `/research` | Multi-perspective research — produces REQ.md with testable acceptance criteria |
 | Triage | `/triage` | Categorizes findings, routes to the correct phase |
 | Architecture | `/architect` | Decide → decompose → package. Closes every design decision before build starts. Produces ARCH.md + decisions index + closed task specs + sprint manifest. Every task spec is unambiguous — no "TBD," no "agent decides X." |
+| Organize *(optional)* | `/organize` | Spec-level DRY pass. Clusters the sprint's task specs across sub-architects, proposes consolidations of overlapping functionality before any code is written. Propose-with-confirm; originals archived. Powered by the code-glossary engine (spec mode). |
 | Build | `/build` | Executes task specs in dependency-ordered waves. **No concurrency cap.** Re-validates every agent's completion record against disk via `lib/verify-disk.js`; drift surfaces loudly. |
+| Glossary *(optional)* | `/glossary` | Code-level DRY audit. Indexes every function the sprint produced, clusters duplicate implementations, scores extraction candidates. Propose-only — writes `.pipeline/glossary/GLOSSARY.{yaml,md}`, never touches source. Powered by the code-glossary engine (code mode). |
 | Review | `/review` | Adversarial QA. Findings carry verbatim path evidence; quotes re-validated against disk. Deterministic gate: `confirmed_unacknowledged_criticals == 0` advances; non-zero blocks. False-positive ledger remembers prior rejections. |
 | Verify | `/verify` | Top-down spec compliance audit. Every spec decision verified against implementation by reading code at the locator hint. `confirmed_gaps == 0` advances to complete. |
 | Heal | `/heal` | Pipeline self-heal. Picks up from any prior state — fresh project, mid-flight, prior tool's artifacts, code-without-spec. Walks artifacts, infers phase, proposes walk-forward via legal transitions on user confirm. |
@@ -95,7 +97,7 @@ Two advisory hooks. Both fail-soft — never block tool calls.
 
 ### Commands
 
-`/init`, `/elicit`, `/research`, `/triage`, `/architect`, `/build`, `/review`, `/verify`, `/heal`, `/status`, `/next`, `/help`
+`/init`, `/elicit`, `/research`, `/triage`, `/architect`, `/organize`, `/build`, `/glossary`, `/review`, `/verify`, `/heal`, `/status`, `/next`, `/help`
 
 ## essense-autopilot — Stop-Hook Autopilot
 
@@ -115,7 +117,7 @@ Halts on:
 | `.pipeline/` not found | nothing to drive |
 | `autopilot.enabled: false` | not opted in (default) |
 | `state.blocked_on` set | real blocker — needs human |
-| phase ∈ human_gates (idle, eliciting, verifying) | needs dialogue |
+| phase ∈ human_gates (idle, eliciting, organizing, glossarying, verifying) | needs dialogue |
 | phase ∈ terminal (complete) | done |
 | no flow mapping for phase | unknown phase — fail-safe halt |
 | iteration cap (default 30) | infinite-loop safety |
@@ -279,7 +281,7 @@ claude plugin install plugin-toolkit
 | **plugin-scaffold** | `/plugin-scaffold <name> <skills>` | Bootstrap a new plugin: directory tree + plugin.json + SKILL.md skeletons + marketplace.json + bundle + README + CLAUDE.md + RELEASE-NOTES. 9-step chain in one invocation. |
 | **version-bump** | `/version-bump <plugin> <patch\|minor\|major>` | Cascade version updates across plugin.json + marketplace.json entry + mk-cc-all bundle + metadata + RELEASE-NOTES. Validates semver consistency. |
 | **docs-audit** | `/docs-audit [plugin\|all]` | Cross-check CLAUDE.md + README + marketplace.json against disk. Find version mismatches, stale references, missing entries. Propose fixes per file. |
-| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary for any codebase. Labels every function by canonical functionality (verb-object-qualifier, decoupled from how it's written), clusters duplicates across files, identifies extractable DRY candidates with proposed signature + target helper module. Polyglot (LLM-read, no AST dep). Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Glossary-only — does not execute refactors. |
+| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary + DRY audit for any codebase (v2). Deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, clusters duplicates; in-session sub-agents label against a 142-verb controlled vocabulary, review clusters (Pass B), substrate-verify instances (Pass C). Writes GLOSSARY.yaml (frozen schema, future /dry-refactor input) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Glossary-only — does not execute refactors. |
 
 ### Composition
 

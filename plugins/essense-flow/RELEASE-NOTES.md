@@ -1,5 +1,17 @@
 # Release notes — essense-flow
 
+## 0.15.0 — Two optional DRY phases: /organize (post-architect) + /glossary (post-build)
+
+Both powered by the plugin-toolkit code-glossary v2 engine (deterministic Python; all LLM work = in-session Agent-tool sub-agents, no external SDKs). Engine discovered at runtime; hard stop with an install hint when plugin-toolkit is absent.
+
+**`/organize` — spec-level DRY pass (sprinting → organizing → sprinting).** Parallel sub-architects design modules blind to each other; the same functionality lands in N task specs under different names; build agents then implement N variants. /organize clusters the current sprint's task specs (spec-mode signals: lexical + behavioral + task-id-mention composites; structural/signature N/A — specs aren't executable) and proposes consolidations. Propose-with-confirm: every merge needs explicit user OK; originals archived to `_pre-organize/<timestamp>/` before any edit; merge = union of acceptance criteria + file contracts, never replacement. ORGANIZE-REPORT.md records every proposal, decision, and failure. `organizing` is a human gate — autopilot halts.
+
+**`/glossary` — code-level DRY audit (sprint-complete → glossarying → sprint-complete).** Runs the full code-glossary v2 flow on the sprint's code (or whole project — user picks scope): deterministic index/signals/clustering, sub-agent labeling against the 142-verb vocabulary, Pass B cluster review, Pass C substrate-verify. Propose-only: writes `.pipeline/glossary/GLOSSARY.{yaml,md}`, never touches source. GLOSSARY.md's top extractables feed /review as DRY-violation evidence. `glossarying` is a human gate (the estimate-and-confirm dispatch gate needs the user).
+
+**Wiring.** transitions.yaml gains both phases + 6 transitions with artifact predicates (state machine is data-driven — `state-set-phase` legality + prerequisite checks picked them up with zero cjs changes); phase-command-map.yaml maps both; autopilot DEFAULT_CONFIG.human_gates extends to both (essense-autopilot 0.3.1). Self-test conventions (conduct preamble, transitions-table audit, description-consistency) all green; the description-consistency audit also caught pre-existing drift in commands/review.md, fixed here.
+
+No `init organize` / `init glossary` ops in essense-flow-tools yet — both skills carry their canonical paths inline; the init-op surface is a follow-up.
+
 ## 0.14.0 — Skill description rewrites + elicit consolidation + architect pre-flight hoist
 
 **Skill description rewrites (all 9 skills).** Frontmatter descriptions rewritten with use-case-first phrasing, no internal jargon (DD-20, M1-Rd10, alignment-lens, sorting hat, etc. all removed), and explicit pipeline position ("Run after /X, before /Y"). Improves skill discoverability — Claude reads listings and matches user intent against descriptions; jargon-heavy descriptions failed to surface for natural queries like "design my sprint" (architect) or "review my code" (review). Affected skills: architect, build, context, elicit, heal, research, review, triage, verify. Heal description also closes a discoverability gap — now explicitly lists both responsibilities (state-recovery + stale-claim sweep) where the prior version mentioned only the former.

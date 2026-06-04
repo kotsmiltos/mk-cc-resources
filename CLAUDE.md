@@ -20,12 +20,14 @@ plugins/
       research/             # Multi-perspective analysis → REQ.md
       triage/               # Categorize findings, route to correct phase
       architect/            # Decide → delegate → synthesize → pack. Produces ARCH.md + task specs
+      organize/             # Optional spec-level DRY pass (code-glossary engine, spec mode)
       build/                # Execute task specs in dependency-ordered waves
+      glossary/             # Optional code-level DRY audit (code-glossary engine, code mode)
       review/               # Adversarial QA — bug-finding + drift-finding
       verify/               # Top-down spec compliance audit
       context/              # State plumbing — init, status, next-step
       heal/                 # Pipeline self-heal from any degraded state
-    commands/               # 12 slash commands (/init, /elicit, /research, etc.)
+    commands/               # 14 slash commands (/init, /elicit, /organize, /glossary, etc.)
     defaults/               # config.yaml, state.yaml templates
     references/             # transitions.yaml, phase-command-map.yaml
 
@@ -51,7 +53,11 @@ plugins/
       plugin-scaffold/      # Bootstrap new plugin: dirs + cross-refs in one invocation
       version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + RELEASE-NOTES
       docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
-      code-glossary/        # Functionality glossary + DRY audit for any codebase (LLM-read, polyglot)
+      code-glossary/        # Functionality glossary + DRY audit (v2): deterministic Python engine
+                            #   (code_glossary/ package: AST + tree-sitter, 5 signals, Pass A
+                            #   clustering, frozen-schema render) + in-session sub-agent briefs.
+                            #   DESIGN-V2.md is the design source of truth. Also powers
+                            #   essense-flow /organize + /glossary.
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -88,7 +94,7 @@ Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, projec
 The headline plugin. State machine + per-phase skills + verification discipline.
 
 ```
-/init → /elicit → /research → /triage → /architect → /build → /review → /verify → complete
+/init → /elicit → /research → /triage → /architect → [/organize] → /build → [/glossary] → /review → /verify → complete
 ```
 
 | Phase | Command | Output | Next |
@@ -96,11 +102,15 @@ The headline plugin. State machine + per-phase skills + verification discipline.
 | Elicit | `/elicit` | `.pipeline/elicitation/SPEC.md` | `/research` |
 | Research | `/research` | `.pipeline/requirements/REQ.md` | `/triage` or `/architect` |
 | Triage | `/triage` | `.pipeline/triage/TRIAGE-REPORT.md` | Routes to earliest needed phase |
-| Architecture | `/architect` | `.pipeline/architecture/ARCH.md` + task specs + sprint manifest | `/build` |
-| Build | `/build` | `.pipeline/sprints/sprint-N/` completion records | `/review` |
+| Architecture | `/architect` | `.pipeline/architecture/ARCH.md` + task specs + sprint manifest | `/build` (or `/organize`) |
+| Organize *(optional)* | `/organize` | `.pipeline/architecture/ORGANIZE-REPORT.md` + consolidated task specs (originals archived to `_pre-organize/`) | `/build` |
+| Build | `/build` | `.pipeline/sprints/sprint-N/` completion records | `/review` (or `/glossary`) |
+| Glossary *(optional)* | `/glossary` | `.pipeline/glossary/GLOSSARY.{yaml,md}` (propose-only) | `/review` |
 | Review | `/review` | `.pipeline/reviews/QA-REPORT.md` | `/triage` or `/verify` |
 | Verify | `/verify` | `VERIFICATION-REPORT.md` | `complete` or `/triage` |
 | Heal | `/heal` | State recovery via legal transitions | Returns to correct phase |
+
+`/organize` and `/glossary` require plugin-toolkit (the code-glossary engine) — hard stop with install hint when absent. Both phases are autopilot human gates.
 
 ### Hooks (all fail-soft — never block tool calls)
 
@@ -133,9 +143,9 @@ Five composable skills for working ON plugins (and the codebases they ship in).
 | `/plugin-scaffold <name> <skills>` | Starting a new plugin | Generates directory tree + plugin.json + SKILL.md skeletons + marketplace.json entry + bundle update + README/CLAUDE.md additions + RELEASE-NOTES. |
 | `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
 | `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
-| `/code-glossary [path]` | Auditing a codebase for DRY violations | Labels every function by canonical functionality (verb-object-qualifier, decoupled from how it's written), clusters duplicates across files, identifies extractable candidates with proposed signature + target helper module. Polyglot via LLM-read. Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Glossary-only — does not execute refactors. |
+| `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 142-verb vocab, Pass B cluster review, Pass C substrate-verify). Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md. Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. |
 
-Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary` is consumed by future `/dry-refactor` (v2) and an essense-flow `/architect` pre-check (planned) that surfaces existing functionality before designing new modules.
+Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract for future `/dry-refactor` (designed in DESIGN-V2.md Appendix A, built as v3).
 
 ## Cross-Reference Patterns
 
@@ -155,8 +165,9 @@ When changing files that follow these patterns, CHECK the related files for cons
 
 | Component | Dependencies |
 |-----------|-------------|
-| essense-flow | Node.js (CommonJS modules in `lib/`) |
+| essense-flow | Node.js (CommonJS modules in `lib/`); /organize + /glossary additionally need plugin-toolkit (code-glossary engine) |
 | essense-autopilot | Node.js (reads essense-flow state) |
+| plugin-toolkit (code-glossary engine) | Python >= 3.11 via uv; pyyaml, tree-sitter + tree-sitter-typescript + tree-sitter-c-sharp; pytest (dev) |
 | session-lifecycle | None (pure SKILL.md + `!`command`` shell injection) |
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
 | thorough-mode | None (pure SKILL.md) |

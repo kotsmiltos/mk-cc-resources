@@ -1,5 +1,27 @@
 # Release notes — plugin-toolkit
 
+## 1.2.0 — /code-glossary v2: deterministic engine + in-session LLM orchestration
+
+Full rewrite of code-glossary. v1's single-LLM clusterer failed at scale (Scalable Crowd dogfood, 826 C# functions, needed manual curation); v2 splits the work: a deterministic Python engine does everything that doesn't need judgment, in-session sub-agents do everything that does. v1 SKILL.md + briefs deleted as promised in the deprecation banner.
+
+**Engine** (`code_glossary/` Python package, uv-managed, 391 tests):
+- Stage 1 index — Python (stdlib ast) + TypeScript/TSX/JS + C# (tree-sitter) parsers emit uniform FunctionRecords (signature, verbatim body, notable calls/inputs/outputs, inline constants). Spec mode: architect task specs → SpecRecords (3 real-world YAML shapes tolerated, incl. frontmatter multi-doc).
+- Stage 2 signals — lexical token-sets, structural shape-hash (AST normalize-then-hash; catches Type-2/3 clones; renames + literal changes invisible), signature contract-hash, composite detection. Spec mode: lexical + task-id-mention composites.
+- Stage 3 Pass A clustering — deterministic bucketing (structural > signature > label) + scoring + confidence.
+- Stage 4 render — GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md; enrichment overlay with a promotion gate (extractable flips true only with canonical_signature + proposed_module + invariant_skeleton + variant_axis + 2+ instances), Pass B split groups, behavioral-judge merges, Pass C quote-drift instance drops.
+- `python -m code_glossary.runner` — index / index-specs / apply-labels / signal / cluster / slices / render; `key: value` summaries; exit 2 on hard failure; never-silent failure surfacing throughout.
+
+**SKILL.md v2** (the LLM layer — Agent-tool sub-agents only, NO external LLM SDKs):
+- Labeler agents constrained by a 142-verb controlled vocabulary (kills the label drift observed in the v1 dogfood); off-vocabulary labels demote to `unclear`, counted and reported.
+- Pass B: one reviewer agent per cluster slice — confirm / split / enrich with extraction design.
+- Behavioral judges on near-miss cluster pairs; merge verdicts fold clusters.
+- Pass C: master substrate-verifies 3 instances per cluster against disk; drift drops instances and flags entries.
+- Estimate-and-confirm before any dispatch; no hard agent cap.
+
+Dogfood: 662 records / 204 C# files / 0 errors / ~4.6s deterministic pipeline on Scalable Crowd; the structural signal finds the BuildFactory clone family (n=6, high confidence) that v1 needed hand-curation to surface.
+
+Also powers essense-flow 0.15.0's `/organize` (spec mode, post-architect) and `/glossary` (code mode, post-build) phases.
+
 ## 1.1.0 — Add /code-glossary
 
 New skill: **code-glossary** — audits any codebase for DRY violations and writes a functionality glossary.
