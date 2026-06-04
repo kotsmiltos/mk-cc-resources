@@ -44,20 +44,30 @@ def test_index_file_unsupported_returns_empty(tmp_path: Path):
     assert records == []
 
 
-def test_index_file_typescript_unsupported_in_wave2(tmp_path: Path):
-    """TS isn't supported until wave 6; orchestrator skips silently."""
+def test_index_file_typescript_routes_to_treesitter(tmp_path: Path):
+    """Wave 6: TS files parse via the tree-sitter parser."""
     p = tmp_path / "x.ts"
-    p.write_text("function f() {}", encoding="utf-8")
+    p.write_text(
+        "function f(a: number): number {\n  const b = a * 2;\n  return b;\n}\n",
+        encoding="utf-8",
+    )
     records = index_file(p, "typescript", rel_to=tmp_path)
-    assert records == []
+    assert len(records) == 1
+    assert records[0].location.function == "f"
+    assert records[0].language == "typescript"
 
 
-def test_index_file_csharp_unsupported_in_wave2(tmp_path: Path):
-    """C# isn't supported until wave 6; orchestrator skips silently."""
+def test_index_file_csharp_routes_to_treesitter(tmp_path: Path):
+    """Wave 6: C# files parse via the tree-sitter parser."""
     p = tmp_path / "X.cs"
-    p.write_text("namespace Foo {}", encoding="utf-8")
+    p.write_text(
+        "class Y {\n  int Z(int a) {\n    var b = a * 2;\n    return b;\n  }\n}\n",
+        encoding="utf-8",
+    )
     records = index_file(p, "csharp", rel_to=tmp_path)
-    assert records == []
+    assert len(records) == 1
+    assert records[0].location.function == "Z"
+    assert records[0].language == "csharp"
 
 
 # --- index_directory ---
@@ -163,18 +173,34 @@ def test_report_counts_files_and_records(tmp_path: Path):
 
 
 def test_report_counts_unsupported_languages(tmp_path: Path):
-    """TS and C# files are seen but skipped in wave 2."""
+    """Languages without a parser (go) are seen but skipped; TS/C# index."""
     _write(tmp_path, {
         "a.py": "def a():\n    x = 1\n    return x\n",
         "b.ts": "function b() { return 1; }",
         "C.cs": "namespace X { class Y { void Z() {} } }",
+        "d.go": "package main",
     })
     _, report = index_directory_with_report(tmp_path)
-    assert report.files_seen == 3
-    assert report.files_indexed == 1  # just the .py
-    assert report.files_skipped_unsupported == 2  # .ts + .cs
-    assert report.languages_skipped.get("typescript") == 1
-    assert report.languages_skipped.get("csharp") == 1
+    assert report.files_seen == 4
+    assert report.files_indexed == 3  # .py + .ts + .cs (parsed, even if 0 records)
+    assert report.files_skipped_unsupported == 1  # .go
+    assert report.languages_skipped.get("go") == 1
+    assert report.languages_skipped.get("typescript") is None
+    assert report.languages_skipped.get("csharp") is None
+
+
+def test_mixed_language_directory_emits_all_records(tmp_path: Path):
+    """One directory, three languages, all indexed in one walk."""
+    _write(tmp_path, {
+        "a.py": "def a():\n    x = 1\n    return x\n",
+        "b.ts": "function b(n: number) {\n  const x = n + 1;\n  return x;\n}\n",
+        "C.cs": "class Y {\n  int Z(int a) {\n    var b = a * 2;\n    return b;\n  }\n}\n",
+    })
+    records, report = index_directory_with_report(tmp_path)
+    languages = sorted(r.language for r in records)
+    assert languages == ["csharp", "python", "typescript"]
+    assert report.records_emitted == 3
+    assert report.languages_indexed == {"python": 1, "typescript": 1, "csharp": 1}
 
 
 def test_report_records_languages_seen_per_run(tmp_path: Path):
@@ -188,6 +214,6 @@ def test_report_records_languages_seen_per_run(tmp_path: Path):
     assert report.languages_seen.get("typescript") == 1
 
 
-def test_supported_languages_v2_is_only_python():
-    """Locks wave 2 scope: tree-sitter (TS+C#) is wave 6."""
-    assert SUPPORTED_LANGUAGES_V2 == ("python",)
+def test_supported_languages_v2_locked():
+    """Locks wave 6 scope: DESIGN-V2.md piece 6 first-class languages."""
+    assert SUPPORTED_LANGUAGES_V2 == ("python", "typescript", "javascript", "csharp")

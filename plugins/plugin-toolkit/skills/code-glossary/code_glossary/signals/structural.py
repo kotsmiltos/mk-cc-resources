@@ -11,8 +11,15 @@ The structural fingerprint complements the lexical signal:
 
 Both agreeing -> strong cluster signal. Only one agreeing -> weak signal.
 
-Python only in wave 3. Tree-sitter-based structural hash for TS+C# is
-wave 6. Returns None for unsupported languages.
+Python: stdlib-ast normalize-then-hash (wave 3).
+TypeScript/JavaScript/C#: tree-sitter shape hash (wave 6) — the parse
+tree is serialized as nested node TYPES only (never node text), so
+identifier/literal renames cannot change the hash, while keywords and
+operators (anonymous nodes whose type IS their text) are preserved.
+Literal nodes additionally collapse to one canonical leaf so '5' vs
+"'five'" don't differ (parity with the Python normalizer).
+
+Returns None for unsupported languages.
 """
 
 from __future__ import annotations
@@ -48,7 +55,8 @@ def structural_hash(body: str, language: str) -> Optional[str]:
     """
     if language == "python":
         return _python_structural_hash(body)
-    # tree-sitter-based hashing arrives in wave 6.
+    if language in ("typescript", "javascript", "csharp"):
+        return _treesitter_structural_hash(body, language)
     return None
 
 
@@ -138,3 +146,108 @@ def _normalize_python_ast(node: ast.AST) -> ast.AST:
     """Apply _PythonNormalizer and return the transformed tree."""
     normalizer = _PythonNormalizer()
     return normalizer.visit(ast.parse(ast.unparse(node)))  # unparse + reparse for a fresh tree
+
+
+# --- tree-sitter (TypeScript / JavaScript / C#) ---
+
+
+# A FunctionRecord.body is a snippet ripped out of its file; it may not be
+# valid at the top level of a compilation unit (class methods, C# methods
+# with access modifiers). Each wrapper re-establishes a legal context.
+# Attempt order is fixed, so identical-shape bodies always succeed at the
+# same stage and hash identically. {body} is the substitution point.
+_SNIPPET_WRAPPERS: dict[str, tuple[str, ...]] = {
+    "typescript": ("{body}", "class _W {{ {body} }}", "const _w = {body};"),
+    "javascript": ("{body}", "class _W {{ {body} }}", "const _w = {body};"),
+    "csharp": ("{body}", "class _W {{ {body} }}"),
+}
+
+# Grammar attempt order per language. TSX bodies (JSX syntax) fail under
+# the plain typescript grammar, so it is retried with tsx.
+_GRAMMAR_ATTEMPTS: dict[str, tuple[str, ...]] = {
+    "typescript": ("typescript", "tsx"),
+    "javascript": ("typescript", "tsx"),
+    "csharp": ("csharp",),
+}
+
+# Canonical leaf emitted for every literal node (see module docstring).
+_LITERAL_LEAF = "(lit)"
+
+
+def _treesitter_structural_hash(body: str, language: str) -> Optional[str]:
+    """Shape-hash a TS/JS/C# function body via its tree-sitter parse tree."""
+    if not body or not body.strip():
+        return None
+    # Deferred import keeps pure-Python codepaths free of tree-sitter cost
+    # and avoids an import cycle at module load (indexer imports signals'
+    # consumers; signals importing indexer at call time is safe).
+    from code_glossary.indexer.treesitter_parser import (
+        FUNCTION_NODE_TYPES,
+        LITERAL_NODE_TYPES,
+        get_parser,
+    )
+
+    function_types = FUNCTION_NODE_TYPES[language]
+    literal_types = LITERAL_NODE_TYPES[language]
+    source_body = textwrap.dedent(body).strip()
+
+    for grammar in _GRAMMAR_ATTEMPTS[language]:
+        try:
+            parser = get_parser(grammar)
+        except ImportError as exc:  # grammar package missing on this install
+            logger.warning("structural: tree-sitter grammar %s unavailable: %s", grammar, exc)
+            return None
+        for wrapper in _SNIPPET_WRAPPERS[language]:
+            snippet = wrapper.format(body=source_body).encode("utf-8")
+            func_node = _find_clean_function(parser.parse(snippet).root_node, function_types)
+            if func_node is not None:
+                canonical = _serialize_shape(func_node, literal_types)
+                return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:_HASH_LEN]
+
+    logger.debug("structural: no clean parse for %s body (len=%d)", language, len(body))
+    return None
+
+
+def _find_clean_function(root, function_types: frozenset[str]):
+    """First function-defining node whose subtree parsed without errors.
+
+    A wrapper attempt 'succeeds' only when the located function subtree is
+    error-free — ERROR/missing nodes inside it mean this parse context was
+    wrong and the next wrapper should be tried.
+    """
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type in function_types:
+            return node if not _has_parse_errors(node) else None
+        stack.extend(reversed(node.children))
+    return None
+
+
+def _has_parse_errors(node) -> bool:
+    stack = [node]
+    while stack:
+        n = stack.pop()
+        if n.type == "ERROR" or n.is_missing:
+            return True
+        stack.extend(n.children)
+    return False
+
+
+def _serialize_shape(node, literal_types: frozenset[str]) -> str:
+    """Nested-parens serialization of node TYPES (no text).
+
+    Named identifier-ish nodes contribute only their type, so renames
+    can't change the hash. Anonymous nodes' type IS their text, which
+    keeps operators ('+', '==') and keywords structural. Comments are
+    dropped; literal nodes collapse to _LITERAL_LEAF without descending
+    (a template string's fragment count must not affect shape).
+    """
+    if node.type == "comment":
+        return ""
+    if node.type in literal_types:
+        return _LITERAL_LEAF
+    if not node.children:
+        return f"({node.type})"
+    inner = "".join(_serialize_shape(c, literal_types) for c in node.children)
+    return f"({node.type}{inner})"

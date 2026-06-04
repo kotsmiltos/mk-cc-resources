@@ -3,9 +3,9 @@
 Walks a source tree (walk.py), dispatches each file to the right
 language parser, aggregates FunctionRecord results.
 
-v2 wave 2 supports Python only (via python_parser). TypeScript and C#
-are added in wave 6 via tree-sitter; until then, files in those
-languages are silently skipped (counted but not parsed).
+Parsers: python_parser (stdlib ast) for Python; treesitter_parser for
+TypeScript/JavaScript/C#. Other languages are skipped (counted in the
+report) — the SKILL.md layer LLM-sketches those per DESIGN-V2.md §5.
 
 Public functions:
 
@@ -29,14 +29,15 @@ from pathlib import Path
 from typing import Iterable
 
 from code_glossary.indexer.python_parser import parse_file as _parse_python
+from code_glossary.indexer.treesitter_parser import parse_file as _parse_treesitter
 from code_glossary.indexer.walk import iter_source_files
 from code_glossary.records import FunctionRecord
 
 logger = logging.getLogger(__name__)
 
 
-# Languages with a working parser in this wave. Extend in wave 6 (tree-sitter).
-SUPPORTED_LANGUAGES_V2: tuple[str, ...] = ("python",)
+# Languages with a working deterministic parser (DESIGN-V2.md piece 6).
+SUPPORTED_LANGUAGES_V2: tuple[str, ...] = ("python", "typescript", "javascript", "csharp")
 
 
 @dataclass
@@ -73,7 +74,8 @@ def index_file(
     """
     if language == "python":
         return _parse_python(path, rel_to=rel_to)
-    # tree-sitter parsers wired in wave 6.
+    if language in ("typescript", "javascript", "csharp"):
+        return _parse_treesitter(path, language, rel_to=rel_to)
     return []
 
 

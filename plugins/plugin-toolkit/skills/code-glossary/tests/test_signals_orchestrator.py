@@ -82,10 +82,10 @@ def test_fingerprint_has_all_signal_fields():
 def test_unsupported_language_skips_structural_hash():
     rec = FunctionRecord(
         id="fn-x",
-        location=SourceLocation(file="x.ts", line=1, function="f"),
-        signature="function f()",
-        body="function f() { return 1; }",
-        language="typescript",
+        location=SourceLocation(file="x.go", line=1, function="f"),
+        signature="func f()",
+        body="func f() int { return 1 }",
+        language="go",
         functionality_label="",
         description="",
         notable_calls=[],
@@ -95,8 +95,29 @@ def test_unsupported_language_skips_structural_hash():
         inline_constants=[],
     )
     fp = extract_signals([rec])["fn-x"]
-    # No structural hash for TS in wave 3 (wave 6 adds it).
+    # No deterministic structural hash for go — LLM-sketch handles it
+    # at the SKILL.md layer (DESIGN-V2.md piece 6).
     assert fp.structural_hash is None
+
+
+def test_typescript_gets_structural_hash():
+    """Wave 6: TS records get a tree-sitter structural hash."""
+    rec = FunctionRecord(
+        id="fn-ts",
+        location=SourceLocation(file="x.ts", line=1, function="f"),
+        signature="function f(n: number): number",
+        body="function f(n: number): number {\n  const x = n + 1;\n  return x;\n}",
+        language="typescript",
+        functionality_label="",
+        description="",
+        notable_calls=[],
+        notable_inputs=["n: number"],
+        notable_outputs="number",
+        helper_home_hint=None,
+        inline_constants=["1"],
+    )
+    fp = extract_signals([rec])["fn-ts"]
+    assert fp.structural_hash is not None
 
 
 def test_completely_untyped_skips_signature_hash():

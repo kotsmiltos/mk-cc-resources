@@ -25,11 +25,11 @@ Edge cases (per brief):
 from __future__ import annotations
 
 import ast
-import hashlib
 import logging
 from pathlib import Path
 from typing import Iterable
 
+from code_glossary.indexer.common import make_record_id, relative_path
 from code_glossary.records import FunctionRecord, SourceLocation
 
 
@@ -67,7 +67,7 @@ def parse_file(path: Path, *, rel_to: Path | None = None) -> list[FunctionRecord
         logger.warning("indexer: cannot parse %s: %s", path, exc)
         return []
 
-    rel_path = _relative_path(path, rel_to)
+    rel_path = relative_path(path, rel_to)
     records: list[FunctionRecord] = []
     for func_node in _iter_functions(tree):
         rec = _build_record(func_node, source, rel_path)
@@ -77,15 +77,6 @@ def parse_file(path: Path, *, rel_to: Path | None = None) -> list[FunctionRecord
 
 
 # --- helpers ---
-
-
-def _relative_path(path: Path, rel_to: Path | None) -> str:
-    if rel_to is None:
-        return str(path).replace("\\", "/")
-    try:
-        return str(path.relative_to(rel_to)).replace("\\", "/")
-    except ValueError:
-        return str(path).replace("\\", "/")
 
 
 def _iter_functions(tree: ast.Module) -> Iterable[ast.FunctionDef | ast.AsyncFunctionDef]:
@@ -114,7 +105,7 @@ def _build_record(
     if not body_segment.strip():
         return None
 
-    func_id = _make_id(rel_path, node.lineno)
+    func_id = make_record_id(rel_path, node.lineno)
     location = SourceLocation(file=rel_path, line=node.lineno, function=node.name)
 
     signature = _build_signature(node)
@@ -137,12 +128,6 @@ def _build_record(
         helper_home_hint=None,  # populated by indexer orchestrator with project context
         inline_constants=inline_constants,
     )
-
-
-def _make_id(rel_path: str, line: int) -> str:
-    """Deterministic ID: stable across runs as long as file path + line unchanged."""
-    h = hashlib.sha1(f"{rel_path}:{line}".encode("utf-8")).hexdigest()[:8]
-    return f"fn-{h}"
 
 
 def _build_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
