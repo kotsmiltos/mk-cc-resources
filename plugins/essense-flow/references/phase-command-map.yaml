@@ -60,6 +60,11 @@ phases:
     description: "Review the sprint output — adversarial agents hunt bugs and drift with path evidence."
     inputs: [".pipeline/build/sprints/<n>/SPRINT-REPORT.md"]
 
+  glossarying:
+    next: /glossary
+    description: "Resume glossary — finish the functionality-glossary DRY audit of the sprint code."
+    inputs: [".pipeline/build/sprints/<n>/SPRINT-REPORT.md"]
+
   reviewing:
     next: /review
     description: "Resume review — finish validating findings against disk."

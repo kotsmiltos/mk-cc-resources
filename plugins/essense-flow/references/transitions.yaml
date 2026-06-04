@@ -9,8 +9,8 @@
 #
 # Phases:
 #   idle, eliciting, research, triaging, requirements-ready, architecture,
-#   decomposing, sprinting, organizing, sprint-complete, reviewing,
-#   verifying, complete
+#   decomposing, sprinting, organizing, sprint-complete, glossarying,
+#   reviewing, verifying, complete
 
 schema_version: 1
 
@@ -25,17 +25,20 @@ phases:
   - sprinting
   - organizing
   - sprint-complete
+  - glossarying
   - reviewing
   - verifying
   - complete
 
 # Phases where the user is the actor — autopilot must halt here.
-# organizing is propose-with-confirm (every consolidation needs user OK),
-# hence a human gate.
+# organizing is propose-with-confirm (every consolidation needs user OK);
+# glossarying gates on the agent-count estimate confirm (lock row 16).
+# Both are therefore human gates.
 human_gates:
   - idle
   - eliciting
   - organizing
+  - glossarying
   - verifying
 
 terminal:
@@ -228,6 +231,32 @@ transitions:
     to: sprinting
     triggered_by: organize-skill
     requires: ".pipeline/architecture/ORGANIZE-REPORT.md exists"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  # --- glossary (optional, post-build; code-mode DRY audit) ---
+
+  sprint-complete-to-glossarying:
+    from: sprint-complete
+    to: glossarying
+    triggered_by: glossary-skill
+    requires: ".pipeline/build/sprints/<n>/SPRINT-REPORT.md exists"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  glossarying-to-glossarying:
+    from: glossarying
+    to: glossarying
+    triggered_by: glossary-skill
+    requires: null
+    auto_advance: false
+    fields_changed: [glossary.round, last_updated]
+
+  glossarying-to-sprint-complete:
+    from: glossarying
+    to: sprint-complete
+    triggered_by: glossary-skill
+    requires: ".pipeline/glossary/GLOSSARY.yaml exists"
     auto_advance: false
     fields_changed: [phase, last_updated]
 
