@@ -425,7 +425,12 @@ def _build_record(
         if _count_significant(body_node, counted) < min_statements:
             return None
 
-    verbatim = _node_text(node, source)
+    # Bodies are EOL-normalized to LF at the single point of capture:
+    # this parser reads raw bytes, so CRLF sources would otherwise embed
+    # \r\n in record bodies — YAML block scalars cannot carry \r and the
+    # v2 acceptance Pass C false-drifted 92 instances on exactly that.
+    # (python_parser reads via read_text, which already normalizes.)
+    verbatim = _node_text(node, source).replace("\r\n", "\n")
     if not verbatim.strip():
         return None
 

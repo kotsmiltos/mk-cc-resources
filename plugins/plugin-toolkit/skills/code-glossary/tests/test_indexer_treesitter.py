@@ -461,3 +461,15 @@ def test_cs_try_catch_register_factory_indexed(cs_file: Path, tmp_path: Path):
     records = parse_file(cs_file, "csharp", rel_to=tmp_path)
     reg = next(r for r in records if r.location.function == "RegisterFactory")
     assert "BuildFactory.Register" in reg.notable_calls
+
+
+def test_cs_crlf_source_body_normalized_to_lf(tmp_path: Path):
+    # v2.1: bodies LF-normalize at capture; CRLF sources false-drifted
+    # 92 instances in the v2 acceptance Pass C.
+    p = tmp_path / "Crlf.cs"
+    src = "public class C\r\n{\r\n    public void M()\r\n    {\r\n        Work();\r\n        More();\r\n    }\r\n}\r\n"
+    p.write_bytes(src.encode("utf-8"))
+    records = parse_file(p, "csharp", rel_to=tmp_path)
+    assert len(records) == 1
+    assert "\r" not in records[0].body
+    assert "Work();" in records[0].body

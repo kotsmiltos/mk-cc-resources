@@ -1,6 +1,6 @@
-"""Round-trip tests for pipeline artifact I/O.
+﻿"""Round-trip tests for pipeline artifact I/O.
 
-Every dump->load pair must reproduce the in-memory objects exactly —
+Every dump->load pair must reproduce the in-memory objects exactly â€”
 these files are the only channel between engine stages once the SKILL
 layer drives them as separate processes.
 """
@@ -210,3 +210,26 @@ def test_enrichments_missing_cluster_id_rejected(tmp_path: Path):
     p.write_text("enrichments:\n- name: no-id\n", encoding="utf-8")
     with pytest.raises(ArtifactError, match="cluster_id"):
         load_enrichments(p)
+
+
+# --- v2.1: CRLF discipline ---
+
+
+def test_records_round_trip_crlf_body(tmp_path):
+    # A body that arrives with CRLF (e.g. handed in by an external caller)
+    # must survive dump/load byte-identical â€” no silent \r stripping.
+    rec = _record("fn-crlf")
+    rec.body = "void F()\r\n{\r\n    Work();\r\n}\r\n"
+    path = tmp_path / "records.yaml"
+    dump_records([rec], path)
+    loaded = load_records(path)
+    assert loaded[0].body == rec.body
+
+
+def test_write_yaml_emits_lf_only_file(tmp_path):
+    rec = _record("fn-lf")
+    rec.body = "def f():\n    return 1\n"
+    path = tmp_path / "records.yaml"
+    dump_records([rec], path)
+    raw = path.read_bytes()
+    assert b"\r\n" not in raw  # no platform newline translation on write

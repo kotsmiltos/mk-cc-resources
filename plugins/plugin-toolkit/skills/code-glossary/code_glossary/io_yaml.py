@@ -279,7 +279,11 @@ def _write_yaml(payload: dict[str, Any], path: Path | str) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True, width=4096)
-    p.write_text(text, encoding="utf-8")
+    # newline="\n" disables platform newline translation: on Windows the
+    # default would write CRLF artifacts whose block scalars then false-
+    # drift against LF-normalized bodies (the v2 acceptance Pass C bug).
+    with open(p, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
 
 
 def _read_yaml(path: Path | str) -> dict[str, Any]:

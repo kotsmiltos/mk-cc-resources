@@ -109,7 +109,7 @@ Verdict handling in `enrichments.yaml`:
 
 ## 8. Pass C — master substrate-verify (you, inline)
 
-For every enrichment entry (and every merge target), sample 3 instances (all, if fewer): Read the cited file at the cited line, confirm the slice's verbatim body still matches the disk (±5 lines tolerance for drift in line numbers).
+For every enrichment entry (and every merge target), sample 3 instances (all, if fewer): Read the cited file at the cited line, confirm the slice's verbatim body still matches the disk (±5 lines tolerance for drift in line numbers). **Normalize line endings (`\r\n` → `\n`) on BOTH sides before comparing** — record bodies are LF-normalized at index time, but the disk file may be CRLF; comparing raw bytes false-drifted 92 instances in the v2 acceptance run.
 
 - Instance body not found → add its record id to that entry's `drop_instance_ids`.
 - >50% of sampled instances fail → set `verification_status: quote_drift_detected` on the entry (kept in the glossary, flagged — never suppressed).
