@@ -159,7 +159,10 @@ def _normalize_python_ast(node: ast.AST) -> ast.AST:
 _SNIPPET_WRAPPERS: dict[str, tuple[str, ...]] = {
     "typescript": ("{body}", "class _W {{ {body} }}", "const _w = {body};"),
     "javascript": ("{body}", "class _W {{ {body} }}", "const _w = {body};"),
-    "csharp": ("{body}", "class _W {{ {body} }}"),
+    # The property wrapper makes bare accessor bodies ('get { ... }')
+    # parse as accessor_declaration — accessors index as records since
+    # v2.1 and would otherwise silently lose their structural signal.
+    "csharp": ("{body}", "class _W {{ {body} }}", "class _W {{ int _p {{ {body} }} }}"),
 }
 
 # Grammar attempt order per language. TSX bodies (JSX syntax) fail under

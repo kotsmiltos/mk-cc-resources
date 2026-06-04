@@ -19,10 +19,15 @@ grammar parses .tsx and .jsx (JSX syntax needs it). C# has its own.
 Edge cases (mirroring python_parser):
     - Anonymous functions (arrow/function expressions not bound to a
       name) are skipped — same rule as Python lambdas.
-    - Bodies with fewer than MIN_BODY_STATEMENTS statements are skipped
-      as likely-trivial pass-throughs. Expression-bodied members
-      (C# `=> expr`, TS `=> expr` arrows) count as one statement and
-      are therefore skipped.
+    - The body-size floor counts SIGNIFICANT nodes recursively (see the
+      counted-set comment below), not top-level statements — fat
+      one-liners (`try {...} catch {}`, `return new Config(...)`) index;
+      bare assignments/field reads stay out.
+    - Expression-bodied members (C# `=> expr`, TS `=> expr` arrows) index
+      when the expression contains at least one significant node (call,
+      construction, operator); bare field reads (`=> _max`) are skipped.
+    - C# property/event accessors index as '<Property>.<kind>' records;
+      auto-properties (`get;`) have no body and are skipped.
     - Unreadable files return an empty list (logged, not raised).
 """
 
@@ -42,6 +47,83 @@ logger = logging.getLogger(__name__)
 # constant so the two parsers can diverge later without coupling.
 MIN_BODY_STATEMENTS = 2
 
+# --- significant-statement counting (v2.1 floor rework) ---
+#
+# The floor is applied to a RECURSIVE count of "significant" nodes in the
+# body subtree, not the top-level statement count. Rationale: fat one-liners
+# (`try { Register(...); } catch {}`, `return new Config(a, b, c);`) carry
+# real logic in their subtree and were the largest recall loss in the
+# Scalable Crowd A/B, while bare one-liners (`_x = true;`, `return _max;`)
+# stay below the floor because assignments and field reads are deliberately
+# NOT in the counted sets. `binary_expression` is the documented tuning
+# knob: counting it indexes one-line arithmetic; drop it from the sets if
+# corpus noise grows.
+
+_COUNTED_STATEMENTS_TS = frozenset(
+    {
+        "expression_statement",
+        "return_statement",
+        "if_statement",
+        "for_statement",
+        "for_in_statement",
+        "while_statement",
+        "do_statement",
+        "switch_statement",
+        "try_statement",
+        "throw_statement",
+        "lexical_declaration",
+        "variable_declaration",
+        "labeled_statement",
+        "break_statement",
+        "continue_statement",
+    }
+)
+_COUNTED_EXPRESSIONS_TS = frozenset(
+    {
+        "call_expression",
+        "new_expression",
+        "await_expression",
+        "binary_expression",
+        "ternary_expression",
+    }
+)
+_COUNTED_TS = _COUNTED_STATEMENTS_TS | _COUNTED_EXPRESSIONS_TS
+
+_COUNTED_STATEMENTS_CS = frozenset(
+    {
+        "expression_statement",
+        "return_statement",
+        "if_statement",
+        "for_statement",
+        "foreach_statement",
+        "while_statement",
+        "do_statement",
+        "switch_statement",
+        "try_statement",
+        "throw_statement",
+        "using_statement",
+        "lock_statement",
+        "local_declaration_statement",
+        "local_function_statement",
+        "break_statement",
+        "continue_statement",
+        "yield_statement",
+    }
+)
+_COUNTED_EXPRESSIONS_CS = frozenset(
+    {
+        "invocation_expression",
+        "object_creation_expression",
+        "await_expression",
+        "binary_expression",
+        "conditional_expression",
+    }
+)
+_COUNTED_CS = _COUNTED_STATEMENTS_CS | _COUNTED_EXPRESSIONS_CS
+
+# C# accessor kinds recognized when indexing accessor_declaration nodes.
+_CSHARP_ACCESSOR_KINDS = frozenset({"get", "set", "init", "add", "remove"})
+
 # Trim long literal constants to this many chars (parity with python_parser).
 _CONSTANT_MAX_CHARS = 40
 
@@ -60,7 +142,15 @@ _TS_NAMED_FUNCTION_TYPES = frozenset(
 _TS_EXPRESSION_FUNCTION_TYPES = frozenset({"arrow_function", "function_expression"})
 
 _CSHARP_FUNCTION_TYPES = frozenset(
-    {"method_declaration", "constructor_declaration", "local_function_statement"}
+    {
+        "method_declaration",
+        "constructor_declaration",
+        "local_function_statement",
+        # v2.1: property/event accessors index as "<Property>.<kind>" records
+        # (e.g. "Agents.get") — guarded getters were a whole missed cluster
+        # family (n=7) in the Scalable Crowd A/B.
+        "accessor_declaration",
+    }
 )
 
 # Literal node types collected as inline_constants.
@@ -159,6 +249,7 @@ def parse_file(
     language: str,
     *,
     rel_to: Path | None = None,
+    min_statements: int = MIN_BODY_STATEMENTS,
 ) -> list[FunctionRecord]:
     """Parse a TS/JS/C# file and return one FunctionRecord per function.
 
@@ -189,7 +280,7 @@ def parse_file(
     rel_path = relative_path(path, rel_to)
     records: list[FunctionRecord] = []
     for func_node, name in _iter_functions(tree.root_node, source, language):
-        rec = _build_record(func_node, name, source, rel_path, language)
+        rec = _build_record(func_node, name, source, rel_path, language, min_statements)
         if rec is not None:
             records.append(rec)
     return records
@@ -219,7 +310,10 @@ def _iter_functions(root, source: bytes, language: str) -> Iterator[tuple["objec
 
         if is_csharp:
             if node.type in _CSHARP_FUNCTION_TYPES:
-                name = _field_text(node, "name", source)
+                if node.type == "accessor_declaration":
+                    name = _accessor_name(node, source)
+                else:
+                    name = _field_text(node, "name", source)
                 if name:
                     yield node, name
         else:
@@ -231,6 +325,29 @@ def _iter_functions(root, source: bytes, language: str) -> Iterator[tuple["objec
                 name = _binding_name(node, source)
                 if name:  # anonymous expressions skipped (lambda rule)
                     yield node, name
+
+
+def _accessor_name(node, source: bytes) -> Optional[str]:
+    """Synthetic name for a C# accessor: '<Property>.<kind>' (e.g. 'Agents.get').
+
+    The accessor node itself carries no name field — the kind is an
+    anonymous keyword child ('get'/'set'/...), and the property name lives
+    two levels up: accessor_declaration -> accessor_list ->
+    property_declaration / indexer_declaration / event_declaration.
+    Returns None when either part cannot be resolved (defensive: grammar
+    variations must skip, never crash Stage 1).
+    """
+    kind = next((c.type for c in node.children if c.type in _CSHARP_ACCESSOR_KINDS), None)
+    if kind is None:
+        return None
+    accessor_list = node.parent
+    holder = accessor_list.parent if accessor_list is not None else None
+    if holder is None:
+        return None
+    prop = _field_text(holder, "name", source)
+    if not prop:
+        return None
+    return f"{prop}.{kind}"
 
 
 def _binding_name(func_node, source: bytes) -> Optional[str]:
@@ -257,22 +374,56 @@ def _binding_name(func_node, source: bytes) -> Optional[str]:
 # --- record construction ---
 
 
+def _count_significant(body_node, counted: frozenset[str]) -> int:
+    """Count significant nodes in a body subtree (see counted-set comment)."""
+    return sum(1 for n in _walk(body_node) if n.type in counted)
+
+
+def _resolve_body_node(node, is_csharp: bool):
+    """Return (body_node, is_expression_body) for a function-ish node.
+
+    C# expression-bodied members (`=> expr;`) attach an
+    arrow_expression_clause — sometimes via the 'body' field, sometimes as
+    a plain child (accessors). TS arrows with expression bodies expose the
+    expression directly in the 'body' field.
+    """
+    body_node = node.child_by_field_name("body")
+    if body_node is not None and body_node.type in ("statement_block", "block"):
+        return body_node, False
+    if is_csharp:
+        arrow = body_node if body_node is not None and body_node.type == "arrow_expression_clause" else None
+        if arrow is None:
+            arrow = next((c for c in node.children if c.type == "arrow_expression_clause"), None)
+        return arrow, True
+    # TS/JS: a non-block body field is the bare expression of an arrow.
+    return body_node, True
+
+
 def _build_record(
     node,
     name: str,
     source: bytes,
     rel_path: str,
     language: str,
+    min_statements: int = MIN_BODY_STATEMENTS,
 ) -> Optional[FunctionRecord]:
     """Construct a FunctionRecord for one function node, or None if skipped."""
-    body_node = node.child_by_field_name("body")
-    # Expression bodies (C# arrow_expression_clause, TS `=> expr`) have no
-    # block node or a non-block body: count as a single statement -> skipped.
-    if body_node is None or body_node.type not in ("statement_block", "block"):
+    is_csharp = language == "csharp"
+    body_node, is_expression_body = _resolve_body_node(node, is_csharp)
+    if body_node is None:
+        # No body at all (auto-property accessor `get;`, abstract member).
         return None
-    statement_count = sum(1 for c in body_node.children if c.is_named and c.type != "comment")
-    if statement_count < MIN_BODY_STATEMENTS:
-        return None
+    if is_expression_body:
+        # Expression bodies use a fixed floor of 1 significant EXPRESSION
+        # node: `=> SafeDispose()` (a call) indexes; `=> _max` (bare field
+        # read) stays out. Independent of --min-statements by design.
+        expr_counted = _COUNTED_EXPRESSIONS_CS if is_csharp else _COUNTED_EXPRESSIONS_TS
+        if _count_significant(body_node, expr_counted) < 1:
+            return None
+    else:
+        counted = _COUNTED_CS if is_csharp else _COUNTED_TS
+        if _count_significant(body_node, counted) < min_statements:
+            return None
 
     verbatim = _node_text(node, source)
     if not verbatim.strip():
@@ -283,7 +434,6 @@ def _build_record(
     location = SourceLocation(file=rel_path, line=line, function=name)
 
     signature = _build_signature(node, name, body_node, source)
-    is_csharp = language == "csharp"
     notable_calls = _collect_calls(body_node, source, is_csharp)
     notable_inputs = _collect_inputs(node, source, is_csharp)
     notable_outputs = _return_type(node, source, is_csharp)
@@ -313,6 +463,10 @@ def _build_signature(node, name: str, body_node, source: bytes) -> str:
     expressions the header lacks the name, so we prefix it
     ('fetchUser = async (id: string): Promise<User>').
     """
+    if node.type == "accessor_declaration":
+        # Accessor headers are just the bare keyword ('get') — the synthetic
+        # '<Property>.<kind>' name is the most useful signature we have.
+        return name
     header = source[node.start_byte : body_node.start_byte].decode("utf-8", errors="replace")
     header = " ".join(header.split()).rstrip()  # collapse newlines + runs of spaces
     # Drop a trailing arrow TOKEN only (rstrip with a char-set would eat

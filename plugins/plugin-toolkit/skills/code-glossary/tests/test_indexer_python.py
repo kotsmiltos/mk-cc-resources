@@ -358,3 +358,35 @@ def test_body_verbatim_preserves_indentation(tmp_path: Path):
     # Indentation should be preserved (the def line + nested blocks).
     assert "    if True:" in body
     assert "        x = 1" in body
+
+
+# --- v2.1 floor rework: recursive significant-node counting ---
+
+
+def test_py_recursive_count_indexes_single_return_nested_call(tmp_path):
+    p = tmp_path / "m.py"
+    p.write_text("def f(x):\n    return g(h(x))\n", encoding="utf-8")
+    records = parse_file(p, rel_to=tmp_path)
+    # return (1) + two Call nodes (2) = 3 >= floor 2 -> indexed.
+    assert [r.location.function for r in records] == ["f"]
+
+
+def test_py_bare_return_attr_still_skipped(tmp_path):
+    p = tmp_path / "m.py"
+    p.write_text("def f(self):\n    return self._x\n", encoding="utf-8")
+    # return (1), attribute reads not counted -> below floor.
+    assert parse_file(p, rel_to=tmp_path) == []
+
+
+def test_py_docstring_only_skipped(tmp_path):
+    p = tmp_path / "m.py"
+    p.write_text('def f():\n    """doc"""\n    return self._x\n', encoding="utf-8")
+    # Docstring Expr excluded from the count; return alone = 1 -> skipped.
+    assert parse_file(p, rel_to=tmp_path) == []
+
+
+def test_py_min_statements_param(tmp_path):
+    p = tmp_path / "m.py"
+    p.write_text("def f(self):\n    return self._x\n", encoding="utf-8")
+    records = parse_file(p, rel_to=tmp_path, min_statements=1)
+    assert [r.location.function for r in records] == ["f"]

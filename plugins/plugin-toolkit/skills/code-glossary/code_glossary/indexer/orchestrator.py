@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 # Languages with a working deterministic parser (DESIGN-V2.md piece 6).
 SUPPORTED_LANGUAGES_V2: tuple[str, ...] = ("python", "typescript", "javascript", "csharp")
 
+# Default body-size floor forwarded to both parsers (each defines its own
+# MIN_BODY_STATEMENTS = 2; this single knob overrides both uniformly via
+# the runner's --min-statements flag).
+DEFAULT_MIN_STATEMENTS = 2
+
 
 @dataclass
 class IndexReport:
@@ -65,6 +70,7 @@ def index_file(
     language: str,
     *,
     rel_to: Path | None = None,
+    min_statements: int = DEFAULT_MIN_STATEMENTS,
 ) -> list[FunctionRecord]:
     """Parse one file with the language-appropriate parser.
 
@@ -73,9 +79,9 @@ def index_file(
     use index_directory_with_report to surface those at the run level.
     """
     if language == "python":
-        return _parse_python(path, rel_to=rel_to)
+        return _parse_python(path, rel_to=rel_to, min_statements=min_statements)
     if language in ("typescript", "javascript", "csharp"):
-        return _parse_treesitter(path, language, rel_to=rel_to)
+        return _parse_treesitter(path, language, rel_to=rel_to, min_statements=min_statements)
     return []
 
 
@@ -84,13 +90,14 @@ def index_directory(
     *,
     excludes: Iterable[str] = (),
     include_tests: bool = False,
+    min_statements: int = DEFAULT_MIN_STATEMENTS,
 ) -> list[FunctionRecord]:
     """Walk root, index every supported source file, return flat record list.
 
     Convenience entry point for callers that don't need the report.
     """
     records, _ = index_directory_with_report(
-        root, excludes=excludes, include_tests=include_tests
+        root, excludes=excludes, include_tests=include_tests, min_statements=min_statements
     )
     return records
 
@@ -100,6 +107,7 @@ def index_directory_with_report(
     *,
     excludes: Iterable[str] = (),
     include_tests: bool = False,
+    min_statements: int = DEFAULT_MIN_STATEMENTS,
 ) -> tuple[list[FunctionRecord], IndexReport]:
     """Walk root, index, return (records, report)."""
     root_path = Path(root).resolve()
@@ -118,7 +126,7 @@ def index_directory_with_report(
             continue
 
         try:
-            file_records = index_file(path, lang, rel_to=root_path)
+            file_records = index_file(path, lang, rel_to=root_path, min_statements=min_statements)
         except Exception as exc:  # pragma: no cover - parser raised unexpectedly
             logger.warning("indexer: unexpected error parsing %s: %s", path, exc)
             report.files_skipped_error += 1

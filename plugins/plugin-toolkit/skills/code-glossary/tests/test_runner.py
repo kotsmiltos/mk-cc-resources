@@ -239,3 +239,27 @@ def test_malformed_artifact_hard_fails(tmp_path: Path):
     bad.write_text("not_records: []", encoding="utf-8")
     code = main(["signal", "--records", str(bad), "--out", str(tmp_path / "f.yaml")])
     assert code == EXIT_HARD_FAILURE
+
+
+def test_index_min_statements_flag(tmp_path: Path, capsys):
+    # v2.1: floor=1 admits bodies the default floor=2 skips.
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "tiny.py").write_text("def f(self):\n    return self._x\n", encoding="utf-8")
+    (src / "real.py").write_text("def g(x):\n    y = h(x)\n    return y\n", encoding="utf-8")
+
+    out_default = tmp_path / "default.yaml"
+    assert main(["index", "--root", str(src), "--out", str(out_default)]) == EXIT_OK
+    n_default = len(yaml.safe_load(out_default.read_text(encoding="utf-8"))["records"])
+
+    out_loose = tmp_path / "loose.yaml"
+    assert (
+        main(["index", "--root", str(src), "--out", str(out_loose), "--min-statements", "1"])
+        == EXIT_OK
+    )
+    captured = capsys.readouterr().out
+    assert "min_statements: 1" in captured
+    n_loose = len(yaml.safe_load(out_loose.read_text(encoding="utf-8"))["records"])
+
+    assert n_default == 1  # only real.py's g
+    assert n_loose == 2  # tiny.py's f admitted at floor 1

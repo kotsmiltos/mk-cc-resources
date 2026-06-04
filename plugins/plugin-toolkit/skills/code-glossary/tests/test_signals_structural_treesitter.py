@@ -220,3 +220,42 @@ def test_ts_and_cs_hashes_do_not_collide_on_same_logic():
     ts = structural_hash(TS_FETCH_A, "typescript")
     cs = structural_hash(CS_REGISTER_A, "csharp")
     assert ts != cs
+
+
+# --- v2.1: C# accessor bodies must structural-hash via the property wrapper ---
+
+
+CS_GETTER_A = """\
+get
+{
+    if (!_initialized || _disposed)
+    {
+        throw new System.InvalidOperationException("read before Initialize");
+    }
+    return _agents.AsReadOnly();
+}
+"""
+
+# Type-2 clone: renamed fields, different message literal.
+CS_GETTER_B = """\
+get
+{
+    if (!_ready || _torn)
+    {
+        throw new System.InvalidOperationException("torn down");
+    }
+    return _buffer.AsReadOnly();
+}
+"""
+
+
+def test_cs_accessor_type2_clones_hash_equal():
+    a = structural_hash(CS_GETTER_A, "csharp")
+    b = structural_hash(CS_GETTER_B, "csharp")
+    assert a is not None
+    assert a == b
+
+
+def test_cs_expression_body_structural_hash_not_none():
+    body = "private void OnDestroy() => SafeDispose();"
+    assert structural_hash(body, "csharp") is not None

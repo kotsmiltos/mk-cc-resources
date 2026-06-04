@@ -74,6 +74,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_index.add_argument("--out", required=True)
     p_index.add_argument("--exclude", action="append", default=[])
     p_index.add_argument("--include-tests", action="store_true")
+    p_index.add_argument(
+        "--min-statements",
+        type=int,
+        default=2,
+        help="body-size floor: minimum significant nodes (recursive count) "
+        "for a function to index (default 2; 1 = maximal recall, more noise)",
+    )
     p_index.set_defaults(func=_cmd_index)
 
     p_specs = sub.add_parser(
@@ -148,7 +155,10 @@ def _cmd_index(args: argparse.Namespace) -> int:
 
     t0 = time.time()
     records, report = index_directory_with_report(
-        root, excludes=args.exclude, include_tests=args.include_tests
+        root,
+        excludes=args.exclude,
+        include_tests=args.include_tests,
+        min_statements=args.min_statements,
     )
     if not records:
         # Hard fail per DESIGN-V2.md §10: scope empty, all excluded, or unreadable.
@@ -163,6 +173,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
 
     io_yaml.dump_records(records, args.out)
     print(f"records: {len(records)}")
+    print(f"min_statements: {args.min_statements}")
     print(f"files_seen: {report.files_seen}")
     print(f"files_indexed: {report.files_indexed}")
     print(f"files_skipped_unsupported: {report.files_skipped_unsupported}")

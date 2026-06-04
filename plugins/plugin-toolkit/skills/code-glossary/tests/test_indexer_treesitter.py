@@ -230,11 +230,12 @@ function clamp(v, lo, hi) {
 def test_cs_method_names(cs_file: Path, tmp_path: Path):
     records = parse_file(cs_file, "csharp", rel_to=tmp_path)
     names = {r.location.function for r in records}
-    # RegisterFactory: try is 1 stmt + catch? try_statement is one named
-    # statement; that method has 1 statement -> skipped? No: try{...}catch{}
-    # is a single try_statement = 1 named child -> skipped by the floor.
-    # Describe: 2; Spawner ctor: 2; Run: 3 (local fn + 2 calls); Step: 2.
-    # Max(): expression-bodied -> skipped.
+    # v2.1 recursive counting: RegisterFactory's try{Register();}catch{}
+    # counts try_statement + expression_statement + invocation = 3 -> INDEXED
+    # (this exact shape was the flagship n=12 recall loss in the SC A/B).
+    # Describe: 2+; Spawner ctor: 2+; Run: 3+; Step: 2+.
+    # Max() => _max: expression body with a bare field read -> skipped.
+    assert "RegisterFactory" in names
     assert "Describe" in names
     assert "Spawner" in names
     assert "Run" in names
@@ -305,3 +306,158 @@ def test_garbage_input_no_crash(tmp_path: Path):
     # no well-formed 2-statement function to emit.
     records = parse_file(p, "typescript", rel_to=tmp_path)
     assert records == []
+
+
+# --- v2.1 floor rework: recursive counting, expression bodies, accessors ---
+
+
+CSHARP_FLOOR_SAMPLE = """\
+namespace Crowd.Floor
+{
+    public class Holder
+    {
+        private bool _initialized;
+        private bool _disposed;
+        private AgentBuffer _agents;
+        private bool _x;
+        private int _max;
+
+        // Fat one-liner: single return with construction + named args.
+        public static Config FromConstants()
+        {
+            return new Config(a: DefaultA, b: DefaultB, c: DefaultC);
+        }
+
+        // Fat one-liner: single return with arithmetic + construction.
+        public Vec2 CellCenter(int cx, int cy)
+        {
+            return origin + new Vec2(cx + 0.5f, cy + 0.5f) * cellSize;
+        }
+
+        // Bare one-liner: assignment only -> must stay skipped (flood guard).
+        public void OnEnable()
+        {
+            _x = true;
+        }
+
+        // Expression body with a call -> indexed at the 1-significant floor.
+        private void OnDestroy() => SafeDispose();
+
+        // Expression body with a bare field read -> skipped.
+        public int Max() => _max;
+
+        // Guarded getter (the n=7 SC A/B loss family) -> indexed as Agents.get.
+        public AgentBuffer Agents
+        {
+            get
+            {
+                if (!_initialized || _disposed)
+                {
+                    throw new System.InvalidOperationException("read before Initialize");
+                }
+                return _agents.AsReadOnly();
+            }
+        }
+
+        // Auto-property: accessors have no body -> skipped.
+        public int Count { get; set; }
+    }
+}
+"""
+
+
+@pytest.fixture()
+def cs_floor_file(tmp_path: Path) -> Path:
+    p = tmp_path / "Assets" / "Floor.cs"
+    p.parent.mkdir(parents=True)
+    p.write_text(CSHARP_FLOOR_SAMPLE, encoding="utf-8")
+    return p
+
+
+def test_cs_recursive_count_indexes_single_return_construction(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    names = {r.location.function for r in records}
+    assert "FromConstants" in names  # return + object_creation = 2
+
+
+def test_cs_recursive_count_indexes_single_return_arith(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    names = {r.location.function for r in records}
+    assert "CellCenter" in names  # return + binary + object_creation >= 3
+
+
+def test_cs_bare_assignment_one_liner_still_skipped(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    names = {r.location.function for r in records}
+    assert "OnEnable" not in names  # expression_statement only = 1 < floor
+
+
+def test_cs_expression_body_with_call_indexed(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    dispose = next(r for r in records if r.location.function == "OnDestroy")
+    assert "SafeDispose" in dispose.notable_calls
+    assert dispose.body.rstrip().endswith("SafeDispose();")
+
+
+def test_cs_expression_body_bare_field_skipped(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    names = {r.location.function for r in records}
+    assert "Max" not in names
+
+
+def test_cs_accessor_getter_with_guard_indexed(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    getter = next(r for r in records if r.location.function == "Agents.get")
+    assert getter.signature == "Agents.get"
+    assert getter.notable_inputs == []
+    assert getter.notable_outputs is None  # keeps getters out of the signature noise bucket
+    assert "throw new" in getter.body or "InvalidOperationException" in getter.body
+
+
+def test_cs_auto_property_accessors_skipped(cs_floor_file: Path, tmp_path: Path):
+    records = parse_file(cs_floor_file, "csharp", rel_to=tmp_path)
+    names = {r.location.function for r in records}
+    assert "Count.get" not in names
+    assert "Count.set" not in names
+
+
+def test_cs_setter_indexed_named(tmp_path: Path):
+    p = tmp_path / "Setter.cs"
+    p.write_text(
+        """\
+public class C
+{
+    private int _v;
+    public int V
+    {
+        set
+        {
+            if (value < 0) { throw new System.ArgumentException("neg"); }
+            _v = Normalize(value);
+        }
+    }
+}
+""",
+        encoding="utf-8",
+    )
+    records = parse_file(p, "csharp", rel_to=tmp_path)
+    setter = next(r for r in records if r.location.function == "V.set")
+    assert "Normalize" in setter.notable_calls
+
+
+def test_cs_min_statements_flag_floor_one(cs_floor_file: Path, tmp_path: Path):
+    default_names = {r.location.function for r in parse_file(cs_floor_file, "csharp", rel_to=tmp_path)}
+    loose_names = {
+        r.location.function
+        for r in parse_file(cs_floor_file, "csharp", rel_to=tmp_path, min_statements=1)
+    }
+    assert "OnEnable" not in default_names
+    assert "OnEnable" in loose_names  # floor=1 admits the bare assignment body
+    assert default_names <= loose_names
+
+
+def test_cs_try_catch_register_factory_indexed(cs_file: Path, tmp_path: Path):
+    # The flagship SC A/B loss shape: 1 top-level try statement, real logic inside.
+    records = parse_file(cs_file, "csharp", rel_to=tmp_path)
+    reg = next(r for r in records if r.location.function == "RegisterFactory")
+    assert "BuildFactory.Register" in reg.notable_calls

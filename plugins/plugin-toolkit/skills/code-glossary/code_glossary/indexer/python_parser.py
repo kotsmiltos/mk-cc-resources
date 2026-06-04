@@ -33,17 +33,24 @@ from code_glossary.indexer.common import make_record_id, relative_path
 from code_glossary.records import FunctionRecord, SourceLocation
 
 
-# Skip functions whose body has fewer than this many statements
+# Skip functions whose body has fewer than this many SIGNIFICANT nodes
 # (per brief: "Functions under 3 lines that are pure pass-throughs"
-# are too small to be a meaningful functionality unit). 2 chosen as the
-# floor — a getter that just does `return self.x` is 1 statement; a real
-# function typically has 2+.
+# are too small to be a meaningful functionality unit). 2 stays the floor,
+# but v2.1 counts recursively: a getter that just does `return self.x`
+# counts 1 and is skipped; `return g(h(x))` counts 3 (return + 2 calls)
+# and indexes — fat one-liners were the largest recall loss in the
+# Scalable Crowd A/B. Parity with treesitter_parser's counted sets.
 MIN_BODY_STATEMENTS = 2
 
 logger = logging.getLogger(__name__)
 
 
-def parse_file(path: Path, *, rel_to: Path | None = None) -> list[FunctionRecord]:
+def parse_file(
+    path: Path,
+    *,
+    rel_to: Path | None = None,
+    min_statements: int = MIN_BODY_STATEMENTS,
+) -> list[FunctionRecord]:
     """Parse a Python file and return one FunctionRecord per function.
 
     Args:
@@ -70,7 +77,7 @@ def parse_file(path: Path, *, rel_to: Path | None = None) -> list[FunctionRecord
     rel_path = relative_path(path, rel_to)
     records: list[FunctionRecord] = []
     for func_node in _iter_functions(tree):
-        rec = _build_record(func_node, source, rel_path)
+        rec = _build_record(func_node, source, rel_path, min_statements)
         if rec is not None:
             records.append(rec)
     return records
@@ -90,15 +97,40 @@ def _iter_functions(tree: ast.Module) -> Iterable[ast.FunctionDef | ast.AsyncFun
             yield node
 
 
+def _count_significant(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """Recursive significant-node count over the function body.
+
+    Counts every ast.stmt EXCEPT Pass and docstring/ellipsis Expr, plus
+    logic-bearing expressions (calls, comprehensions, boolean/compare ops).
+    Bare `return self.x` counts 1 (skipped at floor 2); `return g(h(x))`
+    counts 3 (indexed). Mirrors treesitter_parser's counted sets so the
+    two parsers stay behaviorally parallel.
+    """
+    count = 0
+    for child in ast.walk(_body_module(node)):
+        if isinstance(child, ast.stmt):
+            if isinstance(child, ast.Pass):
+                continue
+            if isinstance(child, ast.Expr) and isinstance(child.value, ast.Constant):
+                continue  # docstring / bare `...`
+            count += 1
+        elif isinstance(
+            child,
+            (ast.Call, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp, ast.BoolOp, ast.Compare),
+        ):
+            count += 1
+    return count
+
+
 def _build_record(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     source: str,
     rel_path: str,
+    min_statements: int = MIN_BODY_STATEMENTS,
 ) -> FunctionRecord | None:
     """Construct a FunctionRecord for one function node, or None if skipped."""
-    # Skip too-short bodies (likely pure pass-throughs).
-    if len(node.body) < MIN_BODY_STATEMENTS:
-        # One-statement bodies that are `return ...` or pure docstrings get filtered.
+    # Skip too-small bodies (likely pure pass-throughs) — recursive count.
+    if _count_significant(node) < min_statements:
         return None
 
     body_segment = ast.get_source_segment(source, node) or ""
