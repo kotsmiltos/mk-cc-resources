@@ -38,8 +38,10 @@ Confirm via `AskUserQuestion`: target path, excludes, include_tests, output dir 
 ## 2. Stage 1 — index (deterministic)
 
 ```
-runner index --root <target> --out <work>/records.yaml [--include-tests] [--exclude <pat> ...]
+runner index --root <target> --out <work>/records.yaml [--include-tests] [--exclude <pat> ...] [--min-statements N] [--scan-blocks --blocks-out <work>/block_records.yaml]
 ```
+
+`--scan-blocks` (v2.1, opt-in) additionally scans for duplicated sub-function guard patterns; cluster them with `runner block-cluster --blocks <work>/block_records.yaml --out <work>/block_clusters.yaml` and pass both files to `render` (`--block-records`/`--block-clusters`) — they emit as advisory `gloss-blk-NNN` entries in a "Block-level secondary findings" section, no agent dispatches needed.
 
 Exit 2 = zero functions indexed: abort, relay the runner's diagnostic (scope empty, all excluded, or unreadable). Note `languages_skipped` — those files get no deterministic records; mention them in the final report as LLM-sketch candidates (not dispatched by default; offer only if the user asks).
 

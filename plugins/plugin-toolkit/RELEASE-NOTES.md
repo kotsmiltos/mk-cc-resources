@@ -1,5 +1,17 @@
 # Release notes — plugin-toolkit
 
+## 1.3.0 — /code-glossary v2.1: recall fixes from the acceptance A/B
+
+Every change maps to a measured recall loss in the v2 acceptance run (Scalable Crowd A/B vs the hand-curated reference: 20 FOUND / 8 PARTIAL / 12 MISSED). Engine 2.1.0, 437 tests.
+
+- **Recursive body-size floor** — the floor now counts significant nodes in the body subtree (statements + calls/constructions/operators), not top-level statements. Fat one-liners index (`try{Register();}catch{}` — the flagship n=12 miss); bare assignments stay out. C# property accessors index as `<Property>.<kind>`; expression-bodied members (`=> SafeDispose()`) index at 1 significant node. `--min-statements` flag for tuning. SC corpus: 662 → 841 records, all 5 floor-missed reference families recovered, noise bucket +22% (measured: intentional call-wrapper recall, not the binary knob).
+- **Deterministic judge candidates** — `runner near-misses` emits label-prefix pairs, name-match singleton adoptions (catches the dropped ClosestPointOnSegment variants), and signature-only bucket samples (the unreviewed n=143 bucket gets sampled). Judges are part of the step-3 confirmed budget — non-skippable. `adopt` verdicts join singletons to clusters via `adopt_record_ids`.
+- **Block-level duplication scanner (MVP, opt-in)** — `index --scan-blocks` + `block-cluster`: function-prologue and loop-prologue windows (K≤2), shape-hashed with the structural serialization; compound-condition + jump predicate kills the trivial-guard flood; min-instances 5; nested-window dedup. Renders as advisory `gloss-blk-NNN` entries in a new "Block-level secondary findings" section. SC corpus: 10 guard families incl. both reference block clusters.
+- **EOL discipline** — bodies LF-normalize at capture; artifacts write `newline="\n"`; Pass C compares normalized (92 false-drifts eliminated).
+- **Vocab v3** — `index, cluster, bucket, score, iterate` added (147 verbs); these absences demoted 87 labels to `unclear` across the acceptance corpora.
+- **Agent returns as files** — all three briefs write YAML to `<work>/returns/` and reply with one line (pasted returns burned ~40% of session context).
+- **Self-dogfood applied** — `bucket_by_attribute` extracted per the engine's own cluster-004 finding.
+
 ## 1.2.0 — /code-glossary v2: deterministic engine + in-session LLM orchestration
 
 Full rewrite of code-glossary. v1's single-LLM clusterer failed at scale (Scalable Crowd dogfood, 826 C# functions, needed manual curation); v2 splits the work: a deterministic Python engine does everything that doesn't need judgment, in-session sub-agents do everything that does. v1 SKILL.md + briefs deleted as promised in the deprecation banner.

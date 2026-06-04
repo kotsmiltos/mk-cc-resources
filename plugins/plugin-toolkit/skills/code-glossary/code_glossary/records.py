@@ -175,7 +175,7 @@ class Glossary:
 
     schema_version: int = 1
     generator: str = "code-glossary"
-    generator_version: str = "2.0.0.dev0"
+    generator_version: str = "2.1.0"
     metadata: dict[str, Any] = field(default_factory=dict)
     glossary: list[GlossaryEntry] = field(default_factory=list)
 

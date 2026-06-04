@@ -1,7 +1,7 @@
 {
   "name": "plugin-toolkit",
-  "version": "1.2.0",
-  "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices. /plugin-scaffold bootstraps a new plugin with proper structure. /version-bump cascades version updates across plugin.json + marketplace.json + bundle + RELEASE-NOTES. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state. /code-glossary builds a functionality glossary + DRY audit for any codebase: a deterministic Python engine (Python/TS/JS/C# via AST + tree-sitter) indexes, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label, review clusters, and substrate-verify. Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Composable — skills can invoke each other and integrate with @ship.",
+  "version": "1.3.0",
+  "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices. /plugin-scaffold bootstraps a new plugin with proper structure. /version-bump cascades version updates across plugin.json + marketplace.json + bundle + RELEASE-NOTES. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state. /code-glossary builds a functionality glossary + DRY audit for any codebase: a deterministic Python engine (Python/TS/JS/C# via AST + tree-sitter) indexes, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label, review clusters, and substrate-verify. Writes GLOSSARY.yaml (frozen schema) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Composable â€” skills can invoke each other and integrate with @ship.",
   "author": {
     "name": "mkots"
   }

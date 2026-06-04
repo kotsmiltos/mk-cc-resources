@@ -1,4 +1,4 @@
-﻿"""Round-trip tests for pipeline artifact I/O.
+"""Round-trip tests for pipeline artifact I/O.
 
 Every dump->load pair must reproduce the in-memory objects exactly â€”
 these files are the only channel between engine stages once the SKILL

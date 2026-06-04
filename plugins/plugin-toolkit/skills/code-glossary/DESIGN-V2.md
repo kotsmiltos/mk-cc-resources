@@ -404,6 +404,11 @@ See **Appendix A** for the full design. Schema field requirements in §6 already
 | 21 | `/dry-refactor` designed alongside v2 (Appendix A), built later as v3. | session 2 |
 | 22 | Real essense-flow sprints available: 16 in Scalable Crowd, 3 in BiananceRepo. Spec-mode adapter design reads these. | session 2 |
 | 23 | Canonical verb list: I seed ~60 from common code-action verbs; user overrides via config anytime. | session 2 |
+| 24 | v2.1 floor: body-size floor counts SIGNIFICANT nodes recursively (statements + calls/constructions/operators); default stays 2, `--min-statements` overrides. C# accessors index as `<Property>.<kind>`; expression bodies index at 1 significant node. Decided from the acceptance A/B: floor caused 7 of 12 missed ref clusters. | v2.1 session |
+| 25 | v2.1 judge tier: judge candidates generated deterministically (`runner near-misses` — label-pairs, singleton adoptions, bucket samples); judges are part of the step-3 confirmed budget and non-skippable. Adopt verdicts flow via `adopt_record_ids` enrichment key. | v2.1 session |
+| 26 | v2.1 EOL: record bodies LF-normalized at capture; artifacts written newline="\n"; Pass C compares normalized. (92 false-drifts in the acceptance run.) | v2.1 session |
+| 27 | v2.1 agent returns: briefs write YAML to `<work>/returns/`, message = one line. (Pasted returns burned ~40% session context.) | v2.1 session |
+| 28 | v2.1 block scanner (MVP): function-prologue + loop-prologue windows (K≤2), structural-shape hashed, compound-condition+jump predicate, min-instances 5, nested-window dedup. Opt-in (`--scan-blocks`); blocks never mix into the function pipeline; entries advisory (`gloss-blk-NNN`, extractable=false). | v2.1 session |
 
 ---
 

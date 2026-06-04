@@ -4,20 +4,20 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.11.0"
+    "description": "Custom Claude Code plugins â€” multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
+    "version": "2.12.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize (post-architect) and /glossary (post-build) are optional DRY phases powered by the plugin-toolkit code-glossary engine. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report is re-validated against disk — drift is auditable, not silent. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state — never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
+      "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize (post-architect) and /glossary (post-build) are optional DRY phases powered by the plugin-toolkit code-glossary engine. Every phase-producing skill writes artifact + transitions state atomically. Every agent self-report is re-validated against disk â€” drift is auditable, not silent. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state â€” never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
       "version": "0.15.0"
     },
     {
       "name": "essense-autopilot",
       "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, in-flight background Agent calls (transcript-scan), forward-detect for sprint-complete + QA-REPORT, and no-progress (same phase + sprint + wave as last fire → suggests /heal). Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
+      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, in-flight background Agent calls (transcript-scan), forward-detect for sprint-complete + QA-REPORT, and no-progress (same phase + sprint + wave as last fire â†’ suggests /heal). Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
       "version": "0.3.1"
     },
     {
@@ -29,7 +29,7 @@
     {
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, and context refresh. Smart hints suggest modifiers when you describe the intent without the keyword. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
+      "description": "Prompt modifiers â€” keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, and context refresh. Smart hints suggest modifiers when you describe the intent without the keyword. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
       "version": "1.5.0"
     },
     {
@@ -41,26 +41,26 @@
     {
       "name": "alert-sounds",
       "source": "./plugins/alert-sounds",
-      "description": "Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, volume control, and mute/unmute. Fully configurable per event.",
+      "description": "Cross-platform alerts for Claude Code events â€” sound, desktop notifications, status line colors, volume control, and mute/unmute. Fully configurable per event.",
       "version": "1.1.1"
     },
     {
       "name": "session-lifecycle",
       "source": "./plugins/session-lifecycle",
-      "description": "Session lifecycle tools — handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns.",
+      "description": "Session lifecycle tools â€” handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns.",
       "version": "1.1.0"
     },
     {
       "name": "plugin-toolkit",
       "source": "./plugins/plugin-toolkit",
-      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary (v2) audits any codebase for DRY violations — a deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label against a 142-verb controlled vocabulary, review each cluster (Pass B), and substrate-verify instances (Pass C). Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Composable — @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
-      "version": "1.2.0"
+      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary (v2) audits any codebase for DRY violations â€” a deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review each cluster (Pass B), substrate-verify instances (Pass C), and judge near-miss candidates generated deterministically. Optional block scanner (--scan-blocks) surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Composable â€” @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
+      "version": "1.3.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.5.0"
+      "version": "2.6.0"
     }
   ]
 }

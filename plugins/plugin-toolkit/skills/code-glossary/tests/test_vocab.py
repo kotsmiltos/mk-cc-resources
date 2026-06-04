@@ -1,4 +1,4 @@
-﻿"""Tests for canonical verb vocabulary loader + label validation."""
+"""Tests for canonical verb vocabulary loader + label validation."""
 
 import pytest
 

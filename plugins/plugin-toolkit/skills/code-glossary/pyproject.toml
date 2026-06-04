@@ -1,6 +1,6 @@
 [project]
 name = "code-glossary"
-version = "2.0.0.dev0"
+version = "2.1.0"
 description = "Functionality glossary builder and DRY audit for any codebase. Polyglot via tree-sitter + LLM. Glossary-only; refactor execution is /dry-refactor (planned v3)."
 requires-python = ">=3.11"
 license = { text = "MIT" }
