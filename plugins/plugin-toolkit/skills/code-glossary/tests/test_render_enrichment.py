@@ -236,6 +236,38 @@ def _setup_two_clusters():
     return records, fps, clusters, scope
 
 
+def test_composite_claim_without_composed_of_stays_leaf():
+    """Found by the wave-12 acceptance run: an agent claiming
+    kind=composite with empty composed_of produced schema-invalid YAML."""
+    records, fps, clusters, scope = _setup()
+    enr = {
+        "cluster_id": "cluster-001",
+        "kind": "composite",  # no composed_of references
+        "name": "orchestrate-registration",
+        "description": "Claims composite without naming parts.",
+    }
+    g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enr})
+    entry = g.glossary[0]
+    assert entry.kind == "leaf"
+    assert entry.composed_of == []
+    assert "kind=composite without composed_of" in entry.notes
+    doc = yaml.safe_load(emit_glossary_yaml(g))
+    assert validate_glossary(doc) == []
+
+
+def test_composite_claim_with_composed_of_applies():
+    records, fps, clusters, scope = _setup()
+    enr = dict(
+        FULL_ENRICHMENT,
+        kind="composite",
+        composed_of=["gloss-002", "gloss-003"],
+    )
+    g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enr})
+    entry = g.glossary[0]
+    assert entry.kind == "composite"
+    assert entry.composed_of == ["gloss-002", "gloss-003"]
+
+
 def test_judge_merge_into_folds_members():
     records, fps, clusters, scope = _setup_two_clusters()
     enrichments = {

@@ -213,6 +213,27 @@ enrichments:
     assert promoted[0]["name"] == "fetch-entity-from-api"
 
 
+def test_render_schema_invalid_emit_hard_fails(src_tree: Path, tmp_path: Path, capsys):
+    """Render must never emit a schema-invalid GLOSSARY.yaml silently —
+    a composite claim without composed_of used to slip through (wave-12
+    acceptance finding). The entry_builder guard now demotes it, so a
+    valid emit results; this test asserts render REPORTS schema status."""
+    paths = _run_pipeline_through_cluster(src_tree, tmp_path)
+    out_dir = tmp_path / "glossary"
+    capsys.readouterr()
+    code = main([
+        "render",
+        "--records", str(paths["records"]),
+        "--fingerprints", str(paths["fingerprints"]),
+        "--clusters", str(paths["clusters"]),
+        "--out-dir", str(out_dir),
+        "--scope-path", "src",
+    ])
+    out = capsys.readouterr().out
+    assert code == EXIT_OK
+    assert "schema_errors: 0" in out
+
+
 def test_malformed_artifact_hard_fails(tmp_path: Path):
     bad = tmp_path / "records.yaml"
     bad.write_text("not_records: []", encoding="utf-8")

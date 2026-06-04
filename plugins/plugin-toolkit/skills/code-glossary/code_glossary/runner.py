@@ -360,7 +360,17 @@ def _cmd_render(args: argparse.Namespace) -> int:
     # Report from the written artifact (source of truth on disk).
     import yaml as _yaml
 
+    from code_glossary.schema import validate_glossary
+
     doc = _yaml.safe_load(Path(yaml_path).read_text(encoding="utf-8"))
+
+    # The emitted artifact is a downstream contract (frozen schema v1);
+    # an invalid emit must never pass silently (DESIGN-V2.md SS10).
+    schema_errors = validate_glossary(doc)
+    print(f"schema_errors: {len(schema_errors)}")
+    for err in schema_errors:
+        print(f"schema_error: {err.path}: {err.message}")
+
     totals = doc.get("metadata", {}).get("totals", {})
     print(f"glossary_yaml: {yaml_path}")
     print(f"glossary_md: {md_path}")
@@ -371,6 +381,13 @@ def _cmd_render(args: argparse.Namespace) -> int:
         meta_enr = doc.get("metadata", {}).get("enrichments", {})
         print(f"enrichments_applied: {meta_enr.get('applied')}")
         print(f"enrichments_unmatched: {meta_enr.get('unmatched_cluster_ids')}")
+    if schema_errors:
+        print(
+            "error: emitted glossary violates frozen schema "
+            f"({len(schema_errors)} error(s) above)",
+            file=sys.stderr,
+        )
+        return EXIT_HARD_FAILURE
     return EXIT_OK
 
 

@@ -276,8 +276,18 @@ def _apply_enrichment(
     if _non_empty_str(enrichment.get("description")):
         entry.description = enrichment["description"].strip()
     if enrichment.get("kind") in ENTRY_KINDS:
-        entry.kind = enrichment["kind"]
-        entry.composed_of = [str(g) for g in enrichment.get("composed_of", [])]
+        composed_of = [str(g) for g in enrichment.get("composed_of", [])]
+        if enrichment["kind"] == "composite" and not composed_of:
+            # Schema: composite requires non-empty composed_of. An agent
+            # claiming composite without the references stays leaf, loudly.
+            entry.notes = _append_note(
+                entry.notes,
+                "Pass B claimed kind=composite without composed_of "
+                "references; kept as leaf.",
+            )
+        else:
+            entry.kind = enrichment["kind"]
+            entry.composed_of = composed_of
     if _non_empty_str(enrichment.get("canonical_signature")):
         entry.canonical_signature = enrichment["canonical_signature"].strip()
     if _non_empty_str(enrichment.get("proposed_module")):
