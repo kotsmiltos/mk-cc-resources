@@ -21,8 +21,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from code_glossary.records import CandidateCluster, FunctionRecord, SignalFingerprint
-from code_glossary.render.entry_builder import build_glossary
+from code_glossary.records import (
+    BlockRecord,
+    CandidateCluster,
+    FunctionRecord,
+    SignalFingerprint,
+)
+from code_glossary.render.entry_builder import build_block_entries, build_glossary
 from code_glossary.render.markdown_emit import emit_glossary_markdown
 from code_glossary.render.yaml_emit import emit_glossary_yaml
 
@@ -40,6 +45,8 @@ def render_glossary(
     *,
     target_path: str = "",
     enrichments: dict[str, Any] | None = None,
+    block_clusters: list[CandidateCluster] | None = None,
+    block_records: list[BlockRecord] | None = None,
 ) -> tuple[Path, Path]:
     """Render the glossary artifacts to disk.
 
@@ -64,6 +71,13 @@ def render_glossary(
     glossary = build_glossary(
         records, fingerprints, clusters, scope_metadata, enrichments=enrichments
     )
+
+    # Block findings (v2.1 --scan-blocks): advisory entries appended after
+    # the function pipeline — own ids (gloss-blk-NNN), own markdown section.
+    if block_clusters and block_records is not None:
+        block_entries = build_block_entries(block_clusters, block_records)
+        glossary.glossary.extend(block_entries)
+        glossary.metadata["block_findings"] = len(block_entries)
 
     yaml_text = emit_glossary_yaml(glossary)
     md_text = emit_glossary_markdown(glossary, target_path=target_path)

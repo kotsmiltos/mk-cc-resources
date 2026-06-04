@@ -181,6 +181,27 @@ class Glossary:
 
 
 @dataclass
+class BlockRecord:
+    """Stage 1 output (--scan-blocks, v2.1): one duplicated-block candidate.
+
+    Produced by indexer.block_scanner for the two MVP window shapes
+    (function_prologue, loop_prologue). Lives in its own artifact
+    (block_records.yaml) and clusters in its own pass — never mixed into
+    the function pipeline. location.parent_function_id ties the window
+    back to its enclosing function (schema requires it for
+    instance_type == 'block').
+    """
+
+    id: str  # blk-<sha8>
+    location: SourceLocation  # file + first-window-statement line + function + parent_function_id
+    block_kind: str  # function_prologue | loop_prologue
+    body: str  # verbatim window text, LF-normalized
+    language: str
+    shape_hash: str  # node-type serialization hash (structural-signal parity)
+    window_size: int  # statements captured
+
+
+@dataclass
 class CandidateCluster:
     """Stage 3 output: a group of records that share at least one signal.
 

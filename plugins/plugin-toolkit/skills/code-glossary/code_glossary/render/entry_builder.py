@@ -32,6 +32,7 @@ from code_glossary.constants import (
     VERIFICATION_STATUSES,
 )
 from code_glossary.records import (
+    BlockRecord,
     CandidateCluster,
     FunctionRecord,
     Glossary,
@@ -484,3 +485,56 @@ def _build_metadata(
         if k not in meta and k not in {"paths", "excludes", "include_tests"}:
             meta[k] = v
     return meta
+
+
+# --- block findings (v2.1 --scan-blocks) ---
+
+
+def build_block_entries(
+    block_clusters: list[CandidateCluster],
+    block_records: list[BlockRecord],
+) -> list[GlossaryEntry]:
+    """Turn block clusters into advisory glossary entries.
+
+    Block entries are always extractable=false (the MVP scanner finds
+    families; designing an extraction is Pass-B-for-blocks, out of v2.1
+    scope) and carry instance_type='block' instances, which the schema
+    validates via the parent_function_id requirement. Ids are
+    gloss-blk-NNN so they never collide with function entries.
+    """
+    index = {b.id: b for b in block_records}
+    entries: list[GlossaryEntry] = []
+    counter = 1
+    for cluster in block_clusters:
+        members = [index[i] for i in cluster.member_record_ids if i in index]
+        if not members:
+            continue
+        rep = members[0]
+        kind_label = rep.block_kind.replace("_", "-")
+        entries.append(
+            GlossaryEntry(
+                id=f"gloss-blk-{counter:03d}",
+                name=f"{kind_label}-{rep.shape_hash[:6]}",
+                description=(
+                    f"Duplicated {kind_label} block across {len(members)} functions "
+                    f"({rep.window_size}-statement window)."
+                ),
+                extractable=False,
+                instances=[
+                    Instance(
+                        instance_type="block",
+                        location=b.location,
+                        body_excerpt=b.body,
+                        language_or_format=b.language,
+                    )
+                    for b in members
+                ],
+                signal_agreement={"block_shape": 1.0},
+                notes=(
+                    "Block-level duplication (v2.1 scanner, advisory): extract as a "
+                    "shared guard/skip helper, or annotate as accepted idiom."
+                ),
+            )
+        )
+        counter += 1
+    return entries

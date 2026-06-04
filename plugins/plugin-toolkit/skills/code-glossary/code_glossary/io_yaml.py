@@ -25,6 +25,7 @@ from typing import Any
 import yaml
 
 from code_glossary.records import (
+    BlockRecord,
     CandidateCluster,
     FunctionRecord,
     SignalFingerprint,
@@ -213,6 +214,32 @@ def load_clusters(path: Path | str) -> list[CandidateCluster]:
             out.append(CandidateCluster(**raw))
         except TypeError as exc:
             raise ArtifactError(f"{path}: clusters[{i}]: {exc}") from exc
+    return out
+
+
+# --- block records (v2.1 --scan-blocks) ---
+
+
+def dump_block_records(blocks: list[BlockRecord], path: Path | str) -> None:
+    payload = {"block_records": [asdict(b) for b in blocks]}
+    _write_yaml(payload, path)
+
+
+def load_block_records(path: Path | str) -> list[BlockRecord]:
+    doc = _read_yaml(path)
+    raw_blocks = _require_list(doc, "block_records", path)
+    out: list[BlockRecord] = []
+    for i, raw in enumerate(raw_blocks):
+        if not isinstance(raw, dict):
+            raise ArtifactError(f"{path}: block_records[{i}] must be a mapping")
+        loc_raw = raw.get("location")
+        if not isinstance(loc_raw, dict):
+            raise ArtifactError(f"{path}: block_records[{i}].location must be a mapping")
+        try:
+            location = SourceLocation(**loc_raw)
+            out.append(BlockRecord(**{**raw, "location": location}))
+        except TypeError as exc:
+            raise ArtifactError(f"{path}: block_records[{i}]: {exc}") from exc
     return out
 
 

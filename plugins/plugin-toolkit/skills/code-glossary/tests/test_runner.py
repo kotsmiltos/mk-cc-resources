@@ -298,3 +298,66 @@ def test_near_misses_subcommand(tmp_path: Path, capsys):
     assert "singleton-adoption" in kinds
     adoption = next(c for c in doc["near_misses"] if c["kind"] == "singleton-adoption")
     assert "c.py" in adoption["reason"]
+
+
+CS_BLOCK_SRC = """\
+public class B%d
+{
+    public X Get()
+    {
+        if (!_initialized || _disposed) { throw new E("guard"); }
+        return _x;
+    }
+}
+"""
+
+
+def test_scan_blocks_end_to_end(tmp_path: Path, capsys):
+    # v2.1: index --scan-blocks -> block-cluster -> render with block section.
+    src = tmp_path / "src"
+    src.mkdir()
+    for i in range(6):  # 6 guard clones clear the min-instances=5 floor
+        (src / f"B{i}.cs").write_text(CS_BLOCK_SRC % i, encoding="utf-8")
+
+    work = tmp_path / "work"
+    records = work / "records.yaml"
+    blocks = work / "block_records.yaml"
+    fps = work / "fps.yaml"
+    clusters = work / "clusters.yaml"
+    bclusters = work / "block_clusters.yaml"
+    out_dir = tmp_path / "glossary"
+
+    assert main([
+        "index", "--root", str(src), "--out", str(records),
+        "--scan-blocks", "--blocks-out", str(blocks),
+    ]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "block_records:" in out
+    assert main(["signal", "--records", str(records), "--out", str(fps)]) == EXIT_OK
+    assert main(["cluster", "--records", str(records), "--fingerprints", str(fps), "--out", str(clusters)]) == EXIT_OK
+    capsys.readouterr()
+    assert main(["block-cluster", "--blocks", str(blocks), "--out", str(bclusters)]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "block_clusters: 1" in out  # one guard family
+
+    capsys.readouterr()
+    assert main([
+        "render",
+        "--records", str(records),
+        "--fingerprints", str(fps),
+        "--clusters", str(clusters),
+        "--out-dir", str(out_dir),
+        "--scope-path", "src",
+        "--block-records", str(blocks),
+        "--block-clusters", str(bclusters),
+    ]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "schema_errors: 0" in out  # block instances pass frozen schema v1
+    assert "block_findings: 1" in out
+    md = (out_dir / "GLOSSARY.md").read_text(encoding="utf-8")
+    assert "## Block-level secondary findings" in md
+    assert "gloss-blk-001" in md
+    yaml_doc = yaml.safe_load((out_dir / "GLOSSARY.yaml").read_text(encoding="utf-8"))
+    blk_entries = [e for e in yaml_doc["glossary"] if e["id"].startswith("gloss-blk-")]
+    assert len(blk_entries) == 1
+    assert all(i["instance_type"] == "block" for i in blk_entries[0]["instances"])

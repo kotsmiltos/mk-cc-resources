@@ -36,6 +36,8 @@ import time
 from pathlib import Path
 
 from code_glossary import io_yaml
+from code_glossary.cluster.block_bucketing import BLOCK_MIN_INSTANCES, bucket_blocks
+from code_glossary.indexer.block_scanner import scan_directory as scan_blocks_directory
 from code_glossary.cluster.near_misses import (
     BUCKET_MIN_MEMBERS as NEAR_MISS_BUCKET_MIN_MEMBERS,
     BUCKET_SAMPLE_SIZE as NEAR_MISS_BUCKET_SAMPLE_SIZE,
@@ -86,6 +88,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="body-size floor: minimum significant nodes (recursive count) "
         "for a function to index (default 2; 1 = maximal recall, more noise)",
     )
+    p_index.add_argument(
+        "--scan-blocks",
+        action="store_true",
+        help="v2.1: also scan for duplicated sub-function blocks "
+        "(prologue guards, loop skip-guards) into --blocks-out",
+    )
+    p_index.add_argument(
+        "--blocks-out",
+        help="output path for block_records.yaml (default: <out dir>/block_records.yaml)",
+    )
     p_index.set_defaults(func=_cmd_index)
 
     p_specs = sub.add_parser(
@@ -119,6 +131,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cluster.add_argument("--out", required=True)
     p_cluster.add_argument("--mode", choices=("code", "spec"), default="code")
     p_cluster.set_defaults(func=_cmd_cluster)
+
+    p_blocks = sub.add_parser(
+        "block-cluster",
+        help="v2.1: group block records by shape hash into block clusters",
+    )
+    p_blocks.add_argument("--blocks", required=True)
+    p_blocks.add_argument("--out", required=True)
+    p_blocks.add_argument(
+        "--min-instances",
+        type=int,
+        default=BLOCK_MIN_INSTANCES,
+        help=f"smallest block family to keep (default {BLOCK_MIN_INSTANCES}; "
+        "block-level duplication is noisier than function-level)",
+    )
+    p_blocks.set_defaults(func=_cmd_block_cluster)
 
     p_near = sub.add_parser(
         "near-misses",
@@ -167,6 +194,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_render.add_argument("--scope-path", action="append", default=[])
     p_render.add_argument("--scope-exclude", action="append", default=[])
     p_render.add_argument("--include-tests", action="store_true")
+    p_render.add_argument("--block-records", help="v2.1: block_records.yaml from index --scan-blocks")
+    p_render.add_argument("--block-clusters", help="v2.1: block_clusters.yaml from block-cluster")
     p_render.set_defaults(func=_cmd_render)
 
     return parser
@@ -200,6 +229,16 @@ def _cmd_index(args: argparse.Namespace) -> int:
         return EXIT_HARD_FAILURE
 
     io_yaml.dump_records(records, args.out)
+
+    if args.scan_blocks:
+        blocks = scan_blocks_directory(
+            root, excludes=args.exclude, include_tests=args.include_tests
+        )
+        blocks_out = args.blocks_out or str(Path(args.out).parent / "block_records.yaml")
+        io_yaml.dump_block_records(blocks, blocks_out)
+        print(f"block_records: {len(blocks)}")
+        print(f"blocks_out: {blocks_out}")
+
     print(f"records: {len(records)}")
     print(f"min_statements: {args.min_statements}")
     print(f"files_seen: {report.files_seen}")
@@ -318,6 +357,17 @@ def _cmd_cluster(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_block_cluster(args: argparse.Namespace) -> int:
+    blocks = io_yaml.load_block_records(args.blocks)
+    clusters = bucket_blocks(blocks, min_instances=args.min_instances)
+    io_yaml.dump_clusters(clusters, args.out)
+    print(f"block_clusters: {len(clusters)}")
+    for c in clusters:
+        print(f"cluster_size: {c.id}: {len(c.member_record_ids)}")
+    print(f"out: {args.out}")
+    return EXIT_OK
+
+
 def _cmd_near_misses(args: argparse.Namespace) -> int:
     records = io_yaml.load_records(args.records)
     clusters = io_yaml.load_clusters(args.clusters)
@@ -402,6 +452,12 @@ def _cmd_render(args: argparse.Namespace) -> int:
     enrichments = (
         io_yaml.load_enrichments(args.enrichments) if args.enrichments else None
     )
+    block_records = (
+        io_yaml.load_block_records(args.block_records) if args.block_records else None
+    )
+    block_clusters = (
+        io_yaml.load_clusters(args.block_clusters) if args.block_clusters else None
+    )
 
     scope_metadata = {
         "paths": args.scope_path or ["."],
@@ -416,6 +472,8 @@ def _cmd_render(args: argparse.Namespace) -> int:
         args.out_dir,
         target_path=args.target_path,
         enrichments=enrichments,
+        block_clusters=block_clusters,
+        block_records=block_records,
     )
     # Report from the written artifact (source of truth on disk).
     import yaml as _yaml
@@ -437,6 +495,8 @@ def _cmd_render(args: argparse.Namespace) -> int:
     print(f"entries: {len(doc.get('glossary', []))}")
     print(f"totals_extractable: {totals.get('extractable')}")
     print(f"totals_pending_high_confidence: {totals.get('pending_high_confidence')}")
+    if block_records is not None:
+        print(f"block_findings: {doc.get('metadata', {}).get('block_findings', 0)}")
     if enrichments is not None:
         meta_enr = doc.get("metadata", {}).get("enrichments", {})
         print(f"enrichments_applied: {meta_enr.get('applied')}")

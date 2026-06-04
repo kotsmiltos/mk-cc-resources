@@ -35,6 +35,7 @@ def emit_glossary_markdown(glossary: Glossary, *, target_path: str = "") -> str:
     _emit_extractable_section(buf, glossary)
     _emit_pending_enrichment_section(buf, glossary)
     _emit_watchlist(buf, glossary)
+    _emit_block_findings(buf, glossary)
     _emit_next_steps(buf)
     return buf.getvalue()
 
@@ -110,10 +111,15 @@ def _emit_extractable_section(buf: StringIO, g: Glossary) -> None:
 
 # --- Pending enrichment ---
 
+def _is_block_entry(e: GlossaryEntry) -> bool:
+    """Block findings (v2.1 scanner) render in their own section only."""
+    return bool(e.instances) and e.instances[0].instance_type == "block"
+
+
 def _emit_pending_enrichment_section(buf: StringIO, g: Glossary) -> None:
     pending = [
         e for e in g.glossary
-        if not e.extractable and len(e.instances) >= 2
+        if not e.extractable and len(e.instances) >= 2 and not _is_block_entry(e)
     ]
     buf.write("## Pending-enrichment clusters\n\n")
     if not pending:
@@ -183,6 +189,27 @@ def _emit_entry_details(buf: StringIO, e: GlossaryEntry, *, show_full: bool) -> 
         buf.write(f"**Notes:** {e.notes}\n\n")
 
     buf.write("---\n\n")
+
+
+def _emit_block_findings(buf: StringIO, g: Glossary) -> None:
+    """Block-level secondary findings (DESIGN-V2.md §11) — v2.1 scanner output."""
+    blocks = [e for e in g.glossary if _is_block_entry(e)]
+    if not blocks:
+        return  # section promised only when --scan-blocks ran and found families
+    buf.write("## Block-level secondary findings\n\n")
+    buf.write("Duplicated sub-function patterns (prologue guards, loop skip-guards). ")
+    buf.write("Advisory — extract as a shared guard helper or annotate as idiom.\n\n")
+    for e in blocks:
+        buf.write(f"### {e.id} - {e.name}\n\n")
+        buf.write(f"**Description:** {e.description}\n\n")
+        rep = e.instances[0]
+        buf.write(f"**Representative window** (`{rep.location.file}:{rep.location.line}`):\n\n")
+        buf.write(f"```\n{rep.body_excerpt}\n```\n\n")
+        buf.write("**Sites:**\n\n")
+        for inst in e.instances:
+            func_str = f" - `{inst.location.function}`" if inst.location.function else ""
+            buf.write(f"- `{inst.location.file}:{inst.location.line}`{func_str}\n")
+        buf.write("\n---\n\n")
 
 
 def _emit_next_steps(buf: StringIO) -> None:
