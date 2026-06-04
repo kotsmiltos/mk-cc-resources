@@ -1,5 +1,5 @@
 ---
-description: Adversarial QA on the current sprint. Bug-find + drift-find with path-evidence.
+description: Code review on the current sprint — hunts bugs and drift against the spec. Every finding carries file:line + verbatim quote, re-validated against disk; confirmed criticals block sprint advance.
 ---
 
 Invoke the `essense-flow:review` skill in the current working directory.

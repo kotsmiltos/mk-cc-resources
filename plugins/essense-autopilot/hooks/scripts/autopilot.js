@@ -38,7 +38,8 @@ try {
 
 const DEFAULT_CONFIG = {
   enabled: false,
-  human_gates: ["idle", "eliciting", "verifying"],
+  // organizing is propose-with-confirm (user OK per consolidation) — gate.
+  human_gates: ["idle", "eliciting", "organizing", "verifying"],
   terminal: ["complete"],
   // Phase → command map. Reflects essense-flow state-machine semantics
   // (references/transitions.yaml). Project config can override per project.

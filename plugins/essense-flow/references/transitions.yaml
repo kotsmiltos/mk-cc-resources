@@ -9,7 +9,8 @@
 #
 # Phases:
 #   idle, eliciting, research, triaging, requirements-ready, architecture,
-#   decomposing, sprinting, sprint-complete, reviewing, verifying, complete
+#   decomposing, sprinting, organizing, sprint-complete, reviewing,
+#   verifying, complete
 
 schema_version: 1
 
@@ -22,15 +23,19 @@ phases:
   - architecture
   - decomposing
   - sprinting
+  - organizing
   - sprint-complete
   - reviewing
   - verifying
   - complete
 
 # Phases where the user is the actor — autopilot must halt here.
+# organizing is propose-with-confirm (every consolidation needs user OK),
+# hence a human gate.
 human_gates:
   - idle
   - eliciting
+  - organizing
   - verifying
 
 terminal:
@@ -198,6 +203,32 @@ transitions:
     triggered_by: build-skill
     requires: ".pipeline/build/sprints/<n>/SPRINT-REPORT.md exists with all tasks resolved"
     auto_advance: true
+    fields_changed: [phase, last_updated]
+
+  # --- organize (optional, post-architect pre-build; spec-mode DRY pass) ---
+
+  sprinting-to-organizing:
+    from: sprinting
+    to: organizing
+    triggered_by: organize-skill
+    requires: ".pipeline/architecture/sprints/<n>/manifest.yaml exists"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  organizing-to-organizing:
+    from: organizing
+    to: organizing
+    triggered_by: organize-skill
+    requires: null
+    auto_advance: false
+    fields_changed: [organize.round, last_updated]
+
+  organizing-to-sprinting:
+    from: organizing
+    to: sprinting
+    triggered_by: organize-skill
+    requires: ".pipeline/architecture/ORGANIZE-REPORT.md exists"
+    auto_advance: false
     fields_changed: [phase, last_updated]
 
   # --- review ---

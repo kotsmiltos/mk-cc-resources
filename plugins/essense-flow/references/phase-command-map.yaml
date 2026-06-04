@@ -50,6 +50,11 @@ phases:
     description: "Execute the sprint — dispatch task agents in dependency-ordered waves."
     inputs: [".pipeline/architecture/sprints/<n>/manifest.yaml"]
 
+  organizing:
+    next: /organize
+    description: "Resume organize — confirm or reject proposed task-spec consolidations."
+    inputs: [".pipeline/architecture/sprints/<n>/manifest.yaml"]
+
   sprint-complete:
     next: /review
     description: "Review the sprint output — adversarial agents hunt bugs and drift with path evidence."
