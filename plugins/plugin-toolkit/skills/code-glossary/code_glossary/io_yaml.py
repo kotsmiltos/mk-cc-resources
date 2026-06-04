@@ -216,6 +216,19 @@ def load_clusters(path: Path | str) -> list[CandidateCluster]:
     return out
 
 
+# --- near-miss judge candidates (v2.1) ---
+
+
+def dump_near_misses(candidates: list[dict[str, Any]], path: Path | str) -> None:
+    """Write deterministic judge candidates (cluster/near_misses.py output).
+
+    Consumed by the SKILL.md layer to dispatch behavioral judges — no
+    engine loader needed; the list is read once and turned into dispatches.
+    """
+    payload = {"near_misses": candidates}
+    _write_yaml(payload, path)
+
+
 # --- enrichments (Pass B agent returns) ---
 #
 # enrichments.yaml shape (one entry per reviewed cluster):

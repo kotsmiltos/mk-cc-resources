@@ -263,3 +263,38 @@ def test_index_min_statements_flag(tmp_path: Path, capsys):
 
     assert n_default == 1  # only real.py's g
     assert n_loose == 2  # tiny.py's f admitted at floor 1
+
+
+def test_near_misses_subcommand(tmp_path: Path, capsys):
+    # v2.1: deterministic judge candidates from records + clusters.
+    src = tmp_path / "src"
+    src.mkdir()
+    # Two same-named two-statement functions cluster; a third stays single
+    # (different shape) and must surface as a singleton-adoption candidate.
+    (src / "a.py").write_text(
+        "def closest(p, s):\n    d = dot(p, s)\n    return clamp(d)\n", encoding="utf-8"
+    )
+    (src / "b.py").write_text(
+        "def closest(q, t):\n    e = dot(q, t)\n    return clamp(e)\n", encoding="utf-8"
+    )
+    (src / "c.py").write_text(
+        "def closest(p, s, eps):\n    if not p:\n        return s\n    d = dot(p, s)\n    e = norm(d)\n    return clamp(e, eps)\n",
+        encoding="utf-8",
+    )
+
+    records = tmp_path / "records.yaml"
+    fps = tmp_path / "fps.yaml"
+    clusters = tmp_path / "clusters.yaml"
+    out = tmp_path / "near_misses.yaml"
+    assert main(["index", "--root", str(src), "--out", str(records)]) == EXIT_OK
+    assert main(["signal", "--records", str(records), "--out", str(fps)]) == EXIT_OK
+    assert main(["cluster", "--records", str(records), "--fingerprints", str(fps), "--out", str(clusters)]) == EXIT_OK
+    assert main(["near-misses", "--records", str(records), "--clusters", str(clusters), "--out", str(out)]) == EXIT_OK
+
+    captured = capsys.readouterr().out
+    assert "near_misses:" in captured
+    doc = yaml.safe_load(out.read_text(encoding="utf-8"))
+    kinds = {c["kind"] for c in doc["near_misses"]}
+    assert "singleton-adoption" in kinds
+    adoption = next(c for c in doc["near_misses"] if c["kind"] == "singleton-adoption")
+    assert "c.py" in adoption["reason"]

@@ -36,6 +36,11 @@ import time
 from pathlib import Path
 
 from code_glossary import io_yaml
+from code_glossary.cluster.near_misses import (
+    BUCKET_MIN_MEMBERS as NEAR_MISS_BUCKET_MIN_MEMBERS,
+    BUCKET_SAMPLE_SIZE as NEAR_MISS_BUCKET_SAMPLE_SIZE,
+    find_near_misses,
+)
 from code_glossary.cluster.orchestrator import cluster_records
 from code_glossary.indexer.orchestrator import index_directory_with_report
 from code_glossary.indexer.spec_parser import index_sprint_specs
@@ -114,6 +119,29 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cluster.add_argument("--out", required=True)
     p_cluster.add_argument("--mode", choices=("code", "spec"), default="code")
     p_cluster.set_defaults(func=_cmd_cluster)
+
+    p_near = sub.add_parser(
+        "near-misses",
+        help="Emit deterministic behavioral-judge candidates (v2.1): "
+        "label-prefix pairs, singleton adoptions, signature-only bucket samples",
+    )
+    p_near.add_argument("--records", required=True)
+    p_near.add_argument("--clusters", required=True)
+    p_near.add_argument("--out", required=True)
+    p_near.add_argument(
+        "--bucket-min-members",
+        type=int,
+        default=NEAR_MISS_BUCKET_MIN_MEMBERS,
+        help="signature-only clusters at least this big get sampled "
+        f"(default {NEAR_MISS_BUCKET_MIN_MEMBERS})",
+    )
+    p_near.add_argument(
+        "--bucket-sample",
+        type=int,
+        default=NEAR_MISS_BUCKET_SAMPLE_SIZE,
+        help=f"member ids per bucket sample (default {NEAR_MISS_BUCKET_SAMPLE_SIZE})",
+    )
+    p_near.set_defaults(func=_cmd_near_misses)
 
     p_slices = sub.add_parser(
         "slices", help="Write one YAML slice per multi-instance cluster (Pass B input)"
@@ -286,6 +314,27 @@ def _cmd_cluster(args: argparse.Namespace) -> int:
     print(f"clusters: {len(clusters)}")
     print(f"multi_instance_clusters: {len(multi)}")
     print(f"high_confidence_clusters: {high}")
+    print(f"out: {args.out}")
+    return EXIT_OK
+
+
+def _cmd_near_misses(args: argparse.Namespace) -> int:
+    records = io_yaml.load_records(args.records)
+    clusters = io_yaml.load_clusters(args.clusters)
+    candidates = find_near_misses(
+        records,
+        clusters,
+        bucket_min_members=args.bucket_min_members,
+        bucket_sample_size=args.bucket_sample,
+    )
+    io_yaml.dump_near_misses(candidates, args.out)
+
+    by_kind: dict[str, int] = {}
+    for c in candidates:
+        by_kind[c["kind"]] = by_kind.get(c["kind"], 0) + 1
+    print(f"near_misses: {len(candidates)}")
+    for kind in sorted(by_kind):
+        print(f"kind_{kind.replace('-', '_')}: {by_kind[kind]}")
     print(f"out: {args.out}")
     return EXIT_OK
 

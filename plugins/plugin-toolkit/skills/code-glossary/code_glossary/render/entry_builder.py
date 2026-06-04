@@ -114,10 +114,19 @@ def build_glossary(
             applied_enrichments += 1
             continue
         member_ids = list(cluster.member_record_ids) + merged_members.get(cluster.id, [])
-        members = [record_index[m] for m in member_ids if m in record_index]
         enrichment = enrichment_map.pop(cluster.id, None)
         if enrichment is not None:
             applied_enrichments += 1
+            # Behavioral-judge adoptions (v2.1 near-miss flow): Pass-A
+            # singletons judged same-functionality join this cluster's
+            # members. Unknown ids are ignored loudly-by-omission — they
+            # surface as a count mismatch in the judge's own return.
+            adopted = enrichment.get("adopt_record_ids")
+            if isinstance(adopted, list):
+                member_ids.extend(
+                    rid for rid in adopted if rid in record_index and rid not in member_ids
+                )
+        members = [record_index[m] for m in member_ids if m in record_index]
 
         split_groups = (enrichment or {}).get("split")
         if isinstance(split_groups, list) and split_groups:
@@ -158,7 +167,9 @@ def build_glossary(
             )
         )
         counter += 1
-        clustered_ids.update(cluster.member_record_ids)
+        # member_ids includes judge-merged and judge-adopted records —
+        # all of them are clustered now, none may fall to the watchlist.
+        clustered_ids.update(member_ids)
 
     # Single-instance entries: records not in any cluster get their own watchlist entry.
     for rec in record_list:

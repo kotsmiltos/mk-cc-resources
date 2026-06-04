@@ -296,3 +296,26 @@ def test_merge_into_unknown_target_stays_visible():
     # is consumed - but the merge itself was a no-op. Entry count proves it.
     multi = [e for e in g.glossary if len(e.instances) >= 2]
     assert len(multi) == 2
+
+
+# --- v2.1: behavioral-judge singleton adoption ---
+
+
+def test_adopt_record_ids_joins_cluster_and_leaves_watchlist():
+    records, fps, clusters, scope = _setup()
+    # A 4th record outside the cluster — the SC ClosestPointOnSegment shape.
+    orphan = _record("fn-d", "src/d.py", 656, "register_d")
+    records = records + [orphan]
+    fps["fn-d"] = SignalFingerprint(record_id="fn-d")
+    enrichment = dict(FULL_ENRICHMENT)
+    enrichment["adopt_record_ids"] = ["fn-d", "fn-ghost"]  # unknown id ignored
+
+    g = build_glossary(records, fps, clusters, scope, enrichments={"cluster-001": enrichment})
+    entry = g.glossary[0]
+    files = {i.location.file for i in entry.instances}
+    assert "src/d.py" in files  # adopted into the cluster entry
+    assert len(entry.instances) == 4
+    # Adopted record must NOT also appear as a watchlist single.
+    singles = [e for e in g.glossary[1:] if any(i.location.file == "src/d.py" for i in e.instances)]
+    assert singles == []
+    validate_glossary(yaml.safe_load(emit_glossary_yaml(g)))

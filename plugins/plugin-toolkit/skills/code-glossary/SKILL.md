@@ -48,8 +48,9 @@ Exit 2 = zero functions indexed: abort, relay the runner's diagnostic (scope emp
 From the index summary compute:
 - **labeler agents** = ceil(records / 40)
 - **Pass B agents** ≈ multi-instance cluster count (known precisely after stage 5; use the index-time estimate `records / 8` for the upfront number, then re-confirm at step 6 if actual exceeds estimate by >50%)
+- **judge agents** ≈ `records / 80` upfront; precise count comes from `runner near-misses` at step 7. Judges are PART of the confirmed budget — they may not be skipped later. If budget is tight, reduce labeler/reviewer batch sizes first; the judge tier is where the v2 acceptance lost three whole cluster families.
 
-Report: "N records → ~K labeler + ~M reviewer dispatches, runs on session tokens." Ask the user to confirm before kickoff (`AskUserQuestion`). No hard cap — the user decides.
+Report: "N records → ~K labeler + ~M reviewer + ~J judge dispatches, runs on session tokens." Ask the user to confirm before kickoff (`AskUserQuestion`). No hard cap — the user decides.
 
 ## 4. Labeling (LLM — parallel sub-agents)
 
@@ -86,11 +87,25 @@ Cap concurrency at `max_parallel_agents` from config (default 20); dispatch in w
 
 Collect returns. Malformed YAML: retry that agent once with a stricter prompt; still malformed → that cluster keeps its deterministic baseline (extractable=false, pending note) and is logged. Merge all `enrichments:` entries into `<work>/enrichments.yaml` — reject duplicate cluster_ids (keep the first, log the collision).
 
-## 7. Behavioral judge — borderline pairs (LLM — parallel sub-agents)
+## 7. Behavioral judge — near-miss candidates (LLM — parallel sub-agents)
 
-Identify near-miss pairs from `clusters.yaml`: two multi-instance clusters whose labels share the same first two kebab tokens (same verb + object) but were not merged by Pass A. For each pair (usually a handful), dispatch one judge with `briefs/behavioral-judge.md` + both slice paths.
+Generate candidates deterministically — never by eyeballing `clusters.yaml`:
 
-Verdict `merge` → add `merge_into: <cluster_a>` to cluster B's entry in `enrichments.yaml` (the renderer folds members; B emits no separate entry). `distinct`/`inconclusive` → no change; note inconclusive pairs in the report.
+```
+runner near-misses --records <work>/records.yaml --clusters <work>/clusters.yaml --out <work>/near_misses.yaml
+```
+
+Three candidate kinds, each mapped to a v2-acceptance recall loss:
+- **label-pair** — two multi-instance clusters whose labels share the first two kebab tokens (the split build-factory family). Dispatch one judge with `briefs/behavioral-judge.md` + both slice paths.
+- **singleton-adoption** — an unclustered record whose function name matches a cluster member's (the dropped ClosestPointOnSegment variants). Dispatch one judge with the cluster's slice path + the record's `id | file | line | body` block from `records.yaml`.
+- **bucket-sample** — a deterministic sample from a big signature-only bucket (the unreviewed n=143 parameterless-void bucket). Dispatch one judge with the sampled members' bodies; question is "does a real cluster hide in here" — a `merge`-family answer means slice + review that subset in a follow-up Pass B dispatch.
+
+Verdict handling in `enrichments.yaml`:
+- `merge` → add `merge_into: <cluster_a>` to cluster B's entry (the renderer folds members; B emits no separate entry).
+- `adopt` → append the record id to `adopt_record_ids: [...]` on cluster A's entry (the renderer joins it to the cluster's instances and keeps it off the watchlist).
+- `distinct`/`inconclusive` → no change; note inconclusive candidates in the report.
+
+**This step is non-skippable.** Judge dispatches were confirmed in the step-3 budget; skipping them silently reproduces the v2 acceptance's judge-tier recall losses. If the candidate list is unexpectedly large (>2× the step-3 estimate), re-confirm with the user — do not quietly truncate.
 
 ## 8. Pass C — master substrate-verify (you, inline)
 
