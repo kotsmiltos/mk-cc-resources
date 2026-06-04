@@ -29,6 +29,7 @@ from code_glossary.records import (
     FunctionRecord,
     SignalFingerprint,
     SourceLocation,
+    SpecRecord,
 )
 
 
@@ -63,6 +64,33 @@ def load_records(path: Path | str) -> list[FunctionRecord]:
     return out
 
 
+# --- spec records (spec mode, /organize) ---
+
+
+def dump_spec_records(records: list[SpecRecord], path: Path | str) -> None:
+    payload = {"spec_records": [asdict(r) for r in records]}
+    _write_yaml(payload, path)
+
+
+def load_spec_records(path: Path | str) -> list[SpecRecord]:
+    doc = _read_yaml(path)
+    raw_records = _require_list(doc, "spec_records", path)
+    out: list[SpecRecord] = []
+    for i, raw in enumerate(raw_records):
+        if not isinstance(raw, dict):
+            raise ArtifactError(f"{path}: spec_records[{i}] must be a mapping")
+        loc_raw = raw.get("location")
+        if not isinstance(loc_raw, dict):
+            raise ArtifactError(f"{path}: spec_records[{i}].location must be a mapping")
+        try:
+            location = SourceLocation(**loc_raw)
+            rec = SpecRecord(**{**raw, "location": location})
+        except TypeError as exc:
+            raise ArtifactError(f"{path}: spec_records[{i}]: {exc}") from exc
+        out.append(rec)
+    return out
+
+
 # --- labels (labeler agent returns) ---
 #
 # labels.yaml shape:
@@ -93,10 +121,11 @@ def load_labels(path: Path | str) -> list[dict[str, str]]:
 
 
 def apply_labels(
-    records: list[FunctionRecord],
+    records: list[FunctionRecord] | list[SpecRecord],
     labels: list[dict[str, str]],
 ) -> tuple[int, list[str]]:
-    """Merge labeler returns into records in place.
+    """Merge labeler returns into records in place (both record kinds
+    carry id + functionality_label + description).
 
     Returns:
         (applied_count, unknown_ids) — label entries whose id matches no

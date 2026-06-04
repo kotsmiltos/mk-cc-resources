@@ -38,8 +38,10 @@ from pathlib import Path
 from code_glossary import io_yaml
 from code_glossary.cluster.orchestrator import cluster_records
 from code_glossary.indexer.orchestrator import index_directory_with_report
+from code_glossary.indexer.spec_parser import index_sprint_specs
 from code_glossary.render.orchestrator import render_glossary
 from code_glossary.signals.orchestrator import extract_signals
+from code_glossary.signals.spec_signals import extract_spec_signals
 from code_glossary.vocab import UNCLEAR_VERB, load_vocab, normalize_label
 
 EXIT_OK = 0
@@ -74,6 +76,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_index.add_argument("--include-tests", action="store_true")
     p_index.set_defaults(func=_cmd_index)
 
+    p_specs = sub.add_parser(
+        "index-specs",
+        help="Stage 1 (spec mode): parse architect task specs into spec_records",
+    )
+    p_specs.add_argument("--root", required=True, help="sprints dir or one sprint dir")
+    p_specs.add_argument("--out", required=True)
+    p_specs.set_defaults(func=_cmd_index_specs)
+
     p_labels = sub.add_parser(
         "apply-labels", help="Merge labeler-agent returns into records.yaml"
     )
@@ -82,17 +92,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_labels.add_argument(
         "--out", help="output records path (default: overwrite --records)"
     )
+    p_labels.add_argument("--mode", choices=("code", "spec"), default="code")
     p_labels.set_defaults(func=_cmd_apply_labels)
 
     p_signal = sub.add_parser("signal", help="Stage 2: compute signal fingerprints")
     p_signal.add_argument("--records", required=True)
     p_signal.add_argument("--out", required=True)
+    p_signal.add_argument("--mode", choices=("code", "spec"), default="code")
     p_signal.set_defaults(func=_cmd_signal)
 
     p_cluster = sub.add_parser("cluster", help="Stage 3 Pass A: deterministic clustering")
     p_cluster.add_argument("--records", required=True)
     p_cluster.add_argument("--fingerprints", required=True)
     p_cluster.add_argument("--out", required=True)
+    p_cluster.add_argument("--mode", choices=("code", "spec"), default="code")
     p_cluster.set_defaults(func=_cmd_cluster)
 
     p_slices = sub.add_parser(
@@ -163,8 +176,45 @@ def _cmd_index(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_index_specs(args: argparse.Namespace) -> int:
+    root = Path(args.root)
+    if not root.is_dir():
+        print(f"error: spec root is not a directory: {root}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+    records, failures = index_sprint_specs(root)
+    if not records:
+        print(
+            f"error: zero task specs indexed under {root} "
+            f"(failures={len(failures)})",
+            file=sys.stderr,
+        )
+        for path, reason in failures:
+            print(f"failure_detail: {path}: {reason}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+    io_yaml.dump_spec_records(records, args.out)
+    print(f"spec_records: {len(records)}")
+    print(f"failures: {len(failures)}")
+    for path, reason in failures:
+        print(f"failure_detail: {path}: {reason}")
+    print(f"out: {args.out}")
+    return EXIT_OK
+
+
+def _load_by_mode(path: str, mode: str):
+    if mode == "spec":
+        return io_yaml.load_spec_records(path)
+    return io_yaml.load_records(path)
+
+
+def _dump_by_mode(records, path: str, mode: str) -> None:
+    if mode == "spec":
+        io_yaml.dump_spec_records(records, path)
+    else:
+        io_yaml.dump_records(records, path)
+
+
 def _cmd_apply_labels(args: argparse.Namespace) -> int:
-    records = io_yaml.load_records(args.records)
+    records = _load_by_mode(args.records, args.mode)
     labels = io_yaml.load_labels(args.labels)
     vocab = load_vocab()
 
@@ -181,7 +231,7 @@ def _cmd_apply_labels(args: argparse.Namespace) -> int:
 
     applied, unknown = io_yaml.apply_labels(records, labels)
     out_path = args.out or args.records
-    io_yaml.dump_records(records, out_path)
+    _dump_by_mode(records, out_path, args.mode)
 
     unlabeled = sum(1 for r in records if not r.functionality_label)
     print(f"labels_applied: {applied}")
@@ -197,8 +247,8 @@ def _cmd_apply_labels(args: argparse.Namespace) -> int:
 
 
 def _cmd_signal(args: argparse.Namespace) -> int:
-    records = io_yaml.load_records(args.records)
-    fps = extract_signals(records)
+    records = _load_by_mode(args.records, args.mode)
+    fps = extract_spec_signals(records) if args.mode == "spec" else extract_signals(records)
     io_yaml.dump_fingerprints(fps, args.out)
 
     structural = sum(1 for f in fps.values() if f.structural_hash)
@@ -213,7 +263,9 @@ def _cmd_signal(args: argparse.Namespace) -> int:
 
 
 def _cmd_cluster(args: argparse.Namespace) -> int:
-    records = io_yaml.load_records(args.records)
+    # cluster_records duck-types over both record kinds (uses id,
+    # functionality_label, location.file only).
+    records = _load_by_mode(args.records, args.mode)
     fps = io_yaml.load_fingerprints(args.fingerprints)
     clusters = cluster_records(records, fps)
     io_yaml.dump_clusters(clusters, args.out)
