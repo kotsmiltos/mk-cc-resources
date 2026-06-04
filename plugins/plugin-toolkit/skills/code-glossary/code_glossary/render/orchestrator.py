@@ -39,6 +39,7 @@ def render_glossary(
     output_dir: Path | str,
     *,
     target_path: str = "",
+    enrichments: dict[str, Any] | None = None,
 ) -> tuple[Path, Path]:
     """Render the glossary artifacts to disk.
 
@@ -51,6 +52,8 @@ def render_glossary(
         output_dir: where to write GLOSSARY.yaml + GLOSSARY.md
         target_path: optional human-friendly label for the markdown header
                      (e.g., 'my-project'); defaults to the first scope path
+        enrichments: Pass B returns keyed by cluster id (wave 7); None =
+                     deterministic baseline (all entries extractable=false)
 
     Returns:
         (yaml_path, md_path) - absolute paths of the written files.
@@ -58,7 +61,9 @@ def render_glossary(
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    glossary = build_glossary(records, fingerprints, clusters, scope_metadata)
+    glossary = build_glossary(
+        records, fingerprints, clusters, scope_metadata, enrichments=enrichments
+    )
 
     yaml_text = emit_glossary_yaml(glossary)
     md_text = emit_glossary_markdown(glossary, target_path=target_path)

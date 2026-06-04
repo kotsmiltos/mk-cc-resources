@@ -1,10 +1,17 @@
 """Build GlossaryEntry objects from CandidateCluster + FunctionRecord.
 
-Wave 5 baseline: all entries emit as extractable=false with a notes
-field explaining LLM enrichment is still required to promote them.
-The SKILL.md layer (wave 7+) dispatches Pass B sub-agents that fill
-canonical_signature, proposed_module, invariant_skeleton, variant_axis,
-and only then flips extractable=true.
+Without enrichments (wave 5 baseline): all entries emit as
+extractable=false with a notes field explaining LLM enrichment is still
+required to promote them.
+
+With enrichments (wave 7): the SKILL.md layer dispatches Pass B
+sub-agents whose merged returns (io_yaml.load_enrichments) overlay the
+deterministic entries. The promotion gate lives HERE, next to the
+schema requirements: extractable flips true only when every
+schema-required extractable field is present and the cluster has 2+
+instances — an agent claiming extractable without the goods stays
+false, with the gap named in notes. Pass B split decisions
+(split groups) divide one cluster into several entries.
 
 Also emits single-instance entries for records not in any cluster —
 they form the 'watchlist' section of the rendered glossary (useful
@@ -14,9 +21,16 @@ when a second instance appears in a future run).
 from __future__ import annotations
 
 import datetime
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
-from code_glossary.constants import GENERATOR_NAME, GENERATOR_VERSION, SCHEMA_VERSION
+from code_glossary.constants import (
+    DEFAULT_MIN_INSTANCES_FOR_EXTRACTABLE,
+    ENTRY_KINDS,
+    GENERATOR_NAME,
+    GENERATOR_VERSION,
+    SCHEMA_VERSION,
+    VERIFICATION_STATUSES,
+)
 from code_glossary.records import (
     CandidateCluster,
     FunctionRecord,
@@ -25,6 +39,7 @@ from code_glossary.records import (
     Instance,
     SignalFingerprint,
     SourceLocation,
+    VariantAxisEntry,
 )
 
 
@@ -48,6 +63,7 @@ def build_glossary(
     fingerprints: dict[str, SignalFingerprint],
     clusters: Iterable[CandidateCluster],
     scope_metadata: dict[str, Any],
+    enrichments: Optional[dict[str, dict[str, Any]]] = None,
 ) -> Glossary:
     """Assemble the final Glossary document.
 
@@ -57,6 +73,8 @@ def build_glossary(
         clusters: Stage 3 CandidateClusters (sorted by score descending)
         scope_metadata: scope info — paths, excludes, include_tests; will be
                         merged with auto-generated totals + timestamp
+        enrichments: Pass B returns keyed by cluster id
+                     (io_yaml.load_enrichments); None = wave-5 baseline
 
     Returns:
         Schema-conformant Glossary ready for emission.
@@ -64,29 +82,74 @@ def build_glossary(
     record_list = list(records)
     cluster_list = list(clusters)
     record_index = {r.id: r for r in record_list}
+    enrichment_map = dict(enrichments or {})
 
     entries: list[GlossaryEntry] = []
     clustered_ids: set[str] = set()
+    counter = 1
+    applied_enrichments = 0
 
-    for i, cluster in enumerate(cluster_list, start=1):
-        entry = _build_cluster_entry(
-            cluster=cluster,
-            members=[record_index[m] for m in cluster.member_record_ids if m in record_index],
-            fingerprints=fingerprints,
-            counter=i,
+    for cluster in cluster_list:
+        members = [record_index[m] for m in cluster.member_record_ids if m in record_index]
+        enrichment = enrichment_map.pop(cluster.id, None)
+        if enrichment is not None:
+            applied_enrichments += 1
+
+        split_groups = (enrichment or {}).get("split")
+        if isinstance(split_groups, list) and split_groups:
+            # Pass B split: one entry per group; members in no group fall
+            # through to the watchlist pass below.
+            grouped_ids: set[str] = set()
+            for group in split_groups:
+                group_members = [
+                    record_index[m]
+                    for m in group.get("member_ids", [])
+                    if m in record_index
+                ]
+                if not group_members:
+                    continue
+                entry = _build_cluster_entry(
+                    cluster=cluster,
+                    members=group_members,
+                    fingerprints=fingerprints,
+                    counter=counter,
+                    enrichment=group,
+                )
+                entry.notes = _append_note(
+                    entry.notes, f"Split from {cluster.id} by Pass B review."
+                )
+                entries.append(entry)
+                counter += 1
+                grouped_ids.update(r.id for r in group_members)
+            clustered_ids.update(grouped_ids)
+            continue
+
+        entries.append(
+            _build_cluster_entry(
+                cluster=cluster,
+                members=members,
+                fingerprints=fingerprints,
+                counter=counter,
+                enrichment=enrichment,
+            )
         )
-        entries.append(entry)
+        counter += 1
         clustered_ids.update(cluster.member_record_ids)
 
     # Single-instance entries: records not in any cluster get their own watchlist entry.
-    next_counter = len(cluster_list) + 1
     for rec in record_list:
         if rec.id in clustered_ids:
             continue
-        entries.append(_build_single_instance_entry(rec, fingerprints, next_counter))
-        next_counter += 1
+        entries.append(_build_single_instance_entry(rec, fingerprints, counter))
+        counter += 1
 
-    metadata = _build_metadata(record_list, cluster_list, scope_metadata)
+    metadata = _build_metadata(record_list, cluster_list, scope_metadata, entries)
+    if enrichments is not None:
+        # Unmatched enrichment ids are agent drift — surface, never silent.
+        metadata["enrichments"] = {
+            "applied": applied_enrichments,
+            "unmatched_cluster_ids": sorted(enrichment_map),
+        }
     return Glossary(
         schema_version=SCHEMA_VERSION,
         generator=GENERATOR_NAME,
@@ -102,6 +165,7 @@ def _build_cluster_entry(
     members: list[FunctionRecord],
     fingerprints: dict[str, SignalFingerprint],
     counter: int,
+    enrichment: Optional[dict[str, Any]] = None,
 ) -> GlossaryEntry:
     if not members:
         # Cluster had no resolvable members — emit a placeholder so the
@@ -126,12 +190,12 @@ def _build_cluster_entry(
         for signal, agreed in cluster.signal_agreement.items()
     }
 
-    return GlossaryEntry(
+    entry = GlossaryEntry(
         id=f"gloss-{counter:03d}",
         name=name,
         description=description,
         kind="leaf",
-        extractable=False,  # promoted by Pass B (wave 7+)
+        extractable=False,  # promoted only via _apply_enrichment's gate
         extractability_score=cluster.extractability_score,
         extractability_confidence=cluster.extractability_confidence,
         canonical_signature=None,  # Pass B fills
@@ -144,6 +208,104 @@ def _build_cluster_entry(
         signal_agreement=signal_agreement_floats,
         notes=_PENDING_ENRICHMENT_NOTE,
     )
+    if enrichment is not None:
+        _apply_enrichment(entry, enrichment, members)
+    return entry
+
+
+def _apply_enrichment(
+    entry: GlossaryEntry,
+    enrichment: dict[str, Any],
+    members: list[FunctionRecord],
+) -> None:
+    """Overlay one Pass B return onto a deterministic entry, in place.
+
+    The extractable promotion gate: the agent's extractable=true claim
+    holds only when every schema-required field is non-empty AND the
+    entry has enough instances. Otherwise the entry stays false and the
+    notes name what was missing (visibility per DESIGN-V2.md §10).
+    """
+    if _non_empty_str(enrichment.get("name")):
+        entry.name = enrichment["name"].strip()
+    if _non_empty_str(enrichment.get("description")):
+        entry.description = enrichment["description"].strip()
+    if enrichment.get("kind") in ENTRY_KINDS:
+        entry.kind = enrichment["kind"]
+        entry.composed_of = [str(g) for g in enrichment.get("composed_of", [])]
+    if _non_empty_str(enrichment.get("canonical_signature")):
+        entry.canonical_signature = enrichment["canonical_signature"].strip()
+    if _non_empty_str(enrichment.get("proposed_module")):
+        entry.proposed_module = enrichment["proposed_module"].strip()
+    if _non_empty_str(enrichment.get("invariant_skeleton")):
+        entry.invariant_skeleton = enrichment["invariant_skeleton"]
+    entry.variant_axis = [
+        VariantAxisEntry(
+            parameter=str(ax.get("parameter", "")),
+            instance_values=list(ax.get("instance_values", [])),
+            inferred_type=str(ax.get("inferred_type", "")),
+        )
+        for ax in enrichment.get("variant_axis", [])
+        if isinstance(ax, dict) and ax.get("parameter")
+    ]
+    # Per-instance variant values, keyed by record id in the agent return.
+    variant_values = enrichment.get("variant_values")
+    if isinstance(variant_values, dict):
+        members_by_id = {m.id: m for m in members}
+        loc_to_values = {
+            (members_by_id[rid].location.file, members_by_id[rid].location.line): vals
+            for rid, vals in variant_values.items()
+            if rid in members_by_id and isinstance(vals, dict)
+        }
+        for inst in entry.instances:
+            vals = loc_to_values.get((inst.location.file, inst.location.line))
+            if vals is not None:
+                inst.variant_values = dict(vals)
+    # Pass C writes verification_status into the same merged file.
+    if enrichment.get("verification_status") in VERIFICATION_STATUSES:
+        entry.verification_status = enrichment["verification_status"]
+    if _non_empty_str(enrichment.get("notes")):
+        entry.notes = enrichment["notes"].strip()
+
+    if enrichment.get("extractable") is True:
+        missing = [
+            field
+            for field, value in (
+                ("canonical_signature", entry.canonical_signature),
+                ("proposed_module", entry.proposed_module),
+                ("invariant_skeleton", entry.invariant_skeleton),
+            )
+            if not _non_empty_str(value)
+        ]
+        if not entry.variant_axis:
+            missing.append("variant_axis")
+        if len(entry.instances) < DEFAULT_MIN_INSTANCES_FOR_EXTRACTABLE:
+            missing.append(
+                f"instances (need >= {DEFAULT_MIN_INSTANCES_FOR_EXTRACTABLE})"
+            )
+        if missing:
+            entry.extractable = False
+            entry.notes = _append_note(
+                entry.notes,
+                "Pass B claimed extractable but required fields are missing: "
+                + ", ".join(missing)
+                + ". Demoted to extractable=false.",
+            )
+        else:
+            entry.extractable = True
+            # The promoted entry's notes must describe the cluster, not the
+            # stale 'enrichment pending' placeholder.
+            if entry.notes == _PENDING_ENRICHMENT_NOTE:
+                entry.notes = ""
+
+
+def _non_empty_str(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _append_note(existing: str, addition: str) -> str:
+    if not existing:
+        return addition
+    return f"{existing} {addition}"
 
 
 def _build_single_instance_entry(
@@ -216,12 +378,17 @@ def _build_metadata(
     records: list[FunctionRecord],
     clusters: list[CandidateCluster],
     scope_metadata: dict[str, Any],
+    entries: list[GlossaryEntry],
 ) -> dict[str, Any]:
-    # Wave 5 baseline: nothing is extractable=true until LLM Pass B enriches.
-    # We track high-confidence pending candidates separately so the user
-    # can see the funnel without the misleading 'already extractable' framing.
-    extractable_confirmed = 0  # promoted to >0 only after Pass B fills required fields
-    pending_high_confidence = sum(1 for c in clusters if c.extractability_confidence == "high")
+    # extractable counts PROMOTED entries (post-gate), not agent claims.
+    # pending_high_confidence tracks the funnel of candidates awaiting
+    # (or denied) promotion.
+    extractable_confirmed = sum(1 for e in entries if e.extractable)
+    pending_high_confidence = sum(
+        1
+        for e in entries
+        if not e.extractable and e.extractability_confidence == "high" and len(e.instances) >= 2
+    )
 
     languages: dict[str, int] = {}
     for r in records:
