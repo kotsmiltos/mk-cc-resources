@@ -1,4 +1,4 @@
-"""Tests for canonical verb vocabulary loader + label validation."""
+﻿"""Tests for canonical verb vocabulary loader + label validation."""
 
 import pytest
 
@@ -167,3 +167,25 @@ def test_design_examples_pass_normalization():
     assert normalize_label("compare-value-against-threshold", v) == "compare-value-against-threshold"
     # Composite example (also valid under the rules):
     assert normalize_label("compare-date-against-threshold", v) == "compare-date-against-threshold"
+
+
+# --- v2.1: verbs the v2 acceptance run demoted to 'unclear' ---
+
+
+def test_v21_added_verbs_validate():
+    vocab = load_vocab()
+    for verb in ("index", "cluster", "bucket", "score", "iterate"):
+        assert verb in vocab, verb
+
+
+def test_v21_added_verbs_normalize_in_labels():
+    vocab = load_vocab()
+    # Each of these label shapes raised ValueError (-> 'unclear') in v2.
+    for label in (
+        "index-source-tree",
+        "cluster-records-by-signal",
+        "bucket-fingerprints-by-hash",
+        "score-frame-quality",
+        "iterate-active-agents",
+    ):
+        assert normalize_label(label, vocab) == label

@@ -15,7 +15,7 @@
 #   glossary/config.yaml -> clustering.canonical_verbs
 # which can point to a custom YAML file (this format) or inline the list.
 
-verb_vocab_version: 2
+verb_vocab_version: 3
 
 verbs:
   # --- I/O ---
@@ -183,6 +183,13 @@ verbs:
   draw:         Issue rendering commands for visual output.
   predict:      Compute a forecasted value from current state.
   warn:         Emit a non-fatal diagnostic about an unusual condition.
+
+  # --- Added in v2.1 (verbs the v2 acceptance run demoted to 'unclear'; 67/662 SC + 20/141 plugin-toolkit labels) ---
+  index:        Build a lookup structure over a collection (records, files, symbols).
+  cluster:      Group elements by similarity or shared signal.
+  bucket:       Partition elements into keyed groups by a discriminator.
+  score:        Assign a numeric quality/relevance value to an element.
+  iterate:      Walk a collection applying a per-element operation.
 
 # Notes on usage:
 # - Indexer prompt MUST present this list and instruct: "your functionality_label
