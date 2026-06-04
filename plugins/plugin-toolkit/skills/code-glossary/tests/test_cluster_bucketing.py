@@ -120,3 +120,20 @@ def test_label_three_members():
     ]
     buckets = bucket_by_label(records)
     assert buckets["parse-iso-date"] == {"fn-1", "fn-2", "fn-3"}
+
+
+# --- v2.1: shared bucketing invariant (engine self-dogfood extraction) ---
+
+
+def test_bucket_by_attribute_generic():
+    from code_glossary.cluster.bucketing import bucket_by_attribute
+    from code_glossary.records import SignalFingerprint
+
+    fps = {
+        "fn-a": SignalFingerprint(record_id="fn-a", structural_hash="h1"),
+        "fn-b": SignalFingerprint(record_id="fn-b", structural_hash="h1"),
+        "fn-c": SignalFingerprint(record_id="fn-c", structural_hash="h2"),  # singleton dropped
+        "fn-d": SignalFingerprint(record_id="fn-d", structural_hash=None),  # None excluded
+    }
+    buckets = bucket_by_attribute(fps, lambda fp: fp.structural_hash)
+    assert buckets == {"h1": {"fn-a", "fn-b"}}
