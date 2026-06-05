@@ -20,8 +20,13 @@ is deterministic).
         --fingerprints work/fingerprints.yaml --clusters work/clusters.yaml \
         [--enrichments work/enrichments.yaml] --out-dir glossary
 
+    python -m code_glossary.runner diff --old prev/GLOSSARY.yaml \
+        --new glossary/GLOSSARY.yaml --out glossary/DIFF.md
+
 Exit codes: 0 ok; 2 hard failure (zero records, malformed artifact) —
-per DESIGN-V2.md §10 the pipeline never continues silently.
+per DESIGN-V2.md §10 the pipeline never continues silently. `diff`
+additionally exits 1 when drift was found AND --fail-on-drift was
+passed (CI-style gating; default is report-only, exit 0).
 
 Summaries print to stdout as single `key: value` lines so the SKILL
 layer (and the user reading the transcript) can parse outcomes without
@@ -52,6 +57,9 @@ from code_glossary.signals.spec_signals import extract_spec_signals
 from code_glossary.vocab import UNCLEAR_VERB, load_vocab, normalize_label
 
 EXIT_OK = 0
+# diff --fail-on-drift only: drift found is not a failure of the tool,
+# so it gets its own code between ok and hard failure.
+EXIT_DRIFT_FOUND = 1
 EXIT_HARD_FAILURE = 2
 
 # Slice files give each Pass B sub-agent exactly its cluster's records —
@@ -203,6 +211,25 @@ def _build_parser() -> argparse.ArgumentParser:
     p_render.add_argument("--block-records", help="v2.1: block_records.yaml from index --scan-blocks")
     p_render.add_argument("--block-clusters", help="v2.1: block_clusters.yaml from block-cluster")
     p_render.set_defaults(func=_cmd_render)
+
+    p_diff = sub.add_parser(
+        "diff", help="v2.2: drift report between two GLOSSARY.yaml runs"
+    )
+    p_diff.add_argument("--old", required=True, help="previous GLOSSARY.yaml")
+    p_diff.add_argument("--new", required=True, help="current GLOSSARY.yaml")
+    p_diff.add_argument("--out", required=True, help="DIFF.md output path")
+    p_diff.add_argument(
+        "--include-singles",
+        action="store_true",
+        help="also diff 1-instance watchlist entries (default: excluded — "
+        "drift is about duplication, not inventory churn)",
+    )
+    p_diff.add_argument(
+        "--fail-on-drift",
+        action="store_true",
+        help="exit 1 when any drift class is non-empty (CI-style gating)",
+    )
+    p_diff.set_defaults(func=_cmd_diff)
 
     return parser
 
@@ -551,6 +578,51 @@ def _cmd_render(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return EXIT_HARD_FAILURE
+    return EXIT_OK
+
+
+def _cmd_diff(args: argparse.Namespace) -> int:
+    import yaml as _yaml
+
+    from code_glossary.diff import diff_glossaries, render_diff_markdown
+
+    docs = {}
+    for label, path_str in (("old", args.old), ("new", args.new)):
+        path = Path(path_str)
+        if not path.is_file():
+            print(f"error: --{label} glossary not found: {path}", file=sys.stderr)
+            return EXIT_HARD_FAILURE
+        try:
+            docs[label] = _yaml.safe_load(path.read_text(encoding="utf-8"))
+        except _yaml.YAMLError as exc:
+            print(f"error: --{label} glossary is not valid YAML: {exc}", file=sys.stderr)
+            return EXIT_HARD_FAILURE
+        if not isinstance(docs[label], dict) or "glossary" not in docs[label]:
+            print(
+                f"error: --{label} file has no top-level 'glossary' key: {path}",
+                file=sys.stderr,
+            )
+            return EXIT_HARD_FAILURE
+
+    result = diff_glossaries(
+        docs["old"], docs["new"], include_singles=args.include_singles
+    )
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    report = render_diff_markdown(result, old_label=args.old, new_label=args.new)
+    with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(report)
+
+    print(f"diff_md: {out_path}")
+    for key, count in result.summary_counts().items():
+        print(f"{key}: {count}")
+    print(f"singles_excluded_old: {result.singles_excluded_old}")
+    print(f"singles_excluded_new: {result.singles_excluded_new}")
+    drift = result.has_drift()
+    print(f"drift_found: {str(drift).lower()}")
+    if drift and args.fail_on_drift:
+        return EXIT_DRIFT_FOUND
     return EXIT_OK
 
 

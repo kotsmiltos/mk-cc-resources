@@ -136,6 +136,16 @@ runner render --records <work>/records.yaml --fingerprints <work>/fingerprints.y
 
 Check the summary: `enrichments_unmatched` non-empty means an agent returned a cluster id that doesn't exist — report it.
 
+### Re-run + diff (drift tracking)
+
+Snapshotting is user-land: keep the previous `GLOSSARY.yaml` (rename or copy it before re-running — the tool never deletes artifacts). After a fresh run, compare:
+
+```
+runner diff --old <previous>/GLOSSARY.yaml --new <target>/glossary/GLOSSARY.yaml --out <target>/glossary/DIFF.md
+```
+
+Entries match across runs by their `{(file, function)}` instance sets (gloss-ids are positional, record ids line-sensitive — neither is stable). Six classes: `added`, `removed`, `grown` (new duplication sites — THE drift signal), `shrunk`, `extractable_changed`, `verification_changed`. Watchlist singles are excluded unless `--include-singles`. Exit is 0 even with drift (reporting, not gating); pass `--fail-on-drift` for CI-style exit 1.
+
 ## 10. Report
 
 ```
