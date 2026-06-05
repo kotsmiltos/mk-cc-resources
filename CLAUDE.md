@@ -55,9 +55,13 @@ plugins/
       docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
       code-glossary/        # Functionality glossary + DRY audit (v2): deterministic Python engine
                             #   (code_glossary/ package: AST + tree-sitter, 5 signals, Pass A
-                            #   clustering, frozen-schema render) + in-session sub-agent briefs.
-                            #   DESIGN-V2.md is the design source of truth. Also powers
-                            #   essense-flow /organize + /glossary.
+                            #   clustering, frozen-schema render, drift diff) + in-session
+                            #   sub-agent briefs. DESIGN-V2.md is the design source of truth.
+                            #   Also powers essense-flow /organize + /glossary, and hosts the
+                            #   code_glossary.dry_refactor engine sub-package.
+      dry-refactor/         # /dry-refactor v3 MVP: preflight (7 Appendix-A gates) + dry-run
+                            #   refactor plans from GLOSSARY.yaml. Zero source writes; live
+                            #   execution deferred. Engine lives in the code-glossary package.
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -135,7 +139,7 @@ Five skills for cross-session continuity and workflow self-improvement.
 
 ## Plugin Toolkit
 
-Five composable skills for working ON plugins (and the codebases they ship in).
+Six composable skills for working ON plugins (and the codebases they ship in).
 
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
@@ -143,9 +147,10 @@ Five composable skills for working ON plugins (and the codebases they ship in).
 | `/plugin-scaffold <name> <skills>` | Starting a new plugin | Generates directory tree + plugin.json + SKILL.md skeletons + marketplace.json entry + bundle update + README/CLAUDE.md additions + RELEASE-NOTES. |
 | `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
 | `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
-| `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 147-verb vocab, Pass B cluster review, deterministic judge candidates via `runner near-misses`, Pass C substrate-verify). Optional `--scan-blocks` surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md. Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. |
+| `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 147-verb vocab, Pass B cluster review with composite verdicts from deterministic `composed_of_candidates`, deterministic judge candidates via `runner near-misses`, Pass C substrate-verify). Optional `--scan-blocks` surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md; `runner diff --old --new` tracks duplication drift between runs ({(file, function)} identity, 6 classes). Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. |
+| `/dry-refactor <glossary.yaml> <gloss-id>` | Planning an extraction the glossary proposed | v3 MVP: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) via `python -m code_glossary.dry_refactor.runner`, then a dry-run plan — synthesized helper + per-site edit list. **Zero source writes**; live execution ships later behind its own gate. |
 
-Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract for future `/dry-refactor` (designed in DESIGN-V2.md Appendix A, built as v3).
+Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract `/dry-refactor` consumes (Appendix A of DESIGN-V2.md; MVP = preflight + dry-run, built in v2.2).
 
 ## Cross-Reference Patterns
 

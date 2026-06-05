@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins â€” multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.12.0"
+    "version": "2.13.0"
   },
   "plugins": [
     {
@@ -53,14 +53,14 @@
     {
       "name": "plugin-toolkit",
       "source": "./plugins/plugin-toolkit",
-      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary (v2) audits any codebase for DRY violations â€” a deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review each cluster (Pass B), substrate-verify instances (Pass C), and judge near-miss candidates generated deterministically. Optional block scanner (--scan-blocks) surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Composable â€” @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
-      "version": "1.3.0"
+      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary (v2) audits any codebase for DRY violations â€” a deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review each cluster (Pass B), substrate-verify instances (Pass C), and judge near-miss candidates generated deterministically. Optional block scanner (--scan-blocks) surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md; `runner diff` tracks duplication drift between runs by {(file, function)} identity. /dry-refactor (v3 MVP) turns extractable clusters into reviewable refactor plans: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) + dry-run helper/edit-plan output, zero source writes. Also powers essense-flow's /organize + /glossary phases. Composable â€” @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak.",
+      "version": "1.4.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.6.0"
+      "version": "2.7.0"
     }
   ]
 }

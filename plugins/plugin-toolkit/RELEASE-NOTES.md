@@ -1,5 +1,15 @@
 # Release notes — plugin-toolkit
 
+## 1.4.0 — code-glossary v2.2: sharpenings + the three unbuilt chapters
+
+Engine 2.2.0, 530 tests. Two engine sharpenings plus the three design chapters that v2 left unbuilt: composites in practice, drift tracking, and the /dry-refactor MVP.
+
+- **Signature-bucket pre-split** — signature buckets ≥20 members fragment by sorted leaf call names before merge (sub-groups ≥2 survive; singles pool into a residual). Signature hashes are coarse; call cohesion recovers signal from the noise bucket. SC corpus: the n=175 noise bucket → 116 residual + call-cohesive groups (20/9/5/4/4 + pairs).
+- **Two shape-hash relaxations** (equivalence-adding only) — (1) `variable_declaration` type-field child collapses to `(ty)`: `var` vs explicit type can't split clone families (SC skip-inactive 13+13 → one n=28 family); (2) single-statement if/else brace blocks serialize as the statement: cosmetic braces invisible (SC lifecycle-guard 8 → 10 + sibling 5).
+- **Composites made real** — `slices --fingerprints` attaches `composed_of_candidates` ({record_id, function, file}, resolved from the abstraction signal) to every slice member; the cluster-reviewer brief judges `kind: composite` with real ids; the renderer rewrites record-ids → gloss-ids in a post-pass (every record has an entry home). Unresolvable refs stay verbatim + loud note; self-loops drop; a composite emptied by self-loops demotes to leaf. The schema's "list of gloss-ids" contract is now true in emitted artifacts.
+- **Drift tracking (`runner diff`)** — compare two GLOSSARY.yaml runs: entries match by {(file, function)} instance-identity sets (gloss-ids are positional, record ids line-sensitive — neither survives a re-run), greedy Jaccard ≥0.5 with name tie-break. Six classes: added / removed / **grown** (new duplication sites — the drift signal) / shrunk / extractable_changed / verification_changed. Watchlist singles excluded by default; `--fail-on-drift` for CI-style exit 1; v1 flat-instance artifacts accepted as `--old`. Real check: the diff caught the new ORCABurst build's clone sites in Scalable Crowd.
+- **/dry-refactor v3 MVP (new skill)** — preflight + dry-run only, **zero source writes**. Engine sub-package `code_glossary.dry_refactor`: frozen-schema loader, substrate-verify (Pass-C rule: LF-normalized both sides, ±5 line tolerance — CRLF disk vs LF excerpt matches), test-command auto-detection, the 7 Appendix-A gates as a structured report, CLI runner (`preflight|substrate|detect-test`, exit 0/1-blocked/2). SKILL relays gates per the Appendix-A severity table, then prints the planned helper + per-site edit plan. Live execution (writes, rollback, test-after-each) ships later behind its own gate. A test asserts the entire MVP surface never speaks of pushing.
+
 ## 1.3.0 — /code-glossary v2.1: recall fixes from the acceptance A/B
 
 Every change maps to a measured recall loss in the v2 acceptance run (Scalable Crowd A/B vs the hand-curated reference: 20 FOUND / 8 PARTIAL / 12 MISSED). Engine 2.1.0, 437 tests.

@@ -9,12 +9,12 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 | **essense-flow** | 0.15.0 | Multi-phase AI development pipeline. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize + /glossary are optional DRY phases powered by the code-glossary engine. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
 | **essense-autopilot** | 0.3.1 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
 | **session-lifecycle** | 1.1.0 | Session lifecycle tools — handoff (capture session state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (metrics-driven retrospective), meta-review (diagnose session friction). |
-| **plugin-toolkit** | 1.2.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary v2 (deterministic engine + in-session sub-agents; functionality glossary + DRY audit for Python/TS/JS/C# and beyond). Composable with @ship. |
+| **plugin-toolkit** | 1.4.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary v2 (deterministic engine + in-session sub-agents; functionality glossary + DRY audit + drift diff for Python/TS/JS/C# and beyond), dry-refactor MVP (preflight + dry-run refactor plans, zero source writes). Composable with @ship. |
 | **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
 | **thorough-mode** | 1.5.0 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`, `@debug`, `@verify`, `@fresh`. Inject behavioral rules. `@ship` integrates with plugin-toolkit (`/version-bump` + `/docs-audit`) when in mk-cc-resources plugin repo. |
 | **project-note-tracker** | 1.8.0 | Track questions per handler/department. Auto-detects handler, researches in background, logs to Excel, generates meeting agendas. |
 | **alert-sounds** | 1.1.0 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
-| **mk-cc-all** | 2.5.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
+| **mk-cc-all** | 2.7.0 | Bundle install — essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. |
 
 ## Benched plugins
 
@@ -267,7 +267,7 @@ Periodically:   /meta-review → find workflow patterns worth automating into sk
 
 ## Plugin Toolkit — Skill Dev + Maintenance
 
-Five composable skills for working ON plugins (and the codebases they ship in).
+Six composable skills for working ON plugins (and the codebases they ship in).
 
 ```bash
 claude plugin install plugin-toolkit
@@ -281,7 +281,8 @@ claude plugin install plugin-toolkit
 | **plugin-scaffold** | `/plugin-scaffold <name> <skills>` | Bootstrap a new plugin: directory tree + plugin.json + SKILL.md skeletons + marketplace.json + bundle + README + CLAUDE.md + RELEASE-NOTES. 9-step chain in one invocation. |
 | **version-bump** | `/version-bump <plugin> <patch\|minor\|major>` | Cascade version updates across plugin.json + marketplace.json entry + mk-cc-all bundle + metadata + RELEASE-NOTES. Validates semver consistency. |
 | **docs-audit** | `/docs-audit [plugin\|all]` | Cross-check CLAUDE.md + README + marketplace.json against disk. Find version mismatches, stale references, missing entries. Propose fixes per file. |
-| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary + DRY audit for any codebase (v2). Deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, clusters duplicates; in-session sub-agents label against a 142-verb controlled vocabulary, review clusters (Pass B), substrate-verify instances (Pass C). Writes GLOSSARY.yaml (frozen schema, future /dry-refactor input) + GLOSSARY.md. Also powers essense-flow's /organize + /glossary phases. Glossary-only — does not execute refactors. |
+| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary + DRY audit for any codebase (v2). Deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review clusters (Pass B), substrate-verify instances (Pass C). Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md; `runner diff` tracks duplication drift between runs. Also powers essense-flow's /organize + /glossary phases. Glossary-only — does not execute refactors. |
+| **dry-refactor** | `/dry-refactor <glossary.yaml> <gloss-id>` | Turn an extractable glossary cluster into a reviewable refactor plan (v3 MVP). 7 pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) + dry-run output: synthesized helper + per-site edit list. Zero source writes; live execution ships later behind its own gate. |
 
 ### Composition
 
