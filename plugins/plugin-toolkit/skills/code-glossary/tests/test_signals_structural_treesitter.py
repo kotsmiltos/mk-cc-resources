@@ -259,3 +259,169 @@ def test_cs_accessor_type2_clones_hash_equal():
 def test_cs_expression_body_structural_hash_not_none():
     body = "private void OnDestroy() => SafeDispose();"
     assert structural_hash(body, "csharp") is not None
+
+
+# --- v2.2 relaxation 1: declaration-type collapse (var vs explicit type) ---
+
+
+CS_VAR_DECL = """\
+void Apply()
+{
+    var state = Compute();
+    Register(state);
+}
+"""
+
+# Same logic, explicit type instead of var — must hash equal.
+CS_TYPED_DECL = """\
+void Apply()
+{
+    AgentState state = Compute();
+    Register(state);
+}
+"""
+
+
+def test_cs_var_vs_typed_declaration_hash_equal():
+    a = structural_hash(CS_VAR_DECL, "csharp")
+    b = structural_hash(CS_TYPED_DECL, "csharp")
+    assert a is not None
+    assert a == b
+
+
+def test_cs_declaration_collapse_keeps_control_flow_distinct():
+    different = """\
+void Apply()
+{
+    var state = Compute();
+    if (state != null) { Register(state); }
+}
+"""
+    assert structural_hash(CS_VAR_DECL, "csharp") != structural_hash(different, "csharp")
+
+
+# --- v2.2 relaxation 2: single-statement if/else brace collapse ---
+
+
+CS_IF_BRACED = """\
+void Tick()
+{
+    if (!_active)
+    {
+        return;
+    }
+    Advance();
+}
+"""
+
+CS_IF_UNBRACED = """\
+void Tick()
+{
+    if (!_active)
+        return;
+    Advance();
+}
+"""
+
+
+def test_cs_braced_vs_unbraced_single_statement_if_hash_equal():
+    a = structural_hash(CS_IF_BRACED, "csharp")
+    b = structural_hash(CS_IF_UNBRACED, "csharp")
+    assert a is not None
+    assert a == b
+
+
+def test_cs_else_branch_brace_collapse():
+    braced = """\
+void Pick()
+{
+    if (_ok) { Accept(); } else { Reject(); }
+}
+"""
+    unbraced = """\
+void Pick()
+{
+    if (_ok) Accept(); else Reject();
+}
+"""
+    a = structural_hash(braced, "csharp")
+    b = structural_hash(unbraced, "csharp")
+    assert a is not None
+    assert a == b
+
+
+def test_cs_two_statement_block_does_not_collapse():
+    two = """\
+void Tick()
+{
+    if (!_active)
+    {
+        Log();
+        return;
+    }
+    Advance();
+}
+"""
+    assert structural_hash(CS_IF_BRACED, "csharp") != structural_hash(two, "csharp")
+
+
+def test_ts_braced_vs_unbraced_single_statement_if_hash_equal():
+    braced = """\
+function tick(active: boolean) {
+    if (!active) {
+        return;
+    }
+    advance();
+}
+"""
+    unbraced = """\
+function tick(active: boolean) {
+    if (!active) return;
+    advance();
+}
+"""
+    a = structural_hash(braced, "typescript")
+    b = structural_hash(unbraced, "typescript")
+    assert a is not None
+    assert a == b
+
+
+def test_ts_else_clause_brace_collapse():
+    braced = """\
+function pick(ok: boolean) {
+    if (ok) { accept(); } else { reject(); }
+}
+"""
+    unbraced = """\
+function pick(ok: boolean) {
+    if (ok) accept(); else reject();
+}
+"""
+    assert structural_hash(braced, "typescript") == structural_hash(unbraced, "typescript")
+
+
+def test_nested_single_statement_ifs_collapse_recursively():
+    nested_braced = """\
+void Guard()
+{
+    if (_a)
+    {
+        if (_b)
+        {
+            Fire();
+        }
+    }
+}
+"""
+    nested_unbraced = """\
+void Guard()
+{
+    if (_a)
+        if (_b)
+            Fire();
+}
+"""
+    a = structural_hash(nested_braced, "csharp")
+    b = structural_hash(nested_unbraced, "csharp")
+    assert a is not None
+    assert a == b

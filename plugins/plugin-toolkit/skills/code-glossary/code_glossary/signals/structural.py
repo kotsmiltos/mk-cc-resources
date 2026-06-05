@@ -176,6 +176,24 @@ _GRAMMAR_ATTEMPTS: dict[str, tuple[str, ...]] = {
 # Canonical leaf emitted for every literal node (see module docstring).
 _LITERAL_LEAF = "(lit)"
 
+# --- shape-equivalence relaxations (v2.2) ---
+# Both rules only ADD equivalences: hashes that matched before still
+# match; some previously-distinct cosmetic variants now also match.
+
+# Nodes whose 'type' field child collapses to one canonical leaf.
+# C# 'var x = F()' vs 'AgentState x = F()' differ only in declared type
+# — same logic, same shape. The declarator (and everything else) still
+# contributes fully.
+_TYPE_COLLAPSE_NODES = frozenset({"variable_declaration"})
+_TYPE_FIELD_LEAF = "(ty)"
+
+# A single-statement brace block under these parents serializes as the
+# statement directly, so 'if (a) { X(); }' and 'if (a) X();' hash equal.
+# TS wraps the else-branch in else_clause; C# parents blocks on the
+# if_statement itself — both shapes covered.
+_BRACE_COLLAPSE_PARENTS = frozenset({"if_statement", "else_clause"})
+_BLOCK_NODE_TYPES = frozenset({"block", "statement_block"})
+
 
 def _treesitter_structural_hash(body: str, language: str) -> Optional[str]:
     """Shape-hash a TS/JS/C# function body via its tree-sitter parse tree."""
@@ -245,6 +263,11 @@ def _serialize_shape(node, literal_types: frozenset[str]) -> str:
     keeps operators ('+', '==') and keywords structural. Comments are
     dropped; literal nodes collapse to _LITERAL_LEAF without descending
     (a template string's fragment count must not affect shape).
+
+    Two cosmetic-variant relaxations (see _TYPE_COLLAPSE_NODES and
+    _BRACE_COLLAPSE_PARENTS): declared types in variable declarations
+    collapse to one leaf, and single-statement if/else brace blocks
+    unwrap to the statement itself.
     """
     if node.type == "comment":
         return ""
@@ -252,5 +275,40 @@ def _serialize_shape(node, literal_types: frozenset[str]) -> str:
         return _LITERAL_LEAF
     if not node.children:
         return f"({node.type})"
-    inner = "".join(_serialize_shape(c, literal_types) for c in node.children)
+
+    if node.type in _TYPE_COLLAPSE_NODES:
+        ty = node.child_by_field_name("type")
+        ty_id = ty.id if ty is not None else None
+        inner = "".join(
+            _TYPE_FIELD_LEAF if c.id == ty_id else _serialize_shape(c, literal_types)
+            for c in node.children
+        )
+        return f"({node.type}{inner})"
+
+    inner = "".join(
+        _serialize_shape(c, literal_types) for c in _effective_children(node)
+    )
     return f"({node.type}{inner})"
+
+
+def _effective_children(node):
+    """Children of `node`, with cosmetic if/else brace blocks unwrapped.
+
+    A block child of an if_statement/else_clause holding exactly one
+    named non-comment statement is replaced by that statement. Nested
+    ifs collapse recursively because the statement itself re-enters
+    _serialize_shape.
+    """
+    for child in node.children:
+        if node.type in _BRACE_COLLAPSE_PARENTS and child.type in _BLOCK_NODE_TYPES:
+            sole = _sole_named_statement(child)
+            if sole is not None:
+                yield sole
+                continue
+        yield child
+
+
+def _sole_named_statement(block):
+    """The block's only named non-comment child, or None if not exactly one."""
+    named = [c for c in block.children if c.is_named and c.type != "comment"]
+    return named[0] if len(named) == 1 else None
