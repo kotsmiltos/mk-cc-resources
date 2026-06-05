@@ -39,6 +39,23 @@ thing, and if so, design the extraction.
    are confident the extraction is mechanical. The renderer enforces
    this gate — a bare claim without the fields is demoted and flagged.
 
+## Composites (when members carry `composed_of_candidates`)
+
+Slice members may include `composed_of_candidates` — a deterministic
+list of `{record_id, function, file}` refs naming other indexed
+functions the member calls. When present AND the members' shared logic
+is genuinely "orchestrate those calls" rather than atomic work:
+
+- judge `kind: composite`
+- supply `composed_of` as a list of `record_id` values taken from the
+  candidates, verbatim — NEVER invented ids, never function names
+- only include candidates that are part of the shared functionality
+  (incidental logging/validation calls don't make a composite)
+
+The renderer rewrites these record ids to final gloss-ids; unresolvable
+ids stay verbatim with a loud note. Members without candidates (or
+candidates that are incidental) stay `kind: leaf`.
+
 ## Return format
 
 WRITE this YAML to the output path you were given (Write tool) — one
@@ -53,6 +70,7 @@ enrichments:
     name: <kebab-case canonical functionality name>
     description: <one sentence>
     kind: leaf | composite
+    composed_of: [<record_ids from composed_of_candidates — only when kind: composite>]
     behavioral_statement: <one sentence: what these compute>
     extractable: true | false
     canonical_signature: <pseudocode, required if extractable>

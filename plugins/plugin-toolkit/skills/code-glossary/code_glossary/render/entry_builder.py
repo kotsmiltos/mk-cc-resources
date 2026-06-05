@@ -107,6 +107,9 @@ def build_glossary(
     clustered_ids: set[str] = set()
     counter = 1
     applied_enrichments = 0
+    # record id -> entry id, filled as entries assemble; drives the
+    # composed_of record-id -> gloss-id rewrite post-pass below.
+    rid_to_gloss: dict[str, str] = {}
 
     for cluster in cluster_list:
         if cluster.id in merged_away:
@@ -153,20 +156,21 @@ def build_glossary(
                     entry.notes, f"Split from {cluster.id} by Pass B review."
                 )
                 entries.append(entry)
+                rid_to_gloss.update({r.id: entry.id for r in group_members})
                 counter += 1
                 grouped_ids.update(r.id for r in group_members)
             clustered_ids.update(grouped_ids)
             continue
 
-        entries.append(
-            _build_cluster_entry(
-                cluster=cluster,
-                members=members,
-                fingerprints=fingerprints,
-                counter=counter,
-                enrichment=enrichment,
-            )
+        cluster_entry = _build_cluster_entry(
+            cluster=cluster,
+            members=members,
+            fingerprints=fingerprints,
+            counter=counter,
+            enrichment=enrichment,
         )
+        entries.append(cluster_entry)
+        rid_to_gloss.update({r.id: cluster_entry.id for r in members})
         counter += 1
         # member_ids includes judge-merged and judge-adopted records —
         # all of them are clustered now, none may fall to the watchlist.
@@ -176,8 +180,16 @@ def build_glossary(
     for rec in record_list:
         if rec.id in clustered_ids:
             continue
-        entries.append(_build_single_instance_entry(rec, fingerprints, counter))
+        single_entry = _build_single_instance_entry(rec, fingerprints, counter)
+        entries.append(single_entry)
+        rid_to_gloss[rec.id] = single_entry.id
         counter += 1
+
+    # composed_of post-pass: every record has an entry home (clustered
+    # members + watchlist singles), so record-id references rewrite to
+    # gloss-ids and the schema's "list of gloss-ids" contract becomes
+    # true in emitted artifacts. Unresolvable ids stay verbatim + note.
+    _resolve_composed_of(entries, rid_to_gloss)
 
     metadata = _build_metadata(record_list, cluster_list, scope_metadata, entries)
     if enrichments is not None:
@@ -364,6 +376,67 @@ def _apply_enrichment(
             # stale 'enrichment pending' placeholder.
             if entry.notes == _PENDING_ENRICHMENT_NOTE:
                 entry.notes = ""
+
+
+def _resolve_composed_of(
+    entries: list[GlossaryEntry],
+    rid_to_gloss: dict[str, str],
+) -> None:
+    """Rewrite composed_of record-ids to gloss-ids, in place.
+
+    Pass B supplies composed_of as record ids (the slice's
+    composed_of_candidates). Per reference:
+        - already a known gloss-id -> kept as-is
+        - record id with an entry home -> rewritten to that gloss-id
+        - resolves to the entry itself -> dropped + note (self-loop)
+        - anything else -> kept verbatim + loud note (never dropped
+          silently; visibility per DESIGN-V2.md section 10)
+    Duplicates collapse after rewrite (several records may share one home).
+    """
+    known_gloss_ids = {e.id for e in entries}
+    for entry in entries:
+        if not entry.composed_of:
+            continue
+        resolved: list[str] = []
+        unresolved: list[str] = []
+        self_refs: list[str] = []
+        for ref in entry.composed_of:
+            if ref in known_gloss_ids:
+                target = ref
+            elif ref in rid_to_gloss:
+                target = rid_to_gloss[ref]
+            else:
+                unresolved.append(ref)
+                resolved.append(ref)  # verbatim — visible, not dropped
+                continue
+            if target == entry.id:
+                self_refs.append(ref)
+                continue
+            resolved.append(target)
+        # Dedupe preserving order.
+        seen: set[str] = set()
+        entry.composed_of = [r for r in resolved if not (r in seen or seen.add(r))]
+        if unresolved:
+            entry.notes = _append_note(
+                entry.notes,
+                "composed_of reference(s) not resolvable to a glossary entry "
+                f"(kept verbatim): {', '.join(unresolved)}.",
+            )
+        if self_refs:
+            entry.notes = _append_note(
+                entry.notes,
+                "composed_of reference(s) resolved to this entry itself and "
+                f"were dropped as self-loops: {', '.join(self_refs)}.",
+            )
+        if entry.kind == "composite" and not entry.composed_of:
+            # Schema: composite requires non-empty composed_of. All refs
+            # were self-loops — demote, loudly (mirror of the Pass B gate).
+            entry.kind = "leaf"
+            entry.notes = _append_note(
+                entry.notes,
+                "All composed_of references collapsed to self-loops; "
+                "demoted composite to leaf.",
+            )
 
 
 def _non_empty_str(value: Any) -> bool:

@@ -147,6 +147,67 @@ def test_slices_written_per_multi_cluster(src_tree: Path, tmp_path: Path, capsys
     slice_doc = yaml.safe_load(slice_files[0].read_text(encoding="utf-8"))
     assert len(slice_doc["members"]) == 2
     assert all(m["body"] for m in slice_doc["members"])  # verbatim bodies included
+    # Without --fingerprints, no composed_of_candidates key (back-compat).
+    assert all("composed_of_candidates" not in m for m in slice_doc["members"])
+
+
+# --- v2.2: slices --fingerprints carries composed_of_candidates ---
+
+
+# A clone pair of COMPOSITES: each orchestrates two other indexed
+# functions (fetch_* + render_table) — the abstraction signal resolves
+# those calls into composed_of_candidates.
+COMPOSITE_A = """\
+def sync_user(uid):
+    data = fetch_user(uid)
+    table = render_table(data)
+    return table
+"""
+
+COMPOSITE_B = """\
+def sync_account(key):
+    data = fetch_account(key)
+    table = render_table(data)
+    return table
+"""
+
+
+def test_slices_with_fingerprints_carry_composed_of_candidates(
+    src_tree: Path, tmp_path: Path, capsys
+):
+    (src_tree / "d.py").write_text(COMPOSITE_A, encoding="utf-8")
+    (src_tree / "e.py").write_text(COMPOSITE_B, encoding="utf-8")
+    paths = _run_pipeline_through_cluster(src_tree, tmp_path)
+    slices_dir = tmp_path / "work" / "slices"
+    capsys.readouterr()
+    code = main([
+        "slices",
+        "--records", str(paths["records"]),
+        "--clusters", str(paths["clusters"]),
+        "--fingerprints", str(paths["fingerprints"]),
+        "--out-dir", str(slices_dir),
+    ])
+    assert code == EXIT_OK
+
+    # Find the slice holding the composite pair.
+    composite_slice = None
+    for slice_file in slices_dir.glob("*.yaml"):
+        doc = yaml.safe_load(slice_file.read_text(encoding="utf-8"))
+        functions = {m["function"] for m in doc["members"]}
+        if "sync_user" in functions:
+            composite_slice = doc
+            break
+    assert composite_slice is not None, "composite pair did not cluster into a slice"
+
+    by_fn = {m["function"]: m for m in composite_slice["members"]}
+    candidates = by_fn["sync_user"]["composed_of_candidates"]
+    called = {c["function"] for c in candidates}
+    assert called == {"fetch_user", "render_table"}
+    for c in candidates:
+        assert c["record_id"].startswith("fn-")
+        assert c["file"]  # resolved via record index, not nulls
+    # The leaf clone-pair members have no resolvable calls -> empty list, key present.
+    assert by_fn["sync_account"]["composed_of_candidates"]  # sibling composite too
 
 
 def test_render_baseline_and_enriched(src_tree: Path, tmp_path: Path, capsys):

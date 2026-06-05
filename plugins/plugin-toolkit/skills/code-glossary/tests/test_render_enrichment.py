@@ -319,3 +319,75 @@ def test_adopt_record_ids_joins_cluster_and_leaves_watchlist():
     singles = [e for e in g.glossary[1:] if any(i.location.file == "src/d.py" for i in e.instances)]
     assert singles == []
     validate_glossary(yaml.safe_load(emit_glossary_yaml(g)))
+
+
+# --- v2.2: composites made real — composed_of record-id -> gloss-id ---
+
+
+def _setup_with_watchlist_helpers():
+    """Cluster fn-a/fn-b/fn-c + two unclustered helpers fn-x/fn-y."""
+    records, fps, clusters, scope = _setup()
+    for rid, file, name in (("fn-x", "src/x.py", "fetch_thing"), ("fn-y", "src/y.py", "render_thing")):
+        records.append(_record(rid, file, 1, name))
+        fps[rid] = SignalFingerprint(record_id=rid)
+    return records, fps, clusters, scope
+
+
+def _composite_enrichment(composed_of):
+    enrichment = dict(FULL_ENRICHMENT)
+    enrichment["kind"] = "composite"
+    enrichment["composed_of"] = composed_of
+    return enrichment
+
+
+def _entry_id_for_file(g, file):
+    return next(e.id for e in g.glossary if any(i.location.file == file for i in e.instances))
+
+
+def test_composed_of_record_ids_rewrite_to_gloss_ids():
+    records, fps, clusters, scope = _setup_with_watchlist_helpers()
+    # Duplicate fn-x reference must dedupe after rewrite.
+    enrichments = {"cluster-001": _composite_enrichment(["fn-x", "fn-y", "fn-x"])}
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    entry = g.glossary[0]
+    assert entry.kind == "composite"
+    x_id = _entry_id_for_file(g, "src/x.py")
+    y_id = _entry_id_for_file(g, "src/y.py")
+    assert entry.composed_of == [x_id, y_id]
+    assert all(ref.startswith("gloss-") for ref in entry.composed_of)
+    doc = yaml.safe_load(emit_glossary_yaml(g))
+    assert validate_glossary(doc) == []
+
+
+def test_composed_of_existing_gloss_id_kept_as_is():
+    records, fps, clusters, scope = _setup_with_watchlist_helpers()
+    # gloss-002 is the first watchlist single (cluster entry is gloss-001).
+    enrichments = {"cluster-001": _composite_enrichment(["gloss-002"])}
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    entry = g.glossary[0]
+    assert entry.composed_of == ["gloss-002"]
+    assert "not resolvable" not in entry.notes
+
+
+def test_composed_of_unresolvable_ref_kept_verbatim_with_note():
+    records, fps, clusters, scope = _setup_with_watchlist_helpers()
+    enrichments = {"cluster-001": _composite_enrichment(["fn-x", "fn-ghost"])}
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    entry = g.glossary[0]
+    assert "fn-ghost" in entry.composed_of  # verbatim, not dropped
+    assert "fn-ghost" in entry.notes
+    assert "not resolvable" in entry.notes
+    assert entry.kind == "composite"  # still non-empty -> stays composite
+
+
+def test_composed_of_self_loop_dropped_and_composite_demoted():
+    records, fps, clusters, scope = _setup_with_watchlist_helpers()
+    # fn-a is a member of cluster-001 itself -> resolves to the entry's own id.
+    enrichments = {"cluster-001": _composite_enrichment(["fn-a"])}
+    g = build_glossary(records, fps, clusters, scope, enrichments=enrichments)
+    entry = g.glossary[0]
+    assert entry.composed_of == []
+    assert "self-loops" in entry.notes
+    assert entry.kind == "leaf"  # schema forbids composite with empty composed_of
+    doc = yaml.safe_load(emit_glossary_yaml(g))
+    assert validate_glossary(doc) == []

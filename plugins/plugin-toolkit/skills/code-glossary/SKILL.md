@@ -76,8 +76,10 @@ Report `labels_normalized_to_unclear` and `unknown_record_id` counts — both ar
 ```
 runner signal  --records <work>/records.yaml --out <work>/fingerprints.yaml
 runner cluster --records <work>/records.yaml --fingerprints <work>/fingerprints.yaml --out <work>/clusters.yaml
-runner slices  --records <work>/records.yaml --clusters <work>/clusters.yaml --out-dir <work>/slices
+runner slices  --records <work>/records.yaml --clusters <work>/clusters.yaml --fingerprints <work>/fingerprints.yaml --out-dir <work>/slices
 ```
+
+`--fingerprints` makes slice members carry `composed_of_candidates` (deterministic who-calls-whom refs) so Pass B can judge `kind: composite` with real record ids.
 
 ## 6. Pass B — cluster review (LLM — parallel sub-agents)
 

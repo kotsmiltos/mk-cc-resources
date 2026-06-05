@@ -182,6 +182,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=2,
         help="only clusters with at least this many members get a slice (default 2)",
     )
+    p_slices.add_argument(
+        "--fingerprints",
+        help="fps.yaml from `signal`; when given, slice members gain "
+        "composed_of_candidates (resolved record refs) so Pass B can "
+        "judge kind=composite with real ids instead of inventing them",
+    )
     p_slices.set_defaults(func=_cmd_slices)
 
     p_render = sub.add_parser("render", help="Stage 4: write GLOSSARY.yaml + GLOSSARY.md")
@@ -393,6 +399,9 @@ def _cmd_slices(args: argparse.Namespace) -> int:
     records = io_yaml.load_records(args.records)
     clusters = io_yaml.load_clusters(args.clusters)
     by_id = {r.id: r for r in records}
+    fingerprints = (
+        io_yaml.load_fingerprints(args.fingerprints) if args.fingerprints else None
+    )
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -402,16 +411,67 @@ def _cmd_slices(args: argparse.Namespace) -> int:
         if len(members) < args.min_members:
             continue
         slice_path = out_dir / SLICE_FILENAME_TEMPLATE.format(cluster_id=cluster.id)
-        _write_slice(cluster, members, slice_path)
+        _write_slice(cluster, members, slice_path, by_id, fingerprints)
         print(f"slice: {slice_path} members={len(members)}")
         written += 1
     print(f"slices_written: {written}")
     return EXIT_OK
 
 
-def _write_slice(cluster, members, path: Path) -> None:
-    """One Pass B input file: the cluster + its full member records."""
+def _composed_of_candidates(record_id, by_id, fingerprints):
+    """Resolve a member's composed_of_candidates to reviewer-usable refs.
+
+    Each candidate id resolves to {record_id, function, file} via the
+    record index. Ids missing from the index keep nulls instead of being
+    dropped — the reviewer sees the reference existed but is unresolved.
+    """
+    fp = fingerprints.get(record_id)
+    if fp is None:
+        return []
+    out = []
+    for rid in fp.composed_of_candidates:
+        target = by_id.get(rid)
+        out.append(
+            {
+                "record_id": rid,
+                "function": target.location.function if target else None,
+                "file": target.location.file if target else None,
+            }
+        )
+    return out
+
+
+def _write_slice(cluster, members, path: Path, by_id, fingerprints) -> None:
+    """One Pass B input file: the cluster + its full member records.
+
+    With fingerprints, each member also carries composed_of_candidates —
+    the deterministic who-calls-whom resolution from the abstraction
+    signal. Pass B uses these ids verbatim for kind=composite verdicts.
+    """
     import yaml
+
+    member_dicts = []
+    for r in members:
+        member = {
+            "id": r.id,
+            "file": r.location.file,
+            "line": r.location.line,
+            "function": r.location.function,
+            "language": r.language,
+            "signature": r.signature,
+            "functionality_label": r.functionality_label,
+            "description": r.description,
+            "notable_calls": r.notable_calls,
+            "notable_inputs": r.notable_inputs,
+            "notable_outputs": r.notable_outputs,
+            "inline_constants": r.inline_constants,
+            "body": r.body,
+        }
+        if fingerprints is not None:
+            member["composed_of_candidates"] = _composed_of_candidates(
+                r.id, by_id, fingerprints
+            )
+        member_dicts.append(member)
 
     payload = {
         "cluster": {
@@ -422,24 +482,7 @@ def _write_slice(cluster, members, path: Path) -> None:
             "extractability_confidence": cluster.extractability_confidence,
             "notes": cluster.notes,
         },
-        "members": [
-            {
-                "id": r.id,
-                "file": r.location.file,
-                "line": r.location.line,
-                "function": r.location.function,
-                "language": r.language,
-                "signature": r.signature,
-                "functionality_label": r.functionality_label,
-                "description": r.description,
-                "notable_calls": r.notable_calls,
-                "notable_inputs": r.notable_inputs,
-                "notable_outputs": r.notable_outputs,
-                "inline_constants": r.inline_constants,
-                "body": r.body,
-            }
-            for r in members
-        ],
+        "members": member_dicts,
     }
     text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True, width=4096)
     path.write_text(text, encoding="utf-8")
