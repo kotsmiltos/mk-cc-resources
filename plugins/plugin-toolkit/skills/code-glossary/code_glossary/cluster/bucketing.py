@@ -18,7 +18,15 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Callable, Optional
 
+from code_glossary.call_names import leaf_name
 from code_glossary.records import FunctionRecord, SignalFingerprint
+
+
+# Signature buckets at or above this size are pre-split by leaf call
+# names before merging. Signature hashes are coarse (arity + types only),
+# so very large buckets are mostly noise — functions that share a shape
+# but do unrelated work. Splitting by what they CALL recovers cohesion.
+SIGNATURE_BUCKET_SPLIT_MIN = 20
 
 
 def bucket_by_attribute(
@@ -58,6 +66,45 @@ def bucket_by_signature(
 ) -> dict[str, set[str]]:
     """Group record IDs by signature_hash. None hashes excluded."""
     return bucket_by_attribute(fingerprints, lambda fp: fp.signature_hash)
+
+
+def split_signature_buckets(
+    buckets: dict[str, set[str]],
+    record_index: dict[str, FunctionRecord],
+) -> dict[str, set[str]]:
+    """Pre-split oversized signature buckets by leaf call names.
+
+    Buckets below SIGNATURE_BUCKET_SPLIT_MIN pass through unchanged.
+    Larger ones split by sub-key = sorted unique leaf call names of each
+    member; sub-groups of >=2 survive as separate buckets, singles fall
+    back into one residual bucket per original (kept only if >=2 — same
+    no-cluster-of-one rule as bucket_by_attribute).
+
+    Sub-bucket keys embed the call names (not a hash) so they stay
+    deterministic across runs; merge treats keys as opaque.
+    """
+    out: dict[str, set[str]] = {}
+    for key, ids in buckets.items():
+        if len(ids) < SIGNATURE_BUCKET_SPLIT_MIN:
+            out[key] = ids
+            continue
+
+        sub_groups: dict[tuple[str, ...], set[str]] = defaultdict(set)
+        for rec_id in ids:
+            rec = record_index.get(rec_id)
+            calls = rec.notable_calls if rec else ()
+            sub_key = tuple(sorted({leaf_name(c) for c in calls if leaf_name(c)}))
+            sub_groups[sub_key].add(rec_id)
+
+        residual: set[str] = set()
+        for sub_key, sub_ids in sorted(sub_groups.items()):
+            if len(sub_ids) >= 2:
+                out[f"{key}|calls={','.join(sub_key)}"] = sub_ids
+            else:
+                residual |= sub_ids
+        if len(residual) >= 2:
+            out[f"{key}|residual"] = residual
+    return out
 
 
 def bucket_by_label(

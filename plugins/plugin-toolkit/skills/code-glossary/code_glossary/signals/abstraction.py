@@ -25,6 +25,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable
 
+from code_glossary.call_names import leaf_name
 from code_glossary.records import FunctionRecord
 
 
@@ -65,10 +66,10 @@ def _resolve_calls(rec: FunctionRecord, name_to_ids: dict[str, list[str]]) -> li
     seen: set[str] = set()
     ordered: list[str] = []
     for call in rec.notable_calls:
-        leaf_name = _leaf_name(call)
-        if not leaf_name:
+        name = leaf_name(call)
+        if not name:
             continue
-        for candidate_id in name_to_ids.get(leaf_name, ()):
+        for candidate_id in name_to_ids.get(name, ()):
             if candidate_id == rec.id:
                 continue  # don't count self-call (recursion)
             if candidate_id in seen:
@@ -76,10 +77,3 @@ def _resolve_calls(rec: FunctionRecord, name_to_ids: dict[str, list[str]]) -> li
             seen.add(candidate_id)
             ordered.append(candidate_id)
     return ordered
-
-
-def _leaf_name(call: str) -> str:
-    """Last segment of a dotted call name. 'requests.get' -> 'get'."""
-    if not call:
-        return ""
-    return call.rsplit(".", 1)[-1]

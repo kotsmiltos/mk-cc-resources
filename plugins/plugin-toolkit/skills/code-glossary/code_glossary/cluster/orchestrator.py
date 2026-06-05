@@ -4,6 +4,7 @@ Public function: cluster_records(records, fingerprints) -> list[CandidateCluster
 
 Pipeline:
     1. bucketing.bucket_by_structural / signature / label
+       (signature buckets pre-split by leaf call names when oversized)
     2. merge.merge_buckets -> non-overlapping CandidateClusters
     3. scoring.score_cluster -> per-cluster extractability_score + confidence
     4. sort by score descending
@@ -20,6 +21,7 @@ from code_glossary.cluster.bucketing import (
     bucket_by_label,
     bucket_by_signature,
     bucket_by_structural,
+    split_signature_buckets,
 )
 from code_glossary.cluster.merge import merge_buckets
 from code_glossary.cluster.scoring import score_cluster
@@ -41,13 +43,15 @@ def cluster_records(
         Each record appears in at most ONE cluster (priority resolution
         per merge.SIGNAL_PRIORITY).
     """
+    record_index = {rec.id: rec for rec in records}
+
     structural = bucket_by_structural(fingerprints)
-    signature = bucket_by_signature(fingerprints)
+    # Coarse signature buckets fragment by call cohesion before merge —
+    # see split_signature_buckets for the noise rationale.
+    signature = split_signature_buckets(bucket_by_signature(fingerprints), record_index)
     label = bucket_by_label(records)
 
     clusters = merge_buckets(structural, signature, label, fingerprints)
-
-    record_index = {rec.id: rec for rec in records}
     for cluster in clusters:
         score, confidence = score_cluster(cluster, record_index, fingerprints)
         cluster.extractability_score = score
