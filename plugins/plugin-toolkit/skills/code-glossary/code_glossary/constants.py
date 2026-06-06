@@ -10,7 +10,7 @@ SCHEMA_VERSION: int = 1
 
 # Generator identity (written into every GLOSSARY.yaml metadata block).
 GENERATOR_NAME: str = "code-glossary"
-GENERATOR_VERSION: str = "2.2.0"
+GENERATOR_VERSION: str = "2.3.0"
 
 # Confidence levels for cluster matching (see DESIGN-V2.md piece 3).
 CONFIDENCE_LEVELS = ("high", "medium", "low")

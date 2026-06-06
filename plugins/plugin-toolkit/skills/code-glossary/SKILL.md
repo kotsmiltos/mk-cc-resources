@@ -20,7 +20,7 @@ Read a codebase, identify what each function DOES (decoupled from how it's writt
 uv run --project <skill_folder> python -m code_glossary.runner <stage> ...
 ```
 
-Runner subcommands: `index`, `apply-labels`, `signal`, `cluster`, `slices`, `render`. Each prints `key: value` summary lines and exits 2 on hard failure. Working artifacts live in `<target>/glossary/.work/` (kept after the run for debuggability).
+Runner subcommands: `index`, `apply-labels`, `signal`, `cluster`, `slices`, `render`, `diff`, `map`. Each prints `key: value` summary lines and exits 2 on hard failure. Working artifacts live in `<target>/glossary/.work/` (kept after the run for debuggability).
 </context>
 
 <instructions>
@@ -146,6 +146,14 @@ runner diff --old <previous>/GLOSSARY.yaml --new <target>/glossary/GLOSSARY.yaml
 
 Entries match across runs by their `{(file, function)}` instance sets (gloss-ids are positional, record ids line-sensitive — neither is stable). Six classes: `added`, `removed`, `grown` (new duplication sites — THE drift signal), `shrunk`, `extractable_changed`, `verification_changed`. Watchlist singles are excluded unless `--include-singles`. Exit is 0 even with drift (reporting, not gating); pass `--fail-on-drift` for CI-style exit 1.
 
+### Functionality map (the consult-before-designing artifact)
+
+```
+runner map --glossary <target>/glossary/GLOSSARY.yaml --out <target>/glossary/MAP.md
+```
+
+MAP.md = mermaid graph (subgraph per module; duplication families ×N, composites as hexagons with `composed_of` arrows, cross-module edges dashed) + a lossless machine index (fenced yaml, sliceable per module) + collapsed singles list. This is the artifact downstream consumers (essense-flow /architect + /build, or any human) consult BEFORE designing or building — the map of what already exists. Flags: `--group-depth` (module granularity), `--min-instances`, `--include-singles`, `--max-nodes`, `--per-module-graphs`, `--no-graph`. The graph is the lossy human view; the machine index always carries every entry.
+
 ## 10. Report
 
 ```
@@ -166,6 +174,7 @@ Failures:     <unlabeled batches, malformed returns, skipped languages — or "n
 Outputs:
   <target>/glossary/GLOSSARY.yaml   (frozen schema v1 — /dry-refactor input)
   <target>/glossary/GLOSSARY.md     (human summary, sorted by score)
+  <target>/glossary/MAP.md          (functionality map — consult before designing/building)
   <target>/glossary/.work/          (stage artifacts, kept for inspection)
 ```
 
