@@ -225,6 +225,11 @@ Five jobs in sequence (six steps from round-10+): **decide → delegate → synt
 
 **Cursor:** `step-advance --skill architect --next-step decide --project-root <root>` (first call — creates cursor at step_index=0).
 
+**Consult the functionality map first (when it exists).** Before closing any design question, check for `.pipeline/glossary/MAP.md` (fallback: `glossary/MAP.md` — the standalone /code-glossary output layout), plus the backing `GLOSSARY.yaml` next to it.
+
+- **If present:** Read the map — the mermaid graph for the mental model, the machine index (fenced yaml, sliceable per module) for specifics. For each module boundary you are about to decide, build a **reuse ledger**. An existing functionality entry is *relevant* to a module-to-be IF its `proposed_module` slug-equals the module name OR its label's head verb + primary noun appears in that module's responsibilities. For every relevant entry record: `glossary_id | label | module | reuse / not-reuse | one-line rationale`. **Re-implementation without a rationale is forbidden — forcing that sentence is exactly what this consult exists for.** The ledger lands in ARCH.md's "Existing functionality considered" section and feeds the per-module brief slices at delegate.
+- **If absent:** emit exactly one advisory line — `No functionality map found. If this project has pre-existing code, run /code-glossary to inventory it before designing, so reuse beats duplication. (Greenfield: ignore — nothing to map yet.)` — then continue. Never block.
+
 For every TOP-LEVEL design question implicit in the spec + requirements:
 
 1. Arrive at one closed answer with rationale.
@@ -253,6 +258,7 @@ Each sub-architect receives a brief built from `templates/sub-architect-brief.md
 - The SPEC.md slice relevant to this module (your selection)
 - The REQ.md slice (FRs/NFRs traced to this module)
 - Your closed top-level decisions that constrain this module
+- The existing-functionality slice (`{{existing_functionality}}`) — from your decide-step reuse ledger: entries relevant to THIS module, **cap 15**, ranked `proposed_module`-exact match first then label-overlap; one line each `- <label> — exists at <primary instance path> (glossary <id>)`; overflow appends `…and N more; see .pipeline/glossary/MAP.md`. No map at decide-time → bind the literal `None — no functionality map at design time. Design module internals from scratch.` (always bind the slot)
 - The Conduct preamble (inherited)
 - The task spec shape (so the return is mechanical, not creative)
 - The forbidden list (NO sprint packing — that's master's job)
@@ -524,6 +530,7 @@ Re-read verification before write:
 - Every closed top-level decision has rationale + alternatives-rejected
 - Sprint count is justifiable: each sprint > 1 has a one-sentence `data_dependency_on_prior_sprint`
 - No theme-shared task cluster ended up in its own sprint without a real data dependency
+- If a functionality map existed at decide-time: ARCH.md's "Existing functionality considered" section is non-empty (or explicitly states `none relevant`), and every `not-reuse` row carries a rationale
 
 Two finalize routes (only one fires per skill-run; depends on entry phase):
 

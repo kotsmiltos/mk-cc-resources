@@ -40,6 +40,12 @@ Things we build need access from claude to be tested so we can build things like
 
 {{master_decisions}}
 
+## Existing functionality (reuse before re-implementing)
+
+{{existing_functionality}}
+
+These functions ALREADY EXIST in the codebase and are relevant to your module (master selected them from the functionality map). Before writing a task spec that creates a helper, check this list — if the functionality exists, the task spec's `goal` says *call the existing X at `<path>`*, not *implement X*. If you deliberately re-implement, the task's `agency_rationale` must state why the existing one doesn't fit.
+
 ## Your job
 
 1. **Design module internals.** What classes/functions/files does this module hold? What's its internal data flow? Where does state live within it? Internal-to-this-module design decisions are yours — close them with rationale.
