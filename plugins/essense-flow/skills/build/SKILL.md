@@ -241,6 +241,10 @@ tasks_paused: <count>
 
 1. **Dispatch.** For every task in the wave, in parallel:
    - Brief the task agent with the full task spec (goal, requirements_traced, file_write_contract, behavioral_pseudocode, test_completion_contract, agency_level + rationale).
+   - Append two context blocks after the task-spec fields, clearly marked as **context, not contract** (the task spec remains the only contract):
+     - **`EXISTING HELPERS`** (only when `.pipeline/glossary/GLOSSARY.yaml` exists — omit the block entirely otherwise, no empty header): glossary entries whose instance file paths prefix-match any path in THIS task's `file_write_contract.paths`, OR whose `proposed_module` equals this task's `module`. **Cap 10**, path-match ranked first. One line each: `- <label> — exists at <path> (call it; don't re-implement)`.
+     - **`NEIGHBORS IN THIS WAVE`** (when the wave has >1 task): for every OTHER task in the SAME wave, one line `- <task_id>: <goal first sentence, ≤120 chars>` — the agents writing in parallel see each other instead of duplicating each other.
+     - Combined budget **~1500 characters** per task prompt; overflow keeps the highest-ranked entries + `…and N more in .pipeline/glossary/MAP.md`. Advisory per Fail-Soft — oversize surfaces as a one-line note, never a refused dispatch. Context blocks never widen `file_write_contract`.
    - Record `task_started_at` before dispatch.
    - Dispatch via `Agent` tool with the brief envelope.
 2. **No concurrency cap.** Run the whole wave at once. Resource pressure surfaces as advisory warnings (per Fail-Soft), never as rejected work.
@@ -406,9 +410,11 @@ Step 3 of 8 for the build skill (DD-15 ordered_steps anchor).
 For every task in the wave, in parallel: brief the task agent with the
 full task spec (goal, requirements_traced, file_write_contract,
 behavioral_pseudocode, test_completion_contract, agency_level +
-rationale); record `task_started_at` before dispatch; dispatch via
-`Agent` tool with `subagent_type: essense-flow-task-agent`. No
-concurrency cap per INST-13.
+rationale) plus the two advisory context blocks (EXISTING HELPERS from
+the glossary when present; NEIGHBORS IN THIS WAVE — see "How you work"
+→ "Per wave" for selection rules and caps); record `task_started_at`
+before dispatch; dispatch via `Agent` tool with `subagent_type:
+essense-flow-task-agent`. No concurrency cap per INST-13.
 
 See the existing skill body section "How you work" → "Per wave" for the
 full substance. This heading is the addressable anchor for `next-step
