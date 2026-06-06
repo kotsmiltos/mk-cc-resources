@@ -1,5 +1,16 @@
 # Release notes — essense-flow
 
+## 0.17.0 — The functionality map: consult before designing, see neighbors while building
+
+Counter to independent design + build: parallel sub-architects and task agents used to act blind to what exists and what siblings are doing. Now the mental map is forced, auditable, and regenerated every glossary run.
+
+- **/glossary renders MAP.md** (`runner map`, engine 2.3.0): mermaid module graph (duplication families ×N, composites with `composed_of` arrows, cross-module edges dashed) + a lossless per-module machine index masters slice into briefs.
+- **/architect consults the map at DECIDE.** Reuse ledger per module-to-be (relevance: `proposed_module` match or label verb+noun in responsibilities); **re-implementation without rationale is forbidden**; ledger lands in ARCH.md's new "Existing functionality considered" section (+ frontmatter count). Sub-architect briefs gain `{{existing_functionality}}` — top 15 relevant entries per module. No map → one advisory line (offer /code-glossary for brownfield), never a block.
+- **/build dispatches carry context.** Each task prompt gains EXISTING HELPERS (glossary entries touching the task's `file_write_contract.paths`, cap 10) + NEIGHBORS IN THIS WAVE (sibling goals) — context, not contract; ~1500-char budget; Fail-Soft.
+- **/organize judges cross-reference** the existing glossary's labels when present — "already exists in module X" advisory in proposals (full spec-vs-code clustering deferred to an engine chapter).
+
+Requires plugin-toolkit >= 1.5.0 (engine 2.3.0 `runner map`). Self-tests: 67/67.
+
 ## 0.16.0 — /glossary drift tracking + /dry-refactor surfacing + review dry-violation lens
 
 Closes the three integration gaps left when code-glossary v2.2 shipped (drift diff + /dry-refactor MVP existed but nothing in the pipeline used or mentioned them):

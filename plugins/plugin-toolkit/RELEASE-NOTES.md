@@ -1,5 +1,13 @@
 # Release notes — plugin-toolkit
 
+## 1.5.0 — code-glossary v2.3: the functionality map (`runner map`)
+
+One new deterministic subcommand, zero schema changes: `runner map --glossary GLOSSARY.yaml --out MAP.md` renders the codebase's functionality map — the consult-before-designing artifact.
+
+- **Mermaid graph**: subgraph per module (module = mode of instance-file path segments, `--group-depth` tunable — NOT `proposed_module`, which is null on non-extractables); duplication families as `×N` rectangles, composites as hexagons with `composed_of` arrows, cross-module edges dashed. Node budget 100 → auto per-module graphs → top-N truncation.
+- **Machine index**: lossless fenced-yaml block (every entry exactly once — graph nodes under `modules:`, singles under `singles:`), sliceable per module/file. This is what essense-flow 0.17.0's /architect and /build inject into sub-agent briefs.
+- Singles collapsed in a `<details>` list; `--include-singles`, `--min-instances`, `--no-graph` escape hatches. 32 new tests (562 total) incl. v1-flat parity, determinism-under-shuffle, lossless round-trip on real corpora (426- and 728-entry glossaries).
+
 ## 1.4.0 — code-glossary v2.2: sharpenings + the three unbuilt chapters
 
 Engine 2.2.0, 530 tests. Two engine sharpenings plus the three design chapters that v2 left unbuilt: composites in practice, drift tracking, and the /dry-refactor MVP.
