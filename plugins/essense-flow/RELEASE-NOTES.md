@@ -1,5 +1,15 @@
 # Release notes — essense-flow
 
+## 0.16.0 — /glossary drift tracking + /dry-refactor surfacing + review dry-violation lens
+
+Closes the three integration gaps left when code-glossary v2.2 shipped (drift diff + /dry-refactor MVP existed but nothing in the pipeline used or mentioned them):
+
+- **/glossary snapshots + auto-diffs.** Before each run, an existing `.pipeline/glossary/GLOSSARY.yaml` is snapshotted to `history/GLOSSARY-sprint-<n>-pre.yaml` (append-only — render would otherwise overwrite it and kill the comparison). After render, `runner diff` writes `.pipeline/glossary/DIFF.md`; the `grown` class names the duplication sites THIS sprint's parallel task agents added. Reporting, not gating — drift never blocks the phase. First run skips with a note.
+- **/dry-refactor surfaced at exit.** /glossary's exit cue now names `/dry-refactor .pipeline/glossary/GLOSSARY.yaml <gloss-id>` for previewing any extractable entry (7 pre-flight gates + dry-run plan, zero source writes). Manual and outside the state machine — a pipeline phase waits for live execution (a dry-run-only phase would be a stop that can't act). Stale "future v3" constraint wording corrected.
+- **/review dry-violation lens (adaptive).** Dispatched when a /glossary artifact exists: GLOSSARY.md top extractables + DIFF.md `grown` sites are pre-computed evidence; the lens substrate-verifies cited sites and emits only confirmed, sprint-relevant duplication. Minor severity unless a grown site duplicates a helper the spec/arch explicitly centralizes.
+
+Requires plugin-toolkit >= 1.4.0 for `runner diff` and the /dry-refactor skill. Self-tests: 67/67.
+
 ## 0.15.0 — Two optional DRY phases: /organize (post-architect) + /glossary (post-build)
 
 Both powered by the plugin-toolkit code-glossary v2 engine (deterministic Python; all LLM work = in-session Agent-tool sub-agents, no external SDKs). Engine discovered at runtime; hard stop with an install hint when plugin-toolkit is absent.

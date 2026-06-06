@@ -109,7 +109,7 @@ The headline plugin. State machine + per-phase skills + verification discipline.
 | Architecture | `/architect` | `.pipeline/architecture/ARCH.md` + task specs + sprint manifest | `/build` (or `/organize`) |
 | Organize *(optional)* | `/organize` | `.pipeline/architecture/ORGANIZE-REPORT.md` + consolidated task specs (originals archived to `_pre-organize/`) | `/build` |
 | Build | `/build` | `.pipeline/sprints/sprint-N/` completion records | `/review` (or `/glossary`) |
-| Glossary *(optional)* | `/glossary` | `.pipeline/glossary/GLOSSARY.{yaml,md}` (propose-only) | `/review` |
+| Glossary *(optional)* | `/glossary` | `.pipeline/glossary/GLOSSARY.{yaml,md}` (propose-only) + `DIFF.md` drift report on re-runs (prior run snapshotted to `history/`) | `/review` (exit cue also surfaces `/dry-refactor` previews) |
 | Review | `/review` | `.pipeline/reviews/QA-REPORT.md` | `/triage` or `/verify` |
 | Verify | `/verify` | `VERIFICATION-REPORT.md` | `complete` or `/triage` |
 | Heal | `/heal` | State recovery via legal transitions | Returns to correct phase |
