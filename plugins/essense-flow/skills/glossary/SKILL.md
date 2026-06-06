@@ -1,6 +1,6 @@
 ---
 name: glossary
-description: Code-mode DRY audit after /build. Runs the code-glossary engine on the sprint's code — indexes every function, clusters duplicate implementations across files, surfaces extraction candidates. Propose-only — writes .pipeline/glossary/GLOSSARY.{yaml,md}, never modifies source. Optional phase; run after /build, before or alongside /review.
+description: Code-mode DRY audit after /build. Runs the code-glossary engine on the sprint's code — indexes every function, clusters duplicate implementations across files, surfaces extraction candidates. Propose-only — writes .pipeline/glossary/GLOSSARY.{yaml,md}, never modifies source. Also renders MAP.md (functionality map) consumed by /architect and /build before designing. Optional phase; run after /build, before or alongside /review.
 version: 1.1.0
 schema_version: 1
 ---
@@ -52,6 +52,7 @@ No `init glossary` op exists in `essense-flow-tools` yet (glossary landed in v0.
 | Glossary (output) | `.pipeline/glossary/GLOSSARY.yaml` + `.pipeline/glossary/GLOSSARY.md` |
 | Prior-run snapshots | `.pipeline/glossary/history/GLOSSARY-sprint-<n>-pre.yaml` |
 | Drift report (output, re-runs only) | `.pipeline/glossary/DIFF.md` |
+| Functionality map (output) | `.pipeline/glossary/MAP.md` |
 | Work dir | `.pipeline/glossary/.work/` |
 
 **Engine discovery.** Same as /organize: dev checkout at `plugins/plugin-toolkit/skills/code-glossary/`, or installed via `find ~/.claude/plugins -path "*/code-glossary/code_glossary/runner.py"`. Not found → hard stop: "glossary requires the plugin-toolkit plugin (code-glossary engine); install mk-cc-all or plugin-toolkit."
@@ -77,11 +78,21 @@ No `init glossary` op exists in `essense-flow-tools` yet (glossary landed in v0.
 
    Relay the summary counts. Call out the `grown` class explicitly — those are duplication sites THIS sprint's task agents added (the agents that wrote in parallel without seeing each other). Reporting, not gating: drift never blocks the phase.
 
-5. **Report.** Relay the engine's final report (indexed counts, clusters, extractables, verification flags, failures) plus the glossary paths — and the DIFF.md path + per-class counts when step 4 ran.
+5. **Render the functionality map.**
 
-6. **Exit.** `essense-flow-tools state-set-phase --value sprint-complete --sprint <n>` (predicate: GLOSSARY.yaml exists). Surface the next cues:
+   ```
+   python -m code_glossary.runner map --glossary .pipeline/glossary/GLOSSARY.yaml \
+     --out .pipeline/glossary/MAP.md
+   ```
+
+   MAP.md = mermaid module graph + lossless per-module machine index. This is the artifact /architect (DECIDE step) and /build (dispatch context) consult before creating anything — regenerated every /glossary run so the map never lags the code. Relay the summary line counts (graph_nodes, modules, edges, composites).
+
+6. **Report.** Relay the engine's final report (indexed counts, clusters, extractables, verification flags, failures) plus the glossary paths — the DIFF.md path + per-class counts when step 4 ran, and the MAP.md path + node/module counts from step 5.
+
+7. **Exit.** `essense-flow-tools state-set-phase --value sprint-complete --sprint <n>` (predicate: GLOSSARY.yaml exists). Surface the next cues:
    - `/review` — tell the reviewer that GLOSSARY.md's top extractables AND DIFF.md's `grown` sites (when present) are reusable evidence for a DRY-violation lens.
    - `/dry-refactor .pipeline/glossary/GLOSSARY.yaml <gloss-id>` — preview any extractable entry as a concrete refactor plan (7 pre-flight gates + dry-run helper/edit-plan; zero source writes). Manual, optional, outside the state machine.
+   - MAP.md now exists — the next /architect round consults it during DECIDE; /build injects its slices into task dispatches.
 
 ## Constraints
 
