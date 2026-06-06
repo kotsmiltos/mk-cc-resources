@@ -22,6 +22,8 @@ is deterministic).
 
     python -m code_glossary.runner diff --old prev/GLOSSARY.yaml \
         --new glossary/GLOSSARY.yaml --out glossary/DIFF.md
+    python -m code_glossary.runner map --glossary glossary/GLOSSARY.yaml \
+        --out glossary/MAP.md
 
 Exit codes: 0 ok; 2 hard failure (zero records, malformed artifact) —
 per DESIGN-V2.md §10 the pipeline never continues silently. `diff`
@@ -49,6 +51,11 @@ from code_glossary.cluster.near_misses import (
     find_near_misses,
 )
 from code_glossary.cluster.orchestrator import cluster_records
+from code_glossary.map import (
+    DEFAULT_GROUP_DEPTH as DEFAULT_MAP_GROUP_DEPTH,
+    DEFAULT_MIN_INSTANCES as DEFAULT_MAP_MIN_INSTANCES,
+    MAP_NODE_BUDGET,
+)
 from code_glossary.indexer.orchestrator import index_directory_with_report
 from code_glossary.indexer.spec_parser import index_sprint_specs
 from code_glossary.render.orchestrator import render_glossary
@@ -230,6 +237,49 @@ def _build_parser() -> argparse.ArgumentParser:
         help="exit 1 when any drift class is non-empty (CI-style gating)",
     )
     p_diff.set_defaults(func=_cmd_diff)
+
+    p_map = sub.add_parser(
+        "map",
+        help="v2.3: functionality map (mermaid + machine index) from a GLOSSARY.yaml",
+    )
+    p_map.add_argument("--glossary", required=True, help="GLOSSARY.yaml path")
+    p_map.add_argument("--out", required=True, help="MAP.md output path")
+    p_map.add_argument(
+        "--min-instances",
+        type=int,
+        default=DEFAULT_MAP_MIN_INSTANCES,
+        help="graph-node floor; singles below it go to the index only "
+        f"(default {DEFAULT_MAP_MIN_INSTANCES})",
+    )
+    p_map.add_argument(
+        "--include-singles",
+        action="store_true",
+        help="promote single-instance leaves into the graph",
+    )
+    p_map.add_argument(
+        "--group-depth",
+        type=int,
+        default=DEFAULT_MAP_GROUP_DEPTH,
+        help="leading path segments forming a module group "
+        f"(default {DEFAULT_MAP_GROUP_DEPTH}; 2 -> 'src/api')",
+    )
+    p_map.add_argument(
+        "--max-nodes",
+        type=int,
+        default=MAP_NODE_BUDGET,
+        help=f"mermaid node budget before per-module split (default {MAP_NODE_BUDGET})",
+    )
+    p_map.add_argument(
+        "--per-module-graphs",
+        action="store_true",
+        help="one mermaid block per module (auto-enabled when over budget)",
+    )
+    p_map.add_argument(
+        "--no-graph",
+        action="store_true",
+        help="index-only output (huge repos / pure machine consumption)",
+    )
+    p_map.set_defaults(func=_cmd_map)
 
     return parser
 
@@ -623,6 +673,58 @@ def _cmd_diff(args: argparse.Namespace) -> int:
     print(f"drift_found: {str(drift).lower()}")
     if drift and args.fail_on_drift:
         return EXIT_DRIFT_FOUND
+    return EXIT_OK
+
+
+def _cmd_map(args: argparse.Namespace) -> int:
+    import yaml as _yaml
+
+    from code_glossary.map import build_map_model, render_map_markdown
+
+    path = Path(args.glossary)
+    if not path.is_file():
+        print(f"error: --glossary not found: {path}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+    try:
+        doc = _yaml.safe_load(path.read_text(encoding="utf-8"))
+    except _yaml.YAMLError as exc:
+        print(f"error: --glossary is not valid YAML: {exc}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+    if not isinstance(doc, dict) or "glossary" not in doc:
+        print(
+            f"error: --glossary file has no top-level 'glossary' key: {path}",
+            file=sys.stderr,
+        )
+        return EXIT_HARD_FAILURE
+
+    model = build_map_model(
+        doc,
+        min_instances=args.min_instances,
+        group_depth=args.group_depth,
+        include_singles=args.include_singles,
+        node_budget=args.max_nodes,
+    )
+    report = render_map_markdown(
+        model,
+        glossary_label=args.glossary,
+        per_module_graphs=args.per_module_graphs,
+        draw_graph=not args.no_graph,
+    )
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(report)
+
+    print(f"map_md: {out_path}")
+    print(f"entries_total: {model.total_entries}")
+    print(f"graph_nodes: {len(model.nodes)}")
+    print(f"singles_excluded: {model.singles_excluded}")
+    print(f"composites: {model.composites}")
+    print(f"duplication_families: {model.duplication_families}")
+    print(f"modules: {len(model.modules)}")
+    print(f"edges: {len(model.edges)}")
+    print(f"node_budget: {model.node_budget}")
+    print(f"overflowed: {str(model.overflowed).lower()}")
     return EXIT_OK
 
 
