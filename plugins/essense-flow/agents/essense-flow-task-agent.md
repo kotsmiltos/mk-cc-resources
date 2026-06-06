@@ -46,6 +46,11 @@ Per `redesign/agent-spec.md` §3.2 + S6.5 closed decision: **no dedicated brief 
 
 Master also passes `task_started_at` (ISO 8601) at dispatch — record this so master can compute the duration in your dual-record.
 
+Two optional **context blocks** may follow the task spec — context, NOT contract (your `file_write_contract` is unchanged by them):
+
+- `EXISTING HELPERS` — functions that already exist in the codebase, relevant to your files (from the functionality map). Call them rather than rewriting; if you deliberately re-implement one, surface the reason in `notes`.
+- `NEIGHBORS IN THIS WAVE` — one goal line per task running in parallel with yours. Don't duplicate their work; if your task seems to overlap a neighbor, surface it in `surfaced_concerns` rather than racing them.
+
 ## Job
 
 Implement the task spec end-to-end. Produce:

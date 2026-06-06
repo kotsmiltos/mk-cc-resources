@@ -40,6 +40,7 @@ The master sends you a brief built from `plugins/essense-flow/skills/architect/t
 - `{{spec_slice}}` — the SPEC.md excerpt relevant to this module.
 - `{{req_slice}}` — the FRs/NFRs traced to this module.
 - `{{master_decisions}}` — closed top-level decisions that constrain this module.
+- `{{existing_functionality}}` — functions that ALREADY EXIST in the codebase, relevant to this module (master's slice of the functionality map; may read `None — no functionality map at design time`). Reuse before re-implementing: a task spec that re-implements a listed functionality must say why in its `agency_rationale`.
 
 Do NOT read the full SPEC.md or full REQ.md unless your brief explicitly directs you to. The slices are what the master decided is in-scope for your module.
 

@@ -75,7 +75,7 @@ Engine calls: `uv run --project <skill_folder> python -m code_glossary.runner <s
    `runner signal --mode spec --records <work>/specs.yaml --out <work>/fps.yaml`
    `runner cluster --mode spec --records <work>/specs.yaml --fingerprints <work>/fps.yaml --out <work>/clusters.yaml`
 
-5. **Judge borderline clusters (LLM).** For each multi-instance cluster, ONE sub-agent confirms the specs truly describe the same functionality (behavioral test from `<skill_folder>/briefs/behavioral-judge.md`, adapted to spec text). Default distinct when uncertain — a wrong merge corrupts the sprint.
+5. **Judge borderline clusters (LLM).** For each multi-instance cluster, ONE sub-agent confirms the specs truly describe the same functionality (behavioral test from `<skill_folder>/briefs/behavioral-judge.md`, adapted to spec text). Default distinct when uncertain — a wrong merge corrupts the sprint. **When `.pipeline/glossary/GLOSSARY.yaml` exists** (a prior code-mode run inventoried existing code), each judge brief also gets the existing glossary's functionality labels + `proposed_module` list — a verdict may then add "this functionality already exists in module X"; carry that note into the step-6 proposal and ORGANIZE-REPORT as advisory text (spec-vs-existing-code *clustering* is a future engine chapter; this is the cheap cross-reference).
 
 6. **Propose (user gate — one AskUserQuestion per confirmed cluster).** Show: the task IDs, their one-line descriptions, the shared functionality label, and the consolidation plan — which task survives as owner (the most complete spec), which tasks fold in (their unique acceptance criteria + file contracts merged into the owner), what the manifest/dependency edits are. Options: apply / reject / defer-to-report-only.
 
