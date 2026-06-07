@@ -217,7 +217,10 @@ const CITATION_LOOSE_LINE_RE = /:\s*[0-9]+\b/;
 const CITATION_PATH_TOKEN_RE = /[A-Za-z0-9._/\\-]+\.(cjs|js|md|yaml|yml|py)/;
 
 // Task-id pattern per cli-spec.md §3.5
-const TASK_ID_PATTERN = /^T-\d{3,}$/;
+// Widened 2026-06-07 (user-approved during BiananceRepo sprint-2 build): the
+// original /^T-\d{3,}$/ rejected real architect id schemes (P-*/D-*/E-*/A-*/B-*
+// module-prefixed ids). Now: uppercase prefix + hyphen + slug. T-001 still matches.
+const TASK_ID_PATTERN = /^[A-Z]+-[A-Za-z0-9_-]+$/;
 
 // Required-key list for parsed task-spec content per cli-spec.md §5
 // 2026-05-06 Addendum (supersedes §1.5 step 6 placeholder).
@@ -280,6 +283,27 @@ async function loadYaml(p) {
 async function loadYamlString(s) {
   const y = await yaml();
   return y.load(s);
+}
+// ---- Manifest reads tolerate the multi-document shape ----
+// The sprint-manifest.md template is single-doc, but some architect runs emit a
+// `---` frontmatter block + body (two YAML documents). A plain js-yaml load()
+// throws 'expected a single document in the stream' and hard-blocks every
+// manifest-backed gate (state-set-phase, record-task-completion). Per Fail-Soft +
+// Graceful-Degradation, merge all documents — frontmatter keys (schema_version,
+// budget_caps, …) and body keys (waves, dependency_graph, notes) are disjoint, so
+// Object.assign is lossless; later docs win on the rare collision. A single-doc
+// manifest passes through unchanged (loadAll -> [doc] -> doc). Added 2026-06-07
+// after both BiananceRepo sprint-1/2 manifests hard-blocked the CLI.
+function mergeYamlDocsSync(raw) {
+  const y = require('js-yaml');
+  const docs = y
+    .loadAll(raw)
+    .filter((d) => d && typeof d === 'object' && !Array.isArray(d));
+  if (docs.length === 0) return null;
+  return Object.assign({}, ...docs);
+}
+async function loadManifestYaml(p) {
+  return mergeYamlDocsSync(fs.readFileSync(p, 'utf8'));
 }
 async function dumpYaml(obj) {
   const y = await yaml();
@@ -2422,9 +2446,8 @@ function evalAllTaskSpecsClosed(manifestPath, sprintDir) {
   let manifest;
   try {
     const raw = fs.readFileSync(manifestPath, 'utf8');
-    // Parse using sync require; this evaluator is sync-by-shape
-    const yamlSync = require('js-yaml');
-    manifest = yamlSync.load(raw);
+    // Multi-doc-tolerant manifest parse (frontmatter + body merge). Sync-by-shape.
+    manifest = mergeYamlDocsSync(raw);
   } catch (e) {
     return { ok: false, kind: 'predicate-false', observed: `manifest unreadable (${e.message})` };
   }
@@ -2608,7 +2631,7 @@ async function evalSprintCompleteGate(projectRoot, sprint) {
   if (!fs.existsSync(manifestPath)) {
     return { ok: false, recorded: 0, declared: 0 };
   }
-  const manifest = await loadYaml(manifestPath);
+  const manifest = await loadManifestYaml(manifestPath);
   const taskIds = new Set();
   if (Array.isArray(manifest && manifest.waves)) {
     for (const w of manifest.waves) {
@@ -3606,7 +3629,7 @@ async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
       `essense-flow-tools ${opName}: sprint manifest .pipeline/architecture/sprints/${sprintInt}/manifest.yaml not found`,
     );
   }
-  const manifest = await loadYaml(manifestPath);
+  const manifest = await loadManifestYaml(manifestPath);
   const taskIds = new Set();
   if (Array.isArray(manifest && manifest.waves)) {
     for (const w of manifest.waves) {
@@ -4574,7 +4597,7 @@ function _loadAlignmentCounters(projectRoot, sprintNumber, roundNumber, yamlMod)
   );
   if (fs.existsSync(manifestPath)) {
     try {
-      const manifestObj = yamlMod.load(fs.readFileSync(manifestPath, 'utf8')) || {};
+      const manifestObj = mergeYamlDocsSync(fs.readFileSync(manifestPath, 'utf8')) || {};
       const roundSpecific = manifestObj[`round_${roundNumber}_alignment_lens_dispatches_per_round`];
       const suffixForm = manifestObj[`alignment_lens_dispatches_per_round_${roundNumber}`];
       const topLevel = manifestObj.alignment_lens_dispatches_per_round;
@@ -4985,7 +5008,7 @@ async function recordTaskCompletion({ sprint, taskId, contentFile, projectRoot }
       `essense-flow-tools ${opName}: sprint manifest .pipeline/architecture/sprints/${sprintInt}/manifest.yaml not found`,
     );
   }
-  const manifest = await loadYaml(manifestPath);
+  const manifest = await loadManifestYaml(manifestPath);
   const taskIds = new Set();
   if (Array.isArray(manifest && manifest.waves)) {
     for (const w of manifest.waves) {

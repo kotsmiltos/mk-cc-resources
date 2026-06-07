@@ -1,5 +1,14 @@
 # Release notes — essense-flow
 
+## 0.17.1 — CLI robustness: real-world task-id schemes + multi-document manifests
+
+Two `essense-flow-tools` parse fixes surfaced running the pipeline against a live audit project (130 task specs, ids like `D-ch01-data` / `E-ch12-engines`):
+
+- **Task-id pattern widened.** `TASK_ID_PATTERN` was hard-coded to `/^T-\d{3,}$/`, which rejected every module-prefixed architect id (`P-*`/`D-*`/`E-*`/`A-*`/`B-*`) at `record-task-completion` and `task-spec-write` — with no template or cli-spec backing for the strict form (the task-spec template is a bare `{{task_id}}`). Now `/^[A-Z]+-[A-Za-z0-9_-]+$/`; `T-001` still matches. This is what previously forced sessions to bypass the completion-record CLI entirely.
+- **Manifest reads tolerate multi-document YAML.** A sprint manifest authored as a `---` frontmatter block + body (two YAML documents) made `js-yaml` `load()` throw "expected a single document in the stream", hard-blocking every manifest-backed gate (`state-set-phase` architecture→sprinting, the sprint-complete gate, `record-task-completion`, the alignment-lens reader). New `mergeYamlDocsSync` + `loadManifestYaml` `loadAll`-and-merge the documents (frontmatter/body keys are disjoint); single-doc manifests pass through unchanged. The template (`sprint-manifest.md`) remains single-doc and canonical — this hardens the *reader* (Fail-Soft) so a deviating manifest no longer freezes the CLI. Generic `loadYaml` (state/decisions/cursor) is untouched. New regression test `test/manifest-multidoc-tolerance.test.cjs` (3 ACs; AC-2 proves the body document's `waves:` are actually merged, not merely non-crashing).
+
+Regression: `node test/run-all.cjs` 45/45 (was 44; +1 new test). Self-test 66/67 — the single failure is T-ENF-3, a time-triggered governance-ledger compaction reminder in the sibling `essense-flow-re-imagined/redesign` workspace (Fail-Soft-skips for any consumer without that workspace; unrelated to this change).
+
 ## 0.17.0 — The functionality map: consult before designing, see neighbors while building
 
 Counter to independent design + build: parallel sub-architects and task agents used to act blind to what exists and what siblings are doing. Now the mental map is forced, auditable, and regenerated every glossary run.
