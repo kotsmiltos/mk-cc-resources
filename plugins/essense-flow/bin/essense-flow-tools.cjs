@@ -3586,6 +3586,7 @@ async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
   const m2Scan = scanPseudocodeForUncitedBehavior(
     parsed.behavioral_pseudocode,
     parsed.agency_level,
+    projectRoot,
   );
   if (m2Scan && m2Scan.violation) {
     return emitFailure(
@@ -3594,7 +3595,10 @@ async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
         + `uses engine-behavior trigger '${m2Scan.trigger}' without <file>:<line> `
         + `citation within 5 lines AND agency_level is '${parsed.agency_level}' `
         + `(not 'guided' or 'open'); per M-2 (D-Sprint10-5) prescribed pseudocode `
-        + `citing engine behavior MUST cite substrate; excerpt: "${m2Scan.excerpt}"`,
+        + `asserting behavior of EXISTING substrate ('${m2Scan.substrate_path}' is on disk) `
+        + `MUST cite the line it read; new-code and library claims are exempt — `
+        + `library behavior you cannot execute belongs in the unknowns ledger; `
+        + `excerpt: "${m2Scan.excerpt}"`,
     );
   }
 
@@ -3662,29 +3666,55 @@ async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
   });
 }
 
-// scanPseudocodeForUncitedBehavior(pseudocodeText, agencyLevel) — M-2
-// substance per D-Sprint10-5 / T-1002. Scans behavioral_pseudocode for
-// engine-behavior triggers (throws/emits/returns/produces) and asserts each
-// trigger has a <file>:<line> citation in a 5-line window above or below.
+// scanPseudocodeForUncitedBehavior(pseudocodeText, agencyLevel, projectRoot)
+// — substrate-citation rule, narrowed 2026-06-11 (rebuild Phase 3).
+//
+// Original intent: stop substrate-blind claims — prescribed pseudocode
+// asserting how EXISTING code behaves (throws/emits/returns/produces) must
+// cite the <file>:<line> it read. The original rule fired on the trigger
+// words alone, which also hit pseudocode describing NEW code — code with no
+// file:line to cite — and pushed spec authors toward fabricated citations:
+// the exact sin the rule polices.
+//
+// Narrowed rule: a trigger line needs a citation ONLY when it also names a
+// path that EXISTS on disk under projectRoot (existing substrate). Lines
+// describing new functions, new files, or third-party library behavior have
+// nothing checkable to cite and are exempt here — library/version claims
+// the author cannot execute belong in the unknowns ledger instead (see
+// references/librarian.md), enforced at the prompt layer.
+//
 // Rule scope is agency_level=prescribed only — guided + open self-document
-// that pseudocode is illustrative; M-2 rule does not apply.
+// that pseudocode is illustrative.
 //
 // Returns null when no violation; otherwise { violation: true, line, trigger,
-// excerpt } naming the first uncited trigger (scan-and-fail-fast). The
-// taskSpecWrite handler converts this to an emitFailure with EXIT_ALIGNMENT_DRIFT
-// and a diagnostic naming the M-2 rule.
-function scanPseudocodeForUncitedBehavior(pseudocodeText, agencyLevel) {
-  // M-2 rule scope: prescribed only. Guided + open are explicitly exempt
-  // per spec (pseudocode shape is loose; citation not load-bearing).
+// excerpt, substrate_path } naming the first uncited existing-substrate
+// claim. taskSpecWrite converts this to EXIT_ALIGNMENT_DRIFT.
+function scanPseudocodeForUncitedBehavior(pseudocodeText, agencyLevel, projectRoot) {
   if (agencyLevel === 'guided' || agencyLevel === 'open') return null;
   if (typeof pseudocodeText !== 'string' || pseudocodeText.trim() === '') return null;
 
   const lines = pseudocodeText.split('\n');
   const WINDOW = 5;
+  const PATH_TOKEN_GLOBAL = new RegExp(CITATION_PATH_TOKEN_RE.source, 'g');
   for (let i = 0; i < lines.length; i++) {
     const match = ENGINE_BEHAVIOR_TRIGGER_RE.exec(lines[i]);
     if (!match) continue;
-    // Examine [i-5 .. i+5] inclusive, clamped to array bounds.
+
+    // Existing-substrate gate: only lines naming a file that is actually on
+    // disk carry a citation obligation. Strip any :line suffix from tokens
+    // before the existence probe.
+    let substratePath = null;
+    if (projectRoot) {
+      for (const tok of lines[i].match(PATH_TOKEN_GLOBAL) || []) {
+        const rel = tok.replace(/:\d+$/, '');
+        const candidate = path.isAbsolute(rel) ? rel : path.join(projectRoot, rel);
+        try {
+          if (fs.statSync(candidate).isFile()) { substratePath = rel; break; }
+        } catch { /* not on disk → not existing substrate */ }
+      }
+    }
+    if (!substratePath) continue; // new code or library claim — exempt
+
     const lo = Math.max(0, i - WINDOW);
     const hi = Math.min(lines.length - 1, i + WINDOW);
     let cited = false;
@@ -3706,31 +3736,13 @@ function scanPseudocodeForUncitedBehavior(pseudocodeText, agencyLevel) {
         line: i + 1,
         trigger: match[1].toLowerCase(),
         excerpt: lines[i].trim().slice(0, 200),
+        substrate_path: substratePath,
       };
     }
   }
   return null;
 }
 
-// isGrepTargetCitation(text, markerIdx) — context-awareness amend per
-// CMC-Sprint10-12 / T-1002 closure. Returns true when the marker substring
-// at byte offset `markerIdx` in `text` is a substantive grep-target
-// citation (the scanner-vs-substance closed loop). Two recognized shapes:
-//
-//   1. Marker appears inside a double-quoted region on a line that ALSO
-//      contains the substring "grep" (case-insensitive). Example:
-//        `grep -iE "(TBD|TODO|XXX)" returns 0 hits`
-//      This is the canonical grep-target enumeration shape — substance,
-//      not drift-leak.
-//
-//   2. Marker appears inside a regex alternation enclosed in parentheses
-//      with at least one `|` separator. Example:
-//        `pattern = /(TBD|TODO|<choose>)/i`
-//      Alternation alone (without the grep keyword) is sufficient — the
-//      regex literal IS the enumeration substance.
-//
-// Anything else (bare prose marker, single-line comment, hash-tag) returns
-// false → drift-leak; scanner rejects.
 function isGrepTargetCitation(text, markerIdx) {
   if (markerIdx < 0 || markerIdx >= text.length) return false;
   // Locate the containing line — find newline boundaries left + right of idx.
@@ -5134,6 +5146,7 @@ const REGISTER_TARGET_PHASES = schemaEnum(REGISTER_ITEM_SCHEMA, 'target_phase');
 
 async function registerAdd({
   itemId,
+  kind,
   closureCriterion,
   sourceArtifact,
   sourceAnchor,
@@ -5158,6 +5171,14 @@ async function registerAdd({
   // status defaults to 'open' when omitted (per DD-10 lifecycle default).
   // claimed_at stamping rule keys off in_progress only.
   const resolvedStatus = status || 'open';
+  // kind defaults to 'work'; 'unknown' marks librarian-protocol entries
+  const resolvedKind = kind || 'work';
+  if (!schemaEnum(REGISTER_ITEM_SCHEMA, 'kind').includes(resolvedKind)) {
+    return emitFailure(
+      EXIT_ARG_MISSING_OR_BAD,
+      `essense-flow-tools ${opName}: --kind '${resolvedKind}' not in [${schemaEnum(REGISTER_ITEM_SCHEMA, 'kind').join(', ')}]`,
+    );
+  }
   if (!REGISTER_STATUS_VALUES.includes(resolvedStatus)) {
     return emitFailure(
       EXIT_ARG_MISSING_OR_BAD,
@@ -5213,6 +5234,7 @@ async function registerAdd({
     const nowIso = new Date().toISOString();
     const entry = {
       item_id: itemId,
+      kind: resolvedKind,
       source_artifact: sourceArtifact || null,
       source_anchor: sourceAnchor || null,
       closure_criterion: closureCriterion,
@@ -6644,6 +6666,7 @@ if (require.main === module) (async () => {
     case 'register-add': {
       await registerAdd({
         itemId: args['item-id'],
+        kind: args.kind,
         closureCriterion: args['closure-criterion'],
         sourceArtifact: args['source-artifact'],
         sourceAnchor: args['source-anchor'],

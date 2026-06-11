@@ -629,6 +629,15 @@ Three observed failure modes when architect runs everything in main context:
 
 The split is the mechanism. The rule survives because the substance was delegated.
 
+## Unknowns ledger (librarian protocol)
+
+Your agents are librarians: they hand over the best book they have, but they cannot know which books they don't have. Every sub-architect return carries an `unknowns:` array (shape: `references/librarian.md`). Your duties as master:
+
+1. **Collect** — read every return's `unknowns[]`. A return missing the array is incomplete: bounce it back. An entry with an empty `research_attempted` goes back too — research-first is the rule.
+2. **Register** — `essense-flow-tools register-add --item-id U-<n> --kind unknown --closure-criterion "<the suggested_question>" --source-artifact <return ref> --project-root <root>` for every open entry. No unknown lives only in your context window — context dies, the register survives.
+3. **Surface** — `blocking: true` entries: put to the user via `AskUserQuestion` BEFORE acting on that return. Non-blocking entries: batch them into one `AskUserQuestion` at the pack step, before the sprint is sealed. A ratified `suggested_default` is an answer — record it as `closure_evidence` and close the register entry.
+4. **Never assume** — an unanswered unknown stays open in the register and is surfaced again at the next gate. Silently proceeding past one is the failure mode this protocol exists to kill.
+
 ## Constraints
 
 ### Substrate-verify discipline (M-6)

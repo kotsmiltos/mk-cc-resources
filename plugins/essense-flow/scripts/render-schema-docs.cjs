@@ -135,6 +135,20 @@ const SITES = [
     marker: 'task-spec-shape',
     render: () => renderShapeBlock(loadSchema('task-spec')),
   },
+  // librarian protocol — unknowns contract (rebuild Phase 3)
+  ...[
+    'references/librarian.md',
+    'agents/essense-flow-sub-architect.md',
+    'agents/essense-flow-task-agent.md',
+    'agents/essense-flow-perspective-agent.md',
+    'agents/essense-flow-sub-triager.md',
+    'agents/essense-flow-sub-recognizer.md',
+  ].map((file) => ({
+    file,
+    kind: 'marker',
+    marker: 'unknown-entry-shape',
+    render: () => renderShapeBlock(loadSchema('unknown-entry')),
+  })),
 ];
 
 function markerBounds(content, marker, file) {

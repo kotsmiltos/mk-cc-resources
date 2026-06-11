@@ -112,6 +112,10 @@ Field rules:
 - `agency_rationale` (string; required, non-empty) — why this agency level fits this work
 <!-- AUTOGEN:task-spec-shape END -->
 
+## Unknowns (librarian protocol)
+
+Your return MUST carry an `unknowns:` array — the empty array is required, "no unknowns" is a claim master holds you to. Research first (Read/Grep/WebFetch); what research cannot answer goes in the array, never into an assumption. Runtime tool behavior you cannot execute (you have no Bash) is ALWAYS an unknown + an agency downgrade to `guided`, never a prescribed fact. Shape + full protocol: `references/librarian.md`.
+
 ## Required return shape
 
 ```yaml
@@ -128,12 +132,13 @@ task_specs:
   - ...
 cross_module_concerns: []      # surface anything master didn't cover
 boundary_concerns: []          # surface if module boundary feels wrong
+unknowns: []                   # librarian protocol — empty array REQUIRED (see above)
 ```
 
 ## Discipline
 
 - Every task spec is a **closed contract** for the build agent. If a build agent reading your task spec would have to invent a design decision, the spec is not closed.
-- File-write contracts are concrete paths. No globs in `allowed:` unless the glob is precise (`tests/<module>/*.test.js`).
+- File-write contracts are concrete paths. No globs in `paths:` unless the glob is precise (`tests/<module>/*.test.js`).
 - Cross-module dependencies are declared, not assumed. If your task `T-A` consumes the output of another module's `T-B`, list `T-B` in `T-A.dependencies`. Master uses this for sprint packing — silent assumptions break the packing.
 
 End your return with the sentinel line on its own:

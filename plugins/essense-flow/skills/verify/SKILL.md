@@ -168,6 +168,10 @@ IF NEITHER condition holds → PER-ITEM VERIFIER DISPATCH IS MANDATORY; the tran
 
 Verifiable check: spawn verify skill on fixture sprint with items_total=8 + verifier_dispatches_total=0 + no rule-quote → state-set-phase verifying→complete refused with EXIT_ALIGNMENT_DRIFT (19) + diagnostic naming "DD-2 verifier-dispatch Skip-IFF rule".
 
+## Unknowns channel (librarian protocol)
+
+`manual` verifier verdicts are unknowns by another name (`references/librarian.md`): things the pipeline could not determine on its own. Treat them with gate discipline — register each (`register-add --kind unknown`), batch the open ones into one `AskUserQuestion` before the phase advances, and never let one dissolve into a silently-passed report. A ratified default is an answer; an ignored unknown is a fabricated book.
+
 ## Constraints
 
 - Per **Diligent-Conduct**: existence ≠ implementation. Every verdict reads code, not just file paths.

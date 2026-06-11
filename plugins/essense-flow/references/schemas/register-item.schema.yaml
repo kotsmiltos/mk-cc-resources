@@ -24,6 +24,17 @@ fields:
     required: true
     example: 'OF-12'
 
+  kind:
+    type: string
+    enum: [work, unknown]
+    required: false
+    example: 'work'
+    doc: >
+      'unknown' marks a librarian-protocol entry (references/librarian.md) —
+      an agent-declared unknown awaiting a user answer; closure_criterion is
+      the question, closure_evidence the answer or ratified default.
+      Defaults to 'work' when omitted (legacy entries read OK).
+
   source_artifact:
     type: string
     required: false

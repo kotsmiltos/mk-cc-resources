@@ -348,6 +348,10 @@ node plugins/essense-flow/bin/essense-flow-tools.cjs state-set-phase --value tri
 
 Then `step-advance --skill review --next-step skill-complete` to delete the cursor.
 
+## Unknowns channel (librarian protocol)
+
+`needs_context` validator verdicts and `inconclusive` lens findings are unknowns by another name (`references/librarian.md`): things the pipeline could not determine on its own. Treat them with gate discipline — register each (`register-add --kind unknown`), batch the open ones into one `AskUserQuestion` before the phase advances, and never let one dissolve into a silently-passed report. A ratified default is an answer; an ignored unknown is a fabricated book.
+
 ## Constraints
 
 - Per **Diligent-Conduct**: every finding's evidence is structural (path + quote + context) and re-validated. No vibes-based findings persist.

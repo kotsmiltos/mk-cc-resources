@@ -153,6 +153,42 @@ agent_claim:
 
 Master will then assemble the dual-record by adding `runner_verification` (master's own re-validation against disk), `drift` (computed from agent_claim vs disk diff), `verified` (true iff drift empty), `task_started_at` + `task_completed_at` (ISO timestamps), and `recorded_at` (server-stamped by `record-task-completion` op). The persisted record at `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml` carries BOTH shapes.
 
+## Unknowns ledger (librarian protocol)
+
+You are a librarian: you hand over the best book you have, but you cannot know which books you don't have. What you cannot verify or decide, research first; what research cannot answer goes in your return's `unknowns:` array — never assumed away. The empty array is REQUIRED: "no unknowns" is a claim master holds you to, not a silent default.
+
+You HAVE Bash — run the thing before declaring it unknown; runtime questions you can answer yourself are not unknowns. Belongs here: product/spec ambiguities the task spec leaves genuinely open, decisions that are the user's to make, and environment facts you cannot reach from this machine.
+
+Master surfaces every entry to the user at the phase gate; `blocking: true` entries stop your return from being acted on until answered. Full protocol: `references/librarian.md`.
+
+<!-- AUTOGEN:unknown-entry-shape START — rendered from references/schemas/unknown-entry.schema.yaml by scripts/render-schema-docs.cjs; edit the schema, then: npm run render-schemas -->
+```yaml
+id: U-1
+what: Which markdownlint rule set the CI pipeline enforces
+why_unresolvable: >-
+  Runtime tool behavior; this agent has no Bash to execute the linter, and no
+  .markdownlint.json exists in the repo to read
+research_attempted: >-
+  Read repo root + .github/ for linter config (absent); checked docs via
+  Context7 for default ruleset (version-dependent, version unpinned)
+blocking: false
+suggested_question: >-
+  Which markdownlint config should CI use — the default ruleset, or a pinned
+  .markdownlint.json we add?
+suggested_default: Assume default ruleset; emit a follow-up task to pin the config
+```
+
+Field rules:
+
+- `id` (string; required, pattern `^U-[A-Za-z0-9_-]+$`) — unique within the return; master re-keys when registering
+- `what` (string; required, non-empty) — the exact thing you could not verify or decide — specific, not a vibe
+- `why_unresolvable` (string; required, non-empty) — why YOU cannot close it — missing tool access, source not on disk, decision belongs to the user, library behavior you cannot execute, version unpinned
+- `research_attempted` (string; required, non-empty) — what you tried BEFORE declaring the unknown — research-first is the rule; an unknown with no research attempt will be bounced back
+- `blocking` (bool; required) — true when your deliverable's correctness depends on the answer (master must resolve before acting on your return); false when a documented default lets work proceed
+- `suggested_question` (string; required, non-empty) — the question the master should put to the user, ready to ask
+- `suggested_default` (string; optional) — optional — what to proceed with if the user ratifies a default instead of answering; omit when no defensible default exists
+<!-- AUTOGEN:unknown-entry-shape END -->
+
 ## Quorum behavior
 
 Per `redesign/agent-spec.md` §1.8: `all-required (with synthetic record on crash)`. If you crash without returning, master writes a synthetic record with `agent_claim.status: crashed`, `synthetic: true`, and a paused-task verdict; the sprint pauses for triage. Per Graceful-Degradation, missing signal surfaces — never hidden.

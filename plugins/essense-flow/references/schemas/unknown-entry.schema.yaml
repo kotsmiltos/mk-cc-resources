@@ -1,0 +1,82 @@
+# unknown-entry.schema.yaml — THE canonical unknowns-ledger entry shape.
+#
+# Consumed by:
+#   - scripts/render-schema-docs.cjs — renders the unknowns contract block in
+#     references/librarian.md and the producer agent defs (sub-architect,
+#     task-agent, perspective-agent, sub-triager, sub-recognizer)
+#   - masters validate agent-return unknowns[] arrays against this shape
+#     before registering them
+#
+# Editing rules: same as task-spec.schema.yaml — edit here, run
+# `npm run render-schemas`.
+#
+# The librarian principle (references/librarian.md): the model is a
+# librarian — it hands over the best book it has, but it cannot know which
+# books it doesn't have. What it cannot verify or decide it must research
+# first, and what research cannot answer it must ASK, never assume. An
+# unknowns entry is the unit of asking.
+
+schema_version: 1
+artifact: unknown-entry
+doc: >
+  One declared unknown in an agent return's unknowns[] array. The empty
+  array is REQUIRED, not optional — "no unknowns" is an explicit claim the
+  master can hold you to, not a silent default.
+
+fields:
+  id:
+    type: string
+    pattern: '^U-[A-Za-z0-9_-]+$'
+    required: true
+    example: 'U-1'
+    doc: unique within the return; master re-keys when registering
+
+  what:
+    type: string
+    nonempty: true
+    required: true
+    example: 'Which markdownlint rule set the CI pipeline enforces'
+    doc: the exact thing you could not verify or decide — specific, not a vibe
+
+  why_unresolvable:
+    type: string
+    nonempty: true
+    required: true
+    example: 'Runtime tool behavior; this agent has no Bash to execute the linter, and no .markdownlint.json exists in the repo to read'
+    doc: >
+      why YOU cannot close it — missing tool access, source not on disk,
+      decision belongs to the user, library behavior you cannot execute,
+      version unpinned
+
+  research_attempted:
+    type: string
+    nonempty: true
+    required: true
+    example: 'Read repo root + .github/ for linter config (absent); checked docs via Context7 for default ruleset (version-dependent, version unpinned)'
+    doc: >
+      what you tried BEFORE declaring the unknown — research-first is the
+      rule; an unknown with no research attempt will be bounced back
+
+  blocking:
+    type: bool
+    required: true
+    example: false
+    doc: >
+      true when your deliverable's correctness depends on the answer (master
+      must resolve before acting on your return); false when a documented
+      default lets work proceed
+
+  suggested_question:
+    type: string
+    nonempty: true
+    required: true
+    example: 'Which markdownlint config should CI use — the default ruleset, or a pinned .markdownlint.json we add?'
+    doc: the question the master should put to the user, ready to ask
+
+  suggested_default:
+    type: string
+    required: false
+    example: 'Assume default ruleset; emit a follow-up task to pin the config'
+    doc: >
+      optional — what to proceed with if the user ratifies a default instead
+      of answering; omit when no defensible default exists
