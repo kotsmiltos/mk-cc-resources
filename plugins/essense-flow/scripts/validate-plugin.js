@@ -49,7 +49,7 @@ async function checkSkills() {
       fail(`skill "${skill}" missing SKILL.md`);
       continue;
     }
-    const raw = await readFile(path, "utf8");
+    const raw = (await readFile(path, "utf8")).replace(/\r\n/g, "\n");
     const fm = raw.match(/^---\n([\s\S]+?)\n---/);
     if (!fm) {
       fail(`skill "${skill}" SKILL.md missing frontmatter`);
@@ -75,7 +75,7 @@ async function checkCommands() {
   if (entries.length < 12) fail(`expected ≥12 commands, found ${entries.length}`);
   for (const f of entries) {
     const raw = await readFile(join(commandsDir, f), "utf8");
-    if (!raw.startsWith("---\n")) fail(`command ${f} missing frontmatter`);
+    if (!raw.replace(/\r\n/g, "\n").startsWith("---\n")) fail(`command ${f} missing frontmatter`);
     if (!/description:\s*\S/.test(raw)) fail(`command ${f} missing description`);
   }
 }

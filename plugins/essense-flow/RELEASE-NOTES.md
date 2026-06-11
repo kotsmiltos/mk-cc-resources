@@ -1,5 +1,37 @@
 # Release notes — essense-flow
 
+## 0.18.0 — The consolidation rebuild: schema single-source, artifacts-authoritative state, librarian protocol
+
+Six-phase rebuild moving the plugin from internal tooling to public posture. Three structural inversions kill three whole failure classes; the prompt layer becomes readable with zero tribal knowledge.
+
+**Schema single-source.** Artifact shapes (task-spec, completion-record, register-item, unknown-entry) live ONCE in `references/schemas/*.schema.yaml`. The CLI validators, required-key lists, enums, the task-id pattern, fill-in templates, and the shape blocks in agent defs + the sub-architect brief all derive from those files (`lib/schema-validate.cjs` + `scripts/render-schema-docs.cjs`; `npm run render-schemas`; hand-edits fail the suite via `test/schema-docs-drift.test.cjs`). This closes the drift class that caused a 31-spec rejection in a live run: at rebuild time the shape was hand-copied in 4+ places and **all four disagreed** (`file_write_contract` paths-vs-allowed across two validators in the same file; AC-array vs policy-mapping for `test_completion_contract`; the completion-record template missing the required `sprint` key; a brief teaching a `scratch_space` reject-rule the validator never had; three different task-id patterns).
+
+**Artifacts-authoritative state.** The artifacts ARE the state; `state.yaml` is a derived cache. New `lib/infer-phase.cjs` walks the artifact tree backwards and returns ALL candidate phases with evidence — ambiguity is surfaced, never guessed. New `state-reconcile` op (report-only; `--apply` rebuilds the cache from disk, HEAL-LOG-audited, tolerates a parse-blown cache). The four state-gated ops auto-rebuild a MISSING cache when inference is confident and proceed — a fresh checkout no longer dead-ends in "run /heal first". Two new legal transitions close the amendment deadlock that previously required force-set workarounds: `sprint-complete→architecture` (amend a finished sprint) and `sprinting→triaging` (the documented "sprint pauses for triage" path that was never legal).
+
+**Librarian protocol** (`references/librarian.md`). The model is a librarian: it hands over the best book it has but cannot know which books it doesn't have. Every producer-agent return now carries a REQUIRED `unknowns:` array (empty = an explicit claim, not a default; shape in `references/schemas/unknown-entry.schema.yaml`): research-first, then declare — runtime behavior an agent cannot execute, unpinnable library claims, and user-owned decisions all go in the ledger, never into an assumption. Masters register open entries (`register-add --kind unknown`) and surface them to the user via `AskUserQuestion` — blocking entries before acting on the return, the rest batched at the phase gate. The substrate-citation rule (formerly "M-2") is narrowed accordingly: a prescribed-pseudocode trigger line needs a `<file>:<line>` citation ONLY when it names a file that exists on disk; new-code and library claims are exempt — the old trigger-word-only rule fired on code with no line to cite and incentivized fabricated citations, the exact sin it policed.
+
+**Public-readable prompt layer.** ~130 internal incident codenames (DD-*, M-*, L-*, D-Rd*, D-Sprint*, CMC-*, T-NNN, META-GAP, INST-13, …) inlined as self-contained principles carrying their why, mined line-verified from the design workspace. Architect SKILL.md rewritten 671 → 347 lines. Conduct prose lives once in `references/principles.md` (cite-don't-copy, test-enforced). The `skill-substance/` mirror is REMOVED — it was never runtime-load-bearing (every bin/ reference was a comment; its freshness pins shipped vacuous) and had drifted from its workspace originals; SKILL.md is the sole substance source. Public identifiers: INST-13 → "No Resource Caps"; `rule_id: DD-2` → `dispatch-floor`.
+
+**CLI dedup (self-glossary run).** Ran the code-glossary engine on the plugin's own bin+lib. Executed: `INIT_DISPATCH` table replaces two parallel 9-branch skill-init chains. Declined after reading the bodies (recorded with reasons in the rebuild ledger): register audit-line formatters (different grammars), legacy/new cursor branches (live arg-shape routing), the four frontmatter parsers (distinct doc shapes in lock-disciplined audit paths). Engine gaps found: `.cjs`/`.mjs` not indexed; JS block-scan blind to repeated statement shapes — both logged for plugin-toolkit.
+
+**Migration notes (existing .pipeline projects):**
+
+- Task specs using `file_write_contract.allowed/forbidden` still READ fine (alignment criterion 5 accepts both), but new writes must use `paths` (+ optional `out_of_contract`, `scratch_space`); `task-spec-write-section` now validates the same canonical shape as whole-doc writes.
+- `transitions.yaml` consumers: two new edges; `rule_id` value `DD-2` renamed `dispatch-floor` (CLI is passthrough; only matters if external scripts string-matched it).
+- A missing `state.yaml` now self-heals inside ops when artifacts are unambiguous (HEAL-LOG-audited). If you relied on the hard EXIT_DEGRADED to detect fresh checkouts, key on the HEAL-LOG `state-reconcile (auto…)` entries instead.
+- Agent returns missing `unknowns: []` should be bounced by masters per the librarian protocol — update any custom dispatch prompts.
+
+**Honest gaps / accepted residue:**
+
+- bin/lib source COMMENTS still carry historical codenames (archeology, not contract) — accepted for 0.18.
+- `test/append-heal-log-concurrent.test.cjs` AC-3 flakes intermittently on Windows under full-suite load (EPERM on the lock sentinel); passes standalone consistently. Pre-existing; lock-acquisition retry is a candidate fix.
+- `tests/ledger-compaction.test.js` still monitors the author-side design workspace (Fail-Soft skip for everyone else) — it will re-fire as entries age past 30 days.
+- Schema examples (`T-001`, `NFR-2`) inside AUTOGEN blocks are live format examples, not codenames.
+- 1.0.0 was NOT declared — operator's call, not pre-committed (the 0.x line's standing rule).
+
+Regression: `npm test` — 49/49 run-all suites + self-test green; live round-trips verified for schema example → `task-spec-write`, missing-cache auto-reconcile inside `state-set-phase`, corrupt-cache `--apply` repair, both new transitions, and `register-add --kind unknown`.
+
+
 ## 0.17.1 — CLI robustness: real-world task-id schemes + multi-document manifests
 
 Two `essense-flow-tools` parse fixes surfaced running the pipeline against a live audit project (130 task specs, ids like `D-ch01-data` / `E-ch12-engines`):

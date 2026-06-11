@@ -1,16 +1,16 @@
 # Trust model — essense-flow
 
-essense-flow operates on a layered trust contract: the operator trusts the marketplace, the master trusts `finalize.js` and `transitions.yaml`, master distrusts sub-agent self-reports, and every phase hands off through artifacts on disk rather than memory. This file makes the trust boundaries explicit so future skill authors do not silently widen them.
+essense-flow operates on a layered trust contract: the operator trusts the marketplace, the master trusts the state CLI (`bin/essense-flow-tools.cjs`) and `transitions.yaml`, master distrusts sub-agent self-reports, and every phase hands off through artifacts on disk rather than memory. This file makes the trust boundaries explicit so future skill authors do not silently widen them.
 
 ## What trusts
 
 The plugin trusts these inputs and authorities without re-verification at run time:
 
 - **The marketplace source.** Install pulls SKILL.md, lib/, hooks/, and templates/ from the marketplace repo. Once installed, the plugin treats those files as authoritative. There is no per-call signature check.
-- **`finalize.js` as the only state-writer.** Every phase-producing skill funnels its terminal write through `finalize({writes, nextState})`. `finalize.js` calls `assertLegalTransition` against `transitions.yaml` and refuses illegal `from→to` edges. The graph in `transitions.yaml` is the source of truth for phase progression; SKILL.md prose is advisory next to it.
+- **The state CLI as the only state-writer.** Every phase-producing skill funnels its phase advance through `essense-flow-tools state-set-phase`, which validates the edge against `transitions.yaml` (illegal `from→to` edges are refused) and checks the transition's prerequisite artifacts on disk; `record-task-completion` is the sole writer of completion records. The graph in `transitions.yaml` is the source of truth for phase progression; SKILL.md prose is advisory next to it. And because the artifacts are authoritative, even a tampered or corrupted `state.yaml` cache is recoverable: `state-reconcile` rebuilds it from disk.
 - **`transitions.yaml` as the legality oracle.** If an edge is not declared in `transitions.yaml`, it does not exist. Skills that want a new phase must add the edge to `transitions.yaml` AND name it in their SKILL.md; the audit test `tests/transitions.test.js` rejects skills citing edges the graph does not have.
 - **The operator's filesystem permissions.** The plugin trusts that the operator's Claude Code session has legitimate access to the project directory. It does not request elevated privileges and does not check whether writes would clobber anything outside `.pipeline/` (file_write_contract is the contract; the operator owns the directory).
-- **Conduct preamble + principle citations as a forcing function.** Every SKILL.md begins with the verbatim Conduct block; every SKILL.md cites all 5 principles in load-bearing sections. The audit tests (`tests/conduct-preamble.test.js`, `tests/principle-citations.test.js`) enforce this at CI time. A skill that loses its preamble or citations breaks the build.
+- **Conduct preamble + principle citations as a forcing function.** Every SKILL.md opens by citing the canonical Conduct in `references/principles.md` (cite-don't-copy — the text lives once); every SKILL.md cites all 5 principles in load-bearing sections. The audit tests (`tests/conduct-preamble.test.js`, `tests/principle-citations.test.js`) enforce this at CI time. A skill that loses its preamble or citations breaks the build.
 
 ## What distrusts
 
@@ -26,9 +26,9 @@ The plugin actively does not trust these surfaces and re-validates them:
 
 Phase handoff in essense-flow is artifact-mediated, not memory-mediated. The contract:
 
-1. **Phase A's terminal skill writes its phase-defining artifact AND transitions state in one `finalize` call.** Atomic. No partial-write-then-transition split.
-2. **`finalize.js` validates the transition against `transitions.yaml`** before the write. Illegal edges raise; the write does not happen.
-3. **`finalize.js` reads `requires:` from the matched transition** and emits a stderr advisory if a hinted path is neither in `writes[]` nor on disk. Advisory only — never refuses. Caller can ignore with reason.
+1. **Phase A's terminal skill writes its phase-defining artifact, then transitions state via `state-set-phase`.** The artifact lands first; the transition is gated on it. No transition-without-artifact split.
+2. **`state-set-phase` validates the transition against `transitions.yaml`** before the write. Illegal edges are refused; the state does not move.
+3. **`state-set-phase` checks the matched transition's `requires:` artifact preconditions on disk** and rejects with the missing path named when a prerequisite is absent. Concrete artifact preconditions only — never quotas or budgets.
 4. **Phase B's opening skill reads the phase-defining artifact from disk, not from memory.** No phase-A-to-phase-B prose handoff. The artifact IS the handoff.
 5. **Context-inject surfaces phase + canonical artifact paths on every prompt.** Master re-grounds in current phase every turn; no drift between "what phase do I think I'm in" and "what does state.yaml say."
 6. **Build's task dispatch passes a closed brief assembled from the architect-frozen task spec.** Sub-agent receives the spec; spec is not mutable mid-build.

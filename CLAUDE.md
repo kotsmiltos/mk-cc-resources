@@ -13,8 +13,13 @@
 plugins/
   essense-flow/             # Multi-phase AI development pipeline (headline plugin)
     .claude-plugin/plugin.json
-    lib/                    # 25 Node.js modules (state-machine, brief-assembly, dispatch, etc.)
-    hooks/                  # context-inject.js, review-guard.js, yaml-validate.js, session-orient.js
+    bin/                    # essense-flow-tools.cjs — single gateway for state ops (state-set-phase,
+                            #   record-task-completion, state-reconcile, register-add --kind unknown)
+    lib/                    # 19 Node.js modules (state, infer-phase, schema-validate, brief, dispatch,
+                            #   verify-disk, atomic-write, with-lock, rule sweeps, etc.)
+    agents/                 # 12 sub-agent defs; producer returns carry required unknowns[] (librarian)
+    hooks/                  # hooks.json + scripts/: context-inject.js (UserPromptSubmit + SessionStart),
+                            #   next-step.js (Stop) — both advisory, fail-soft
     skills/
       elicit/               # Pitch → SPEC.md through collaborative ideation
       research/             # Multi-perspective analysis → REQ.md
@@ -29,7 +34,11 @@ plugins/
       heal/                 # Pipeline self-heal from any degraded state
     commands/               # 14 slash commands (/init, /elicit, /organize, /glossary, etc.)
     defaults/               # config.yaml, state.yaml templates
-    references/             # transitions.yaml, phase-command-map.yaml
+    references/             # transitions.yaml, phase-command-map.yaml, principles.md,
+                            #   librarian.md (research-first + unknowns[] protocol),
+                            #   schemas/ (canonical artifact shapes: task-spec, completion-record,
+                            #   register-item, unknown-entry — validators, templates, and agent-def
+                            #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)
 
   essense-autopilot/        # Stop-hook autopilot for essense-flow
     .claude-plugin/plugin.json
@@ -108,22 +117,22 @@ The headline plugin. State machine + per-phase skills + verification discipline.
 | Triage | `/triage` | `.pipeline/triage/TRIAGE-REPORT.md` | Routes to earliest needed phase |
 | Architecture | `/architect` | `.pipeline/architecture/ARCH.md` (incl. "Existing functionality considered" reuse ledger when a functionality map exists) + task specs + sprint manifest | `/build` (or `/organize`) |
 | Organize *(optional)* | `/organize` | `.pipeline/architecture/ORGANIZE-REPORT.md` + consolidated task specs (originals archived to `_pre-organize/`) | `/build` |
-| Build | `/build` | `.pipeline/sprints/sprint-N/` completion records | `/review` (or `/glossary`) |
+| Build | `/build` | `.pipeline/build/sprints/<n>/` completion records + `SPRINT-REPORT.md` | `/review` (or `/glossary`) |
 | Glossary *(optional)* | `/glossary` | `.pipeline/glossary/GLOSSARY.{yaml,md}` (propose-only) + `MAP.md` functionality map (consulted by /architect + /build) + `DIFF.md` drift report on re-runs (prior run snapshotted to `history/`) | `/review` (exit cue also surfaces `/dry-refactor` previews) |
-| Review | `/review` | `.pipeline/reviews/QA-REPORT.md` | `/triage` or `/verify` |
-| Verify | `/verify` | `VERIFICATION-REPORT.md` | `complete` or `/triage` |
+| Review | `/review` | `.pipeline/review/sprints/<n>/QA-REPORT.md` | `/triage` or `/verify` |
+| Verify | `/verify` | `.pipeline/verify/VERIFICATION-REPORT.md` | `complete` or `/triage` |
 | Heal | `/heal` | State recovery via legal transitions | Returns to correct phase |
 
 `/organize` and `/glossary` require plugin-toolkit (the code-glossary engine) — hard stop with install hint when absent. Both phases are autopilot human gates.
+
+State is artifacts-authoritative: `.pipeline/state.yaml` is a derived cache. `state-reconcile` (CLI op) compares cache vs artifact inference (`lib/infer-phase.cjs`) — report-only by default, `--apply` rebuilds from disk; a missing cache auto-rebuilds inside ordinary ops. Artifact shapes single-source from `references/schemas/*.schema.yaml` (validators + templates + agent-def shape blocks derive; `npm run render-schemas`; drift-tested). Producer agents follow the librarian protocol (`references/librarian.md`): research first, declare structured `unknowns[]` in every return, masters surface them at phase gates via AskUserQuestion (`register-add --kind unknown`).
 
 ### Hooks (all fail-soft — never block tool calls)
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings |
-| review-guard.js | PreToolUse (Write/Edit/Bash) | Gates file modifications during review/verify phases |
-| yaml-validate.js | PostToolUse (Write/Edit) | Validates YAML integrity after writes |
-| session-orient.js | SessionStart | Drift check, suggests next command |
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first) |
+| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml |
 
 ## Session Lifecycle
 
