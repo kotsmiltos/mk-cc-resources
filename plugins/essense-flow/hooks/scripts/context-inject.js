@@ -65,7 +65,7 @@ function renderContext(state, projectRoot) {
       lines.push(`shape_error: ${state.shape_error.message || state.shape_error.name || 'shape validation failed'}`);
     }
     if (state.path) lines.push(`state_file: ${state.path}`);
-    lines.push(`recommendation: run /heal to reconcile prior state, or /init for a fresh start`);
+    lines.push(`recommendation: run `essense-flow-tools state-reconcile` (rebuilds the state cache from artifacts), /heal for guided recovery, or /init for a fresh start`);
     lines.push(`hook posture: advisory only — tool calls are NOT blocked`);
   } else {
     lines.push(`phase: ${state.phase}`);

@@ -127,6 +127,9 @@ const TASK_SPEC_SCHEMA = loadArtifactSchema('task-spec');
 const COMPLETION_RECORD_SCHEMA = loadArtifactSchema('completion-record');
 const REGISTER_ITEM_SCHEMA = loadArtifactSchema('register-item');
 
+// ---- Artifact-phase inference (2026-06 rebuild: artifacts ARE the state) ----
+const { inferPhaseFromArtifacts } = require(path.join(PLUGIN_ROOT, 'lib', 'infer-phase.cjs'));
+
 // ---- Exit codes (per cli-spec.md §1.1 shared rejection table + per-op tables) ----
 const EXIT_OK = 0;
 const EXIT_DEGRADED = 2;
@@ -1593,12 +1596,13 @@ async function runSetter({
   validateProjectRoot(projectRoot, opName);
 
   const { readState, writeState } = await stateLib();
-  const current = await readState(projectRoot);
+  let current = await readState(projectRoot);
   if (current.degraded) {
-    return emitFailure(
-      EXIT_DEGRADED,
-      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
-    );
+    // artifacts-first recovery: a missing cache rebuilds from disk when
+    // inference is unambiguous; corrupt/ambiguous fails with the inference
+    const rec = await reconcileDegradedState(projectRoot, opName, current.degraded);
+    if (!rec.ok) return emitFailure(rec.code, rec.message);
+    current = rec.state;
   }
 
   // Build the next state. Strip `degraded`/`path` fields readState added.
@@ -1820,12 +1824,13 @@ async function stateSetPhase({ rawValue, sprintArg, projectRoot }) {
   validateProjectRoot(projectRoot, opName);
 
   const { readState, writeState, assertLegalTransition } = await stateLib();
-  const current = await readState(projectRoot);
+  let current = await readState(projectRoot);
   if (current.degraded) {
-    return emitFailure(
-      EXIT_DEGRADED,
-      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
-    );
+    // artifacts-first recovery: a missing cache rebuilds from disk when
+    // inference is unambiguous; corrupt/ambiguous fails with the inference
+    const rec = await reconcileDegradedState(projectRoot, opName, current.degraded);
+    if (!rec.ok) return emitFailure(rec.code, rec.message);
+    current = rec.state;
   }
 
   // Legality check
@@ -3478,12 +3483,13 @@ async function taskSpecWrite({ sprint, taskId, contentFile, projectRoot }) {
 
   // V2: load state, check phase
   const { readState } = await stateLib();
-  const current = await readState(projectRoot);
+  let current = await readState(projectRoot);
   if (current.degraded) {
-    return emitFailure(
-      EXIT_DEGRADED,
-      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
-    );
+    // artifacts-first recovery: a missing cache rebuilds from disk when
+    // inference is unambiguous; corrupt/ambiguous fails with the inference
+    const rec = await reconcileDegradedState(projectRoot, opName, current.degraded);
+    if (!rec.ok) return emitFailure(rec.code, rec.message);
+    current = rec.state;
   }
   if (!['architecture', 'decomposing'].includes(current.phase)) {
     return emitFailure(
@@ -4817,12 +4823,13 @@ async function recordTaskCompletion({ sprint, taskId, contentFile, projectRoot }
 
   // V2: load state, check phase
   const { readState } = await stateLib();
-  const current = await readState(projectRoot);
+  let current = await readState(projectRoot);
   if (current.degraded) {
-    return emitFailure(
-      EXIT_DEGRADED,
-      `essense-flow-tools ${opName}: current state degraded (${current.degraded}); run /heal first`,
-    );
+    // artifacts-first recovery: a missing cache rebuilds from disk when
+    // inference is unambiguous; corrupt/ambiguous fails with the inference
+    const rec = await reconcileDegradedState(projectRoot, opName, current.degraded);
+    if (!rec.ok) return emitFailure(rec.code, rec.message);
+    current = rec.state;
   }
   if (current.phase !== 'sprinting') {
     return emitFailure(
@@ -4980,6 +4987,132 @@ function validateCompletionRecordTypes(rec) {
 
 // (legacy hand-coded body removed; kept here as unreachable would violate
 // dead-code policy — deleted outright)
+
+// ============================================================================
+// Artifacts-first state recovery (2026-06 rebuild)
+// ----------------------------------------------------------------------------
+// The artifacts ARE the state; state.yaml is a derived cache of what disk
+// already shows. When the cache is MISSING and the artifact tree supports
+// exactly one phase inference, ops rebuild the cache from disk (audited to
+// HEAL-LOG.md) and proceed — no more dead-ending into "run /heal first" on a
+// fresh checkout or a cleaned .pipeline. A CORRUPT cache still hard-fails:
+// corruption deserves eyes, not silent repair — but the failure now carries
+// the inference so the operator knows what reconcile would do. Ambiguous
+// inference NEVER auto-repairs: candidates are listed and a human (or /heal)
+// decides.
+async function reconcileDegradedState(projectRoot, opName, degradedKind) {
+  let inf;
+  try {
+    inf = inferPhaseFromArtifacts(projectRoot);
+  } catch (e) {
+    return {
+      ok: false,
+      code: EXIT_DEGRADED,
+      message: `essense-flow-tools ${opName}: current state degraded (${degradedKind}) and artifact inference failed (${e.message}); run /heal`,
+    };
+  }
+  const candidateNote = inf.candidates
+    .map((c) => `${c.phase}${c.sprint ? ` (sprint ${c.sprint})` : ''} — ${c.evidence[0]}`)
+    .join('; ');
+  if (degradedKind !== 'missing') {
+    return {
+      ok: false,
+      code: EXIT_DEGRADED,
+      message: `essense-flow-tools ${opName}: current state degraded (${degradedKind}); inspect state.yaml, then run state-reconcile --apply or /heal. Artifacts suggest: ${candidateNote}`,
+    };
+  }
+  if (!inf.confident) {
+    return {
+      ok: false,
+      code: EXIT_DEGRADED,
+      message: `essense-flow-tools ${opName}: state.yaml missing and artifact inference is ambiguous — ${candidateNote}. Run state-reconcile or /heal to disposition.`,
+    };
+  }
+  const { loadDefaultState, writeState, statePath } = await stateLib();
+  const fresh = await loadDefaultState();
+  fresh.phase = inf.phase;
+  if (inf.sprint !== null && inf.sprint !== undefined) fresh.sprint = inf.sprint;
+  fresh.last_updated = new Date().toISOString();
+  // audit-before-mutation discipline (same order force-set uses)
+  await appendHealLog(projectRoot, 'force_actions', {
+    at: fresh.last_updated,
+    prior_phase: null,
+    new_phase: inf.phase,
+    reason: `state-reconcile (auto, ${opName}): state.yaml missing; cache rebuilt from artifacts — ${inf.candidates[0].evidence.join('; ')}`,
+  });
+  await writeState(projectRoot, fresh, { force: true, bypassLegalTransition: true });
+  return {
+    ok: true,
+    state: { ...fresh, degraded: null, path: statePath(projectRoot) },
+    reconciled: { from: 'missing', phase: inf.phase, sprint: inf.sprint ?? null },
+  };
+}
+
+// ============================================================================
+// Op: state-reconcile (2026-06 rebuild)
+// ----------------------------------------------------------------------------
+// Compares the state.yaml cache against artifact inference. Report-only by
+// default; --apply rewrites the cache from the artifacts when they disagree
+// (or when the cache is missing/corrupt) and the inference is confident.
+// Artifacts win on conflict — that is the design, not a recovery hack.
+async function stateReconcile({ projectRoot, apply }) {
+  const opName = 'state-reconcile';
+  validateProjectRoot(projectRoot, opName);
+  const { readState, writeState, loadDefaultState } = await stateLib();
+  // Tolerate a parse-blown cache: reconcile is THE repair tool, so a cache
+  // too corrupt for readState's degraded-marker path must not kill it.
+  let current;
+  try {
+    current = await readState(projectRoot);
+  } catch (e) {
+    current = { phase: 'idle', degraded: 'corrupt', reason: e.message };
+  }
+  const inf = inferPhaseFromArtifacts(projectRoot);
+  const cachedPhase = current.degraded ? null : current.phase;
+  const agreement = !current.degraded && inf.confident && current.phase === inf.phase;
+  const report = {
+    ok: true,
+    op: opName,
+    cached_phase: cachedPhase,
+    degraded: current.degraded || null,
+    confident: inf.confident,
+    inferred_phase: inf.phase,
+    inferred_sprint: inf.sprint === undefined ? null : inf.sprint,
+    candidates: inf.candidates,
+    agreement,
+    applied: false,
+  };
+  if (!apply || agreement) {
+    return emitSuccess(report);
+  }
+  if (!inf.confident) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: --apply refused — artifact inference is ambiguous (${inf.candidates.map((c) => c.phase).join(', ')}); disposition via /heal or fix artifacts first`,
+    );
+  }
+  // Base doc: keep the cache's fields when readable; defaults when degraded.
+  let base;
+  if (current.degraded) {
+    base = await loadDefaultState();
+  } else {
+    const { degraded: _d, path: _sp, ...core } = current;
+    base = core;
+  }
+  base.phase = inf.phase;
+  if (inf.sprint !== null && inf.sprint !== undefined) base.sprint = inf.sprint;
+  base.last_updated = new Date().toISOString();
+  await appendHealLog(projectRoot, 'force_actions', {
+    at: base.last_updated,
+    prior_phase: cachedPhase,
+    new_phase: inf.phase,
+    reason: `state-reconcile --apply: cache ${current.degraded ? `degraded (${current.degraded})` : `phase '${cachedPhase}'`} vs artifacts '${inf.phase}' — artifacts win; evidence: ${inf.candidates[0].evidence.join('; ')}`,
+  });
+  await writeState(projectRoot, base, { force: true, bypassLegalTransition: true });
+  report.applied = true;
+  report.agreement = true;
+  return emitSuccess(report);
+}
 
 // ============================================================================
 // Op: register-add (T-919 — closure-plan round-9 DD-19 + DD-10 + D-Rd9-2)
@@ -6153,6 +6286,10 @@ function printHelp() {
       '',
       'Ops implemented (S7 + S8 + S9.1 + S9.2 + S9.3 + S9.4 + S9.5 + S9.6 + S9.7 — 2026-05-08):',
       '  init context | architect | build | review | verify | research | triage | elicit | heal',
+      '  state-reconcile [--apply] --project-root <dir>',
+      '      → compares the state.yaml cache against artifact inference (the',
+      '        artifacts ARE the state). Report-only by default; --apply rebuilds',
+      '        the cache from disk when they disagree and inference is confident.',
       '      → JSON describing skill (canonical paths, ordered_steps, sub_agents).',
       '        context returns multi-mode shape (ordered_steps_by_mode + per_phase_artifact_map).',
       '        heal returns descriptive strings for phase_from/phase_to/transitions (D-2 closed).',
@@ -6448,6 +6585,10 @@ if (require.main === module) (async () => {
         projectRootArg: args['project-dir'] || args['project-root'],
       });
       return;
+    }
+    case 'state-reconcile': {
+      await stateReconcile({ projectRoot: args['project-root'], apply: args.apply === true });
+      break;
     }
     case 'state-force-set-phase': {
       await stateForceSetPhase({

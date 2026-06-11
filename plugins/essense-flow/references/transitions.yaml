@@ -208,6 +208,19 @@ transitions:
     auto_advance: true
     fields_changed: [phase, last_updated]
 
+  # A paused sprint (crashed/blocked task agents, mid-sprint findings) routes
+  # through triage — the sorting hat decides which upstream phase the blocker
+  # needs. This edge was always documented ("sprint pauses for triage" in the
+  # task-agent quorum contract) but never legal; its absence forced /heal +
+  # force-set workarounds for ordinary mid-sprint amendments.
+  sprinting-to-triaging:
+    from: sprinting
+    to: triaging
+    triggered_by: build-skill
+    requires: "sprint paused: >=1 completion record with status crashed | blocked | partial-with-surfaced-concern, or user-initiated pause"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
   # --- organize (optional, post-architect pre-build; spec-mode DRY pass) ---
 
   sprinting-to-organizing:
@@ -257,6 +270,20 @@ transitions:
     to: sprint-complete
     triggered_by: glossary-skill
     requires: ".pipeline/glossary/GLOSSARY.yaml exists"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
+  # A completed sprint may be amended: architect re-enters, patches the
+  # affected task specs against the new requirement, and repacks (either an
+  # in-place amendment of sprint <n> or a follow-up sprint <n+1> from the
+  # surviving dependency graph). Mirrors the verifying-to-architecture
+  # precedent — finished work routing back to design is a normal loop, not
+  # an illegal state.
+  sprint-complete-to-architecture:
+    from: sprint-complete
+    to: architecture
+    triggered_by: architect-skill
+    requires: "user-approved amendment: new/changed requirement names the sprint outputs it affects"
     auto_advance: false
     fields_changed: [phase, last_updated]
 

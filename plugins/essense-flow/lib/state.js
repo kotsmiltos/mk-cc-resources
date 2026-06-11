@@ -506,7 +506,15 @@ export async function assertLegalTransition(from, to) {
 
 export async function writeState(projectRoot, nextState, options = {}) {
   const path = statePath(projectRoot);
-  const current = await readState(projectRoot);
+  // A cache too corrupt for readState's degraded-marker path (hard YAML
+  // parse / shape throw) must still be repairable by {force: true} writers
+  // (state-reconcile, heal). Treat the throw as degraded: 'corrupt'.
+  let current;
+  try {
+    current = await readState(projectRoot);
+  } catch (e) {
+    current = { phase: "idle", degraded: "corrupt", reason: e.message };
+  }
 
   // From a degraded read, allow heal/init to repair via {force: true}.
   // Without force, a degraded current state blocks transition writes
