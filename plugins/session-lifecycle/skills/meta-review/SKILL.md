@@ -1,6 +1,6 @@
 ---
 name: meta-review
-description: Diagnose this session — find multi-step workflow chains you did manually, friction with skills that fired badly or should have fired, mk-cc-resources plugins that fit but went unused, and clear coverage gaps. Reads conversation + git activity (session scope) or also handoffs + memory + recent commits (wide scope). Output is diagnostic — issues with evidence + root causes + where to look for fixes. Does NOT propose diffs or apply changes. Use when something felt off, when reviewing what worked, or periodically to find workflow gaps.
+description: Diagnose this session — find multi-step workflow chains you did manually, friction with skills that fired badly or should have fired, installed plugins that fit but went unused, and clear coverage gaps. Reads conversation + git activity (session scope) or also handoffs + memory + recent commits (wide scope). Output is diagnostic — issues with evidence + root causes + where to look for fixes. Does NOT propose diffs or apply changes. Use when something felt off, when reviewing what worked, or periodically to find workflow gaps.
 disable-model-invocation: true
 argument-hint: "[session | wide | <focus topic>]"
 ---
@@ -19,11 +19,13 @@ git log --oneline -20 2>/dev/null || echo "no git"
 git diff --name-only HEAD~20..HEAD 2>/dev/null || echo "unknown"
 ```
 
-## Available mk-cc-resources plugins
+## Installed sibling plugins
 
 ```!
-ls -d C:/Users/mkots/mk-cc-resources/plugins/*/ 2>/dev/null | xargs -n1 basename || echo "mk-cc-resources not found at expected path"
+ls -d "${CLAUDE_PLUGIN_ROOT}/../"*/ 2>/dev/null || echo "plugins root not found"
 ```
+
+(Plugins root = parent of this plugin's root. Read plugin names from the directory paths above.)
 
 <instructions>
 
@@ -31,7 +33,7 @@ ls -d C:/Users/mkots/mk-cc-resources/plugins/*/ 2>/dev/null | xargs -n1 basename
 
 Based on `$ARGUMENTS`:
 - `session` (default) or no arg: review THIS conversation + current session's git activity
-- `wide`: also read `.claude/handoff-*.md`, memory files at `~/.claude/projects/<project>/memory/`, recent commits beyond session
+- `wide`: also read `.claude/handoff-*.md`, memory files in the per-project memory directory under `~/.claude/projects/` (directory name is the munged project path), recent commits beyond session
 - specific topic (e.g., "build workflow", "testing"): focus diagnosis on that area
 
 ## 2. Identify multi-step workflow chains
@@ -50,7 +52,7 @@ A workflow chain = a sequence of 3+ related actions performed deliberately as a 
 For each chain found in session, note:
 - What the chain does (the macro-process, one sentence)
 - Number of times performed in scope (1× rare, 2× pattern, 3+ recurring)
-- Whether a skill exists for it (search marketplace.json descriptions)
+- Whether a skill exists for it (search the available-skills list already in context)
 - If no skill exists, is the chain repeatable or one-off?
 
 ## 3. Diagnose existing skill usage
@@ -61,8 +63,8 @@ For each chain found in session, note:
 - Did manual steps fill gaps the skill should have covered?
 - Was the friction from the skill's body, its description, or external factors?
 
-**For each mk-cc-resources skill NOT invoked this session:**
-- Read its description (from `.claude-plugin/marketplace.json` or its SKILL.md)
+**For each installed skill NOT invoked this session:**
+- Read its description (from the available-skills list in context; for deeper reading, open the plugin's SKILL.md under `${CLAUDE_PLUGIN_ROOT}/../<plugin>/skills/`)
 - Did session work fit that skill's domain?
 - If yes, why didn't it fire? (description mismatch / wrong trigger / unknown to user / disabled?)
 
@@ -70,7 +72,7 @@ For each chain found in session, note:
 
 A coverage gap = a workflow chain done manually with no skill match.
 - Read the natural-language intent the user expressed when doing the chain
-- Search marketplace.json descriptions for fit
+- Search the available-skills list (and each plugin's SKILL.md under `${CLAUDE_PLUGIN_ROOT}/../<plugin>/skills/` when deeper reading is needed) for fit
 - If no fit: this is a gap. Note the chain, the intent, the user's natural phrasing.
 
 ## 5. Output format
@@ -91,20 +93,20 @@ A coverage gap = a workflow chain done manually with no skill match.
   - Root cause: <description doesn't surface this use case / unknown to model>
   - Where to look: SKILL.md `description:` field
 
-### Underused plugins (mk-cc-resources)
+### Underused plugins (installed)
 - **<plugin>**: installed, fits session work (<evidence>), never invoked
   - Possible reasons: <description gap | not discoverable | unknown to user>
 
 ### Coverage gaps
 - **<chain done manually>** — no skill covers this
   - User intent phrasing: "<verbatim quote>"
-  - No mk-cc-resources match found
-  - Where to look: candidate for new skill in mk-cc-resources
+  - No installed-skill match found
+  - Where to look: candidate for a new skill (new plugin, or new skill under an existing plugin you author)
 
 ### Where fixes live
-- Skill friction → `plugins/<name>/skills/<skill>/SKILL.md` (description or body)
-- Coverage gaps → new plugin or new skill under existing plugin
-- Underused plugins → description rewriting (see thorough-mode for natural-language patterns)
+- Skill friction → the skill's SKILL.md (description or body) in the plugin's source repository (for marketplace authors)
+- Coverage gaps → new plugin, or new skill under an existing plugin, in the plugin's source repository
+- Underused plugins → description rewriting in the plugin's source repository (for hint-phrasing precedent, see the HINTS table in `plugins/thorough-mode/hooks/thorough-mode.js`)
 ```
 
 ## Constraints

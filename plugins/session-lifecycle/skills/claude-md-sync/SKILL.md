@@ -14,6 +14,8 @@ Keep CLAUDE.md accurate by proposing targeted updates to sections that drifted f
 git diff --stat HEAD~20..HEAD 2>/dev/null || git diff --stat 2>/dev/null || echo "no git history"
 ```
 
+(The `|| git diff --stat` fallback fires when history has fewer than 20 commits — it covers uncommitted changes only, not committed ones.)
+
 ## Changed files detail
 
 ```!

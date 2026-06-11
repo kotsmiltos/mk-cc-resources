@@ -25,7 +25,7 @@ git log --oneline --since="7 days ago" 2>/dev/null || git log --oneline -30 2>/d
 ## 1. Determine scope
 
 Based on `$ARGUMENTS`:
-- **`sprint-N`**: Read `.pipeline/build/sprints/N/` completion records, QA report, sprint report.
+- **`sprint-N`**: Read `.pipeline/build/sprints/N/` completion records + SPRINT-REPORT.md, and the QA report at `.pipeline/review/sprints/N/QA-REPORT.md`.
 - **`session`**: Use git log from today (or since last handoff timestamp from `.claude/handoff-*.md`).
 - **`all`**: Read all available sprint data + full git history on branch.
 - **No argument**: Default to `session`.
@@ -43,7 +43,7 @@ Collect what's available (skip what doesn't exist):
 **From pipeline (if `.pipeline/` exists):**
 - Tasks attempted vs completed vs failed vs blocked
 - Drift items found (from QA-REPORT.md or sprint reports)
-- Verification verdicts (MATCH / PARTIAL / GAP / DEVIATED)
+- Verify verdicts (`implemented | partial | missing | drift | manual`) and build per-task verdicts (`verified / drifted / paused / contradiction / synthetic`)
 - Wave count and wave sizes
 
 **From handoff archives (if `.claude/handoff-*.md` exist):**

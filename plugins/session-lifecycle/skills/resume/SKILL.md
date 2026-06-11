@@ -15,7 +15,7 @@ Restore context from `.claude/handoff.md` so work continues without information 
 ## Current state
 
 - **Branch:** !`git branch --show-current 2>/dev/null`
-- **Latest commits since handoff:**
+- **Recent commits (last 5):**
 ```!
 git log --oneline -5 2>/dev/null
 ```
@@ -36,6 +36,7 @@ Compare handoff expectations against current state:
 - **Branch match:** Is current branch same as handoff's `branch` frontmatter? If not, report discrepancy.
 - **New commits:** Are there commits after the handoff timestamp not mentioned in handoff? If so, summarize what changed.
 - **Pipeline state:** If handoff lists a pipeline phase, check `.pipeline/state.yaml` — has phase advanced or regressed?
+- **Branch State drift:** Compare handoff's `## Branch State` against current reality — especially the tests-passing flag (handoff said passing but uncommitted changes landed since? flag it) and the uncommitted-changes claim vs the git diff above.
 
 Report all discrepancies clearly before proceeding.
 
@@ -61,19 +62,22 @@ Summarize for the user in this format:
 ### Blockers
 <from handoff "Blockers">
 
+### Notes from last session
+<from handoff "Notes", surfaced verbatim — user-provided context; "None" if empty>
+
 ### State discrepancies since handoff
-<any drift found in step 2, or "None — state matches handoff">
+<any drift found in step 2 — including Branch State / tests-passing drift — or "None — state matches handoff">
 ```
 
 ## 4. Suggest first action
 
 Based on remaining work priority + blockers + pipeline state:
 - Recommend the single most impactful next action.
-- If pipeline exists and has a `next_action`, factor that in.
+- If a pipeline exists, suggest running `/next` (essense-flow) for the recommended command and factor that in.
 - If blockers exist, suggest addressing the blocker first.
 
 ## 5. Archive handoff
 
-After presenting, rename `.claude/handoff.md` to `.claude/handoff-<date>.md` (ISO date from frontmatter) so it doesn't get re-consumed. Keep last 3 archived handoffs; delete older ones.
+After presenting, rename `.claude/handoff.md` to `.claude/handoff-<YYYY-MM-DDTHH-mm>.md` (full timestamp from frontmatter, colons replaced with `-` for filesystem safety) so it doesn't get re-consumed and same-day handoffs don't collide. Keep last 3 archived handoffs; delete older ones.
 
 </instructions>

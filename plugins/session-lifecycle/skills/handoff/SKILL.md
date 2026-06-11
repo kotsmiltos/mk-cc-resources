@@ -1,8 +1,8 @@
 ---
 name: handoff
-description: Generate session handoff document — what was done (with file/commit refs), what remains (priority-ordered), critical context (decisions, gotchas, rejected approaches), blockers. Saves to .claude/handoff.md. Triggers /claude-md-sync if 10+ files changed or impact-map sections touched. Use when ending a session, pausing mid-task, or switching projects.
+description: Generate session handoff document — what was done (with file/commit refs), what remains (priority-ordered), critical context (decisions, gotchas, rejected approaches), blockers. Saves to .claude/handoff.md. Triggers /claude-md-sync if more than 10 files changed or impact-map sections touched. Use when ending a session, pausing mid-task, or switching projects.
 disable-model-invocation: true
-argument-hint: "[optional notes to include in handoff]"
+argument-hint: "[--sync] [optional notes to include in handoff]"
 ---
 
 <objective>
@@ -30,7 +30,7 @@ git diff --cached --stat 2>/dev/null || echo "none"
 ## 1. Gather context
 
 Read the injected git state above. Then:
-- If `.pipeline/state.yaml` exists, read it for pipeline phase, sprint, blocked_on, next_action.
+- If `.pipeline/state.yaml` exists, read it for `phase`, `sprint`, `wave`, `last_updated`. For the recommended next command, use the essense-flow-tools `next` op or `/next` (essense-flow).
 - If `.planning/STATE.md` or `context/STATE.md` exists, read for project state.
 - Check for open tasks, TODOs, or in-progress work markers.
 
@@ -69,7 +69,7 @@ pipeline_phase: <phase or "none">
 ## Branch State
 - Uncommitted changes: <yes/no, what>
 - Tests passing: <yes/no/unknown>
-- Pipeline: <phase + next action, or "no pipeline">
+- Pipeline: <phase + recommended next command (from /next), or "no pipeline">
 
 ## Notes
 <User-provided notes from $ARGUMENTS, or "None">

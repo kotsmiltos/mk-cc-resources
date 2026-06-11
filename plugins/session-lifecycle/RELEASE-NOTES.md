@@ -1,5 +1,15 @@
 # Release notes — session-lifecycle
 
+## 1.1.1 — Portability + dead-field cleanup
+
+**meta-review made portable and audience-neutral.** Injected plugin listing no longer hardcodes a machine-specific absolute path (username leak) — now resolves the plugins root via `${CLAUDE_PLUGIN_ROOT}/../`. Repo-coupling removed: skill discovery uses the available-skills list already in context (plus each plugin's SKILL.md under the plugins root for deeper reading) instead of assuming cwd = mk-cc-resources and reading marketplace.json; "mk-cc-resources plugins" reframed as "installed plugins"; fix locations phrased as "in the plugin's source repository (for marketplace authors)". Memory path described generically (per-project memory directory under `~/.claude/projects/`, munged project path). Stale thorough-mode pointer fixed — its HINTS table lives in `plugins/thorough-mode/hooks/thorough-mode.js` (hooks-only plugin now).
+
+**Dead essense-flow state fields dropped.** handoff and resume referenced `blocked_on` / `next_action`, which don't exist in essense-flow's `state.yaml`. handoff now reads `phase, sprint, wave, last_updated` and gets the recommended next command from the essense-flow-tools `next` op or `/next`; resume suggests running `/next` when a pipeline exists.
+
+**handoff↔resume contract closed.** resume now consumes everything handoff writes: surfaces handoff's `## Notes` verbatim in the resume report, and compares `## Branch State` (tests-passing flag, uncommitted-changes claim) against current reality, flagging drift.
+
+**Cosmetics.** handoff description aligned to body ("more than 10 files"); `--sync` flag added to handoff's argument-hint; resume heading corrected to "Recent commits (last 5)"; resume archive name now uses full timestamp `handoff-<YYYY-MM-DDTHH-mm>.md` (filesystem-safe, no same-day collisions — existing `handoff-*.md` globs in retro/meta-review still match); retro verdict vocab updated to real essense-flow verdicts (verify: `implemented | partial | missing | drift | manual`; build: `verified / drifted / paused / contradiction / synthetic`); retro QA-report location corrected to `.pipeline/review/sprints/<n>/QA-REPORT.md`; claude-md-sync notes the `|| git diff --stat` fallback covers uncommitted-only changes when history < 20 commits.
+
 ## 1.1.0 — Meta-review diagnostic refocus + description refinements
 
 **meta-review refactored to diagnostic-only.** Old version proposed diffs and offered to apply fixes; new version identifies issues + root causes + points to where fixes live, never applies changes. Key reframing: "repeated manual steps" → "multi-step workflow chains" with explicit examples of what IS/IS NOT a chain (3+ deliberate actions, not single tool calls — `git log` alone is not a skill candidate). Added scope modes — `session` (default), `wide` (handoffs + memory + recent commits), or specific topic. Added mk-cc-resources plugin ecosystem analysis — checks which plugins fit session work but went unused, why they didn't fire (description mismatch, wrong trigger, unknown). Constraint added: never fabricate findings; trivial sessions return "nothing to report" rather than padding.
