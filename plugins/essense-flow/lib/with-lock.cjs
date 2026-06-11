@@ -143,6 +143,18 @@ async function withLock(targetPath, asyncFn) {
       // bubbling defeats that contract. Wrap non-EEXIST openSync errors
       // and preserve original via Error.cause (Node.js canonical).
       if (e.code !== 'EEXIST') {
+        // Windows transient codes: openSync can fail EPERM/EBUSY/EACCES
+        // while another process is mid-rename/unlink on the same sentinel
+        // (NTFS share-mode violation; also AV/indexer holds). These are
+        // contention in different clothing — retry with the same backoff
+        // curve instead of failing the whole op on the first hiccup.
+        // (Observed: append-heal-log-concurrent AC-3 flaking EPERM under
+        // 16-way full-suite load, passing standalone.)
+        if ((e.code === 'EPERM' || e.code === 'EBUSY' || e.code === 'EACCES')
+            && attempt < MAX_ATTEMPTS - 1) {
+          await sleep(BASE_BACKOFF_MS * Math.pow(2, attempt));
+          continue;
+        }
         const wrapped = new Error(
           'withLock: openSync failed at ' + lockPath
             + ' with ' + (e.code || 'unknown')

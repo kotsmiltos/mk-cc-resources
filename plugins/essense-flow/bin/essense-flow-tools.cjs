@@ -1268,16 +1268,17 @@ async function appendHealLog(projectRoot, arrayKey, entry) {
     const tmpPath = tmpName(logPath);
     fs.writeFileSync(tmpPath, out, 'utf8');
     fs.renameSync(tmpPath, logPath);
+
+    // Phase 2 — body append, INSIDE the same lock. O_APPEND is atomic
+    // against other appends, but NOT against this function's own
+    // tmp+rename in a concurrent caller: a writer that read its snapshot
+    // before our append and renamed after it would silently drop our
+    // line (observed: 16-way concurrency landing 15 body lines). Holding
+    // the lock for the one-line append closes the lost-update window;
+    // hold time stays trivially short.
+    appendAuditLine(logPath, bodyAppend);
   });
 
-  // Phase 2 — body append via appendAuditLine (O_APPEND atomic single-line
-  // write per CMC-Rd11-1 substrate). bodyAppend was pre-computed above and
-  // is guaranteed single-line by formatHealLogBodyLine; appendAuditLine
-  // enforces the no-newline invariant per T-971 sub-amend 2 (hard-throws
-  // if a \n or \r somehow appears). This write happens OUTSIDE the lock
-  // because O_APPEND is itself the atomicity primitive — and keeping the
-  // lock hold short respects the 60s cap.
-  appendAuditLine(logPath, bodyAppend);
   return logPath;
 }
 
@@ -5496,11 +5497,13 @@ async function _appendStaleSweepLogLine(projectRoot, line) {
   if (!fs.existsSync(healDir)) {
     fs.mkdirSync(healDir, { recursive: true });
   }
-  // T-961: one-line atomic append via PIPE_BUF guarantee. Drops the prior
-  // read-modify-write + tmp+rename pattern; lock discipline at the handler
-  // level (withLock) plus O_APPEND atomicity at the line level is the
-  // CMC-Rd11-1 lock-substance preservation contract.
-  appendAuditLine(logPath, line);
+  // One-line atomic append, serialized under the HEAL-LOG lock: O_APPEND
+  // protects against interleaved appends, but appendHealLog's frontmatter
+  // tmp+rename replaces the whole file — an unserialized append can land
+  // between a concurrent writer's read and rename and be silently dropped.
+  await withLock(logPath, async () => {
+    appendAuditLine(logPath, line);
+  });
   return logPath;
 }
 
@@ -5795,7 +5798,10 @@ async function _appendApplyDispositionLogLine(projectRoot, line) {
   if (!fs.existsSync(healDir)) {
     fs.mkdirSync(healDir, { recursive: true });
   }
-  appendAuditLine(logPath, line);
+  // serialized under the HEAL-LOG lock — see _appendStaleSweepLogLine
+  await withLock(logPath, async () => {
+    appendAuditLine(logPath, line);
+  });
 }
 
 async function healApplyDisposition({ itemId, action, projectRoot }) {

@@ -5,9 +5,8 @@ schema_version: 1
 phase: idle
 sprint: null
 # sprint_iteration: positive-int counter for re-runs of the SAME sprint
-# number (e.g. fix-only follow-up passes). Hotfix v0.13.1 DD-15 (per
-# redesign/06-decisions.md 2026-05-16 closure-reopening). Defaults null;
-# bumped by a CLI op when a fix-only re-run starts on the same sprint.
+# number (e.g. fix-only follow-up passes). Defaults null; bumped by a CLI
+# op when a fix-only re-run starts on the same sprint.
 sprint_iteration: null
 wave: null
 elicitation:
@@ -21,7 +20,7 @@ triage:
   completed_at: null
 architecture:
   completed_at: null
-  # M-5 round budget per D-Sprint10-4 (closure-plan Sprint 10):
+  # Round budget — escalate after two amendment rounds:
   # `round` tracks architecture-phase round count (incremented by
   # architect-round-close write op). `escalation_signoff` is null by
   # default; user must populate it (verdict quote) to authorize round 3+.
@@ -35,7 +34,7 @@ decomposition:
 verify:
   completed_at: null
 
-# --- Round-3 runner-managed state fields (D-Rd3-2 ratification per closure SPEC DD-4) ---
+# --- Runner-managed state fields (halt-recovery + sprint-complete ops) ---
 # Runtime-emitted by halt-recovery + sprint-complete CLI ops; absent values default to null per YAML semantics.
 sprint_complete_at: null
 sprint_summary: null

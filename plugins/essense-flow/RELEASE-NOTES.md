@@ -24,7 +24,7 @@ Six-phase rebuild moving the plugin from internal tooling to public posture. Thr
 **Honest gaps / accepted residue:**
 
 - bin/lib source COMMENTS still carry historical codenames (archeology, not contract) — accepted for 0.18.
-- `test/append-heal-log-concurrent.test.cjs` AC-3 flakes intermittently on Windows under full-suite load (EPERM on the lock sentinel); passes standalone consistently. Pre-existing; lock-acquisition retry is a candidate fix.
+- ~~append-heal-log concurrency flake~~ — investigated and it was NOT environment noise: HEAL-LOG body appends ran OUTSIDE the frontmatter lock, so a concurrent writer's whole-file tmp+rename could replace the file from a pre-append snapshot and silently drop a line (reproduced: 16 concurrent appends, 15 landed). All three HEAL-LOG writers now serialize under the lock, and withLock retries Windows-transient EPERM/EBUSY/EACCES with the same backoff curve. 8/8 consecutive hammer runs green.
 - `tests/ledger-compaction.test.js` still monitors the author-side design workspace (Fail-Soft skip for everyone else) — it will re-fire as entries age past 30 days.
 - Schema examples (`T-001`, `NFR-2`) inside AUTOGEN blocks are live format examples, not codenames.
 - 1.0.0 was NOT declared — operator's call, not pre-committed (the 0.x line's standing rule).
