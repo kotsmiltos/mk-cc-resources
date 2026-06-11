@@ -78,10 +78,9 @@ plugins/
       SKILL.md
       tool/                 # Standalone Python CLI package (typer + openpyxl + rich)
 
-  thorough-mode/            # Prompt modifiers (++, @thorough, @ship, @present)
+  thorough-mode/            # Prompt modifiers (++, @thorough, @ship, @present) — hooks-only
     .claude-plugin/plugin.json
-    skills/thorough-mode/
-      SKILL.md
+    hooks/thorough-mode.js    # UserPromptSubmit hint injection (HINTS table)
 
   project-note-tracker/     # Question + bug tracker with Excel backend
     .claude-plugin/plugin.json
@@ -184,7 +183,7 @@ When changing files that follow these patterns, CHECK the related files for cons
 | plugin-toolkit (code-glossary engine) | Python >= 3.11 via uv; pyyaml, tree-sitter + tree-sitter-typescript + tree-sitter-c-sharp; pytest (dev) |
 | session-lifecycle | None (pure SKILL.md + `!`command`` shell injection) |
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
-| thorough-mode | None (pure SKILL.md) |
+| thorough-mode | None (hooks-only, stdlib JS) |
 | project-note-tracker | Python >= 3.10, openpyxl (via uvx) |
 | alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
 | Build system | hatchling (schema-scout packaging) |
