@@ -36,6 +36,28 @@ try {
 
 // ---------- Defaults ----------
 
+// human_gates + terminal are owned by essense-flow's state machine
+// (references/transitions.yaml). When the essense-flow plugin is installed
+// as a sibling, read them from there so the two plugins cannot drift; the
+// hardcoded defaults below are the fail-soft fallback (and the project
+// config still overrides both).
+function gatesFromTransitions() {
+  const candidates = [
+    // this file: plugins/essense-autopilot/hooks/scripts/ → sibling plugin
+    path.join(__dirname, "..", "..", "..", "essense-flow", "references", "transitions.yaml"),
+    process.env.CLAUDE_PLUGIN_ROOT
+      ? path.join(process.env.CLAUDE_PLUGIN_ROOT, "..", "essense-flow", "references", "transitions.yaml")
+      : null,
+  ].filter(Boolean);
+  for (const p of candidates) {
+    const t = readYamlSafe(p);
+    if (t && Array.isArray(t.human_gates) && Array.isArray(t.terminal)) {
+      return { human_gates: t.human_gates, terminal: t.terminal };
+    }
+  }
+  return null;
+}
+
 const DEFAULT_CONFIG = {
   enabled: false,
   // organizing is propose-with-confirm (user OK per consolidation);
@@ -216,8 +238,10 @@ async function main() {
     ...DEFAULT_CONFIG,
     ...userAutopilot,
     flow: { ...DEFAULT_CONFIG.flow, ...(userAutopilot.flow || {}) },
-    human_gates: userAutopilot.human_gates || DEFAULT_CONFIG.human_gates,
-    terminal: userAutopilot.terminal || DEFAULT_CONFIG.terminal,
+    human_gates: userAutopilot.human_gates
+      || (gatesFromTransitions() || DEFAULT_CONFIG).human_gates,
+    terminal: userAutopilot.terminal
+      || (gatesFromTransitions() || DEFAULT_CONFIG).terminal,
   };
 
   if (!cfg.enabled) {
@@ -226,14 +250,18 @@ async function main() {
 
   const statePath = path.join(pipelineDir, "state.yaml");
   const state = readYamlSafe(statePath);
-  if (!state || !state.pipeline) {
-    return allowStop(`state.yaml missing or has no pipeline block at ${statePath}`);
+  // Current essense-flow state schema is FLAT (top-level phase/sprint/wave);
+  // pre-0.9 projects carried a pipeline: block — accept both.
+  const core = state && (state.pipeline || (state.phase !== undefined ? state : null));
+  if (!core) {
+    return allowStop(`state.yaml missing or carries no phase at ${statePath}`);
   }
 
-  const phase = state.pipeline.phase;
-  const sprint = state.pipeline.sprint != null ? state.pipeline.sprint : null;
-  const wave = state.pipeline.wave != null ? state.pipeline.wave : null;
-  const blocker = state.blocked_on;
+  const phase = core.phase;
+  const sprint = core.sprint != null ? core.sprint : null;
+  const wave = core.wave != null ? core.wave : null;
+  // blocked_on is the legacy field; halt_reason is the live schema's.
+  const blocker = state.blocked_on || state.halt_reason;
 
   if (blocker) {
     return allowStop(`pipeline blocked: ${typeof blocker === "string" ? blocker : JSON.stringify(blocker)}`);

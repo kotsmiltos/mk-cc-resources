@@ -107,6 +107,36 @@ test("halt: pipeline blocked_on set", () => {
   assert.match(r.stderr, /pipeline blocked: awaiting decision/);
 });
 
+// ---- Current (flat) essense-flow state schema — 0.9+ projects ----
+// Top-level phase/sprint/wave, no pipeline: block; halt_reason replaces
+// the legacy blocked_on. These pin the 0.4.0 compat fix: pre-fix autopilot
+// halted every flat-schema project with "no pipeline block".
+
+test("flat schema: top-level phase advances", () => {
+  const root = makeProject("schema_version: 1\nphase: architecture\nsprint: null\nwave: null\n", ENABLED);
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /\/architect/);
+  assert.match(r.stdout, /"decision":"block"/);
+});
+
+test("flat schema: halt_reason halts like legacy blocked_on", () => {
+  const root = makeProject(
+    "schema_version: 1\nphase: architecture\nhalt_reason: \"awaiting decision\"\n",
+    ENABLED
+  );
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /pipeline blocked: awaiting decision/);
+});
+
+test("flat schema: human gate halts", () => {
+  const root = makeProject("schema_version: 1\nphase: eliciting\n", ENABLED);
+  const r = runHook(root);
+  assert.equal(r.status, 0);
+  assert.match(r.stderr, /human gate/);
+});
+
 test("halt: terminal phase", () => {
   const root = makeProject("pipeline:\n  phase: complete\n", ENABLED);
   const r = runHook(root);
