@@ -1,0 +1,148 @@
+# completion-record.schema.yaml — THE canonical completion-record shape.
+#
+# Consumed by:
+#   - bin/essense-flow-tools.cjs `record-task-completion` validator
+#     (lib/schema-validate.cjs)
+#   - scripts/render-schema-docs.cjs — renders
+#     skills/build/templates/completion-record.md
+#
+# Editing rules: same as task-spec.schema.yaml — edit here, run
+# `npm run render-schemas`; `expected` strings are CLI message contract.
+#
+# Dual-record principle: agent_claim is what the task agent SAYS it did;
+# runner_verification is what the build master CONFIRMED against disk.
+# Neither alone is evidence. `verified` summarizes the runner's verdict.
+
+schema_version: 1
+artifact: completion-record
+doc: >
+  One task's completion evidence, dual-record. Written by /build master via
+  `record-task-completion` after re-validating the agent's claim against disk.
+
+fields:
+  schema_version:
+    type: int
+    const: 1
+    required: true
+    expected: 'int frozen at 1'
+    example: 1
+    placeholder: '1'
+
+  task_id:
+    type: string
+    pattern: '^[A-Z]+-[A-Za-z0-9_-]+$'
+    required: true
+    expected: 'string matching /^[A-Z]+-[A-Za-z0-9_-]+$/'
+    example: 'T-001'
+    placeholder: '{{task_id}}'
+
+  sprint:
+    type: int
+    min: 1
+    required: true
+    expected: 'positive int'
+    example: 1
+    placeholder: '{{sprint}}'
+
+  agent_claim:
+    type: object
+    required: true
+    expected: 'object (mapping)'
+    example:
+      status: complete
+      summary: 'Implemented parser + 4 tests, all passing locally.'
+    placeholder: |-
+      status: {{agent_status}}
+      summary: "{{agent_summary}}"
+      files_modified: {{agent_files_modified}}
+      criteria: {{agent_criteria}}
+      notes: |
+        {{agent_notes}}
+    doc: >
+      the task agent's self-report, recorded verbatim. Conventional extra
+      keys (files_modified, criteria, notes) are accepted and recorded;
+      only status + summary are shape-checked.
+    fields:
+      status:
+        type: string
+        enum: [complete, blocked, partial-with-surfaced-concern, crashed]
+        required: false
+        doc: '`crashed` is reserved for synthetic records the master writes when an agent dies'
+      summary:
+        type: string
+        nonempty: true
+        required: false
+        expected: 'non-empty string when present'
+
+  runner_verification:
+    type: object
+    required: true
+    expected: 'object (mapping)'
+    example:
+      files_validated: ['src/parser.js', 'tests/parser.test.js']
+      drift: { files: [], criteria: [] }
+    placeholder: |-
+      files_validated: {{runner_files_validated}}
+      per_criterion_verdicts: {{runner_per_criterion_verdicts}}
+      drift:
+        files: {{runner_drift_files}}
+        criteria: {{runner_drift_criteria}}
+    doc: what the build master confirmed against disk — never copied from the claim
+    fields:
+      files_validated:
+        type: array
+        required: false
+        expected: 'array'
+      drift:
+        type: object
+        required: false
+        expected: 'object with files: array, criteria: array'
+        fields:
+          files: { type: array, required: false, expected: 'array' }
+          criteria: { type: array, required: false, expected: 'array' }
+
+  drift:
+    type: object
+    required: false
+    expected: 'object with files: array, criteria: array'
+    doc: alternative top-level location for drift (accepted for build-substance compat)
+    fields:
+      files: { type: array, required: false, expected: 'array' }
+      criteria: { type: array, required: false, expected: 'array' }
+
+  verified:
+    type: bool
+    required: true
+    expected: 'bool (true / false)'
+    example: true
+    placeholder: '{{verified}}'
+    doc: the runner's verdict — true only when disk evidence matches the claim
+
+  task_started_at:
+    type: iso8601
+    required: true
+    example: '2026-06-11T10:00:00Z'
+    placeholder: '{{task_started_at}}'
+
+  task_completed_at:
+    type: iso8601
+    required: true
+    example: '2026-06-11T10:25:00Z'
+    placeholder: '{{task_completed_at}}'
+
+  synthetic:
+    type: bool
+    required: false
+    expected: 'bool (true / false) when present'
+    placeholder: '{{synthetic}}'
+    doc: true on master-synthesized records for crashed agents (defaults false)
+
+  out_of_contract_writes:
+    type: array
+    required: false
+    expected: 'array when present'
+    placeholder: '{{out_of_contract_writes}}'
+    doc: >
+      paths the runner's snapshot-diff found written outside the task's
+      file_write_contract (flagged, not blocked; transient scratch_space
+      writes excluded)

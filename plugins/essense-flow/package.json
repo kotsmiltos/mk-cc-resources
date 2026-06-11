@@ -10,7 +10,8 @@
   "scripts": {
     "test": "node test/run-all.cjs && node scripts/self-test.js",
     "self-test": "node scripts/self-test.js",
-    "validate": "node scripts/validate-plugin.js"
+    "validate": "node scripts/validate-plugin.js",
+    "render-schemas": "node scripts/render-schema-docs.cjs --write"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

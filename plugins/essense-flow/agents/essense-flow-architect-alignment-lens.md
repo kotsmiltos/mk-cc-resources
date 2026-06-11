@@ -81,9 +81,9 @@ Verbatim phrasing: Every pseudocode HARD CHECK cites the decision/AC it enforces
 - **Deterministic vs semantic split:** M1 deterministic verifies each HARD CHECK line contains ≥1 ID matching the patterns `DD-\d+` / `D-Rd\d+-\d+` / `AC-\d+` (regex). Lens overlays semantic: does the cited decision/AC actually constrain the check the pseudocode enforces, or is the citation a decoration (ID present but the check enforces something else)? A decoration cite is a fail at the lens layer.
 - **Finding shape on failure:** `{criterion_id: 4, item_id: <task_id + HARD CHECK line number>, evidence_quote: <HARD CHECK line verbatim>, rationale: <one to three sentences naming missing cite OR decoration cite>}`.
 
-### Criterion 5 (DD-20 b 5) — Every file_write_contract.allowed path falls within declared module boundary OR has cross-module-authority grant in seam table.
+### Criterion 5 (DD-20 b 5) — Every file_write_contract.paths path falls within declared module boundary OR has cross-module-authority grant in seam table.
 
-Verbatim phrasing: Every `file_write_contract.allowed` path falls within declared module boundary OR has cross-module-authority grant in seam table.
+Verbatim phrasing: Every `file_write_contract.paths` path falls within declared module boundary OR has cross-module-authority grant in seam table.
 
 - **What to read:** every task spec's `file_write_contract.paths` (legacy: `allowed`); the module-boundary path-prefix from the sub-arch's brief; the cross-module-authority grants in `{{module_seam_table}}`.
 - **Deterministic vs semantic split:** M1 deterministic verifies each path is either prefix-matched to the module boundary OR appears in the seam table's grant list. Lens overlays semantic: when a grant is invoked, is the grant's scope (the seam table cell) actually broad enough to cover the specific path being written? A grant invocation that exceeds the granted scope is a fail at the lens layer.

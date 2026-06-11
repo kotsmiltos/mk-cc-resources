@@ -31,25 +31,56 @@ Engineer what's needed: clear, concise, maintainable, scalable. Don't overengine
 
 ## Inputs you receive in your brief
 
-Per `redesign/agent-spec.md` §3.2 + S6.5 closed decision: **no dedicated brief template**. The closed task spec yaml from architect IS your brief input. Master concatenates the task spec's fields into your dispatch prompt:
+There is no dedicated brief template: the closed task spec yaml from architect IS your brief input. Master concatenates the task spec fields into your dispatch prompt. Canonical shape (rendered from `references/schemas/task-spec.schema.yaml`):
 
-- `task_id` — the task identifier (e.g. `T-001`); matches the manifest's `waves[].tasks` entry.
-- `goal` — what this task delivers (one or two sentences).
-- `requirements_traced` — array of FR-* / NFR-* IDs this task closes.
-- `file_write_contract.paths` — array of allowed write paths. Out-of-contract writes are FLAGGED, not blocked.
-- `behavioral_pseudocode` — pseudo-implementation guidance. May be `null` if `agency_level: open`.
-- `test_completion_contract` — array of objects each with `id`, `description`, `check`. Modes: `must-pass` (run + pass before return) or `author-only` (write tests, don't run).
-- `dependencies` — array of task-id refs whose outputs you depend on. Master arranged wave order so these are already done.
-- `agency_level` — enum [`prescribed`, `guided`, `open`]. Strictness of pseudocode adherence.
-- `agency_rationale` — why this agency level was chosen.
-- (optional) `module` — module slug if multi-module run.
+<!-- AUTOGEN:task-spec-shape START — rendered from references/schemas/task-spec.schema.yaml by scripts/render-schema-docs.cjs; edit the schema, then: npm run render-schemas -->
+```yaml
+schema_version: 1
+task_id: T-001
+module: parser
+goal: One sentence stating what changes.
+requirements_traced:
+  - FR-1
+  - NFR-2
+file_write_contract:
+  paths:
+    - src/parser.js
+    - tests/parser.test.js
+  out_of_contract: flag-not-block
+  scratch_space: []
+behavioral_pseudocode: |
+  1. read input file
+  2. parse records, skip malformed lines with a logged warning
+  3. return parsed array
+test_completion_contract:
+  - id: AC-1
+    description: parser returns [] for empty input
+    check:
+      type: test
+      spec: tests/parser.test.js
+dependencies:
+  - T-002
+agency_level: guided
+agency_rationale: Parsing approach is flexible; output contract is fixed by FR-1.
+```
 
-Master also passes `task_started_at` (ISO 8601) at dispatch — record this so master can compute the duration in your dual-record.
+Field rules:
 
-Two optional **context blocks** may follow the task spec — context, NOT contract (your `file_write_contract` is unchanged by them):
-
-- `EXISTING HELPERS` — functions that already exist in the codebase, relevant to your files (from the functionality map). Call them rather than rewriting; if you deliberately re-implement one, surface the reason in `notes`.
-- `NEIGHBORS IN THIS WAVE` — one goal line per task running in parallel with yours. Don't duplicate their work; if your task seems to overlap a neighbor, surface it in `surfaced_concerns` rather than racing them.
+- `schema_version` (int; required, frozen at 1) — frozen at 1
+- `task_id` (string; required, pattern `^[A-Z]+-[A-Za-z0-9_-]+$`) — uppercase prefix + hyphen + slug. T-001, P-parser-01, D-ch01-data are all valid. Widened 2026-06-07 from ^T-\d{3,}$ — real architect runs use module-prefixed id schemes.
+- `module` (string; optional) — OPTIONAL but recommended — module name echoed from the brief
+- `goal` (string; required, non-empty) — one sentence stating what changes
+- `requirements_traced` (array; required) — requirement IDs from the req_slice this task answers
+- `file_write_contract` (object; required) — which files this task creates/modifies. Out-of-contract writes are flagged by the build runner's disk verification, not blocked.
+  - `file_write_contract.paths` (array; required) — relative paths this task may create/modify
+  - `file_write_contract.out_of_contract` (string; optional, one of `forbidden | flag-not-block`) — how the runner treats writes outside `paths` (default: flag-not-block)
+  - `file_write_contract.scratch_space` (array; optional) — transient-write prefixes excluded from drift accounting. Entries: the sentinel "os.tmpdir()" (resolved by the runner at verify time) or an explicit absolute path prefix. Omit or [] when the task needs zero transient state. Exists because a test agent once destroyed shared fixtures via teardown writes its contract never covered — transient writes must be declared, everything else is drift.
+- `behavioral_pseudocode` (string; required, null allowed only when `agency_level: open`) — numbered procedural steps. null ONLY when agency_level is `open` (you genuinely want the build agent's judgment).
+- `test_completion_contract` (array; required) — acceptance criteria. check.type one of test | grep | file_exists | manual; check.spec is type-specific. Build honors the sprint test mode: must-pass (run + pass before return) or author-only (author tests, do not run).
+- `dependencies` (array; required) — cross-task or cross-module dependency refs (may be empty)
+- `agency_level` (string; required, one of `prescribed | guided | open`) — prescribed — pseudocode covers every requirement; use only when the implementation shape is non-negotiable. guided (default) — clear goal + key constraints; build agent designs within bounds. open — build agent designs freely.
+- `agency_rationale` (string; required, non-empty) — why this agency level fits this work
+<!-- AUTOGEN:task-spec-shape END -->
 
 ## Job
 

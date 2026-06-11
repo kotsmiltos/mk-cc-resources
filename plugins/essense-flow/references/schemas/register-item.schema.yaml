@@ -1,0 +1,80 @@
+# register-item.schema.yaml — THE canonical outstanding-work-register entry shape.
+#
+# Consumed by:
+#   - bin/essense-flow-tools.cjs `register-add` arg validation enums
+#     (lib/schema-validate.cjs `schemaEnum` helper)
+#   - future: register read-side shape validation
+#
+# Editing rules: same as task-spec.schema.yaml.
+#
+# Lifecycle: set-based register (no push/pop). claimed_at is stamped as a
+# deterministic side-effect of status == in_progress, never passed as a flag.
+# Legacy entries without claimed_at MUST read OK.
+
+schema_version: 1
+artifact: register-item
+doc: >
+  One outstanding-work item in .pipeline/outstanding-work-register.yaml.
+  Added via `register-add`; swept by `heal --sweep-stale-claims`.
+
+fields:
+  item_id:
+    type: string
+    nonempty: true
+    required: true
+    example: 'OF-12'
+
+  source_artifact:
+    type: string
+    required: false
+    nullable: true
+    example: '.pipeline/reviews/QA-REPORT.md'
+
+  source_anchor:
+    type: string
+    required: false
+    nullable: true
+    example: 'finding-7'
+
+  closure_criterion:
+    type: string
+    nonempty: true
+    required: true
+    example: 'grep shows zero hits for the deprecated helper in production code'
+    doc: verifiable check that proves the item closed — never a vibe
+
+  target_phase:
+    type: string
+    enum: [eliciting, research, triaging, architecture, sprinting, reviewing, verifying]
+    required: false
+    nullable: true
+
+  target_sprint:
+    type: int
+    required: false
+    nullable: true
+
+  status:
+    type: string
+    enum: [open, in_progress, closed, deferred-to-next-increment]
+    required: true
+    doc: 'defaults to open at add time'
+
+  closure_evidence:
+    type: string
+    required: false
+    nullable: true
+
+  added_by:
+    type: string
+    required: false
+    example: 'cli'
+
+  added_at:
+    type: iso8601
+    required: true
+
+  claimed_at:
+    type: iso8601
+    required: false
+    doc: stamped iff status == in_progress at add/claim time; absent on legacy entries

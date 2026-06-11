@@ -313,7 +313,7 @@ Heal proposes the conversion in chunks the user can confirm:
 
 3. **Task spec conversion** — for each `tasks/*.md` file, propose YAML conversion:
    - `goal` from the "Why" or top-level summary section of the markdown
-   - `file_write_contract.allowed` from the `files:` frontmatter list
+   - `file_write_contract.paths` from the `files:` frontmatter list
    - `requirements_traced` from any FR/NFR references in the body
    - `dependencies` from `deps:` frontmatter
    - `agency_level: guided` (default) unless the markdown explicitly carries detailed pseudocode (then `prescribed`) or explicitly says "agent decides" (route back to architect, not heal — open contracts violate Front-Loaded-Design)

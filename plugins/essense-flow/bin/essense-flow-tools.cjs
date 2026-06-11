@@ -112,6 +112,21 @@ const PLUGIN_ROOT = path.resolve(__dirname, '..');
 // See lib/explicit-args.cjs for the policy + Phase A/B helper bodies.
 const { requireExplicitArgs, applyCursorInference } = require(path.join(PLUGIN_ROOT, 'lib', 'explicit-args.cjs'));
 
+// ---- Canonical artifact schemas (references/schemas/*.schema.yaml) ----
+// Single source of truth for artifact shapes. Validators, required-key
+// lists, enums, and the rendered shape blocks in templates/agent defs all
+// derive from these files — shapes are never hand-copied. Loaded at module
+// init; a missing schema file is a packaging bug and must fail loudly.
+const {
+  loadSchema: loadArtifactSchema,
+  validate: validateAgainstSchema,
+  requiredKeys: schemaRequiredKeys,
+  schemaEnum,
+} = require(path.join(PLUGIN_ROOT, 'lib', 'schema-validate.cjs'));
+const TASK_SPEC_SCHEMA = loadArtifactSchema('task-spec');
+const COMPLETION_RECORD_SCHEMA = loadArtifactSchema('completion-record');
+const REGISTER_ITEM_SCHEMA = loadArtifactSchema('register-item');
+
 // ---- Exit codes (per cli-spec.md §1.1 shared rejection table + per-op tables) ----
 const EXIT_OK = 0;
 const EXIT_DEGRADED = 2;
@@ -216,51 +231,18 @@ const CITATION_PATH_LINE_RE = /[A-Za-z0-9._/\\-]+\.(cjs|js|md|yaml|yml|py):[0-9]
 const CITATION_LOOSE_LINE_RE = /:\s*[0-9]+\b/;
 const CITATION_PATH_TOKEN_RE = /[A-Za-z0-9._/\\-]+\.(cjs|js|md|yaml|yml|py)/;
 
-// Task-id pattern per cli-spec.md §3.5
-// Widened 2026-06-07 (user-approved during BiananceRepo sprint-2 build): the
-// original /^T-\d{3,}$/ rejected real architect id schemes (P-*/D-*/E-*/A-*/B-*
-// module-prefixed ids). Now: uppercase prefix + hyphen + slug. T-001 still matches.
-const TASK_ID_PATTERN = /^[A-Z]+-[A-Za-z0-9_-]+$/;
+// Task-id pattern — derives from references/schemas/task-spec.schema.yaml
+// (single source; the schema doc records why the pattern was widened from
+// the original /^T-\d{3,}$/).
+const TASK_ID_PATTERN = new RegExp(TASK_SPEC_SCHEMA.fields.task_id.pattern);
 
-// Required-key list for parsed task-spec content per cli-spec.md §5
-// 2026-05-06 Addendum (supersedes §1.5 step 6 placeholder).
-// 10 keys; `module` accepted-but-not-required.
-const TASK_SPEC_REQUIRED_KEYS = [
-  'schema_version',
-  'task_id',
-  'goal',
-  'requirements_traced',
-  'file_write_contract',
-  'behavioral_pseudocode',
-  'test_completion_contract',
-  'dependencies',
-  'agency_level',
-  'agency_rationale',
-];
-const TASK_SPEC_AGENCY_LEVELS = ['prescribed', 'guided', 'open'];
-
-// Required-key list for parsed completion-record content per cli-spec.md §5
-// 2026-05-07 Addendum (supersedes §1.3 prior wording — thin-gate 5-key shape →
-// dual-record from build.md substance + agent-spec §1.8). 8 top-level keys
-// required; `drift, synthetic, recorded_at` accepted-but-not-required
-// (`recorded_at` server-stamped; `synthetic` defaults false; `drift` defaults
-// to empty).
-const COMPLETION_RECORD_REQUIRED_KEYS = [
-  'schema_version',
-  'task_id',
-  'sprint',
-  'agent_claim',
-  'runner_verification',
-  'verified',
-  'task_started_at',
-  'task_completed_at',
-];
-const COMPLETION_RECORD_AGENT_STATUS_VALUES = [
-  'complete',
-  'blocked',
-  'partial-with-surfaced-concern',
-  'crashed', // for synthetic records per build.md "Auto-synthesis safety net"
-];
+// Required-key lists + enums derive from the canonical schemas. The legacy
+// hand-maintained copies of these lists drifted from the templates and agent
+// defs that taught them; deriving kills that drift class by construction.
+const TASK_SPEC_REQUIRED_KEYS = schemaRequiredKeys(TASK_SPEC_SCHEMA);
+const TASK_SPEC_AGENCY_LEVELS = schemaEnum(TASK_SPEC_SCHEMA, 'agency_level');
+const COMPLETION_RECORD_REQUIRED_KEYS = schemaRequiredKeys(COMPLETION_RECORD_SCHEMA);
+const COMPLETION_RECORD_AGENT_STATUS_VALUES = schemaEnum(COMPLETION_RECORD_SCHEMA, 'agent_claim.status');
 
 // Sentinel passed as --next-step to finalize a skill run (deletes cursor file).
 const SKILL_COMPLETE_SENTINEL = 'skill-complete';
@@ -4128,107 +4110,10 @@ function scanForbiddenMarkers(text, opts) {
 }
 
 function validateTaskSpecTypes(spec) {
-  // schema_version: int = 1
-  if (typeof spec.schema_version !== 'number' || !Number.isInteger(spec.schema_version) || spec.schema_version !== 1) {
-    return { ok: false, key: 'schema_version', observed: String(spec.schema_version), expected: 'int frozen at 1' };
-  }
-  // task_id: §3.5 pattern (already checked vs --task-id; here verify shape)
-  if (typeof spec.task_id !== 'string' || !TASK_ID_PATTERN.test(spec.task_id)) {
-    return { ok: false, key: 'task_id', observed: String(spec.task_id), expected: `string matching /${TASK_ID_PATTERN.source}/` };
-  }
-  // goal: non-empty string
-  if (typeof spec.goal !== 'string' || spec.goal.trim() === '') {
-    return { ok: false, key: 'goal', observed: String(spec.goal), expected: 'non-empty string' };
-  }
-  // requirements_traced: array of strings
-  if (!Array.isArray(spec.requirements_traced) ||
-      spec.requirements_traced.some((x) => typeof x !== 'string')) {
-    return {
-      ok: false,
-      key: 'requirements_traced',
-      observed: JSON.stringify(spec.requirements_traced),
-      expected: 'array of strings (FR-* / NFR-* IDs)',
-    };
-  }
-  // file_write_contract: object with `paths` array
-  if (
-    !spec.file_write_contract ||
-    typeof spec.file_write_contract !== 'object' ||
-    Array.isArray(spec.file_write_contract) ||
-    !Array.isArray(spec.file_write_contract.paths)
-  ) {
-    return {
-      ok: false,
-      key: 'file_write_contract',
-      observed: JSON.stringify(spec.file_write_contract),
-      expected: 'object with `paths` array',
-    };
-  }
-  // agency_level: enum first (used by behavioral_pseudocode null-acceptance rule)
-  if (!TASK_SPEC_AGENCY_LEVELS.includes(spec.agency_level)) {
-    return {
-      ok: false,
-      key: 'agency_level',
-      observed: String(spec.agency_level),
-      expected: `enum [${TASK_SPEC_AGENCY_LEVELS.join(', ')}]`,
-    };
-  }
-  // behavioral_pseudocode: string (null OK only when agency_level == 'open')
-  if (spec.behavioral_pseudocode === null) {
-    if (spec.agency_level !== 'open') {
-      return {
-        ok: false,
-        key: 'behavioral_pseudocode',
-        observed: 'null',
-        expected: 'string (null only allowed when agency_level == open)',
-      };
-    }
-  } else if (typeof spec.behavioral_pseudocode !== 'string') {
-    return {
-      ok: false,
-      key: 'behavioral_pseudocode',
-      observed: String(spec.behavioral_pseudocode),
-      expected: 'string',
-    };
-  }
-  // test_completion_contract: array of objects each with id/description/check
-  if (!Array.isArray(spec.test_completion_contract)) {
-    return {
-      ok: false,
-      key: 'test_completion_contract',
-      observed: JSON.stringify(spec.test_completion_contract),
-      expected: 'array of objects each with id, description, check',
-    };
-  }
-  for (const ac of spec.test_completion_contract) {
-    if (!ac || typeof ac !== 'object' || !('id' in ac) || !('description' in ac) || !('check' in ac)) {
-      return {
-        ok: false,
-        key: 'test_completion_contract',
-        observed: JSON.stringify(ac),
-        expected: 'array of objects each with id, description, check',
-      };
-    }
-  }
-  // dependencies: array of strings
-  if (!Array.isArray(spec.dependencies) || spec.dependencies.some((x) => typeof x !== 'string')) {
-    return {
-      ok: false,
-      key: 'dependencies',
-      observed: JSON.stringify(spec.dependencies),
-      expected: 'array of strings (task-id refs)',
-    };
-  }
-  // agency_rationale: non-empty string
-  if (typeof spec.agency_rationale !== 'string' || spec.agency_rationale.trim() === '') {
-    return {
-      ok: false,
-      key: 'agency_rationale',
-      observed: String(spec.agency_rationale),
-      expected: 'non-empty string',
-    };
-  }
-  return { ok: true };
+  // Shape rules live in references/schemas/task-spec.schema.yaml — edit the
+  // schema, not this function. Error-message contract is pinned by
+  // test/schema-validate.test.cjs.
+  return validateAgainstSchema(spec, TASK_SPEC_SCHEMA);
 }
 
 // ============================================================================
@@ -4468,15 +4353,17 @@ function _alignmentCriterion5(taskSpecs, boundaries, seamGrants) {
   for (const task of taskSpecs) {
     const fwc = task.file_write_contract;
     if (!fwc || typeof fwc !== 'object') continue;
-    const allowed = Array.isArray(fwc.allowed) ? fwc.allowed
-      : Array.isArray(fwc.paths) ? fwc.paths : [];
+    // canonical field is paths (references/schemas/task-spec.schema.yaml);
+    // legacy allowed accepted on read for pre-rebuild on-disk specs
+    const allowed = Array.isArray(fwc.paths) ? fwc.paths
+      : Array.isArray(fwc.allowed) ? fwc.allowed : [];
     const taskModule = task.module;
     if (!taskModule) {
       findings.push({
         criterion: 5,
         task: task.task_id || '<no-task-id>',
         severity: 'critical',
-        rationale: 'task.module field missing — alignment criterion 5 cannot evaluate file_write_contract.allowed against module boundary',
+        rationale: 'task.module field missing — alignment criterion 5 cannot evaluate file_write_contract.paths against module boundary',
       });
       continue;
     }
@@ -5085,102 +4972,14 @@ async function recordTaskCompletion({ sprint, taskId, contentFile, projectRoot }
 }
 
 function validateCompletionRecordTypes(rec) {
-  // schema_version: int = 1
-  if (typeof rec.schema_version !== 'number' || !Number.isInteger(rec.schema_version) || rec.schema_version !== 1) {
-    return { ok: false, key: 'schema_version', observed: String(rec.schema_version), expected: 'int frozen at 1' };
-  }
-  // task_id: §3.5 pattern (V6 also re-checks vs --task-id; here verify shape)
-  if (typeof rec.task_id !== 'string' || !TASK_ID_PATTERN.test(rec.task_id)) {
-    return { ok: false, key: 'task_id', observed: String(rec.task_id), expected: `string matching /${TASK_ID_PATTERN.source}/` };
-  }
-  // sprint: positive int
-  if (typeof rec.sprint !== 'number' || !Number.isInteger(rec.sprint) || rec.sprint < 1) {
-    return { ok: false, key: 'sprint', observed: String(rec.sprint), expected: 'positive int' };
-  }
-  // agent_claim: object with optional status enum + summary string when present
-  if (!rec.agent_claim || typeof rec.agent_claim !== 'object' || Array.isArray(rec.agent_claim)) {
-    return { ok: false, key: 'agent_claim', observed: JSON.stringify(rec.agent_claim), expected: 'object (mapping)' };
-  }
-  if ('status' in rec.agent_claim && rec.agent_claim.status !== null) {
-    if (typeof rec.agent_claim.status !== 'string' || !COMPLETION_RECORD_AGENT_STATUS_VALUES.includes(rec.agent_claim.status)) {
-      return {
-        ok: false,
-        key: 'agent_claim.status',
-        observed: String(rec.agent_claim.status),
-        expected: `enum [${COMPLETION_RECORD_AGENT_STATUS_VALUES.join(', ')}]`,
-      };
-    }
-  }
-  if ('summary' in rec.agent_claim && rec.agent_claim.summary !== null && rec.agent_claim.summary !== undefined) {
-    if (typeof rec.agent_claim.summary !== 'string' || rec.agent_claim.summary.trim() === '') {
-      return {
-        ok: false,
-        key: 'agent_claim.summary',
-        observed: String(rec.agent_claim.summary),
-        expected: 'non-empty string when present',
-      };
-    }
-  }
-  // runner_verification: object; drift sub-shape if present
-  if (!rec.runner_verification || typeof rec.runner_verification !== 'object' || Array.isArray(rec.runner_verification)) {
-    return { ok: false, key: 'runner_verification', observed: JSON.stringify(rec.runner_verification), expected: 'object (mapping)' };
-  }
-  if ('files_validated' in rec.runner_verification && rec.runner_verification.files_validated !== null) {
-    if (!Array.isArray(rec.runner_verification.files_validated)) {
-      return {
-        ok: false,
-        key: 'runner_verification.files_validated',
-        observed: JSON.stringify(rec.runner_verification.files_validated),
-        expected: 'array',
-      };
-    }
-  }
-  if ('drift' in rec.runner_verification && rec.runner_verification.drift !== null && rec.runner_verification.drift !== undefined) {
-    const d = rec.runner_verification.drift;
-    if (!d || typeof d !== 'object' || Array.isArray(d)) {
-      return { ok: false, key: 'runner_verification.drift', observed: JSON.stringify(d), expected: 'object with files: array, criteria: array' };
-    }
-    if ('files' in d && !Array.isArray(d.files)) {
-      return { ok: false, key: 'runner_verification.drift.files', observed: JSON.stringify(d.files), expected: 'array' };
-    }
-    if ('criteria' in d && !Array.isArray(d.criteria)) {
-      return { ok: false, key: 'runner_verification.drift.criteria', observed: JSON.stringify(d.criteria), expected: 'array' };
-    }
-  }
-  // top-level drift (alternative location per build.md substance shape)
-  if ('drift' in rec && rec.drift !== null && rec.drift !== undefined) {
-    const d = rec.drift;
-    if (!d || typeof d !== 'object' || Array.isArray(d)) {
-      return { ok: false, key: 'drift', observed: JSON.stringify(d), expected: 'object with files: array, criteria: array' };
-    }
-    if ('files' in d && !Array.isArray(d.files)) {
-      return { ok: false, key: 'drift.files', observed: JSON.stringify(d.files), expected: 'array' };
-    }
-    if ('criteria' in d && !Array.isArray(d.criteria)) {
-      return { ok: false, key: 'drift.criteria', observed: JSON.stringify(d.criteria), expected: 'array' };
-    }
-  }
-  // verified: bool
-  if (typeof rec.verified !== 'boolean') {
-    return { ok: false, key: 'verified', observed: String(rec.verified), expected: 'bool (true / false)' };
-  }
-  // task_started_at + task_completed_at: ISO 8601 strings round-tripping through Date
-  for (const tk of ['task_started_at', 'task_completed_at']) {
-    const v = rec[tk];
-    if (typeof v !== 'string') {
-      return { ok: false, key: tk, observed: String(v), expected: 'ISO 8601 datetime string' };
-    }
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) {
-      return { ok: false, key: tk, observed: v, expected: 'ISO 8601 datetime string (parseable)' };
-    }
-  }
-  // synthetic: optional bool
-  if ('synthetic' in rec && rec.synthetic !== undefined && typeof rec.synthetic !== 'boolean') {
-    return { ok: false, key: 'synthetic', observed: String(rec.synthetic), expected: 'bool (true / false) when present' };
-  }
-  return { ok: true };
+  // Shape rules live in references/schemas/completion-record.schema.yaml —
+  // edit the schema, not this function. Error-message contract is pinned by
+  // test/schema-validate.test.cjs.
+  return validateAgainstSchema(rec, COMPLETION_RECORD_SCHEMA);
 }
+
+// (legacy hand-coded body removed; kept here as unreachable would violate
+// dead-code policy — deleted outright)
 
 // ============================================================================
 // Op: register-add (T-919 — closure-plan round-9 DD-19 + DD-10 + D-Rd9-2)
@@ -5196,11 +4995,9 @@ function validateCompletionRecordTypes(rec) {
 // ============================================================================
 const REGISTER_REL = '.pipeline/outstanding-work-register.yaml';
 const REGISTER_HISTORY_REL = '.pipeline/outstanding-work-register-history.yaml';
-const REGISTER_STATUS_VALUES = ['open', 'in_progress', 'closed', 'deferred-to-next-increment'];
-const REGISTER_TARGET_PHASES = [
-  'eliciting', 'research', 'triaging', 'architecture',
-  'sprinting', 'reviewing', 'verifying',
-];
+// Status + target-phase enums derive from references/schemas/register-item.schema.yaml.
+const REGISTER_STATUS_VALUES = schemaEnum(REGISTER_ITEM_SCHEMA, 'status');
+const REGISTER_TARGET_PHASES = schemaEnum(REGISTER_ITEM_SCHEMA, 'target_phase');
 
 async function registerAdd({
   itemId,
@@ -6045,10 +5842,7 @@ const TASK_SPEC_SECTION_NAMES = [
   'propagation_block',
 ];
 
-const TASK_ID_PATTERN_PERMISSIVE_T903 =
-  /^T-(rd\d+-m\d+-[A-Za-z0-9_-]+|\d{3,})$/;
 const REQ_ID_PREFIX_PATTERN_T903 = /^(FR-|NFR-|DD-|D-Rd|AC-|CMC-)/;
-const TASK_SPEC_TEST_POLICIES_T903 = ['must-pass', 'author-only'];
 
 async function taskSpecWriteSection({ taskId, section, body, projectRoot }) {
   const opName = 'task-spec-write-section';
@@ -6065,10 +5859,10 @@ async function taskSpecWriteSection({ taskId, section, body, projectRoot }) {
     );
     process.exit(EXIT_DEGRADED);
   }
-  if (!TASK_ID_PATTERN_PERMISSIVE_T903.test(taskId)) {
+  if (!TASK_ID_PATTERN.test(taskId)) {
     return emitFailure(
       EXIT_VALIDATION_FAIL,
-      `essense-flow-tools ${opName}: --task-id '${taskId}' does not match accepted pattern /${TASK_ID_PATTERN_PERMISSIVE_T903.source}/ (canonical T-NNN or fixture-style T-rdN-mN-<slug>)`,
+      `essense-flow-tools ${opName}: --task-id '${taskId}' does not match accepted pattern /${TASK_ID_PATTERN.source}/ (uppercase prefix + hyphen + slug per references/schemas/task-spec.schema.yaml)`,
     );
   }
   if (!TASK_SPEC_SECTION_NAMES.includes(section)) {
@@ -6198,37 +5992,31 @@ function validateTaskSpecSectionBody(section, body) {
       return { ok: true };
     }
     case 'file_write_contract': {
-      if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        return { ok: false, reason: `file_write_contract must be mapping, got ${typeof body}` };
-      }
-      if (!Array.isArray(body.allowed) || body.allowed.length < 1) {
-        return { ok: false, reason: `file_write_contract.allowed must be non-empty array (length>=1), got ${JSON.stringify(body.allowed)}` };
-      }
-      for (const p of body.allowed) {
-        if (typeof p !== 'string') {
-          return { ok: false, reason: `file_write_contract.allowed entry ${JSON.stringify(p)} must be string` };
-        }
-      }
-      if (!Array.isArray(body.forbidden)) {
-        return { ok: false, reason: `file_write_contract.forbidden must be array (may be empty), got ${JSON.stringify(body.forbidden)}` };
+      // Canonical shape per references/schemas/task-spec.schema.yaml: `paths`
+      // array (+ optional out_of_contract, scratch_space). This case used to
+      // require `allowed`/`forbidden` — contradicting validateTaskSpecTypes
+      // in this same file. Section writes now validate the same shape whole-
+      // doc writes do.
+      const res = validateAgainstSchema({ file_write_contract: body }, {
+        artifact: 'task-spec-section',
+        fields: { file_write_contract: TASK_SPEC_SCHEMA.fields.file_write_contract },
+      });
+      if (!res.ok) {
+        return { ok: false, reason: `${res.key} invalid: expected ${res.expected}, got ${res.observed}` };
       }
       return { ok: true };
     }
     case 'test_completion_contract': {
-      if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        return { ok: false, reason: `test_completion_contract must be mapping, got ${typeof body}` };
-      }
-      if (!TASK_SPEC_TEST_POLICIES_T903.includes(body.policy)) {
-        return {
-          ok: false,
-          reason: `test_completion_contract.policy must be one of [${TASK_SPEC_TEST_POLICIES_T903.join(', ')}], got ${JSON.stringify(body.policy)}`,
-        };
-      }
-      if (typeof body.threshold !== 'number' || !Number.isInteger(body.threshold) || body.threshold < 1) {
-        return {
-          ok: false,
-          reason: `test_completion_contract.threshold must be int>=1, got ${JSON.stringify(body.threshold)}`,
-        };
+      // Canonical shape per references/schemas/task-spec.schema.yaml: array
+      // of {id, description, check}. This case used to require a
+      // {policy, threshold} mapping — a shape nothing else in the pipeline
+      // produced or consumed.
+      const res = validateAgainstSchema({ test_completion_contract: body }, {
+        artifact: 'task-spec-section',
+        fields: { test_completion_contract: TASK_SPEC_SCHEMA.fields.test_completion_contract },
+      });
+      if (!res.ok) {
+        return { ok: false, reason: `${res.key} invalid: expected ${res.expected}, got ${res.observed}` };
       }
       return { ok: true };
     }
@@ -6237,10 +6025,10 @@ function validateTaskSpecSectionBody(section, body) {
         return { ok: false, reason: `dependencies must be array (may be empty), got ${typeof body}` };
       }
       for (const d of body) {
-        if (typeof d !== 'string' || !TASK_ID_PATTERN_PERMISSIVE_T903.test(d)) {
+        if (typeof d !== 'string' || !TASK_ID_PATTERN.test(d)) {
           return {
             ok: false,
-            reason: `dependencies entry ${JSON.stringify(d)} does not match task-id pattern /${TASK_ID_PATTERN_PERMISSIVE_T903.source}/`,
+            reason: `dependencies entry ${JSON.stringify(d)} does not match task-id pattern /${TASK_ID_PATTERN.source}/`,
           };
         }
       }

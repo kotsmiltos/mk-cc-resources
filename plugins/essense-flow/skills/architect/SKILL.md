@@ -451,7 +451,7 @@ Then for each task in each wave, write the task spec via `task-spec-write` (one 
 2. Count decisions closed during the current architect round (count of `decisions.yaml` entries whose `round:` field equals the current round, OR — for round 1 — every decision in `decisions.yaml` since `init architect` is the first round).
 3. **IF** `canon_files` is non-empty **AND** `decisions_closed_this_round > 0`:
    - Emit a `T-CANON-<round>` task as the **first task of wave 1** of the sprint (wave 1 because all subsequent tasks may reference the closed decisions; canon-tax must land before downstream tasks read).
-   - `file_write_contract.allowed:` lists every path in `canon_files` (one entry per canon file).
+   - `file_write_contract.paths:` lists every path in `canon_files` (one entry per canon file).
    - `goal:` is one sentence: "Append one row per master-decision-closed-round-N to each project-canon mirror."
    - `behavioral_pseudocode:` enumerates each closed decision (id + one-line summary) and the row shape per canon file (master must read each canon file's existing entries during pack to derive the row shape — substrate-verify before prescribing).
    - `test_completion_contract:` includes `check: type: grep` entries asserting each closed decision id appears in each canon file after the task runs.
@@ -471,9 +471,9 @@ module: doc-canon
 goal: "Append one row per master-decision-closed-round-3 to each project-canon mirror (DECISIONS-INDEX.md + MASTER-DECISIONS.md)."
 requirements_traced: []   # canon-tax has no FR/NFR mapping; it's pipeline discipline, not feature work
 file_write_contract:
-  allowed: ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]
+  paths: ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]
+  out_of_contract: flag-not-block
   scratch_space: ["os.tmpdir()"]
-  forbidden: []
 behavioral_pseudocode: |
   # For each MD closed this round (MD-92..MD-98, 7 decisions):
   #   1. Read .pipeline/architecture/decisions.yaml for the round-3 entry shape.

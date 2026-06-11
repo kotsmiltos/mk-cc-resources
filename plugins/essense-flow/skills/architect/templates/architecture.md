@@ -44,7 +44,7 @@ See `decisions.yaml` for the canonical record. Summary:
 mirror `decisions.yaml`. Set during initial architect run; preserved across
 rounds. When non-empty, architect's pack step (see `SKILL.md` "How you work"
 → "Canon-tax emission") MUST emit a `T-CANON-<round>` task in the sprint
-manifest whose `file_write_contract.allowed` covers every listed canon path;
+manifest whose `file_write_contract.paths` covers every listed canon path;
 the task appends one row per closed-this-round master decision into each
 listed file. Empty array `[]` is allowed and means "decisions.yaml is the
 sole canon mirror; no additional project-canon files exist." Do NOT set

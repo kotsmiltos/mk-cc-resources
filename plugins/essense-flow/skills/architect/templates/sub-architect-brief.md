@@ -61,51 +61,56 @@ These functions ALREADY EXIST in the codebase and are relevant to your module (m
 
 ## Task spec shape (per task)
 
+The canonical shape lives in `references/schemas/task-spec.schema.yaml` — the exact schema the `task-spec-write` validator enforces. The block below is rendered from it; what you return is what the validator accepts.
+
+<!-- AUTOGEN:task-spec-shape START — rendered from references/schemas/task-spec.schema.yaml by scripts/render-schema-docs.cjs; edit the schema, then: npm run render-schemas -->
 ```yaml
 schema_version: 1
-task_id: <slug>
-module: {{module_name}}
-goal: "<one sentence stating what changes>"
-requirements_traced: [FR-X, NFR-Y, ...]
+task_id: T-001
+module: parser
+goal: One sentence stating what changes.
+requirements_traced:
+  - FR-1
+  - NFR-2
 file_write_contract:
-  allowed: ["<paths>"]
-  scratch_space: ["os.tmpdir()"]   # NEW (D-M1-6 ii) — see "scratch_space semantics" below
-  forbidden: []
+  paths:
+    - src/parser.js
+    - tests/parser.test.js
+  out_of_contract: flag-not-block
+  scratch_space: []
 behavioral_pseudocode: |
-  # only when implementation shape matters
-  # leave empty when guided/open agency suffices
+  1. read input file
+  2. parse records, skip malformed lines with a logged warning
+  3. return parsed array
 test_completion_contract:
   - id: AC-1
-    description: "<plain language>"
+    description: parser returns [] for empty input
     check:
-      type: test | grep | file_exists | manual
-      spec: <type-specific>
-dependencies: [<task-id-from-this-module-or-others>, ...]   # cross-module deps allowed
-agency_level: prescribed | guided | open
-agency_rationale: "<why this level fits this work>"
+      type: test
+      spec: tests/parser.test.js
+dependencies:
+  - T-002
+agency_level: guided
+agency_rationale: Parsing approach is flexible; output contract is fixed by FR-1.
 ```
 
-### scratch_space semantics (D-M1-6 ii)
+Field rules:
 
-`file_write_contract.scratch_space` is a sub-field of `file_write_contract` (the canonical 10-key list is stable; `scratch_space` is a sub-field of the existing `file_write_contract` key, not a new top-level key). Its value is an **array** of path prefixes or sentinel strings the build agent may write to **outside the declared `allowed:` set without triggering out-of-contract drift**. The runner-verify-extended snapshot-diff (D-M1-6 layer i, shipped at T-m1-007) honors this field: any path matching one of the entries here is treated as transient by the runner's snapshot-diff and excluded from drift accounting.
-
-**Allowed entries:**
-
-- `"os.tmpdir()"` — sentinel for the OS temp directory (resolved by the runner at verify time via Node's `os.tmpdir()`). Use for transient state: temp dirs the test/build code mkdtemps into, scratch files created and torn down within a single run, etc.
-- `"<absolute-prefix>"` — an explicit absolute path prefix. Any write under this prefix is treated as transient. Use sparingly; prefer the `os.tmpdir()` sentinel when the work genuinely is transient.
-
-**The empty array `[]` is REQUIRED, not optional.** If a task genuinely needs zero transient state (pure documentation edits, single-file rename, etc.), the spec MUST still ship `scratch_space: []` — the absence of transient writes is an **explicit declaration**, not a silent default. `task-spec-write` rejects specs missing the field (per `redesign/cli-spec.md` §1.5 + the 2026-05-12 addendum).
-
-**Worked example** (a task that writes one allowed file and uses `os.tmpdir()` for test scratch):
-
-```yaml
-file_write_contract:
-  allowed: ["redesign/scripts/example.cjs", "redesign/scripts/tests/m1/example.test.cjs"]
-  scratch_space: ["os.tmpdir()"]
-  forbidden: []
-```
-
-**Why this exists:** Wave 2 of the closure-plan saw a test agent destroy `redesign/scripts/.test-fixtures/` via unconditional `fs.rmSync` teardown — paths the agent's `file_write_contract.allowed` did not cover, yet the agent treated test-runtime fs ops as outside the contract's scope. D-M1-6 closes that hole with two layers: (i) snapshot-diff at the runner level (shipped at T-m1-007); (ii) this `scratch_space` declaration on the spec side (wired by T-rd2-m1-001 — this template edit + the `task-spec-write` validator). Together: transient writes are explicit, and everything else is drift.
+- `schema_version` (int; required, frozen at 1) — frozen at 1
+- `task_id` (string; required, pattern `^[A-Z]+-[A-Za-z0-9_-]+$`) — uppercase prefix + hyphen + slug. T-001, P-parser-01, D-ch01-data are all valid. Widened 2026-06-07 from ^T-\d{3,}$ — real architect runs use module-prefixed id schemes.
+- `module` (string; optional) — OPTIONAL but recommended — module name echoed from the brief
+- `goal` (string; required, non-empty) — one sentence stating what changes
+- `requirements_traced` (array; required) — requirement IDs from the req_slice this task answers
+- `file_write_contract` (object; required) — which files this task creates/modifies. Out-of-contract writes are flagged by the build runner's disk verification, not blocked.
+  - `file_write_contract.paths` (array; required) — relative paths this task may create/modify
+  - `file_write_contract.out_of_contract` (string; optional, one of `forbidden | flag-not-block`) — how the runner treats writes outside `paths` (default: flag-not-block)
+  - `file_write_contract.scratch_space` (array; optional) — transient-write prefixes excluded from drift accounting. Entries: the sentinel "os.tmpdir()" (resolved by the runner at verify time) or an explicit absolute path prefix. Omit or [] when the task needs zero transient state. Exists because a test agent once destroyed shared fixtures via teardown writes its contract never covered — transient writes must be declared, everything else is drift.
+- `behavioral_pseudocode` (string; required, null allowed only when `agency_level: open`) — numbered procedural steps. null ONLY when agency_level is `open` (you genuinely want the build agent's judgment).
+- `test_completion_contract` (array; required) — acceptance criteria. check.type one of test | grep | file_exists | manual; check.spec is type-specific. Build honors the sprint test mode: must-pass (run + pass before return) or author-only (author tests, do not run).
+- `dependencies` (array; required) — cross-task or cross-module dependency refs (may be empty)
+- `agency_level` (string; required, one of `prescribed | guided | open`) — prescribed — pseudocode covers every requirement; use only when the implementation shape is non-negotiable. guided (default) — clear goal + key constraints; build agent designs within bounds. open — build agent designs freely.
+- `agency_rationale` (string; required, non-empty) — why this agency level fits this work
+<!-- AUTOGEN:task-spec-shape END -->
 
 ## Required return shape
 
