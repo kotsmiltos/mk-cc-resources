@@ -42,7 +42,11 @@ DEFAULT_EXCLUDES: tuple[str, ...] = (
     ".next",
     ".nuxt",
     "target",
-    "bin",
+    # NOTE: "bin" is deliberately NOT excluded. .NET bin/ holds compiled
+    # binaries (nothing with a mapped source extension), but Node projects
+    # keep real CLI entry-point source in bin/ (e.g. bin/*.cjs) — excluding
+    # it caused a silent indexer miss. .NET's generated-source dir is obj/,
+    # which stays excluded below.
     "obj",
     "out",
     ".serena",

@@ -10,7 +10,7 @@ SCHEMA_VERSION: int = 1
 
 # Generator identity (written into every GLOSSARY.yaml metadata block).
 GENERATOR_NAME: str = "code-glossary"
-GENERATOR_VERSION: str = "2.3.0"
+GENERATOR_VERSION: str = "2.3.1"
 
 # Confidence levels for cluster matching (see DESIGN-V2.md piece 3).
 CONFIDENCE_LEVELS = ("high", "medium", "low")
@@ -36,13 +36,20 @@ DEFAULT_MAX_PARALLEL_AGENTS: int = 20
 FIRST_CLASS_LANGUAGES = ("python", "typescript", "javascript", "csharp")
 
 # File extension to language mapping. javascript shares the typescript parser
-# (tree-sitter-typescript handles both .js/.jsx and .ts/.tsx).
+# (tree-sitter-typescript handles both .js/.jsx and .ts/.tsx). Explicit
+# CommonJS/ESM variants (.cjs/.mjs, .cts/.mts) are the same grammars —
+# omitting them caused a silent indexer miss (files skipped without even
+# appearing in languages_skipped).
 EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
     ".tsx": "typescript",
+    ".cts": "typescript",
+    ".mts": "typescript",
     ".js": "javascript",
     ".jsx": "javascript",
+    ".cjs": "javascript",
+    ".mjs": "javascript",
     ".cs": "csharp",
     ".go": "go",
     ".rs": "rust",

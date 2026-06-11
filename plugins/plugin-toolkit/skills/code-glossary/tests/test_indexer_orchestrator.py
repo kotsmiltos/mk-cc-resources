@@ -214,6 +214,33 @@ def test_report_records_languages_seen_per_run(tmp_path: Path):
     assert report.languages_seen.get("typescript") == 1
 
 
+def test_cjs_file_in_bin_produces_records(tmp_path: Path):
+    """Regression: .cjs lacked a language mapping AND 'bin' was a default
+    exclude — Node CLI source (bin/*.cjs, lib/*.cjs) was silently missed
+    (not even counted in languages_skipped)."""
+    _write(tmp_path, {
+        "bin/tool.cjs": (
+            "function runTool(args) {\n"
+            "  const parsed = JSON.parse(args);\n"
+            "  return parsed.cmd;\n"
+            "}\n"
+            "module.exports = { runTool };\n"
+        ),
+        "lib/helper.mjs": (
+            "export function helper(n) {\n"
+            "  const doubled = n * 2;\n"
+            "  return doubled;\n"
+            "}\n"
+        ),
+    })
+    records, report = index_directory_with_report(tmp_path)
+    names = sorted(r.location.function for r in records)
+    assert "runTool" in names
+    assert "helper" in names
+    assert report.languages_indexed.get("javascript") == 2
+    assert report.languages_skipped == {}
+
+
 def test_supported_languages_v2_locked():
     """Locks wave 6 scope: DESIGN-V2.md piece 6 first-class languages."""
     assert SUPPORTED_LANGUAGES_V2 == ("python", "typescript", "javascript", "csharp")

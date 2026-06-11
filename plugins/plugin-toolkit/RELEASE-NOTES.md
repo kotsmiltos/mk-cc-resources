@@ -1,5 +1,15 @@
 # Release notes — plugin-toolkit
 
+## 1.5.1 — code-glossary 2.3.1: indexer sees CommonJS/ESM source
+
+Two verified indexer-coverage gaps from a live run on essense-flow (engine 2.3.1, 566 tests):
+
+- **`.cjs`/`.mjs` index as javascript, `.cts`/`.mts` as typescript** — same tree-sitter grammars as `.js`/`.ts`. Previously these extensions were a SILENT miss: unmapped extensions never even reached `languages_skipped`. On essense-flow the fix takes indexed JS files 9 → 25 (209 records), recovering the 7k-line CLI plus all of `lib/*.cjs`.
+- **`bin` removed from the walker's DEFAULT_EXCLUDES** — .NET `bin/` holds compiled binaries (nothing with a mapped source extension), but Node projects keep real CLI entry-point source there; `bin/essense-flow-tools.cjs` (88 function records) was invisible. .NET's generated-source dir `obj/` stays excluded.
+- **Block-scanner finding documented (DESIGN-V2.md decision 34)** — post-fix, `--scan-blocks` emits 172 JS block records on essense-flow but 0 clusters at the default `min-instances 5` (largest shape family n=3; 11 clusters at `--min-instances 2`). Mid-function repeated shapes (9-branch if-else dispatch chains, repeated validator bodies) fall outside the MVP's two prologue window shapes by design — known limitation, not a pattern-table gap; threshold knob already exposed via `block-cluster --min-instances`.
+
+Regression tests: `.cjs`/`.mjs`/`.cts`/`.mts` language mapping, `bin/` walkability, and an end-to-end `bin/tool.cjs` → FunctionRecords orchestrator test.
+
 ## 1.5.0 — code-glossary v2.3: the functionality map (`runner map`)
 
 One new deterministic subcommand, zero schema changes: `runner map --glossary GLOSSARY.yaml --out MAP.md` renders the codebase's functionality map — the consult-before-designing artifact.

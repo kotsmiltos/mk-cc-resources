@@ -127,6 +127,41 @@ def test_jsx_tsx_get_typescript_language(tmp_path: Path):
     assert langs["b.jsx"] == "javascript"
 
 
+def test_cjs_mjs_get_javascript_language(tmp_path: Path):
+    """Regression: .cjs/.mjs were silently skipped (no language mapping)."""
+    _make_tree(tmp_path, {
+        "lib/tool.cjs": "x",
+        "lib/mod.mjs": "y",
+    })
+    results = list(iter_source_files(tmp_path))
+    langs = {p.name: lang for p, lang in results}
+    assert langs["tool.cjs"] == "javascript"
+    assert langs["mod.mjs"] == "javascript"
+
+
+def test_cts_mts_get_typescript_language(tmp_path: Path):
+    _make_tree(tmp_path, {
+        "src/a.cts": "x",
+        "src/b.mts": "y",
+    })
+    results = list(iter_source_files(tmp_path))
+    langs = {p.name: lang for p, lang in results}
+    assert langs["a.cts"] == "typescript"
+    assert langs["b.mts"] == "typescript"
+
+
+def test_bin_directory_not_excluded(tmp_path: Path):
+    """Regression: 'bin' was in DEFAULT_EXCLUDES, pruning Node CLI source
+    like bin/essense-flow-tools.cjs. Node bin/ holds real entry points."""
+    _make_tree(tmp_path, {
+        "bin/cli.cjs": "x",
+        "src/a.py": "y",
+    })
+    results = list(iter_source_files(tmp_path))
+    paths = sorted(str(p.relative_to(tmp_path)).replace("\\", "/") for p, _ in results)
+    assert paths == ["bin/cli.cjs", "src/a.py"]
+
+
 def test_csharp_picked_up(tmp_path: Path):
     _make_tree(tmp_path, {
         "src/Foo.cs": "namespace Foo {}",
