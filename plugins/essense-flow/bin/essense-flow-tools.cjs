@@ -173,6 +173,23 @@ const SKILLS = [
 ];
 const CONTEXT_MODES = ['init', 'status', 'next'];
 
+// One dispatch table for the 9 skill-init handlers — consumed by both the
+// 'init <skill>' op and step-advance's internal ordered_steps lookup. The
+// two call sites used to carry parallel 9-branch if-else chains that had to
+// be edited in lockstep when a skill landed. Function declarations hoist,
+// so the forward references are safe.
+const INIT_DISPATCH = {
+  context: () => initContext,
+  architect: () => initArchitect,
+  build: () => initBuild,
+  review: () => initReview,
+  verify: () => initVerify,
+  research: () => initResearch,
+  triage: () => initTriage,
+  elicit: () => initElicit,
+  heal: () => initHeal,
+};
+
 // Canonical phase list — sourced fresh from references/transitions.yaml on
 // every invocation (cache invalidates on file mtime change per cli-spec §3.1).
 // Bootstrap fallback only used if transitions.yaml unreadable mid-op.
@@ -2699,27 +2716,12 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot, cursorPathArg }
   // Read init <skill>'s ordered_steps
   let initJson;
   try {
-    if (skill === 'context') {
-      initJson = await initContext(projectRoot);
-    } else if (skill === 'architect') {
-      initJson = await initArchitect(projectRoot);
-    } else if (skill === 'build') {
-      initJson = await initBuild(projectRoot);
-    } else if (skill === 'review') {
-      initJson = await initReview(projectRoot);
-    } else if (skill === 'verify') {
-      initJson = await initVerify(projectRoot);
-    } else if (skill === 'research') {
-      initJson = await initResearch(projectRoot);
-    } else if (skill === 'triage') {
-      initJson = await initTriage(projectRoot);
-    } else if (skill === 'elicit') {
-      initJson = await initElicit(projectRoot);
-    } else if (skill === 'heal') {
-      initJson = await initHeal(projectRoot);
-    } else {
-      throw new Error(`init <${skill}> not implemented post-S9.7 (all 9 canonical skills should be wired)`);
+    const initFn = INIT_DISPATCH[skill] && INIT_DISPATCH[skill]();
+    if (!initFn) {
+      throw new Error(`init <${skill}> not implemented (all 9 canonical skills should be wired)`);
     }
+    initJson = await initFn(projectRoot);
+
   } catch (e) {
     return emitFailure(
       EXIT_INIT_LOOKUP_FAIL,
@@ -6456,48 +6458,8 @@ if (require.main === module) (async () => {
 
   switch (args._op) {
     case 'init': {
-      if (args._sub === 'context') {
-        const json = await initContext(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'architect') {
-        const json = await initArchitect(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'build') {
-        const json = await initBuild(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'review') {
-        const json = await initReview(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'verify') {
-        const json = await initVerify(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'research') {
-        const json = await initResearch(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'triage') {
-        const json = await initTriage(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'elicit') {
-        const json = await initElicit(projectRoot);
-        process.stdout.write(JSON.stringify(json, null, 2) + '\n');
-        process.exit(EXIT_OK);
-      }
-      if (args._sub === 'heal') {
-        const json = await initHeal(projectRoot);
+      if (args._sub && INIT_DISPATCH[args._sub]) {
+        const json = await INIT_DISPATCH[args._sub]()(projectRoot);
         process.stdout.write(JSON.stringify(json, null, 2) + '\n');
         process.exit(EXIT_OK);
       }

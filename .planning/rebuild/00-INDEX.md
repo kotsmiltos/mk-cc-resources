@@ -48,3 +48,18 @@ single-source, librarian unknowns-ledger, M-2 existing-substrate-only, codenames
 
 Fold targets cluster into: schema single-source (Phase 1), unknowns[] ledger lifecycle (Phase 3),
 single-canonical-helper, doc-authority, exemption-with-expiry (Phase 4 principles doc).
+
+## Phase 5 outcome (2026-06-12) — dedup verdicts, substrate-verified
+
+Self-glossary run on essense-flow bin+lib:
+- **Engine gap 1:** code-glossary does not index `.cjs`/`.mjs` (extension map). Worked around via temp `.js` mirror. → plugin-toolkit backlog.
+- **Engine gap 2:** `--scan-blocks` found 0 block clusters in tools.cjs despite known repeated shapes (validator if-chains, dispatch branches) — JS block scanning is guard-pattern-only. → backlog.
+- Whole-function clustering: 3 low/medium clusters, none actionable (render-script site lambdas + cross-lib structural coincidences).
+
+Executed: **INIT_DISPATCH table** replaces 2×9 parallel if-else skill-init chains (the lockstep-edit hazard). Validator unification had already landed in Phase 1 (3 hand-coded validators → schema engine).
+
+Declined, with reasons (existence ≠ duplication; read the bodies):
+- `_formatStaleSweepLine` vs `_formatApplyDispositionLine`: two one-liners emitting DIFFERENT audit grammars; merging parameterizes 4 lines into obscurity.
+- Legacy vs new-schema cursor in `stepAdvance`: live arg-shape routing (`--skill/--next-step` = legacy, `--cursor` only = new), both in active use by skills — coexistence is design, not debt.
+- 4 frontmatter parsers: distinct doc shapes (HEAL-LOG dual-track vs report frontmatter vs state); a shared helper adds indirection in audit-critical, lock-disciplined code paths.
+- bin/lib comment-level codenames: left in place — source archeology comments, not reader-facing contract; RELEASE-NOTES will list as accepted residue.
