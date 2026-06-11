@@ -23,8 +23,13 @@ const PRINCIPLES = [
   "Front-Loaded-Design",
   "Fail-Soft",
   "Diligent-Conduct",
-  "INST-13",
+  "No-Resource-Caps",
 ];
+
+// The no-caps principle is cited by its public name only (principles.md
+// section "No Resource Caps"); the internal id it once carried is retired.
+const ALIASES = { "No-Resource-Caps": ["No-Resource-Caps"] };
+const cites = (text, p) => (ALIASES[p] || [p]).some((a) => text.includes(a));
 
 const SKILLS = [
   "elicit",
@@ -49,7 +54,7 @@ test("every SKILL.md cites every required principle inline", async () => {
     for (const p of PRINCIPLES) {
       const exempt = EXEMPT[skill] && EXEMPT[skill].includes(p);
       if (exempt) continue;
-      if (!raw.includes(p)) {
+      if (!cites(raw, p)) {
         failures.push(`${skill}: missing inline citation for ${p}`);
       }
     }
@@ -81,7 +86,7 @@ test("every principle is cited in either Core principle or Constraints block per
     for (const p of PRINCIPLES) {
       const exempt = EXEMPT[skill] && EXEMPT[skill].includes(p);
       if (exempt) continue;
-      if (!loadBearing.includes(p)) {
+      if (!cites(loadBearing, p)) {
         failures.push(`${skill}: ${p} mentioned but not in Core principle or Constraints block`);
       }
     }

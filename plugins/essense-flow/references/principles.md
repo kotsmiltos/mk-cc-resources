@@ -4,7 +4,7 @@ The four rules that govern every skill in this pipeline. Skills cite the
 relevant principle inline at point of use; the principle text is defined
 once here.
 
-A fifth rule (INST-13) is the resource-caps clarification — it is the
+A fifth rule (No-Resource-Caps) is the resource-caps clarification — it is the
 rule the project owner cares most about, recorded verbatim because every
 prior frustration eventually reduced to a violation of it.
 
@@ -15,11 +15,11 @@ prior frustration eventually reduced to a violation of it.
 - **Limits-awareness** — Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
 - **Positive mindset** — Every gap solvable. Find the way by working carefully.
 - **Quality ownership** — This work matters. Take ownership.
-- **Propagation requirement** — Every descendant artifact must carry these same four instructions (carry as a one-line citation to this section per v0.13.3 consolidation; the rule survives, only the verbatim-duplication mechanism changes).
+- **Propagation requirement** — Every descendant artifact must carry these same four instructions (carried as a one-line citation to this section rather than verbatim duplication; the rule survives, only the duplication mechanism changed).
 
 This block is the canonical source. Skills cite this section by reference rather than duplicating the bullets verbatim. The propagation-requirement bullet itself remains the rule: every artifact a skill produces — task specs, briefs, governance entries, completion records, RELEASE-NOTES sections, commit messages — must carry the citation forward so future-Claude reading any descendant finds the way back here.
 
-Consolidation rationale (per 2026-05-17 v0.13.3 closure-reopening decision in `redesign/06-decisions.md`): pre-v0.13.3 each SKILL.md duplicated the 4-bullet block verbatim, inconsistently (3 of 9 SKILL.md had it; 6 did not). Anthropic canonical context-engineering guidance (T1 / T3 / T11 — smallest high-signal token set; tight informative context; SKILL.md body ideally under 500 lines) flagged verbatim-duplication as anti-pattern. User verdict via AskUserQuestion: consolidate to one canonical source + cite.
+Consolidation rationale: SKILL.md files once duplicated the 4-bullet block verbatim, inconsistently (3 of 9 had it; 6 did not). Anthropic's canonical context-engineering guidance (smallest high-signal token set; tight informative context; SKILL.md body ideally under 500 lines) flags verbatim duplication as an anti-pattern. The owner's verdict: consolidate to one canonical source + cite.
 
 ---
 
@@ -65,7 +65,7 @@ Show, don't tell. No fabricated results, no missed steps, no dropped or deferred
 
 ---
 
-## INST-13 — No Resource Caps
+## No Resource Caps
 
 Resource caps used as fail-closed gates are forbidden across the entire codebase. Token budgets, brief ceilings, concurrency caps, wave counts, anything of the form "if N exceeded, reject" — gone. Caps survive only as quality gates (validation policy thresholds — e.g. "verbatim quote shorter than 20 characters is not evidence") or as deadlock-breakers (a stall detector that emits a stalled status, never a refusal).
 

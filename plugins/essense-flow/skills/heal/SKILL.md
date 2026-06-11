@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -35,13 +23,13 @@ Things we build need access from claude to be tested so we can build things like
 - Read artifact bodies, not directory listings. Existence alone is never sufficient evidence.
 - Append to `.pipeline/heal/HEAL-LOG.md` after every applied step — what was inferred, why, and what was applied. Force-set and cursor-rewind ops update HEAL-LOG.md frontmatter automatically (`force_actions[]`, `cursor_rewinds[]`); body-line entries are also appended.
 
-## Skill operating mechanism (S9.7 redesign — 2026-05-08)
+## Skill operating mechanism
 
-Heal's substance — Discover → Infer → Propose → Apply (one legal step at a time) → Hand off — is preserved verbatim per the 2026-05-05 preservation contract. The mechanism re-routes state writes and path lookups through the narrow CLI surface so master cannot improvise.
+Heal's substance — Discover → Infer → Propose → Apply (one legal step at a time) → Hand off — is preserved verbatim per the preservation contract. The mechanism re-routes state writes and path lookups through the narrow CLI surface so master cannot improvise.
 
 **Eleven-step CLI op sequence** master walks during a heal invocation:
 
-1. `essense-flow-tools init heal --project-root <root>` — returns canonical_paths (`heal_log_md`, `proposal_yaml`, `heal_archive_dir`), 6 ordered_steps (`discover-artifacts → infer-phase-and-confidence → propose-walk-forward → await-user-confirm → apply-walk-forward-step-by-step → handoff`), `phase_from`/`phase_to`/`transitions` as descriptive strings (per init-spec §1.8 D-2 closed at S6.5: heal walks the full graph; consumers interpret), `sub_agents: [{name: 'essense-flow-sub-recognizer', cardinality: 'optional, judgment-driven', quorum: 'tolerant'}]`, `degraded: <bool>` (true when state.yaml absent or corrupt).
+1. `essense-flow-tools init heal --project-root <root>` — returns canonical_paths (`heal_log_md`, `proposal_yaml`, `heal_archive_dir`), 6 ordered_steps (`discover-artifacts → infer-phase-and-confidence → propose-walk-forward → await-user-confirm → apply-walk-forward-step-by-step → handoff`), `phase_from`/`phase_to`/`transitions` as descriptive strings (heal walks the full graph; consumers interpret), `sub_agents: [{name: 'essense-flow-sub-recognizer', cardinality: 'optional, judgment-driven', quorum: 'tolerant'}]`, `degraded: <bool>` (true when state.yaml absent or corrupt).
 2. `essense-flow-tools step-advance --skill heal --next-step discover-artifacts --project-root <root>` — cursor open at step 0.
 3. `essense-flow-tools state-reconcile [--apply] --project-root <root>` — deterministic first move for a missing/corrupt/stale state.yaml: compares the cache against artifact inference (the artifacts ARE the state; state.yaml is a derived cache) and with `--apply` rebuilds it from disk when inference is confident, HEAL-LOG audited. Reach for this BEFORE proposing a manual walk-forward — most degraded states are just a stale cache, and ops auto-reconcile a missing cache themselves when the artifacts are unambiguous. Ambiguous inference refuses to apply and lists every candidate with evidence; THAT is where heal's judgment-driven walk-forward earns its keep.
 3. **Discover.** Walk project root + candidate paths from init JSON's hint (and from `defaults/config.yaml.discovery.prior_artifact_paths` if configured). Read bodies. If volume is large, dispatch `essense-flow-sub-recognizer` agents in parallel — one per shape (`SPEC-shape`, `REQ-shape`, `ARCH-shape`, `sprint-output-shape`, `foreign-tool-prose-shape`, or other). Tolerant quorum: a missing shape return becomes a synthetic "shape not surveyed" entry. Master STILL writes proposal.yaml and HEAL-LOG.md regardless of dispatch.
@@ -51,7 +39,7 @@ Heal's substance — Discover → Infer → Propose → Apply (one legal step at
 7. `step-advance --next-step await-user-confirm` — cursor advances. Master surfaces proposal via `AskUserQuestion` with arrow-key options Accept / Edit / Reject.
 8. `step-advance --next-step apply-walk-forward-step-by-step` — cursor advances. **Per walk-forward step, in order**, master picks the appropriate CLI op:
    - **Legal transition between canonical phases** → `essense-flow-tools state-set-phase --value <to> [--sprint <n>]`. Existing legal-transition + prerequisite-predicate + per-task-record gate enforcement applies.
-   - **Illegal-phase recovery** (current phase non-canonical, e.g., `phase: building` from a v0.7 state file) → `essense-flow-tools state-force-set-phase --value <canonical-phase> --reason "<one-line audit reason>"`. Use **only on the first step** of an illegal-phase walk per substance "use `force: true` on **only the first** finalize step" rule. The op refuses if current phase is already canonical AND state non-degraded (recovery-only guard, exit 9). The op atomically appends `force_actions[]` to HEAL-LOG.md frontmatter BEFORE writing state.yaml.
+   - **Illegal-phase recovery** (current phase non-canonical, e.g., `phase: building` from a legacy state file) → `essense-flow-tools state-force-set-phase --value <canonical-phase> --reason "<one-line audit reason>"`. Use **only on the first step** of an illegal-phase walk per substance "use `force: true` on **only the first** finalize step" rule. The op refuses if current phase is already canonical AND state non-degraded (recovery-only guard, exit 9). The op atomically appends `force_actions[]` to HEAL-LOG.md frontmatter BEFORE writing state.yaml.
    - **Stuck cursor from a prior aborted skill run** → `essense-flow-tools cursor-rewind`. Idempotent (no-op when cursor absent). Atomically appends `cursor_rewinds[]` to HEAL-LOG.md frontmatter.
    - **Manifest split / task-spec conversion** during improvised-schema architect-output recovery — ordinary file moves to `.pipeline/.heal-archive/` (substance verbatim) plus ordinary `Write` of converted YAML at canonical path. Each conversion is a separate user confirm. Un-convertible task specs (missing pseudocode + missing test contract) route to architect via `decomposing → architecture` (a legal transition) — never silently get a stub.
 9. `step-advance --next-step handoff` — cursor advances. Master surfaces the recommended next slash command for the now-current phase.
@@ -172,15 +160,15 @@ After the walk-forward completes:
 - HEAL-LOG.md captures the audit trail.
 - Recommended next action surfaces (typically the slash command for the now-current phase).
 
-### Job 6 — Stale-claim sweep (per DD-19)
+### Job 6 — Stale-claim sweep
 
-*Authored under closure-plan round-9 DD-19 (coverage-guarantee mechanism for outstanding-work-register stale claims) + D-Rd9-6 (default threshold = 24h) + DD-10 (preservation discipline — backward-compat for legacy entries lacking `claimed_at`).*
+*Stale-claim handling routes through heal as the single recovery surface — no in-band auto-release timers, no unclaim ops scattered across the toolset. Without enforced staleness handling, any "every queued item gets handled" guarantee is theatre.*
 
 **Verbatim contract.** Heal-op MUST read `.pipeline/outstanding-work-register.yaml`; for each entry where `status == "in_progress"` AND `claimed_at` field present AND `(now - claimed_at) > threshold_hours`, the entry is **STALE**.
 
-**Threshold reading rule (HARD CHECK: D-Rd9-6).** `threshold_hours = SKILL.md frontmatter \`stale_claim_threshold_hours\` field for the skill that owns the entry (per entry's owning skill — derived from \`added_by\` / \`target_phase\` per the canonical phase→skill table); fallback to 24 (DEFAULT_STALE_THRESHOLD_HOURS) when frontmatter absent or unparseable`. The constant `DEFAULT_STALE_THRESHOLD_HOURS = 24` lives in `plugins/essense-flow/lib/staleness.cjs` (shared with M4 drift-11 audit per D-Rd9-10 / CMC-Rd9-M6-1 shared-helper verdict).
+**Threshold reading rule (HARD CHECK).** `threshold_hours = SKILL.md frontmatter \`stale_claim_threshold_hours\` field for the skill that owns the entry (per entry's owning skill — derived from \`added_by\` / \`target_phase\` per the canonical phase→skill table); fallback to 24 (DEFAULT_STALE_THRESHOLD_HOURS) when frontmatter absent or unparseable`. The constant `DEFAULT_STALE_THRESHOLD_HOURS = 24` lives in `plugins/essense-flow/lib/staleness.cjs` — one shared library, so every consumer of staleness semantics reads the same threshold; duplicate implementations of one meaning drift apart.
 
-**Owner-skill resolution.** The register entry schema (cli-spec §1.7.5) does not carry a top-level `skill` field. Heal-op derives owner skill from:
+**Owner-skill resolution.** The register entry schema does not carry a top-level `skill` field. Heal-op derives owner skill from:
 
 1. `entry.added_by` substring match against the canonical 9-skill list (e.g. `"round-2 elicit"` → `elicit`).
 2. Fallback: `entry.target_phase` mapped through the canonical phase→skill table (`eliciting → elicit`, `research → research`, `triaging → triage`, `architecture → architect`, `sprinting → build`, `reviewing → review`, `verifying → verify`).
@@ -203,11 +191,11 @@ Disposition is one of the closed enum:
 - `kept-by-user` — default-mode user picked "keep claimed (mark not-stale)".
 - `kept-but-flagged-stale` — default-mode user picked "keep but flag as stale-acknowledged".
 
-**Backward-compat HARD CHECK (DD-10).** Entries lacking the `claimed_at` field are SKIPPED — not stale-eligible. Never throw, never warn-fail. This preserves the cli-spec §1.7.5 backward-compatibility contract: legacy entries persisted before T-919 read cleanly through every consumer (`register-list`, drift-11 audit, this stale-claim sweep). Re-emphasized: `entry.claimed_at === undefined` is treated as `null`, the entry is silently passed over, and the sweep proceeds.
+**Backward-compat HARD CHECK.** Entries lacking the `claimed_at` field are SKIPPED — not stale-eligible. Never throw, never warn-fail. Register schema evolution is additive-only: legacy entries persisted before the `claimed_at` field existed must read cleanly through every consumer (`register-list`, this stale-claim sweep) forever. Re-emphasized: `entry.claimed_at === undefined` is treated as `null`, the entry is silently passed over, and the sweep proceeds.
 
-**Layered-defense pairing (DD-19).** This Job 6 sweep is the **repair side** of the layered defense; the **detection side** is the M4 drift-11 audit (T-913) which surfaces stale claims read-only into the audit report. Both sides consume `plugins/essense-flow/lib/staleness.cjs` for parity — a stale claim is the same stale claim from either lens.
+**Layered-defense pairing.** This Job 6 sweep is the **repair side** of the stale-claim defense; Job 7 below is the **disposition side**. Both consume `plugins/essense-flow/lib/staleness.cjs` for parity — a stale claim is the same stale claim from either lens.
 
-**CLI op invocation.** Per DD-12 (a) inclusion criterion (replaces deterministic-LLM-task; structural-check grade), heal-op exposes the sweep through its existing `heal` op surface with the required `--sweep-stale-claims` flag (DD-18 conservative-args policy: explicit flag, no inference). Optional `--auto-release` toggles batch mode. Invocation:
+**CLI op invocation.** The sweep is deterministic, judgment-free work — exactly what belongs in a CLI op rather than model judgment. Heal-op exposes it through its existing `heal` op surface with the required `--sweep-stale-claims` flag (explicit flag, no inference from ambient state). Optional `--auto-release` toggles batch mode. Invocation:
 
 ```bash
 essense-flow-tools heal --sweep-stale-claims [--auto-release] [--project-root <p>]
@@ -215,27 +203,27 @@ essense-flow-tools heal --sweep-stale-claims [--auto-release] [--project-root <p
 
 ### Job 7 — Apply disposition (per-item)
 
-*Authored under closure-plan round-10 D-Rd10-11 (per-item op shape verbatim) + DD-19 (stale-claim coverage-guarantee — writer-side surface) + DD-10 (audit-trail evidence preservation). Pairs with Job 6 as the writer/mutator half of the DD-19 reader/writer pair.*
+*Adjudication acts on one item at a time — one decision, one audit-log line, heterogeneous verdicts allowed; batch convenience is not worth condensed judgment. Pairs with Job 6 as the writer/mutator half of the stale-claim reader/writer pair.*
 
-**Op surface (D-Rd10-11 verbatim).** Master invokes this op once per stale item after Job 6 surfaces an `AskUserQuestion` block. The user's chosen action routes here as a single CLI call:
+**Op surface.** Master invokes this op once per stale item after Job 6 surfaces an `AskUserQuestion` block. The user's chosen action routes here as a single CLI call:
 
 ```bash
 essense-flow-tools heal --apply-disposition --item-id <id> --action <release|keep|escalate> [--project-root <p>]
 ```
 
-Both `--item-id` and `--action` are required flags (DD-18 conservative-args: no inference from cursor / state / prior context). `--apply-disposition` is mutually exclusive with `--sweep-stale-claims` — one sub-op per invocation. Combining the two flags fails with exit 4 + a diagnostic citing DD-18.
+Both `--item-id` and `--action` are required flags — no inference from cursor / state / prior context; missing required flags fail with a diagnostic naming them. `--apply-disposition` is mutually exclusive with `--sweep-stale-claims` — one sub-op per invocation. Combining the two flags fails with exit 4 + a diagnostic.
 
-**Allowed actions (closed enum per D-Rd10-11).** The action whitelist is exhaustive over the DD-19 coverage gate — every stale item observed by Job 6 gets exactly one writer-side disposition through one of these three actions OR through the `--sweep-stale-claims --auto-release` shortcut (which is equivalent to bulk `release`).
+**Allowed actions (closed enum).** The action whitelist is exhaustive over the stale-claim coverage gate — every stale item observed by Job 6 gets exactly one writer-side disposition through one of these three actions OR through the `--sweep-stale-claims --auto-release` shortcut (which is equivalent to bulk `release`).
 
 | Action      | Register mutation                                                          | Audit-trail intent                                |
 |-------------|-----------------------------------------------------------------------------|---------------------------------------------------|
 | `release`   | `entry.status = 'open'`; `entry.claimed_at = null`.                          | reclaim work back to the open queue.              |
 | `keep`      | no mutation to status / claimed_at (explicit no-op).                         | user-affirmed keep — preserves existing claim.    |
-| `escalate`  | `entry.status = 'escalated'`; `entry.escalated_at = now`; `claimed_at` preserved (DD-10 evidence). | hand off to architect / triage; provenance preserved. |
+| `escalate`  | `entry.status = 'escalated'`; `entry.escalated_at = now`; `claimed_at` preserved (evidence). | hand off to architect / triage; provenance preserved. |
 
-The `keep` action is intentionally a no-op on register state — the HEAL-LOG line is the entire artifact of the disposition. Job 6 cannot tell whether the user looked at a stale item and confirmed "this is still the right person on it" vs. silently ignored the surface; the explicit `keep` action through Job 7 closes that gap (DD-19 coverage). On `escalate`, `claimed_at` is preserved as evidence per DD-10 audit-trail integrity — the architect picking up the escalation needs to know who held the stale claim.
+The `keep` action is intentionally a no-op on register state — the HEAL-LOG line is the entire artifact of the disposition. Job 6 cannot tell whether the user looked at a stale item and confirmed "this is still the right person on it" vs. silently ignored the surface; the explicit `keep` action through Job 7 closes that gap. On `escalate`, `claimed_at` is preserved as audit-trail evidence — the architect picking up the escalation needs to know who held the stale claim.
 
-**Audit-trail line shape (DD-19 verbatim, mirrors Job 6 STALE_SWEEP for grep parity over HEAL-LOG.md).** Each invocation appends exactly one body line to `.pipeline/heal/HEAL-LOG.md`:
+**Audit-trail line shape (mirrors Job 6 STALE_SWEEP for grep parity over HEAL-LOG.md).** Each invocation appends exactly one body line to `.pipeline/heal/HEAL-LOG.md`:
 
 ```text
 [<iso_timestamp>] APPLY_DISPOSITION item_id=<id> prior_status=<observed> prior_claimed_at=<iso-or-null> action=<release|keep|escalate> new_status=<post>
@@ -243,11 +231,11 @@ The `keep` action is intentionally a no-op on register state — the HEAL-LOG li
 
 The token order is grep-stable — a single grep over HEAL-LOG.md for `APPLY_DISPOSITION item_id=<id>` returns one line per disposition applied to that item across all invocations. Combined with Job 6's `STALE_SWEEP item_id=<id>` lines, master can reconstruct the full lifecycle of any stale claim by grepping a single file.
 
-**Register write atomicity (DD-10 audit-trail integrity).** Routes through the canonical `writeStateAndFingerprint` wrapper — tmp+rename + SHA-256 fingerprint sidecar refresh. A crash mid-write leaves either the prior register intact (no-op) or the post-write register + matching fingerprint (success). Torn writes are structurally precluded.
+**Register write atomicity.** Routes through the canonical `writeStateAndFingerprint` wrapper — tmp+rename + SHA-256 fingerprint sidecar refresh. A crash mid-write leaves either the prior register intact (no-op) or the post-write register + matching fingerprint (success). Torn writes are structurally precluded.
 
-**Item-not-found surface (DD-18 explicit-args).** If `--item-id` does not match any `entries[].item_id` in the register, the op exits non-zero with a diagnostic naming the missing id. No fuzzy match, no prefix match, no inference — DD-18 conservative-args policy holds end-to-end.
+**Item-not-found surface.** If `--item-id` does not match any `entries[].item_id` in the register, the op exits non-zero with a diagnostic naming the missing id. No fuzzy match, no prefix match, no inference — the explicit-args discipline holds end-to-end.
 
-**Layered-defense pairing (DD-19).** Job 6 (read side) + Job 7 (write side) close the stale-claim coverage gate together; the M4 drift-10/11 audit (T-913) is the orthogonal detection surface that surfaces stale claims as a read-only audit signal. The shared `lib/staleness.cjs` constants ensure all three lenses see the same staleness — a stale claim is the same stale claim from sweep, audit, and disposition.
+**Layered-defense pairing.** Job 6 (read side) + Job 7 (write side) close the stale-claim coverage gate together. The shared `lib/staleness.cjs` constants ensure both lenses see the same staleness — a stale claim is the same stale claim from sweep and disposition.
 
 ## Discovery confidence behavior
 
@@ -267,13 +255,13 @@ When prior artifacts are **only code** (no SPEC, no REQ, no ARCH):
 
 For fresh-project heal (no prior `.pipeline/`, just user pitch + clean repo), discovery runs cleanly in main context. The artifact set is small; reading shapes is quick.
 
-For mid-flight heal (existing `.pipeline/` from this or another tool, code-without-spec scenarios, hand-written prose specs at unfamiliar paths, partial sprint outputs), the discovery substance — reading bodies of every candidate artifact, characterizing each shape, mapping to pipeline phase — burns master context. The disciplinary rule (read shapes not listings; existence is never sufficient evidence; never silently mutate state; user confirms before apply) drifts. Symptom: heal infers a phase from filenames rather than file bodies; walk-forward proposal lists confidence `high` for a v0.7 state file that master hadn't actually opened.
+For mid-flight heal (existing `.pipeline/` from this or another tool, code-without-spec scenarios, hand-written prose specs at unfamiliar paths, partial sprint outputs), the discovery substance — reading bodies of every candidate artifact, characterizing each shape, mapping to pipeline phase — burns master context. The disciplinary rule (read shapes not listings; existence is never sufficient evidence; never silently mutate state; user confirms before apply) drifts. Symptom: heal infers a phase from filenames rather than file bodies; walk-forward proposal lists confidence `high` for a legacy-format state file that master hadn't actually opened.
 
 When the prior-artifact volume threatens the rule, dispatch **per-shape sub-recognizers** in parallel — one sub-recognizer per artifact kind (SPEC-shape, REQ-shape, ARCH-shape, sprint-output shape, foreign-tool-prose shape). Each reads its slice of candidate paths, returns recognized/unrecognized + content notes + reconciliation hints. Master synthesizes the walk-forward proposal with the shapes-not-listings rule still loud because master never read every body itself.
 
 Use `templates/sub-recognizer-brief.md`. Quorum: `tolerant` — a missing shape recognition becomes a synthetic "shape not surveyed" entry; the proposal still surfaces it to the user with low confidence rather than silently omitting.
 
-Per **INST-13**: no count threshold triggers this. Judgment-driven. If the prior set is small enough to read end-to-end without losing the discipline, stay in main. If reading every body would crowd out the proposal logic, delegate.
+No count threshold triggers this — no resource caps; substance gates, never counters. Judgment-driven. If the prior set is small enough to read end-to-end without losing the discipline, stay in main. If reading every body would crowd out the proposal logic, delegate.
 
 Per **Diligent-Conduct**: master STILL writes the walk-forward proposal and the HEAL-LOG.md. Sub-recognizers identify shapes; master decides walk-forward sequencing and confidence. Same legal-transition discipline applies — the walk-forward applies one step at a time on user confirm, regardless of whether discovery was delegated.
 
@@ -283,11 +271,11 @@ Per **Diligent-Conduct**: master STILL writes the walk-forward proposal and the 
 - Per **Front-Loaded-Design**: heal does not silently invent design decisions to fill gaps. It surfaces every uncertainty as a question for the user.
 - Per **Diligent-Conduct**: heal NEVER skips a transition. Walk-forward is one legal step at a time. The audit trail in HEAL-LOG.md is append-only.
 - Per **Fail-Soft**: heal observes degraded states and warns; it does not refuse to start because the project is in an unexpected shape.
-- Per **INST-13**: no cap on walk-forward steps. The proposal walks every legal transition needed to reach the inferred phase, one step at a time. A long walk is a real signal about how far the project drifted, not a budget violation.
+- Per **No-Resource-Caps** (`references/principles.md` "No Resource Caps"): no cap on walk-forward steps. The proposal walks every legal transition needed to reach the inferred phase, one step at a time. A long walk is a real signal about how far the project drifted, not a budget violation.
 
 ## Scripts
 
-`lib/state.js` direct read and `lib/finalize.js` are **DEPRECATED for heal** (S9.7 redesign 2026-05-08). State writes go through `essense-flow-tools state-set-phase` / `state-force-set-phase`; cursor operations go through `step-advance` / `cursor-rewind`. The CLI op path is the structural-containment surface that closes drift symptoms #1, #2, #3, #4 at the heal recovery boundary too.
+`lib/state.js` direct read and `lib/finalize.js` are **DEPRECATED for heal**. State writes go through `essense-flow-tools state-set-phase` / `state-force-set-phase`; cursor operations go through `step-advance` / `cursor-rewind`. The CLI op path is the structural-containment surface that closes the invented-field / invented-phase / wrong-path / wrong-extension drift symptoms at the heal recovery boundary too.
 
 `AskUserQuestion` (built-in) — proposal confirmation, reverse-elicit confirmations.
 
@@ -320,7 +308,7 @@ Heal proposes the conversion in chunks the user can confirm:
    - `agency_level: guided` (default) unless the markdown explicitly carries detailed pseudocode (then `prescribed`) or explicitly says "agent decides" (route back to architect, not heal — open contracts violate Front-Loaded-Design)
    - `behavioral_pseudocode` and `test_completion_contract` cannot always be derived. Heal surfaces these gaps as needing architect re-entry, NOT silent stub-out. Each conversion is an interactive confirm with the user; missing fields are listed explicitly.
 
-Conversion writes new YAML files via ordinary `Write` to canonical path; original `.md` files moved to `.pipeline/.heal-archive/tasks/` for audit. The post-conversion state is `phase: sprinting` with one manifest per sprint and tasks-as-yaml — exactly what build expects. Note: the canonical layout per S5 §1.4 architect uses nested per-sprint manifests at `.pipeline/architecture/sprints/<n>/manifest.yaml` and per-task specs at `.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml`; heal's conversion targets these paths.
+Conversion writes new YAML files via ordinary `Write` to canonical path; original `.md` files moved to `.pipeline/.heal-archive/tasks/` for audit. The post-conversion state is `phase: sprinting` with one manifest per sprint and tasks-as-yaml — exactly what build expects. Note: the canonical architect layout uses nested per-sprint manifests at `.pipeline/architecture/sprints/<n>/manifest.yaml` and per-task specs at `.pipeline/architecture/sprints/<n>/tasks/<task-id>.yaml`; heal's conversion targets these paths.
 
 Per **Diligent-Conduct**: every conversion step is a separate user-confirm. No batch "convert all 80 task specs" without per-step visibility. Per **Graceful-Degradation**: a task spec that cannot be converted (missing pseudocode + missing test contract + the user cannot fill them mid-heal) routes to architect via `decomposing → architecture`, never silently gets a stub.
 

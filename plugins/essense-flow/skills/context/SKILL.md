@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -39,7 +27,7 @@ Things we build need access from claude to be tested so we can build things like
 
 State is a contract, not a vibe. Every phase write goes through `lib/state.js` and is validated against `references/transitions.yaml`. If the state machine wouldn't accept the transition, the write doesn't happen — and the user sees why.
 
-## Skill operating mechanism (S7 redesign — 2026-05-06)
+## Skill operating mechanism
 
 Path lookups, ordered step list, and the per-phase artifact map are obtained from a single source: the CLI op `essense-flow-tools init context`. Master parses the JSON and uses its fields verbatim — no path inference from prose, no extension guessing, no key invention.
 
@@ -106,7 +94,7 @@ Ordered steps (per `init context` `ordered_steps_by_mode.next`):
 - Per **Fail-Soft**: status and next never block, never refuse. They emit, then continue.
 - Per **Diligent-Conduct**: do not invent a phase name that isn't in `transitions.yaml.phases`. If state.phase is unknown, render the degradation warning verbatim.
 - Per **Front-Loaded-Design**: context does not own design closure (that's the upstream skills' responsibility). What context owns is making the *current* state visible so closure can happen elsewhere — surfacing a stuck phase via `/status` is the form Front-Loaded-Design takes here.
-- Per **INST-13**: no cap on `/status` invocations or `/next` polling. Both are read-only and idempotent — no budget governs their use.
+- Per **No-Resource-Caps** (`references/principles.md` "No Resource Caps"): no cap on `/status` invocations or `/next` polling. Both are read-only and idempotent — no budget governs their use.
 
 ## Scripts
 
@@ -123,4 +111,4 @@ This skill writes state for `init` only (no transition — initial write). `stat
 
 ## Per-phase canonical artifact map
 
-The map lives in `essense-flow-tools init context`'s `per_phase_artifact_map` field (keyed by canonical phase name). Master reads it from there, not from a prose table here. Phase-name keys are the canonical values from `references/transitions.yaml.phases`. The S7 redesign removed the prose table from this file to close the path-inference seam — see `redesign/spike-notes-S7.md` for the rationale.
+The map lives in `essense-flow-tools init context`'s `per_phase_artifact_map` field (keyed by canonical phase name). Master reads it from there, not from a prose table here. Phase-name keys are the canonical values from `references/transitions.yaml.phases`. The prose table was removed from this file to close the path-inference seam — one canonical source means the doc and the CLI cannot drift apart.

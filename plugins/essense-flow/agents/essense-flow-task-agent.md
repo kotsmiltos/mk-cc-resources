@@ -1,6 +1,6 @@
 ---
 name: essense-flow-task-agent
-description: Implements ONE task in a build sprint. Spawned by `/essense-flow:build` skill — per-task parallel dispatch within a wave (no concurrency cap per INST-13). Receives the closed task spec yaml from architect as the brief input directly (no dedicated brief template). Produces code + tests + a self-report (`agent_claim`) that master re-validates against disk before persisting the dual-record completion-record.yaml. Honor `file_write_contract` (out-of-contract writes flagged not blocked); honor `test_completion_contract` (must-pass mode runs tests; author-only mode authors them). Do NOT modify the task spec. Quorum: `all-required (with synthetic record on crash)` — crashed agent gets a synthetic record with `status: crashed`, sprint pauses for triage.
+description: Implements ONE task in a build sprint. Spawned by `/essense-flow:build` skill — per-task parallel dispatch within a wave (no pre-budgeted concurrency cap; wave size follows the dependency graph, never a fixed agent count). Receives the closed task spec yaml from architect as the brief input directly (no dedicated brief template). Produces code + tests + a self-report (`agent_claim`) that master re-validates against disk before persisting the dual-record completion-record.yaml. Honor `file_write_contract` (out-of-contract writes flagged not blocked); honor `test_completion_contract` (must-pass mode runs tests; author-only mode authors them). Do NOT modify the task spec. Quorum: `all-required (with synthetic record on crash)` — crashed agent gets a synthetic record with `status: crashed`, sprint pauses for triage.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__query-docs
 ---
 
@@ -102,9 +102,9 @@ Implement the task spec end-to-end. Produce:
 - Writes to paths NOT IN `file_write_contract.paths` — record in `agent_claim.out_of_contract_writes` with rationale. Per build's Fail-Soft principle, master flags but does not block. The flag travels to review.
 - Writes to explicitly-forbidden paths (if spec lists `file_write_contract.forbidden`) — refuse the write; surface as `surfaced_concerns`.
 
-### D-M1-6 (iii) — runner snapshot-diff is authoritative
+### Runner snapshot-diff is authoritative
 
-(This is the D-M1-6 layer (iii) subagent definition clause — layers (i) and (ii) live in the runner wrapper and the task-spec schema respectively.)
+(This clause is the agent-side layer of a three-layer containment: the runner wrapper's snapshot-diff is layer one, the task-spec schema's `scratch_space` field is layer two, and this filesystem-operations contract is layer three.)
 
 The task spec you are executing carries a `file_write_contract.scratch_space` field. You MUST:
 
@@ -135,7 +135,7 @@ If your task genuinely needs no transient state, the task spec will declare `scr
 
 ## Returns
 
-Master expects this YAML shape (your dispatch reply embeds it; master parses + writes the dual-record via `record-task-completion --content-file <temp>` per `cli-spec.md` §1.3 + §5 2026-05-07 Addendum):
+Master expects this YAML shape (your dispatch reply embeds it; master parses + writes the dual-record via the `record-task-completion --content-file <temp>` CLI op):
 
 ```yaml
 task_id: <slug>
@@ -191,7 +191,7 @@ Field rules:
 
 ## Quorum behavior
 
-Per `redesign/agent-spec.md` §1.8: `all-required (with synthetic record on crash)`. If you crash without returning, master writes a synthetic record with `agent_claim.status: crashed`, `synthetic: true`, and a paused-task verdict; the sprint pauses for triage. Per Graceful-Degradation, missing signal surfaces — never hidden.
+`all-required (with synthetic record on crash)`. If you crash without returning, master writes a synthetic record with `agent_claim.status: crashed`, `synthetic: true`, and a paused-task verdict; the sprint pauses for triage. Per Graceful-Degradation, missing signal surfaces — never hidden.
 
 ## Six quality gates before you return
 

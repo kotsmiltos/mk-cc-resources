@@ -358,12 +358,14 @@ transitions:
     fields_changed: [phase, sprint, wave, last_updated]
 
 # ----------------------------------------------------------------------------
-# per_skill_skip_threshold — per NFR-8 + D-Sprint10-5 (Sprint 10 W6).
+# per_skill_skip_threshold — per-skill dispatch floors for the Skip-IFF gate.
 #
-# Single lookup source for getSkillSkipThreshold(skill) helper in
+# Single lookup source for the getSkillSkipThreshold(skill) helper in
 # lib/cursor-schema.cjs. No fallback constants anywhere — this is the
-# canonical threshold table. Amendments require closed decision entry per
-# cli-spec §5 addendum discipline.
+# canonical threshold table; the helper fails loud on a missing entry.
+# Amendments require a closed decision entry in the project's decisions
+# log. rule_id values are stable identifiers consumed verbatim by the
+# CLI and its tests — do not rename them.
 #
 # Propagation requirement (carries to readers of this block):
 #   - Limits-awareness: Claude drifts, loses context, finishes prematurely,
@@ -377,35 +379,32 @@ transitions:
 per_skill_skip_threshold:
   architect:
     threshold: 1
-    # threshold = decomposition.modules.length per DD-2 rule; encoded as 1
-    # here means "≥ module count" with module count supplied at predicate-
-    # evaluation time via cursorState. The literal value '1' is a structural
-    # placeholder — the rule is
+    # threshold = decomposition.modules.length (one sub-architect dispatch
+    # per module); encoded as 1 here means "≥ module count" with module
+    # count supplied at predicate-evaluation time via cursorState. The
+    # literal value '1' is a structural placeholder — the rule is
     # "observed >= max(threshold, decomposition.modules.length)".
-    rule_id: DD-2
+    rule_id: dispatch-floor
     rule_phrase: 'with sufficient sub-architect dispatch'
     rule_quote_required: true
     skip_iff_substance: |
       modules.length == 1 AND scope == 'condensed' AND
-      user-prior-ratification cited (per skill-substance/architect.md
-      DD-2 sub-architect-dispatch Skip-IFF rule)
+      user ratified the skip
 
   review:
     threshold: 6
-    rule_id: DD-2
+    rule_id: dispatch-floor
     rule_phrase: 'with sufficient lens dispatch'
     rule_quote_required: true
     skip_iff_substance: |
-      task_count <= 2 OR rule-allowed-substance-quote cited
-      (per skill-substance/review.md DD-2 review-lens-dispatch Skip-IFF rule)
+      task_count <= 2 OR a rule-allowed substance quote is cited
 
   verify:
     threshold: 1
-    # threshold = items_total per DD-2 rule; structural placeholder
-    # like architect.threshold above.
-    rule_id: DD-2
+    # threshold = items_total (one verifier dispatch per extracted item);
+    # structural placeholder like architect.threshold above.
+    rule_id: dispatch-floor
     rule_phrase: 'with sufficient verifier dispatch'
     rule_quote_required: true
     skip_iff_substance: |
-      items_total == 0 OR rule-allowed-substance-quote cited
-      (per skill-substance/verify.md DD-2 verifier-dispatch Skip-IFF rule)
+      items_total == 0 OR a rule-allowed substance quote is cited

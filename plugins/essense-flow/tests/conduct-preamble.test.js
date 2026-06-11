@@ -43,8 +43,15 @@ async function listSkills() {
   return entries.filter((e) => e.isDirectory()).map((e) => e.name);
 }
 
-test("every SKILL.md contains the canonical Conduct preamble verbatim", async () => {
+// 2026-06-11 rebuild Phase 4: the full Conduct prose lives ONCE at
+// principles.md `## Conduct`; every SKILL.md cites it by reference instead
+// of duplicating ~290 words ×11 (the v0.13.3 consolidation finished). This
+// test enforces: (a) principles.md still carries the canonical Conduct
+// section, (b) every SKILL.md has a `## Conduct` section that cites
+// principles.md, (c) NO SKILL.md carries the full duplicate anymore.
+test("every SKILL.md cites the canonical Conduct (no verbatim duplicates)", async () => {
   const canonical = await loadCanonicalConduct();
+  assert.ok(canonical.includes("diligent partner"), "principles.md Conduct must be the canonical prose");
   const skills = await listSkills();
   assert.ok(skills.length >= 9, `expected at least 9 skills, found ${skills.length}`);
   const failures = [];
@@ -57,13 +64,20 @@ test("every SKILL.md contains the canonical Conduct preamble verbatim", async ()
       failures.push(`${skill}: cannot read SKILL.md — ${err.message}`);
       continue;
     }
-    if (!raw.includes(canonical)) {
-      failures.push(`${skill}: SKILL.md does not contain the canonical Conduct preamble verbatim`);
+    if (!/## Conduct\n/.test(raw)) {
+      failures.push(`${skill}: SKILL.md has no '## Conduct' section`);
+      continue;
+    }
+    if (!raw.includes("references/principles.md")) {
+      failures.push(`${skill}: Conduct section does not cite references/principles.md`);
+    }
+    if (raw.includes("You are a diligent partner")) {
+      failures.push(`${skill}: still carries the full Conduct duplicate — cite, don't copy`);
     }
   }
   if (failures.length > 0) {
     assert.fail(
-      `Conduct preamble drift in ${failures.length} skill(s):\n  ${failures.join("\n  ")}`,
+      `Conduct citation drift in ${failures.length} skill(s):\n  ${failures.join("\n  ")}`,
     );
   }
 });

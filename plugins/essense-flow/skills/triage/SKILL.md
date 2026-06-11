@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -36,7 +24,7 @@ Things we build need access from claude to be tested so we can build things like
 - Items the categorizer cannot place confidently are routed to the user with the reason exposed.
 - Use the narrow CLI surface (`essense-flow-tools state-set-phase`, `essense-flow-tools state-set-triage-completed`) and ordinary `Write` to canonical paths from `init triage` JSON. Do **not** call `lib/finalize.js` (deprecated for this skill — see Skill operating mechanism below).
 
-## Skill operating mechanism (S9.5 redesign — 2026-05-08)
+## Skill operating mechanism (structural-containment redesign)
 
 This skill is wired against the narrow CLI surface and registered subagents introduced in the structural-containment redesign. The substance below (Core principle, How you work, Constraints, State transitions) is preserved verbatim per the 2026-05-05 preservation contract; only the state-write paths and path-lookup paths are re-routed through the new mechanisms.
 
@@ -51,7 +39,7 @@ This skill is wired against the narrow CLI surface and registered subagents intr
 
 **Why the disposition predicate matters.** Without a structural check at the `triaging → <target>` boundary, master could (under drift) call `state-set-phase --value architecture` after a triage run that wrote `routed_to: eliciting` to TRIAGE-REPORT.md frontmatter — collapsing the deterministic gate triage exists to enforce. The predicate evaluator reads the report, sees `routed_to: eliciting`, and rejects: `routed_to="eliciting", predicate requires routed_to == "architecture"`. The frontmatter scalar is the single source of truth for the routing decision; the body section's `Routing decision` rationale is human-readable companion text, not the gate.
 
-**Sub-agent dispatch via registered agent (`essense-flow-sub-triager`).** Optional, judgment-driven (per `redesign/skill-substance/triage.md` "Sub-agent dispatches"). For small input sets, triage runs cleanly in main context and dispatch costs more than it saves. For large input sets, master MUST dispatch per-class sub-triagers in parallel via the `Agent` tool with `subagent_type: essense-flow-sub-triager`, one agent per item class master picks (bug, drift, gap, ambiguity, missing-analysis — picked from what the upstream batch actually contains; no hard list). Each agent receives `{{item_class}}, {{item_class_description}}, {{spec_path}}, {{items_in_class}}, {{sentinel}}` substituted into `templates/sub-triager-brief.md`. Agents return YAML with per-item disposition + rationale + spec/signal evidence. Quorum: `all-required` — every dispatched class must return; missing class becomes a synthetic record (`unclassifiable` for items in the missing class with rationale "class X did not return; deferred to next round"). Master cross-references each disposition against SPEC.md with fresh context BEFORE computing the routing decision (per Diligent-Conduct: master STILL re-checks each disposition against SPEC before routing).
+**Sub-agent dispatch via registered agent (`essense-flow-sub-triager`).** Optional, judgment-driven. For small input sets, triage runs cleanly in main context and dispatch costs more than it saves. For large input sets, master MUST dispatch per-class sub-triagers in parallel via the `Agent` tool with `subagent_type: essense-flow-sub-triager`, one agent per item class master picks (bug, drift, gap, ambiguity, missing-analysis — picked from what the upstream batch actually contains; no hard list). Each agent receives `{{item_class}}, {{item_class_description}}, {{spec_path}}, {{items_in_class}}, {{sentinel}}` substituted into `templates/sub-triager-brief.md`. Agents return YAML with per-item disposition + rationale + spec/signal evidence. Quorum: `all-required` — every dispatched class must return; missing class becomes a synthetic record (`unclassifiable` for items in the missing class with rationale "class X did not return; deferred to next round"). Master cross-references each disposition against SPEC.md with fresh context BEFORE computing the routing decision (per Diligent-Conduct: master STILL re-checks each disposition against SPEC before routing).
 
 **Cursor advancement via `step-advance`.** After each ordered step, master calls `essense-flow-tools step-advance --skill triage --next-step <next-step-name>`. The op writes `<project-root>/.pipeline/cursor.yaml` monotonically — out-of-order jumps reject with exit 13 (`'<step>' is not the immediate successor of '<current>'; expected '<next-canonical>'`). The `skill-complete` sentinel on the last step (`finalize`) deletes the cursor file. Drift symptoms #7 (skips ordered-step loop) and #9 (loses cursor) close structurally.
 
@@ -143,7 +131,7 @@ The TRIAGE-REPORT.md write is required regardless of which target phase you chos
 
 ## Why delegation is mandatory (when judgment says dispatch)
 
-Per `redesign/skill-substance/triage.md` "Sub-agent dispatches" + INST-13: no count threshold triggers this. The choice is judgment-driven, not arithmetic. If item categorization feels like pattern-matching (consistent dispositions but stopped reflecting the actual SPEC cross-reference), delegate. If it feels like reading and deciding, stay in main.
+No count threshold triggers this — resource caps as gates are forbidden. The choice is judgment-driven, not arithmetic. If item categorization feels like pattern-matching (consistent dispositions but stopped reflecting the actual SPEC cross-reference), delegate. If it feels like reading and deciding, stay in main.
 
 For small input sets (a handful of gaps from research, a few findings from review), triage runs cleanly in main context. Dispatching sub-agents would cost more than it saves.
 
@@ -168,7 +156,7 @@ Your agents are librarians: they hand over the best book they have, but they can
 - Per **Diligent-Conduct**: zero silent drops. Every input item appears in the dispositions table.
 - Per **Graceful-Degradation**: when an upstream artifact is partial or corrupt, triage operates on what's present and surfaces the gap as its own item — never refuses to triage what's there.
 - Per **Fail-Soft**: missing input fields do not refuse the skill. Triage fills what it can categorize, routes the rest to the user, and emits a stderr warning naming the missing field. Refusing on shape variance is a fail-closed regression.
-- Per **INST-13**: no cap on item count. Every input item is processed. Deferral to the next round is a deliberate `carried_to_next_round` disposition (logged), never a silent budget enforcement.
+- Per **No-Resource-Caps** (`references/principles.md`): no cap on item count. Every input item is processed. Deferral to the next round is a deliberate `carried_to_next_round` disposition (logged), never a silent budget enforcement.
 - Triage NEVER resolves the items it triages. Resolution belongs to the routed phase.
 
 ## Outputs

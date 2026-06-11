@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -35,9 +23,9 @@ Things we build need access from claude to be tested so we can build things like
 - Dispatch in dependency-ordered waves. Within a wave, every task runs in parallel — **no concurrency cap**.
 - For every task agent's completion record, master computes `runner_verification` against disk before persisting. The record stored is the dual-record `{ schema_version, task_id, sprint, agent_claim, runner_verification, drift, verified, task_started_at, task_completed_at, recorded_at }`. Both `agent_claim` and `runner_verification` shapes preserved.
 - On drift, the sprint pauses. Build does NOT silently retry, soften criteria, or rewrite scope.
-- Use `essense-flow-tools record-task-completion --content-file <staged-path>` to persist each completion record (sole writer). Use `essense-flow-tools state-set-phase --value sprint-complete --sprint <n>` to transition `sprinting → sprint-complete` once all tasks resolve. (`lib/finalize.js` direct calls deprecated for build per S9.1 redesign — see "Skill operating mechanism" below.)
+- Use `essense-flow-tools record-task-completion --content-file <staged-path>` to persist each completion record (sole writer). Use `essense-flow-tools state-set-phase --value sprint-complete --sprint <n>` to transition `sprinting → sprint-complete` once all tasks resolve. (`lib/finalize.js` direct calls deprecated for build — see "Skill operating mechanism" below.)
 
-## Skill operating mechanism (S9.1 redesign — 2026-05-07)
+## Skill operating mechanism
 
 Path lookups + step bookkeeping + completion-record writing + state advancement go through the narrow CLI surface introduced for the redesign. **You do not infer paths from prose. You do not write `phase:` directly. You do not pick completion-record extensions or sprint directory names from convention. You do not write completion-record.yaml files with `Write` — `record-task-completion` is the sole writer.** The mechanisms below give you exact strings to write or pass; you use them verbatim.
 
@@ -70,11 +58,11 @@ The op rejects out-of-order or non-monotonic advances. Sequence MUST be `read-ma
 
 ### Dispatch task agents via the registered agent
 
-Use the `Agent` / `Task` tool with subagent_type=`essense-flow-task-agent`. The agent is registered at `plugins/essense-flow/agents/essense-flow-task-agent.md` with description, tool allowlist (`Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__query-docs` — wider than sub-architect's because task agent does code work), and the canonical task-spec-as-brief-input shape as its body. Per `redesign/agent-spec.md` §3.2 + S6.5 closed decision: **no dedicated brief template — the closed task spec yaml from architect IS the brief input.** Master concatenates the task spec's fields into the dispatch prompt with `task_id` + `sprint` context + `task_started_at` (ISO 8601 stamped at dispatch).
+Use the `Agent` / `Task` tool with subagent_type=`essense-flow-task-agent`. The agent is registered at `plugins/essense-flow/agents/essense-flow-task-agent.md` with description, tool allowlist (`Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__query-docs` — wider than sub-architect's because task agent does code work), and the canonical task-spec-as-brief-input shape as its body. **No dedicated brief template — the closed task spec yaml from architect IS the brief input.** Master concatenates the task spec's fields into the dispatch prompt with `task_id` + `sprint` context + `task_started_at` (ISO 8601 stamped at dispatch).
 
 The agent returns YAML with `task_id`, `status` (`complete | blocked | partial-with-surfaced-concern`), and `agent_claim` (object with `files_written, tests_run, criteria, deviations, out_of_contract_writes, surfaced_concerns, notes, summary`). Master compares to disk before persisting; do NOT summarize the agent's claim.
 
-Dispatch every task in the current wave in a SINGLE message — parallel, no concurrency cap (per INST-13 + the original substance below).
+Dispatch every task in the current wave in a SINGLE message — parallel, no concurrency cap. No resource caps: dispatch as many agents as the wave needs; substance gates, never counters.
 
 ### Re-validate every claim against disk (master-side `runner_verification`)
 
@@ -82,12 +70,12 @@ For every task agent that returns:
 
 1. Parse the returned YAML's `agent_claim` (verbatim).
 2. Re-validate against disk:
-   - For each path in `agent_claim.files_written` (or `files_modified` — synonyms per cli-spec.md §5 2026-05-07 Addendum field-name reconciliation): `Read` the file; capture `{path, exists, mtime, fresh}` (fresh = mtime ≥ task_started_at). Build the array `runner_verification.files_validated`.
+   - For each path in `agent_claim.files_written` (or `files_modified` — accepted synonym): `Read` the file; capture `{path, exists, mtime, fresh}` (fresh = mtime ≥ task_started_at). Build the array `runner_verification.files_validated`.
    - For each `criteria[i]` in `agent_claim`: independently verify the check (re-run the test if `mode: must-pass`; read the test file's content if `mode: author-only`). Build `runner_verification.per_criterion_verdicts: [{id, agent_status, runner_status, evidence}]`.
    - Compute `runner_verification.drift`: `files: [paths the agent claimed but disk disagrees]`, `criteria: [AC ids whose runner_status disagrees with agent_status]`.
 3. Compute `verified = (drift.files empty) AND (drift.criteria empty)`.
 4. Stamp `task_completed_at` (ISO 8601 from now or from the agent's return).
-5. Stage the dual-record YAML at a temp path (e.g. `<project-root>/.tmp-completion-record-<task-id>.yaml`) with the full shape per cli-spec.md §1.3 + §5 2026-05-07 Addendum:
+5. Stage the dual-record YAML at a temp path (e.g. `<project-root>/.tmp-completion-record-<task-id>.yaml`) with the full shape:
    ```yaml
    schema_version: 1
    task_id: <id>
@@ -102,9 +90,9 @@ For every task agent that returns:
    ```bash
    node plugins/essense-flow/bin/essense-flow-tools.cjs record-task-completion --sprint <n> --task-id <id> --content-file <staged-path> --project-root <project-root>
    ```
-   The op validates required keys (8 top-level: `schema_version, task_id, sprint, agent_claim, runner_verification, verified, task_started_at, task_completed_at`), validates types per cli-spec.md §5 2026-05-07 Addendum sub-object schema, checks `parsed.task_id == --task-id` (exit 18 if mismatch), checks `parsed.sprint == --sprint` (exit 18 if mismatch), checks task-id is in sprint manifest's `waves[].tasks` (exit 9 if not), checks idempotency (exit 10 if record already exists), atomically writes validated bytes (server-stamps `recorded_at`) to `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml`.
+   The op validates required keys (8 top-level: `schema_version, task_id, sprint, agent_claim, runner_verification, verified, task_started_at, task_completed_at`), validates sub-object types, checks `parsed.task_id == --task-id` (exit 18 if mismatch), checks `parsed.sprint == --sprint` (exit 18 if mismatch), checks task-id is in sprint manifest's `waves[].tasks` (exit 9 if not), checks idempotency (exit 10 if record already exists), atomically writes validated bytes (server-stamps `recorded_at`) to `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml`.
 
-**Out-of-contract write check** (per cli-spec.md substance preserved — happens before stage step 5): compare `runner_verification.files_validated` paths against the task spec's `file_write_contract.paths`. Any path written that's not in `paths` (or is in `forbidden`) — flag in `agent_claim.out_of_contract_writes` (the agent should already have flagged; master verifies). **Do not silently re-permit.** Per Fail-Soft: flag travels to review, not blocked.
+**Out-of-contract write check** (happens before stage step 5): compare `runner_verification.files_validated` paths against the task spec's `file_write_contract.paths`. Any path written that's not in `paths` (or is in `forbidden`) — flag in `agent_claim.out_of_contract_writes` (the agent should already have flagged; master verifies). **Do not silently re-permit.** Per Fail-Soft: flag travels to review, not blocked.
 
 ### On drift — sprint pauses (no silent retry)
 
@@ -174,7 +162,7 @@ The op enforces the per-task-record gate: counts files matching `.pipeline/build
 
 ### What you write directly with `Write` (not via CLI ops)
 
-One artifact has no dedicated CLI op — it is a document write per `redesign/cli-spec.md` §2.1:
+One artifact has no dedicated CLI op — it is a document write:
 
 - `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — the synthesized rollup. Path comes from `init build.canonical_paths.sprint_report_md` with `<n>` substituted. Use ordinary `Write`. Frontmatter shape per "What you produce" below; body lists per-task verdicts (verified / drifted / paused / contradiction / synthetic), out-of-contract writes summary, recommended next move (**`review` is the only legal sprint-level next move from `sprint-complete`, or back to `architecture` if drift is widespread** — per `references/transitions.yaml:205-207` the sole legal exit from `sprint-complete` is `sprint-complete-to-reviewing`; **never write `/triage` as the sprint-level recommended next move**, as `sprint-complete → triaging` is not a legal transition — triage is reachable only via `reviewing → triaging` or `verifying → triaging`).
 
@@ -189,7 +177,7 @@ Trust task specs, verify agents. The architect's contracts are ground truth. The
 - `.pipeline/build/sprints/<n>/tasks/<task-id>/completion-record.yaml` — one per task. Contains agent_claim + runner_verification + drift flag.
 - `.pipeline/build/sprints/<n>/SPRINT-REPORT.md` — synthesized rollup. Becomes input to review.
 
-Completion record (dual-record shape per cli-spec.md §5 2026-05-07 Addendum; superset of original substance):
+Completion record (dual-record shape):
 
 ```yaml
 schema_version: 1
@@ -311,7 +299,7 @@ Your agents are librarians: they hand over the best book they have, but they can
 
 ## Constraints
 
-- Per **INST-13**: NO concurrency cap on wave dispatch. NO budget enforcement. NO max-tasks-per-wave gate. The architect sized the wave; build runs it.
+- Per **No-Resource-Caps** (`references/principles.md` "No Resource Caps"): NO concurrency cap on wave dispatch. NO budget enforcement. NO max-tasks-per-wave gate. Substance gates, never counters — the architect sized the wave; build runs it.
 - Per **Front-Loaded-Design**: build trusts task specs as closed. Agents that can't satisfy a spec surface contradictions; they do not improvise scope.
 - Per **Diligent-Conduct**: every completion record stores both agent_claim AND runner_verification. Trust drift is auditable. No silent overwrites of agent reports with "corrected" runner data — both shapes are preserved.
 - Per **Fail-Soft**: out-of-contract writes are flagged, not blocked. The flag travels to review.
@@ -325,11 +313,11 @@ Delegation keeps the rule loud at sprint-report time. Each task agent returns it
 
 ## Scripts
 
-- `bin/essense-flow-tools.cjs` (S9.1 redesign — sole writer of completion records via `record-task-completion`; sole cursor advancer via `step-advance`; sole phase advancer via `state-set-phase`). Replaces direct calls to `lib/finalize.js` for build's state-mutation surface.
+- `bin/essense-flow-tools.cjs` (sole writer of completion records via `record-task-completion`; sole cursor advancer via `step-advance`; sole phase advancer via `state-set-phase`). Replaces direct calls to `lib/finalize.js` for build's state-mutation surface.
 - `lib/dispatch.js` — task agent fan-out (mode: `task-by-task`). Used as helper; canonical dispatch is via the registered `essense-flow-task-agent` per the operating-mechanism section above.
-- `lib/brief.js` — task brief assembly. Used as helper; canonical brief is the task spec yaml itself per agent-spec.md §3.2.
+- `lib/brief.js` — task brief assembly. Used as helper; canonical brief is the task spec yaml itself.
 - `lib/verify-disk.js` — re-validation helper for `runner_verification`. Used as helper; canonical persistence is via `record-task-completion`.
-- `lib/finalize.js` — DEPRECATED for build per S9.1 redesign. Use `record-task-completion` for completion records and `state-set-phase --value sprint-complete --sprint <n>` for the phase transition. Direct `lib/finalize.js` calls bypass the per-task-record gate and the dual-record validation; both are load-bearing.
+- `lib/finalize.js` — DEPRECATED for build. Use `record-task-completion` for completion records and `state-set-phase --value sprint-complete --sprint <n>` for the phase transition. Direct `lib/finalize.js` calls bypass the per-task-record gate and the dual-record validation; both are load-bearing.
 
 ## State transitions (read-only reference; advancement via `state-set-phase`)
 
@@ -349,13 +337,13 @@ Last block — read it just before you act.
 
 Not legal: `built`, `building`, `done`, `complete-sprint`. The phase name is `sprint-complete` with a hyphen — `state-set-phase` rejects the others with exit 3 + canonical-phase-list error.
 
-**The exact CLI call shape** for the sprinting→sprint-complete transition (S9.1 redesign — replaces the old `finalize` js call):
+**The exact CLI call shape** for the sprinting→sprint-complete transition (replaces the old `finalize` js call):
 
 ```bash
 # Per-task: persist dual-record (one call per task in sprint)
 node plugins/essense-flow/bin/essense-flow-tools.cjs record-task-completion \
-    --sprint 1 --task-id T-001 \
-    --content-file <project-root>/.tmp-completion-record-T-001.yaml \
+    --sprint 1 --task-id <task-id> \
+    --content-file <project-root>/.tmp-completion-record-<task-id>.yaml \
     --project-root <project-root>
 
 # After all tasks recorded + SPRINT-REPORT.md written: advance phase
@@ -377,7 +365,7 @@ If any answer is `no`, stop. Re-read.
 
 `record-task-completion` and `state-set-phase` emit JSON success on stdout (op + record_path / sprint + verified / sprint_progress) and one-line stderr error on rejection. Read both — the `sprint_progress: {recorded, declared}` field on `record-task-completion` returns is your countdown to gate-clearing.
 
-## Numbered step sequence (per DD-15 ordered_steps)
+## Numbered step sequence (ordered_steps anchors)
 
 The eight blocks below are the addressable anchors consumed by
 `essense-flow-tools next-step --skill build`. Each `## N. <step-name>`
@@ -385,12 +373,15 @@ heading mirrors a slot in the `ordered_steps` array returned by
 `essense-flow-tools init build` (verbatim). Bodies above remain the
 source-of-truth for the step's substance; these blocks point back into
 them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
-can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
-parser stays canonical, only the SKILL.md files carry numbered headings.
+can slice the emission window cleanly — steps emit one at a time so
+consumed steps drop out of context, and the cursor advances only on an
+explicit step-advance, never on emission. The heading shape is the
+parser's contract: SKILL.md files conform to it; the parser never
+loosens to chase free-form prose.
 
 ## 1. read-manifest
 
-Step 1 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 1 of 8 for the build skill (ordered_steps anchor).
 
 Read `.pipeline/architecture/sprints/<n>/manifest.yaml`. Confirm every
 task referenced has a spec file. If anything missing, refuse to start
@@ -402,7 +393,7 @@ step --skill build` body emission bounded by the next numbered heading.
 
 ## 2. build-wave-order
 
-Step 2 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 2 of 8 for the build skill (ordered_steps anchor).
 
 Build the wave order from `manifest.waves` (already dependency-ordered
 by architect). Confirm each task spec exists at
@@ -414,7 +405,7 @@ step --skill build` body emission bounded by the next numbered heading.
 
 ## 3. per-wave-dispatch
 
-Step 3 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 3 of 8 for the build skill (ordered_steps anchor).
 
 For every task in the wave, in parallel: brief the task agent with the
 full task spec (goal, requirements_traced, file_write_contract,
@@ -423,7 +414,7 @@ rationale) plus the two advisory context blocks (EXISTING HELPERS from
 the glossary when present; NEIGHBORS IN THIS WAVE — see "How you work"
 → "Per wave" for selection rules and caps); record `task_started_at`
 before dispatch; dispatch via `Agent` tool with `subagent_type:
-essense-flow-task-agent`. No concurrency cap per INST-13.
+essense-flow-task-agent`. No concurrency cap — substance gates, never counters.
 
 See the existing skill body section "How you work" → "Per wave" for the
 full substance. This heading is the addressable anchor for `next-step
@@ -431,7 +422,7 @@ full substance. This heading is the addressable anchor for `next-step
 
 ## 4. per-task-return-and-verify
 
-Step 4 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 4 of 8 for the build skill (ordered_steps anchor).
 
 For each task agent that returns: parse the completion claim; compute
 `runner_verification` against disk per "Re-validate every claim against
@@ -446,7 +437,7 @@ numbered heading.
 
 ## 5. out-of-contract-write-check
 
-Step 5 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 5 of 8 for the build skill (ordered_steps anchor).
 
 Compare `runner_verification.files_validated` against the task spec's
 `file_write_contract.paths`. Any path written that's not in `paths` (or
@@ -460,7 +451,7 @@ numbered heading.
 
 ## 6. drift-pause-or-continue
 
-Step 6 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 6 of 8 for the build skill (ordered_steps anchor).
 
 When `runner_verification.drift.files` or
 `runner_verification.drift.criteria` is non-empty: mark the task
@@ -475,7 +466,7 @@ by the next numbered heading.
 
 ## 7. assemble-sprint-report
 
-Step 7 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 7 of 8 for the build skill (ordered_steps anchor).
 
 Once every task has either `verified: true` or a paused completion
 record, assemble SPRINT-REPORT.md: summary of attempts; per-task
@@ -491,7 +482,7 @@ heading.
 
 ## 8. finalize
 
-Step 8 of 8 for the build skill (DD-15 ordered_steps anchor).
+Step 8 of 8 for the build skill (ordered_steps anchor).
 
 Advance phase via `state-set-phase --value sprint-complete --sprint <n>`
 (op enforces the per-task-record gate; rejects if count_recorded <

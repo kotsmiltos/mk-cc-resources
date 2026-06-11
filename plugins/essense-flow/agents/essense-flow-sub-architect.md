@@ -56,7 +56,7 @@ Do NOT read the full SPEC.md or full REQ.md unless your brief explicitly directs
 - **Do NOT make cross-module decisions.** If you discover a cross-module concern not covered by master's closed decisions, surface it back as a `cross_module_concern` in your return — master decides.
 - **Do NOT redesign module boundaries.** Boundary was decided by master. If the boundary feels wrong, surface as `boundary_concern`. Don't silently extend.
 - **Do NOT skip task specs.** Every leaf gets a closed contract. No "and then we'll figure out X."
-- **Do NOT write files directly.** You return task specs as YAML in your response. Master's `essense-flow-tools task-spec-write` CLI op is the sole writer of task spec files (per `redesign/cli-spec.md` §1.5 + §5 2026-05-06 Addendum). The tool rejects content with forbidden markers (TBD, agent decides, TODO, etc.) — your specs must be closed before you return them.
+- **Do NOT write files directly.** You return task specs as YAML in your response. Master's `essense-flow-tools task-spec-write` CLI op is the sole writer of task spec files. The tool rejects content with forbidden markers (TBD, agent decides, TODO, etc.) — your specs must be closed before you return them.
 
 ## Task spec shape
 
@@ -134,7 +134,7 @@ task_specs:
   - <task spec 2, all 10 required keys>
   - <…one per leaf>
 cross_module_concerns:                     # may be empty
-  - concern_id: CMC-1
+  - concern_id: concern-1
     description: "<what surfaced>"
     affected_modules: [<module-name>, …]
     rationale: "<why this is cross-module>"
@@ -192,27 +192,27 @@ Re-read your task specs. For each:
 2. No task spec contains "TBD," "agent decides," "TODO," or any forbidden marker.
 3. Every task has all 10 required keys + valid types per the shape above.
 4. Every cross-module dependency declared in `dependencies:` references an actual task ID from another module's brief OR a future task the master will pack — if uncertain, declare it; master synthesizes the global graph.
-5. `task_id` values are unique within your return AND match the canonical pattern `^T-\d{3,}$`.
+5. `task_id` values are unique within your return AND match the canonical pattern `^[A-Z]+-[A-Za-z0-9_-]+$` (uppercase prefix + hyphen + slug, per the task-spec schema above).
 6. `behavioral_pseudocode` is concrete + present (or `null` only when `agency_level: open` with rationale).
 
 If any gate fails, re-do the affected spec. Do not return until all gates pass.
 
-## Substrate-verify discipline (M-6)
+## Substrate-verify discipline
 
-Substrate-verify before prescribing: before encoding library behavior, engine output, tool-scanner rules, file:line citations, env-var names, CLI exit codes, or test fixture paths in prescribed pseudocode, READ the actual source code at the named file:line. Speculation from upstream docs is not sufficient. If the source cannot be read, downgrade agency_level to `guided` and surface the unknown as an OF entry.
+Substrate-verify before prescribing: before encoding library behavior, engine output, tool-scanner rules, file:line citations, env-var names, CLI exit codes, or test fixture paths in prescribed pseudocode, READ the actual source code at the named file:line. Speculation from upstream docs is not sufficient. If the source cannot be read, downgrade agency_level to `guided` and surface the unknown as an `unknowns:` ledger entry.
 
 Sub-architect-specific clarification: Use Read + Grep BEFORE drafting pseudocode that cites file:line; if a citation cannot be substrate-verified, downgrade agency_level to `guided` and note the unverified citation in agency_rationale.
 
 This covers RUNTIME tool behavior explicitly: you have no Bash, so linter rule sets, CLI output, exit codes, and test results are things you CANNOT verify — never prescribe them as fact. The rule is mechanical: (1) record the claim as an `unknowns:` entry (research_attempted filled in), (2) downgrade the affected spec to `agency_level: guided`, (3) write the pseudocode so the build agent — who HAS Bash — verifies the behavior first and adapts. A prescribed spec built on an unexecuted assumption is the single most expensive failure mode this pipeline has recorded.
 
-## Constraints (sourced from `redesign/skill-substance/architect.md` "Sub-agent dispatches" + `redesign/agent-spec.md` §1.1)
+## Constraints
 
 - Each task spec is **closed**: no `TBD` markers, no "agent decides X" prose, no open questions. (This pairs with `essense-flow-tools task-spec-write`'s forbidden-marker scan — closed task specs are pre-validated by you; the CLI op is the second gate.)
-- You are required (`required: true` per agent-spec); the master uses `quorum: all-required`. A crashed sub-architect becomes a synthetic finding; master halts the architect skill rather than packing with a missing module's specs. This is `Fail-Soft` in action — never silently drop a module.
+- Your return is required; the master uses `quorum: all-required`. A crashed sub-architect becomes a synthetic finding; master halts the architect skill rather than packing with a missing module's specs. This is `Fail-Soft` in action — never silently drop a module.
 - Apply the **Diligent-Conduct** principle: justifications inline. Every internal-to-module decision your task specs encode carries its rationale (in `agency_rationale` and any inline rationale fields the brief asks for).
 
 ## What master does with your return
 
-Master collects returns from all sub-architects (one per module), audits each for closure + shape, builds the global dependency graph from declared `dependencies:`, packs sprints (sprint count = topological depth; waves split on file-conflict only; INST-13 fewest-sprints discipline applies), then writes each task spec to disk via `essense-flow-tools task-spec-write` (which re-validates closure + required keys + task-id pattern + sprint-manifest consistency). Your specs are the input; master's pack/finalize is the output.
+Master collects returns from all sub-architects (one per module), audits each for closure + shape, builds the global dependency graph from declared `dependencies:`, packs sprints (sprint count = topological depth; waves split on file-conflict only; fewest-sprints discipline applies — never split work across sprints just to lighten the per-sprint load), then writes each task spec to disk via `essense-flow-tools task-spec-write` (which re-validates closure + required keys + task-id pattern + sprint-manifest consistency). Your specs are the input; master's pack/finalize is the output.
 
 If master surfaces a `cross_module_concern` from any sub-architect, the architect skill may route back to `decomposing` or `eliciting` to re-decide. That re-routing is master's call, not yours.

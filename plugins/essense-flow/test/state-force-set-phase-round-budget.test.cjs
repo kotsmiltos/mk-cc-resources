@@ -290,8 +290,8 @@ function record(name, fn) {
     const md = fs.readFileSync(SKILL_MD_PATH, 'utf8');
     // The H3 heading itself.
     assert.ok(
-      /^### M-5 round budget \(D-Sprint10-4\)/m.test(md),
-      'SKILL.md must contain H3 "### M-5 round budget (D-Sprint10-4)"',
+      /^### Round budget/m.test(md),
+      'SKILL.md must contain a "### Round budget" H3 heading',
     );
     // The substance: cap, escalation_signoff field name, exit code surface.
     assert.ok(
@@ -309,7 +309,7 @@ function record(name, fn) {
     // The subsection must sit under the Constraints H2 (positional check):
     // ## Constraints must appear in the file BEFORE the M-5 H3.
     const constraintsIdx = md.search(/^## Constraints/m);
-    const m5Idx = md.search(/^### M-5 round budget/m);
+    const m5Idx = md.search(/^### Round budget/m);
     assert.ok(
       constraintsIdx !== -1 && m5Idx !== -1 && constraintsIdx < m5Idx,
       `M-5 H3 must sit AFTER "## Constraints" H2; constraints@${constraintsIdx}, m5@${m5Idx}`,

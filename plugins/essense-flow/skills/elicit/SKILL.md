@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -160,7 +148,7 @@ If any answer is `no`, stop and re-read.
 
 ### What you do NOT touch
 
-- `lib/finalize.js` — DEPRECATED for elicit (CLI ops supersede). Kept in tree for unmigrated skills until S9.7.
+- `lib/finalize.js` — DEPRECATED for elicit (CLI ops supersede). Kept in tree for unmigrated skills.
 - `.pipeline/state.yaml` directly — never `Write` to it; only `state-set-*` CLI ops legally mutate state.
 
 ## Constraints
@@ -169,12 +157,12 @@ If any answer is `no`, stop and re-read.
 - Per **Diligent-Conduct**: do not fabricate goals, constraints, or design decisions. If the user did not say it, do not write it.
 - Per **Graceful-Degradation**: a draft SPEC is a valid resting state. Refusing to persist progress because the SPEC is incomplete violates this rule.
 - Per **Fail-Soft**: a corrupt prior SPEC.md does not refuse the skill. It surfaces the corruption to stderr and asks the user via `AskUserQuestion` whether to overwrite or repair. Refusing on parse failure is a fail-closed regression.
-- Per **INST-13**: no cap on elicitation rounds. The loop ends when threads close, not when a counter expires. A long elicitation is a real signal about scope, not a budget violation.
+- Per **No-Resource-Caps** (`references/principles.md` "No Resource Caps"): no cap on elicitation rounds. The loop ends when threads close, not when a counter expires. A long elicitation is a real signal about scope, not a budget violation.
 
 ## Scripts
 
 - `essense-flow-tools` (CLI router) — narrow ops: `init elicit`, `step-advance --skill elicit`, `state-set-phase`, `state-set-elicitation-started`, `state-set-elicitation-completed`, `state-set-elicitation-round`. The only legal mutators of `.pipeline/state.yaml`.
-- `lib/finalize.js` — DEPRECATED for elicit (replaced by `state-set-phase` + `state-set-elicitation-*` CLI ops + ordinary `Write` on the canonical path from init JSON). Kept in tree for unmigrated skills until S9.7.
+- `lib/finalize.js` — DEPRECATED for elicit (replaced by `state-set-phase` + `state-set-elicitation-*` CLI ops + ordinary `Write` on the canonical path from init JSON). Kept in tree for unmigrated skills.
 - `lib/state.js` — DEPRECATED direct read for elicit (use `essense-flow-tools init elicit` JSON instead). Kept for backward compat.
 - `AskUserQuestion` (built-in) — interactive arrow-key questions only.
 
@@ -187,7 +175,7 @@ If any answer is `no`, stop and re-read.
 | eliciting | research | SPEC marked build-ready | yes |
 | eliciting | architecture | SPEC marked build-ready, user routed around research | no |
 
-## Numbered step sequence (per DD-15 ordered_steps)
+## Numbered step sequence (ordered_steps anchors)
 
 The seven blocks below are the addressable anchors consumed by
 `essense-flow-tools next-step --skill elicit`. Each `## N. <step-name>`
@@ -195,12 +183,15 @@ heading mirrors a slot in the `ordered_steps` array returned by
 `essense-flow-tools init elicit` (verbatim). Bodies above remain the
 source-of-truth for the step's substance; these blocks point back into
 them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
-can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
-parser stays canonical, only the SKILL.md files carry numbered headings.
+can slice the emission window cleanly — steps emit one at a time so
+consumed steps drop out of context, and the cursor advances only on an
+explicit step-advance, never on emission. The heading shape is the
+parser's contract: SKILL.md files conform to it; the parser never
+loosens to chase free-form prose.
 
 ## 1. read-pitch-or-resume
 
-Step 1 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 1 of 7 for the elicit skill (ordered_steps anchor).
 
 Read the project pitch from the caller (or ask via `AskUserQuestion` if
 missing), OR if `state.phase == eliciting`, load the existing SPEC.md and
@@ -214,7 +205,7 @@ numbered step heading.
 
 ## 2. transition-or-resume
 
-Step 2 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 2 of 7 for the elicit skill (ordered_steps anchor).
 
 On fresh entry, transition `idle → eliciting` via `state-set-phase
 --value eliciting`; stamp `state-set-elicitation-started`. On resume, no
@@ -227,7 +218,7 @@ emission bounded by the next numbered heading.
 
 ## 3. elicitation-loop
 
-Step 3 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 3 of 7 for the elicit skill (ordered_steps anchor).
 
 Iterate the open-thread loop (problem → goals → non-goals → constraints
 → design → risks): pick the next thread, close from existing inputs
@@ -242,7 +233,7 @@ heading.
 
 ## 4. build-ready-reread
 
-Step 4 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 4 of 7 for the elicit skill (ordered_steps anchor).
 
 Re-read the SPEC end-to-end. If a new question surfaces on re-read, the
 work is NOT done — recurse on that question.
@@ -254,7 +245,7 @@ numbered heading.
 
 ## 5. set-build-ready-status
 
-Step 5 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 5 of 7 for the elicit skill (ordered_steps anchor).
 
 Once the re-read is clean, set `status: build-ready` in the SPEC.md
 frontmatter (the load-bearing field for the CLI predicate evaluator at
@@ -267,7 +258,7 @@ numbered heading.
 
 ## 6. assess-complexity
 
-Step 6 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 6 of 7 for the elicit skill (ordered_steps anchor).
 
 Decide complexity (`flat | shallow | deep`) and stamp `complexity`,
 `touch_surface`, `unknown_count` into the SPEC.md frontmatter.
@@ -279,7 +270,7 @@ numbered heading.
 
 ## 7. finalize
 
-Step 7 of 7 for the elicit skill (DD-15 ordered_steps anchor).
+Step 7 of 7 for the elicit skill (ordered_steps anchor).
 
 Write SPEC.md to the canonical path via ordinary `Write`. Stamp
 `state-set-elicitation-completed`. Advance phase via `state-set-phase

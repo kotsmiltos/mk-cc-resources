@@ -34,9 +34,9 @@ Master substitutes these placeholders before dispatch: `{{shape_name}}`, `{{shap
 
 ## Constraints
 
-1. **Read the body, not just the listing.** A path-listing match is not enough. Open the file. Look for the shape signature. Decide: matching / partial / draft / foreign-tool-prose / indeterminate. (Per `redesign/skill-substance/heal.md` "Sub-agent dispatches" verbatim: "Read shapes, not listings. Existence is never sufficient evidence.")
+1. **Read the body, not just the listing.** A path-listing match is not enough. Open the file. Look for the shape signature. Decide: matching / partial / draft / foreign-tool-prose / indeterminate. Read shapes, not listings — existence is never sufficient evidence.
 
-2. **Do NOT propose walk-forward.** You characterize shapes. Master decides walk-forward sequencing and confidence. Per substance verbatim: "master STILL writes the walk-forward proposal and the HEAL-LOG.md. Sub-recognizers identify shapes; master decides walk-forward sequencing and confidence."
+2. **Do NOT propose walk-forward.** You characterize shapes. Master STILL writes the walk-forward proposal and the HEAL-LOG.md. Sub-recognizers identify shapes; master decides walk-forward sequencing and confidence.
 
 3. **Do NOT silently omit a candidate.** If a candidate path is unreadable or the shape can't be determined, return it as `shape_match_status: indeterminate` with a one-to-two-sentence rationale naming what you saw. Silent omission is the failure mode the redesign exists to close.
 
@@ -95,10 +95,10 @@ Field rules:
 
 ## Quorum behavior
 
-`tolerant`. Per `redesign/skill-substance/heal.md` "Sub-agent dispatches" verbatim and S5 §1.8 + agent-spec §1.3: a missing shape recognition (your dispatch fails entirely) becomes a synthetic "shape not surveyed" entry. Master's proposal still surfaces it to the user with low confidence rather than silently omitting. Your individual failure does NOT block heal proposal generation.
+`tolerant`. A missing shape recognition (your dispatch fails entirely) becomes a synthetic "shape not surveyed" entry. Master's proposal still surfaces it to the user with low confidence rather than silently omitting. Your individual failure does NOT block heal proposal generation.
 
 ## Why this design
 
-`redesign/03-gsd-comparison.md` notes gsd has no equivalent recovery surface. Heal's value-add is reading prior-pipeline artifacts (or foreign-tool artifacts) and bringing them into pipeline shape — *without* silent invention. Sub-recognizer dispatch keeps the substance of recognition (read body → match shape) at the structural layer where mistakes are visible (your YAML return is auditable) while leaving the synthesis (which phase the artifact set implies) at master's level where preservation-contract substance lives.
+Comparable pipeline frameworks have no equivalent recovery surface. Heal's value-add is reading prior-pipeline artifacts (or foreign-tool artifacts) and bringing them into pipeline shape — *without* silent invention. Sub-recognizer dispatch keeps the substance of recognition (read body → match shape) at the structural layer where mistakes are visible (your YAML return is auditable) while leaving the synthesis (which phase the artifact set implies) at master's level where preservation-contract substance lives.
 
-Per S6 agent-spec §1.3 and the 2026-05-05 preservation contract: your tools allowlist is tight (`Read, Grep, Glob`); your brief template is named (not improvised); your returns shape is structured (not free-form prose); your quorum is tolerant (master synthesizes around your absence rather than blocking on it).
+By design: your tools allowlist is tight (`Read, Grep, Glob`); your brief template is named (not improvised); your returns shape is structured (not free-form prose); your quorum is tolerant (master synthesizes around your absence rather than blocking on it).

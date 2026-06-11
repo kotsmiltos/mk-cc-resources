@@ -9,23 +9,11 @@ schema_version: 1
 
 ## Read this before doing anything
 
-See `references/principles.md` `## Read This Before Doing Anything` (canonical source per v0.13.3 consolidation; the 4-bullet block lives there, this skill cites it by reference).
+See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
 ## Conduct
 
-You are a diligent partner. Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead. No missed steps, no shortcuts, no fabricated results, no dropped or deferred items "because easier" — deferrals of scope are not accepted. Take time. Spend tokens.
-
-Use sub-agents with agency + clear goals + clear requirements. Parallelize. Engineer what's needed: clear, concise, maintainable, scalable. Don't overengineer. Thorough on substance, lean on ceremony.
-
-The human has no need to know how you are doing and sometimes they don't want to know, they don't have time nor patience. You need to be effective in communication, not assume what you are talking about is already known. Codebases must be clear and documented and you must be willing and able to provide all context in case asked when the user wants to dive deeper.
-
-Tests are meant to help catch bugs, not verify that 1 + 1 = 2. This means that if we decide to write tests they need to be thought through and testing for actual issues that are not clear, not write them for the fun of writing.
-
-Documentation is OUR CONTEXT, without it we are building headless things, it needs to be clear, presentable and always kept up to date.
-
-We don't want to end up with the most lines of code but the best lines of code. We don't patch on patch, we create proper solutions for new problems, we are not afraid of producing great results.
-
-Things we build need access from claude to be tested so we can build things like CLI for claude to play alone with them or add the ability to log everything that happens so that claude can debug after running.
+Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
 ## Operating contract
 
@@ -37,7 +25,7 @@ Things we build need access from claude to be tested so we can build things like
 - Write REQ.md to the canonical path with ordinary `Write`; advance phase via `essense-flow-tools state-set-phase` (not `lib/finalize.js`); record the research-completed timestamp via `essense-flow-tools state-set-research-completed`; advance the round counter (on a `research → research` loop) via `essense-flow-tools state-set-research-round`. Step-cursor advances via `essense-flow-tools step-advance --skill research`.
 - Quorum mode `all-required` — every commissioned perspective must return a signal or its absence becomes a synthetic finding (never silent).
 
-## Skill operating mechanism (S9.4 redesign — 2026-05-08)
+## Skill operating mechanism
 
 This skill runs against the narrow CLI surface (`bin/essense-flow-tools.cjs`) and the registered subagent (`agents/essense-flow-perspective-agent.md`). The redesigned mechanism replaces the old `lib/dispatch.js` + `lib/finalize.js` advisory surface that allowed master to drift the schema, paths, extensions, and dispatch.
 
@@ -90,7 +78,7 @@ Body:
 
 - **Decisions made + rationale** — for each open spec question, the closed decision and why
 - **Functional requirements** — `FR-1`, `FR-2`... each with one testable acceptance criterion
-- **Non-functional requirements** — `NFR-1`... performance, observability, accessibility, etc.
+- **Non-functional requirements** — `NFR-` entries numbered the same way: performance, observability, accessibility, etc.
 - **Examples and references** — concrete code snippets, library APIs, papers, articles (high-confidence sources only)
 - **Best-practice context** — patterns and anti-patterns surfaced for the modules to be built
 - **Risks and incurred costs** — hosting, third-party API costs, regulatory, operational
@@ -157,7 +145,7 @@ Your agents are librarians: they hand over the best book they have, but they can
 - Per **Front-Loaded-Design**: research closes a spec decision. If a perspective comes back with "depends on context," route back to elicit for a constraint, not down to architect.
 - Per **Fail-Soft**: a single perspective agent crashing produces a synthetic finding ("lens X did not return"). Other lenses still synthesize.
 - Per **Graceful-Degradation**: a partial prior REQ.md is reconciled, not regenerated. The skill reads what's there and continues from the open threads — silent overwrite of prior work is forbidden.
-- Per **INST-13**: no cap on perspective-lens count. The skill commissions one lens per open spec question. Count is driven by spec gaps, not by a quota.
+- Per **No-Resource-Caps** (`references/principles.md` "No Resource Caps"): no cap on perspective-lens count. The skill commissions one lens per open spec question. Count is driven by spec gaps, not by a quota.
 - Per the user's source rules: high-confidence sources only. Quote, don't paraphrase. Cross-reference where possible.
 
 ## Why delegation is mandatory here
@@ -168,7 +156,7 @@ Delegation keeps the rule loud at synthesis time. Each lens-agent returns findin
 
 ## Scripts
 
-- `lib/dispatch.js` — DEPRECATED for research (replaced by registered `essense-flow-perspective-agent` dispatch via the Agent tool with `subagent_type`). Kept in tree for unmigrated skills until S9.7.
+- `lib/dispatch.js` — DEPRECATED for research (replaced by registered `essense-flow-perspective-agent` dispatch via the Agent tool with `subagent_type`). Kept in tree for unmigrated skills.
 - `lib/brief.js` — DEPRECATED for research (perspective briefs assembled inline from `templates/perspective-brief.md` with master-side placeholder substitution, then handed to the Agent tool). Kept in tree for unmigrated skills.
 - `lib/finalize.js` — DEPRECATED for research (replaced by `state-set-phase` + `state-set-research-completed` + `state-set-research-round` CLI ops + ordinary `Write` on the canonical path from init JSON).
 - `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` — current library docs (used by perspective agents per `~/.claude/CLAUDE.md` "Context7" rule).
@@ -192,7 +180,7 @@ Last block — read it just before you act.
 
 Not legal: `researched`, `req-ready`, `done`.
 
-**The exact CLI op sequence** for the research→triaging transition (post-S9.4 redesign):
+**The exact CLI op sequence** for the research→triaging transition:
 
 ```bash
 # Step 8 of 8 — finalize
@@ -231,7 +219,7 @@ If any answer is `no`, stop. Re-read.
 
 The CLI emits a one-line stderr message + exit 7 if the predicate fails (REQ.md missing); the failure is loud, not advisory.
 
-## Numbered step sequence (per DD-15 ordered_steps)
+## Numbered step sequence (ordered_steps anchors)
 
 The eight blocks below are the addressable anchors consumed by
 `essense-flow-tools next-step --skill research`. Each `## N. <step-
@@ -239,12 +227,15 @@ name>` heading mirrors a slot in the `ordered_steps` array returned by
 `essense-flow-tools init research` (verbatim). Bodies above remain the
 source-of-truth for the step's substance; these blocks point back into
 them so the parser (lib/cursor-schema.cjs `parseSkillStepsFromMarkdown`)
-can slice the emission window cleanly. Per CMC-Rd10-3 + D-Rd10-10: the
-parser stays canonical, only the SKILL.md files carry numbered headings.
+can slice the emission window cleanly — steps emit one at a time so
+consumed steps drop out of context, and the cursor advances only on an
+explicit step-advance, never on emission. The heading shape is the
+parser's contract: SKILL.md files conform to it; the parser never
+loosens to chase free-form prose.
 
 ## 1. read-spec
 
-Step 1 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 1 of 8 for the research skill (ordered_steps anchor).
 
 Read `.pipeline/elicitation/SPEC.md` (required). On missing/corrupt:
 refuse to start. Identify every open question, every undefined
@@ -257,7 +248,7 @@ heading.
 
 ## 2. identify-open-questions
 
-Step 2 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 2 of 8 for the research skill (ordered_steps anchor).
 
 Enumerate the spec gaps that need research-driven closure: each open
 question, each undefined dependency, each architecture decision the spec
@@ -270,7 +261,7 @@ bounded by the next numbered heading.
 
 ## 3. formulate-perspective-briefs
 
-Step 3 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 3 of 8 for the research skill (ordered_steps anchor).
 
 For each open question, formulate a perspective brief — a question to a
 parallel agent — using `templates/perspective-brief.md` with placeholder
@@ -284,7 +275,7 @@ bounded by the next numbered heading.
 
 ## 4. dispatch-perspective-agents
 
-Step 4 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 4 of 8 for the research skill (ordered_steps anchor).
 
 Dispatch `essense-flow-perspective-agent` (Agent tool with
 `subagent_type: essense-flow-perspective-agent`), one per commissioned
@@ -297,7 +288,7 @@ full substance. This heading is the addressable anchor for `next-step
 
 ## 5. synthesize-findings
 
-Step 5 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 5 of 8 for the research skill (ordered_steps anchor).
 
 Collate findings — group by spec question. Reconcile contradictions —
 when two lenses recommend different paths, surface both with the trade-
@@ -310,7 +301,7 @@ heading.
 
 ## 6. convert-to-acceptance-criteria
 
-Step 6 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 6 of 8 for the research skill (ordered_steps anchor).
 
 Convert each functional requirement to a testable acceptance criterion.
 "Should be fast" is not a criterion. "p95 < 200ms on 1k concurrent
@@ -323,7 +314,7 @@ heading.
 
 ## 7. reread-spec-and-req
 
-Step 7 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 7 of 8 for the research skill (ordered_steps anchor).
 
 Re-read SPEC + draft REQ together. If new questions surface, research
 them now — do not push to triage. Loop `research → research` for
@@ -336,7 +327,7 @@ bounded by the next numbered heading.
 
 ## 8. finalize
 
-Step 8 of 8 for the research skill (DD-15 ordered_steps anchor).
+Step 8 of 8 for the research skill (ordered_steps anchor).
 
 Write REQ.md to `canonical_paths.req_md` via ordinary `Write`. Stamp
 `state-set-research-completed`. Advance phase via `state-set-phase

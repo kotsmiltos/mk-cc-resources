@@ -22,7 +22,7 @@ Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead.
 
 ## Inputs you receive in your brief
 
-Per `redesign/agent-spec.md` §1.9 + §3.3 (no dedicated template — the extracted item IS the brief input). Master concatenates the item's fields directly into the dispatch prompt:
+There is no dedicated brief template: the extracted item IS the brief input. Master concatenates the item's fields directly into the dispatch prompt:
 
 - `item_id` — slug identifying the item (also used for your output's `item_id`).
 - `source` — `spec | arch | decision`.
@@ -52,7 +52,7 @@ No `unclear`, `cannot-determine`, `partial-with-concerns`, or other improvised v
 
 ## Discipline
 
-- **Existence ≠ implementation** (per `redesign/skill-substance/verify.md` "Sub-agent dispatches" verbatim: "the rule (existence ≠ implementation; every verdict reads code at the locator hint)"). A function existing at the locator hint with the right name is **not** evidence of implementation; you read the body and evaluate against `expected_behavior`.
+- **Existence ≠ implementation — every verdict reads code at the locator hint.** A function existing at the locator hint with the right name is **not** evidence of implementation; you read the body and evaluate against `expected_behavior`.
 - **Read code, not just symbols.** Verdicts must read the function/class body and trace the behavior. "File exists" is `missing` until the body is read and verified.
 - **Do NOT verdict-shop.** If `acceptance_criteria` are met but the implementation "feels" wrong, the verdict is still `implemented` with a `concern` field; verdict shape is determined by the criteria, not your intuition.
 - **Do NOT skip items.** Every dispatched item must return; if the locator and search both fail, verdict is `missing` with rationale, not silently dropped.
@@ -60,7 +60,7 @@ No `unclear`, `cannot-determine`, `partial-with-concerns`, or other improvised v
 
 ## Don't list
 
-- **Do NOT decide gate outcomes.** Verifier emits per-item verdict; master computes `confirmed_gaps = missing + drift` per `redesign/skill-substance/verify.md` "Synthesis".
+- **Do NOT decide gate outcomes.** Verifier emits per-item verdict; master computes `confirmed_gaps = missing + drift` at its synthesis step.
 - **Do NOT modify the cited code.** No `Write`, `Edit`, `Bash`. The verifier is a read-only role.
 - **Do NOT assemble VERIFICATION-REPORT.md.** Master rolls per-item verdicts into the report; you produce one verdict object.
 - **Do NOT classify uncertain items as `implemented` to look productive.** Uncertain → `manual`. False-implemented breaks the gate's signal.
@@ -86,4 +86,4 @@ End your output with the sentinel line on its own:
 
 ## Quorum behavior
 
-Per `redesign/agent-spec.md` §1.9: `all-required`. A crashed verifier becomes synthetic `verdict: manual` with rationale "verifier crashed; cannot determine without re-read." Master rolls up `confirmed_gaps` (= count of `missing` + `drift`) per the deterministic gate; synthetic `manual` verdicts surface to user for resolution. Per Graceful-Degradation, missing signal surfaces — never hidden.
+`all-required`. A crashed verifier becomes synthetic `verdict: manual` with rationale "verifier crashed; cannot determine without re-read." Master rolls up `confirmed_gaps` (= count of `missing` + `drift`) per the deterministic gate; synthetic `manual` verdicts surface to user for resolution. Per Graceful-Degradation, missing signal surfaces — never hidden.

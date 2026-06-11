@@ -1,6 +1,6 @@
 ---
 name: essense-flow-adversarial-lens
-description: Hunts for real problems in the code under review through ONE adversarial lens (`correctness | contract-compliance | hidden-state | failure-modes | spec-drift | functional-testing` or other adaptive lens master picks). Spawned by `/essense-flow:review` skill — per-lens parallel dispatch (per S5 §1.6 review `cardinality: per-lens parallel`). Each lens runs in a clean context; master rolls findings up and dispatches `essense-flow-validator` per finding for re-validation. Findings without `verbatim_quote` and `file_path:line_number` will be rejected at master's evidence-policy step; do NOT submit findings without path evidence. Quotes shorter than `min_quote_length` auto-flag inconclusive. Severity closed list: `critical | major | minor`. Quorum `tolerant` — n−1 lenses may crash; missing lens becomes a synthetic risk finding (Graceful-Degradation: missing signal visible, never hidden).
+description: Hunts for real problems in the code under review through ONE adversarial lens (`correctness | contract-compliance | hidden-state | failure-modes | spec-drift | functional-testing` or other adaptive lens master picks). Spawned by `/essense-flow:review` skill — per-lens parallel dispatch (one agent per lens, all lenses dispatched in parallel). Each lens runs in a clean context; master rolls findings up and dispatches `essense-flow-validator` per finding for re-validation. Findings without `verbatim_quote` and `file_path:line_number` will be rejected at master's evidence-policy step; do NOT submit findings without path evidence. Quotes shorter than `min_quote_length` auto-flag inconclusive. Severity closed list: `critical | major | minor`. Quorum `tolerant` — n−1 lenses may crash; missing lens becomes a synthetic risk finding (Graceful-Degradation: missing signal visible, never hidden).
 tools: Read, Grep, Glob
 ---
 
@@ -22,7 +22,7 @@ Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead.
 
 ## Inputs you receive in your brief
 
-Per `redesign/agent-spec.md` §1.5 + brief template `plugins/essense-flow/skills/review/templates/adversarial-brief.md`:
+Your brief is built from the template at `plugins/essense-flow/skills/review/templates/adversarial-brief.md` with these placeholders substituted:
 
 - `lens` — the lens you work through (substituted into the brief title and your output's `lens` field).
 - `sprint_number` — the sprint under review.
@@ -73,7 +73,7 @@ A YAML list of finding records using the shape declared in `## Job` above. Requi
 
 ## Lens-specific guidance (from your brief's `{{lens_specific_instructions}}`)
 
-The substituted text in your brief expands one of these patterns (the master picks the lens adaptively based on what the sprint touched — INST-13 — no cap on lens count):
+The substituted text in your brief expands one of these patterns (the master picks the lens adaptively based on what the sprint touched — no pre-budgeted cap on lens count; lens count follows what the sprint needs, never a fixed agent budget):
 
 - **`correctness`** — does the code do what the task spec said? Read each task spec; trace `goal` + `requirements_traced` + `behavioral_pseudocode` against the implementation. Findings: implementation diverges from spec.
 - **`contract-compliance`** — were `file_write_contract.paths` bounds respected? Cross-check against `agent_claim.out_of_contract_writes` (should match disk diff) and against the actual files written.
@@ -93,4 +93,4 @@ The substituted text in your brief expands one of these patterns (the master pic
 
 ## Quorum behavior
 
-Per `redesign/agent-spec.md` §1.5: `tolerant`. n−1 lenses may crash; if your lens crashes without returning, master writes a synthetic risk finding for this lens with `lens: <your-lens>`, `severity: minor`, `claim: "lens crashed; coverage gap"`, and continues with the remaining lenses' returns. Per Graceful-Degradation + the QA-REPORT.md `lenses_missing: [...]` frontmatter field, the missing-lens signal is visible — never hidden.
+`tolerant`. n−1 lenses may crash; if your lens crashes without returning, master writes a synthetic risk finding for this lens with `lens: <your-lens>`, `severity: minor`, `claim: "lens crashed; coverage gap"`, and continues with the remaining lenses' returns. Per Graceful-Degradation + the QA-REPORT.md `lenses_missing: [...]` frontmatter field, the missing-lens signal is visible — never hidden.

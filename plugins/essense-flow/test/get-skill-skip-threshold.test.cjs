@@ -8,7 +8,7 @@
 //   AC-1: getSkillSkipThreshold defined + exported from lib/cursor-schema.cjs;
 //         architect skill returns threshold + source='references/transitions.yaml'.
 //   AC-2: function reads ONLY from references/transitions.yaml per_skill_skip_threshold
-//         block (no fallback). Verified by: review skill returns rule_id='DD-2' +
+//         block (no fallback). Verified by: review skill returns rule_id='dispatch-floor' +
 //         rule_quote_required=true exactly as transitions.yaml records.
 //   AC-3: unknown skill throws Error with diagnostic naming transitions.yaml.
 //   AC-3-bis: missing/empty/non-string skill arg throws TypeError.
@@ -103,8 +103,8 @@ runTest('AC-1: getSkillSkipThreshold("architect") returns threshold + source fro
     `AC-1: result.source must be 'references/transitions.yaml'; got '${result.source}'`);
   assert.strictEqual(result.skill, 'architect',
     'AC-1: result.skill must echo back the input skill');
-  assert.strictEqual(result.rule_id, 'DD-2',
-    'AC-1: result.rule_id must be DD-2 (architect entry in transitions.yaml)');
+  assert.strictEqual(result.rule_id, 'dispatch-floor',
+    'AC-1: result.rule_id must be dispatch-floor (architect entry in transitions.yaml)');
 });
 
 // --------------------------------------------------------------------------
@@ -117,7 +117,7 @@ runTest('AC-2/AC-4-spec-test-4: getSkillSkipThreshold("review") returns rule_id=
   const result = getSkillSkipThreshold('review');
   assert.strictEqual(result.threshold, 6,
     `AC-2: review threshold must be 6 (transitions.yaml); got ${result.threshold}`);
-  assert.strictEqual(result.rule_id, 'DD-2',
+  assert.strictEqual(result.rule_id, 'dispatch-floor',
     'AC-2: review rule_id must be DD-2');
   assert.strictEqual(result.rule_quote_required, true,
     'AC-2: review rule_quote_required must be true (verbatim from transitions.yaml)');
@@ -131,7 +131,7 @@ runTest('AC-2-bonus: getSkillSkipThreshold("verify") returns DD-2 + rule_quote_r
   const result = getSkillSkipThreshold('verify');
   assert.strictEqual(result.threshold, 1,
     `AC-2-bonus: verify threshold must be 1 (transitions.yaml structural placeholder); got ${result.threshold}`);
-  assert.strictEqual(result.rule_id, 'DD-2', 'AC-2-bonus: verify rule_id must be DD-2');
+  assert.strictEqual(result.rule_id, 'dispatch-floor', 'AC-2-bonus: verify rule_id must be DD-2');
   assert.strictEqual(result.rule_quote_required, true,
     'AC-2-bonus: verify rule_quote_required must be true');
 });

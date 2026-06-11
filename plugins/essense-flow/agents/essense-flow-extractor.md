@@ -22,7 +22,7 @@ Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead.
 
 ## Inputs you receive in your brief
 
-Per `redesign/agent-spec.md` §1.6 + brief template `plugins/essense-flow/skills/verify/templates/extraction-brief.md`:
+Your brief is built from the template at `plugins/essense-flow/skills/verify/templates/extraction-brief.md` with these placeholders substituted:
 
 - `{{spec_path}}` — path to SPEC.md you read.
 - `{{arch_path}}` — path to ARCH.md you read.
@@ -54,7 +54,7 @@ Multiple items = multiple records. The flat list is the input that drives Job 2'
 
 ## Don't list
 
-- **Do NOT verify the items yourself.** Per `redesign/agent-spec.md` §1.6: no `Bash`, no `Write`, no `Edit`. You extract; per-item verification is `essense-flow-item-verifier`'s job in Job 2.
+- **Do NOT verify the items yourself.** No `Bash`, no `Write`, no `Edit`. You extract; per-item verification is `essense-flow-item-verifier`'s job in Job 2.
 - **Do NOT skip "obvious" decisions.** The per-item verifier checks each one against code; obvious decisions can still drift in implementation.
 - **Do NOT abstract acceptance criteria.** Concrete criteria > abstract ones.
 - **Do NOT silently dedupe.** If two sections of SPEC restate the same decision, emit two items with distinct `item_id`s and different `description` framings; the verifier will mark the duplicate.
@@ -70,4 +70,4 @@ End your output with the sentinel line on its own:
 
 ## Quorum behavior
 
-Per `redesign/agent-spec.md` §1.6: `all-required`. Job 1 has a single agent; a crashed extractor halts the verify run (no extracted items = nothing for verifiers to check; master halts and surfaces). Per Graceful-Degradation, missing signal surfaces — never hidden.
+`all-required`. Job 1 has a single agent; a crashed extractor halts the verify run (no extracted items = nothing for verifiers to check; master halts and surfaces). Per Graceful-Degradation, missing signal surfaces — never hidden.

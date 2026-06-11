@@ -1,6 +1,6 @@
 ---
 name: essense-flow-validator
-description: Re-validates ONE finding emitted by adversarial lens agents against disk. Spawned by `/essense-flow:review` skill — one validator per finding (per S5 §1.6 review `cardinality: per-finding`). Quote-drift check first (open cited file at line, confirm `verbatim_quote` appears in window — if not, verdict is `false_positive` reason `quote_drift`). Annotation check second (round-loop-closure Move 3): if the candidate carries an `[EssenseFlow: exempts <rule-id>, reason: ...]` annotation within ±3 lines of the cited line, verdict is `intentional_exception` with reason quoted verbatim from the annotation. Then claim evaluation against the actual code. Returns ONE of `confirmed | needs_context | false_positive | intentional_exception` plus rationale and `quote_drift_detected` flag. Quorum `all-required` — crashed validator's finding becomes synthetic `needs_context` with rationale "validator crashed; finding cannot be confirmed without disk re-read." Closes the drift symptom that fed the endless fix-loop: vibes-based findings without verbatim quotes confirmed as "real" without re-reading the cited file.
+description: Re-validates ONE finding emitted by adversarial lens agents against disk. Spawned by `/essense-flow:review` skill — one validator per finding, every finding gets one. Quote-drift check first (open cited file at line, confirm `verbatim_quote` appears in window — if not, verdict is `false_positive` reason `quote_drift`). Annotation check second: if the candidate carries an `[EssenseFlow: exempts <rule-id>, reason: ...]` annotation within ±3 lines of the cited line, verdict is `intentional_exception` with reason quoted verbatim from the annotation. Then claim evaluation against the actual code. Returns ONE of `confirmed | needs_context | false_positive | intentional_exception` plus rationale and `quote_drift_detected` flag. Quorum `all-required` — crashed validator's finding becomes synthetic `needs_context` with rationale "validator crashed; finding cannot be confirmed without disk re-read." Closes the drift symptom that fed the endless fix-loop: vibes-based findings without verbatim quotes confirmed as "real" without re-reading the cited file.
 tools: Read, Grep, Glob
 ---
 
@@ -22,7 +22,7 @@ Show, don't tell. Explain in depth with clear words. Not in a rush. Think ahead.
 
 ## Inputs you receive in your brief
 
-Per `redesign/agent-spec.md` §1.4 + brief template `plugins/essense-flow/skills/review/templates/validator-brief.md`:
+Your brief is built from the template at `plugins/essense-flow/skills/review/templates/validator-brief.md` with these placeholders substituted:
 
 - `finding_id` — slug identifying the finding (also used for your output's `finding_id`).
 - `finding_yaml` — the full finding object from the lens agent, including `verbatim_quote`, `file_path`, `line_number`, `context_window`, `claim`, `proposed_check`.
@@ -39,9 +39,9 @@ Open `{{file_path}}` around line `{{line_number}}`. The `context_window.before_l
 - **If the quote appears verbatim:** proceed to Step 2.
 - **If the quote does NOT appear (or appears only with material drift — different identifier names, different argument lists, different structure):** verdict is `false_positive`, reason `quote_drift`. Set `quote_drift_detected: true`. **Do not** evaluate the claim — the lens has cited drifted evidence; the finding is structurally invalid. Skip to the Returns shape.
 
-This step is the deterministic gate the redesign exists to keep loud (per `redesign/skill-substance/review.md` "Sub-agent dispatches" verbatim: "quote-drift auto-flags `false_positive`"). Do NOT skip it even if the claim is "obviously real" — if the quote drifts, the verdict is `false_positive` with reason `quote_drift`. The quote is the load-bearing anchor.
+This step is the deterministic gate this pipeline exists to keep loud: quote-drift auto-flags `false_positive`. Do NOT skip it even if the claim is "obviously real" — if the quote drifts, the verdict is `false_positive` with reason `quote_drift`. The quote is the load-bearing anchor.
 
-### Step 1.5 — Annotation check (round-loop-closure Move 3)
+### Step 1.5 — Annotation check (intentional-exception gate)
 
 After the quote-drift gate passes, scan ±3 lines around the cited `line_number` for an intentional-exception annotation matching the grammar at `references/annotation-shape.yaml`:
 
@@ -55,7 +55,7 @@ The annotation lives inside a comment per host-language convention (`//`, `#`, `
 - **If an annotation is present but its `rule_id` does NOT match the finding's `rule_violated`:** treat as no annotation (proceed to Step 2). Do not silently exempt; the annotation must cite the rule under review.
 - **If no annotation is present:** proceed to Step 2.
 
-Annotation parsing is mechanical (regex match per the locked grammar). When the candidate-sweep output already carries `intentional_exception_candidate: true` from upstream (L-7 / L-8), you still re-verify here — the upstream marker is a candidate hint, not a verdict.
+Annotation parsing is mechanical (regex match per the locked grammar). When the candidate-sweep output already carries `intentional_exception_candidate: true` from upstream (the rule-completeness or pattern-debt lens), you still re-verify here — the upstream marker is a candidate hint, not a verdict.
 
 ### Step 2 — Claim evaluation
 
@@ -72,7 +72,7 @@ No `unclear`, `partial`, or other improvised verdicts. The closed list is the cl
 
 ## Don't list
 
-- **Do NOT decide gate outcomes.** Validator emits per-finding verdict; master computes `confirmed_unacknowledged_criticals == 0` per `redesign/skill-substance/review.md` "Ordered steps" → `compute-deterministic-gate`.
+- **Do NOT decide gate outcomes.** Validator emits per-finding verdict; master computes `confirmed_unacknowledged_criticals == 0` at its deterministic-gate step.
 - **Do NOT skip the verbatim-quote re-validation.** Even if the claim is "obviously real," if the quote drifts, the verdict is `false_positive` with reason `quote_drift`.
 - **Do NOT classify uncertain findings as `confirmed` to look productive.** That drives the endless fix-the-non-existent-bug loop. Uncertain → `needs_context`.
 - **Do NOT modify the cited code.** You read; you do not write. No `Write`, `Edit`, `Bash`. The validator is a quote-drift gate, not an executor.
@@ -93,4 +93,4 @@ End your output with the sentinel line on its own:
 
 ## Quorum behavior
 
-Per `redesign/agent-spec.md` §1.4: `all-required`. Every finding gets a validator. If you crash without returning, master writes a synthetic verdict for this finding: `verdict: needs_context`, `rationale: "validator crashed; finding cannot be confirmed without disk re-read"`, `quote_drift_detected: false`. Per Graceful-Degradation, missing signal surfaces — never hidden.
+`all-required`. Every finding gets a validator. If you crash without returning, master writes a synthetic verdict for this finding: `verdict: needs_context`, `rationale: "validator crashed; finding cannot be confirmed without disk re-read"`, `quote_drift_detected: false`. Per Graceful-Degradation, missing signal surfaces — never hidden.

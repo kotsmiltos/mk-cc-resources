@@ -4,7 +4,7 @@ sprints_planned: {{sprints_planned}}
 abstractions_introduced: {{abstractions_introduced}}
 decisions_closed: {{decisions_closed}}
 existing_functionality_considered: {{existing_functionality_considered}}   # count of reuse-ledger rows from the decide-step map consult; 0 when no functionality map existed at design time
-canon_files: {{canon_files}}   # v0.13.4 L4: array of project-canonical doc paths that mirror decisions.yaml (e.g. ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]). Empty array [] is allowed and means "no project-canon mirrors beyond decisions.yaml." Architect's pack step reads this; if non-empty AND any decisions closed this round, master MUST emit a T-CANON-<round> task per "Canon-tax emission" in skills/architect/SKILL.md "How you work".
+canon_files: {{canon_files}}   # array of project-canonical doc paths that mirror decisions.yaml (e.g. ["docs/DECISIONS-INDEX.md", "docs/MASTER-DECISIONS.md"]). Empty array [] is allowed and means "no project-canon mirrors beyond decisions.yaml." Architect's pack step reads this; if non-empty AND any decisions closed this round, master MUST emit a T-CANON-<round> task per "Canon-tax emission" in skills/architect/SKILL.md "How you work".
 ---
 
 # Architecture — {{project_name}}
@@ -38,7 +38,7 @@ See `decisions.yaml` for the canonical record. Summary:
 
 {{decisions_summary}}
 
-### Project-canon mirrors (v0.13.4 L4)
+### Project-canon mirrors
 
 `canon_files:` (frontmatter) lists project-specific canon documents that
 mirror `decisions.yaml`. Set during initial architect run; preserved across

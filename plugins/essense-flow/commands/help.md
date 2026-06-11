@@ -21,6 +21,6 @@ Display the essense-flow command list:
 - `/next` — recommended next slash command for current phase
 - `/heal` — recover from any prior state (mid-flight, prior tool's artifacts, code-without-spec)
 
-**Principles** (read-only): see `references/principles.md` in the plugin install. Four rules — Graceful-Degradation, Front-Loaded-Design, Fail-Soft, Diligent-Conduct — plus INST-13 (no resource caps).
+**Principles** (read-only): see `references/principles.md` in the plugin install. Four rules — Graceful-Degradation, Front-Loaded-Design, Fail-Soft, Diligent-Conduct — plus No-Resource-Caps.
 
 **Design intent:** adaptive depth, advisory tooling, closed contracts, evidence-bound verification, kind conduct.
