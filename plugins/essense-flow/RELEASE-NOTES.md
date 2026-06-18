@@ -1,5 +1,13 @@
 # Release notes — essense-flow
 
+## 0.19.0 — Code conventions reference: build agents write to production craft
+
+New `references/code-conventions.md` — general good-engineering conventions that govern **how** the build phase writes code (the task spec stays the only contract for **what**). Distilled into positive, reusable form (no project-specific content): verify-by-reading-the-code-path; fix-at-root-never-patch-a-patch; layered acyclic dependencies with a framework-free core; one-responsibility units; centralized ordered state mutation; single source of truth; no magic numbers (units + citation on domain constants); fail-fast validated config with no-default secrets; classify-errors-before-retry (transient vs permanent + backoff); nothing-fails-silently; atomic writes for critical state; plan-then-apply with verify-after for dangerous ops; portable paths; tests-as-living-spec + fitness-guard invariants.
+
+Includes a **"Verify behavior, not just units"** section: unit tests are the floor, not the ceiling — build or run an end-to-end check matched to the surface (Playwright/Puppeteer for web UI, request-smoke for HTTP APIs, subprocess for CLIs, headless+screenshot for game/sim/visual, golden-diff for data pipelines) and emit human-inspectable evidence. Tool-acquisition order: use a wired harness if present; if a needed tool exists but isn't available, **request it by name** (surfaced as an `unknowns` entry to master per `librarian.md` — a missing verification capability is a declared gap, never a silently dropped step); if nothing exists, **build the minimal harness** and ship it with the feature.
+
+Wired by reference (cite-don't-duplicate, matching the `principles.md` pattern): `essense-flow-task-agent` reads and applies it before writing code; `skills/build` and `skills/architect` cite it so specs are designed to allow, not fight, these conventions. On any conflict the task spec wins and the agent notes the tension in `agent_claim` — conventions shape craft, never override contract. Markdown-only; full suite green (49/49).
+
 ## 0.18.0 — The consolidation rebuild: schema single-source, artifacts-authoritative state, librarian protocol
 
 Six-phase rebuild moving the plugin from internal tooling to public posture. Three structural inversions kill three whole failure classes; the prompt layer becomes readable with zero tribal knowledge.

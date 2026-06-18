@@ -36,6 +36,8 @@ plugins/
     defaults/               # config.yaml, state.yaml templates
     references/             # transitions.yaml, phase-command-map.yaml, principles.md,
                             #   librarian.md (research-first + unknowns[] protocol),
+                            #   code-conventions.md (how build agents write code — cited by
+                            #   task-agent + build + architect; craft, never contract),
                             #   schemas/ (canonical artifact shapes: task-spec, completion-record,
                             #   register-item, unknown-entry — validators, templates, and agent-def
                             #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)

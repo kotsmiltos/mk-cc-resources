@@ -15,6 +15,8 @@ See `references/principles.md` `## Read This Before Doing Anything` (canonical s
 
 Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
 
+Code-craft conventions for the code your task agents write live at `references/code-conventions.md` (the task-agent def cites them; they govern *how* code is written, never *what* — the task spec stays the only contract).
+
 ## Operating contract
 
 - Read sprint manifest at `.pipeline/architecture/sprints/<n>/manifest.yaml` (required) + every task spec at `.pipeline/architecture/sprints/<n>/tasks/<id>.yaml`. On missing/corrupt: refuse to start, return `{ok: false, reason}`.

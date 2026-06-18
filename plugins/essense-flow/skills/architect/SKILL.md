@@ -11,6 +11,8 @@ schema_version: 1
 
 See `references/principles.md` `## Read This Before Doing Anything` (canonical source — the 4-bullet block lives there; this skill cites it by reference).
 
+Task specs you pack must be implementable under `references/code-conventions.md` (the conventions build's task agents follow): don't prescribe `behavioral_pseudocode` that forces magic numbers, a framework-coupled core, swallowed errors, or non-atomic critical writes. Design with those conventions in mind — they shape *how* the spec gets built, never *what*.
+
 ## Conduct
 
 Canonical conduct lives at `references/principles.md` `## Conduct` — read it there; it is not duplicated here. The three lines that govern every step of this skill: no shortcuts or deferrals of scope; sub-agents get agency, clear goals, and parallel dispatch; thorough on substance, lean on ceremony.
