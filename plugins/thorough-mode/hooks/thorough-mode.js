@@ -13,6 +13,8 @@
  *   @debug          — root cause investigation before fixing
  *   @verify         — paranoid verification of every claim
  *   @fresh          — context refresh, re-read key files
+ *   @prompt         — produce a copy-paste kickoff prompt for the next session
+ *   @build          — plan the change, review the plan, then build it
  */
 
 const MODIFIERS = [
@@ -105,6 +107,39 @@ const MODIFIERS = [
 - Verify that what you read is still what you are acting on — files may have changed during this session.
 - When in a long conversation, assume your mental model has drifted. Check, don't assume.`,
   },
+  {
+    name: "prompt",
+    triggers: [
+      /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
+    ],
+    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation:
+- Output it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block.
+- Lead with the objective in one or two sentences: what the next session should accomplish.
+- Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
+- Name the concrete first action AND the verifiable check that proves it done.
+- List open decisions / blockers the next session must resolve (or that need the user).
+- Point to durable artifacts instead of restating them (handoff.md, RELEASE-NOTES, task specs) — reference, don't paste.
+- Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
+- Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.`,
+  },
+  {
+    name: "build",
+    triggers: [
+      /(?:^|\s)@build(?:\s|$)/i,  // @build as standalone token
+    ],
+    injection: `[build-mode] Plan the change, review the plan, THEN build it. Do not start editing before the plan is reviewed.
+1. PLAN — write a detailed change plan, broken into:
+   - MODIFY — each file/symbol to be touched, with what changes and why.
+   - ADD — new files/functions/types, where they live, their shape.
+   - REMOVE — what gets deleted or replaced, and why that is safe.
+   - The order of operations, and the verifiable check that proves each step.
+2. REVIEW the plan against the bar before building:
+   - Is this the BEST option? Name the simpler/alternative approach you considered and why you rejected it.
+   - Does it match the codebase's existing style and implementation patterns? Read neighboring code; reuse existing helpers/abstractions instead of reinventing.
+   - Does it honor project conventions (if \`references/code-conventions.md\` or a CLAUDE.md exists, follow them): named constants, layered/acyclic deps, fail-fast config, no silent errors, atomic writes, verify-beyond-units.
+   - Surface open decisions, risks, or unknowns the plan cannot resolve alone — flag them, don't guess.
+3. BUILD — implement the reviewed plan in the smallest viable steps, running the verifiable check after each. Fix at the root. Do not drift from the plan; if the plan turns out wrong, revise the plan and re-review, don't patch around it.`,
+  },
 ];
 
 // Patterns that suggest a modifier would help, but the user didn't use it.
@@ -151,6 +186,20 @@ const HINTS = [
       /\b(re-?read|check again|fresh eyes|context.{0,10}stale|read.{0,10}again|re-?examine|look at.{0,10}again|you'?re (drifting|losing|forgetting))\b/i,
     ],
     hint: `[hint] Tip: add \`@fresh\` to force a context refresh — re-read key files before acting.`,
+  },
+  {
+    name: "prompt",
+    patterns: [
+      /\b((kick.?off|kickoff|starting|start|handoff|next.?session).{0,15}prompt|prompt.{0,15}(to (kick|start)|for (the )?next session|next session)|prompt to (kick|start|begin)|continue (in|next) session)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@prompt\` to generate a copy-paste kickoff prompt for your next session.`,
+  },
+  {
+    name: "build",
+    patterns: [
+      /\b(plan.{0,15}(the change|it out|first|before).{0,15}(then )?(build|implement)?|make a plan.{0,10}(and|then).{0,10}(build|implement)|plan.{0,10}then.{0,10}(build|implement|code)|what.{0,10}(will|you).{0,10}(touch|change|modify)|plan before (building|coding|implementing))\b/i,
+    ],
+    hint: `[hint] Tip: add \`@build\` to plan the change (files touched/added/removed), review the plan against our patterns, then implement.`,
   },
 ];
 

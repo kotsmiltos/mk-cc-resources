@@ -1,5 +1,15 @@
 # Release notes — thorough-mode
 
+## 1.6.0 — Two new modifiers: `@prompt` and `@build`
+
+**`@prompt` — next-session kickoff prompt.** Injects instructions to produce a **copy-paste prompt that kicks off the next session** — output as one fenced code block, assuming a fresh context with no memory of the current one: objective up top, minimal cold-start context (repo/branch, key paths, current state, done/remaining), concrete first action + its verifiable check, open decisions/blockers, references to durable artifacts (handoff.md, RELEASE-NOTES, task specs) rather than restating them, and any working-style to carry forward (`++`, `@verify`).
+
+**`@build` — plan, review, build.** Injects a three-phase workflow for a change: (1) PLAN — a detailed change plan broken into MODIFY (file/symbol + what changes), ADD (new code + where), REMOVE (what's deleted/replaced + why safe), with order-of-ops + per-step verifiable check; (2) REVIEW the plan before building — is it the best option (name the rejected alternative)? does it match the codebase's existing style/implementation patterns (read neighbors, reuse helpers)? does it honor project conventions (`code-conventions.md` / CLAUDE.md)? surface risks/unknowns; (3) BUILD in smallest viable steps, verify after each, fix at root, no drift — if the plan was wrong, revise and re-review rather than patch around it.
+
+Both carry smart hints that suggest the modifier when the intent is described without the keyword ("give me the prompt to kick off the next session"; "plan it out then build", "what will you touch").
+
+Verified: each hook fires on its token (injects the block), each hint fires on keyword-less intent, both inject together when combined, and a plain prompt emits nothing (no false trigger). No changes to other modifiers.
+
 ## 1.5.0 — @ship integration with plugin-toolkit
 
 `@ship` modifier updated to reference `/version-bump` and `/docs-audit` from the new plugin-toolkit. When `@ship` fires in an mk-cc-resources plugin repo, the injection now points Claude at `/version-bump` for semver cascading (plugin.json + marketplace entry + bundle + metadata + RELEASE-NOTES in one shot) and `/docs-audit` for cross-doc drift detection (CLAUDE.md + README + marketplace.json vs disk state). Outside that repo, `@ship` falls back to the generic checklist.

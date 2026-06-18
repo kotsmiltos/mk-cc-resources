@@ -53,6 +53,21 @@ Forces re-reading key files and verifying against current state:
 - When instructions reference multiple files, verify EACH against current disk
 - Assume mental model has drifted in long conversations — check, don't assume
 
+### `@prompt` — Next-Session Kickoff Prompt
+Produces a copy-paste prompt to start the NEXT session from a cold context:
+- Output as ONE fenced code block, verbatim-copyable — no preamble inside it
+- Objective first; then minimal cold-start context (repo/branch, key paths, current state, done/remaining)
+- Concrete first action + the verifiable check that proves it done
+- Open decisions/blockers the next session must resolve
+- References durable artifacts (handoff.md, RELEASE-NOTES, task specs) instead of restating them
+- Carries forward working-style the work needs (e.g. `++`, `@verify`)
+
+### `@build` — Plan, Review, Build
+Plans a change, reviews the plan against the bar, then implements it:
+- PLAN: enumerate code to MODIFY (file/symbol + what changes), ADD (new files/functions/types + where), REMOVE (what's deleted/replaced + why safe); order of ops + verifiable check per step
+- REVIEW: is it the best option (name the rejected alternative)? does it match existing style/implementation patterns (read neighbors, reuse helpers)? does it honor project conventions (code-conventions.md / CLAUDE.md)? surface risks/unknowns
+- BUILD: smallest viable steps, verify after each, fix at root, no drift from the plan — if the plan was wrong, revise and re-review rather than patch around it
+
 ## Smart Hints
 
 When you describe the intent without using the keyword (e.g., "don't skip anything", "push it", "show me choices with arrows"), the hook shows a one-line hint suggesting the relevant modifier. Hints are suppressed when the modifier is already active — no nagging.
