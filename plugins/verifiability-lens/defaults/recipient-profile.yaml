@@ -1,0 +1,26 @@
+# Recipient profile — tunes the surfacing triage (references/rubric.md Part 3).
+# NOT personal setup baked into code: a config block, adjustable per project / per user.
+# The rubric never changes; only these dials do.
+
+# Default profile: a time-poor recipient who will not always load deep context and wants the
+# system to pick up the slack. Bias hard toward absorbing work; interrupt only for the few
+# important, actionable, fully-contextualized decisions.
+
+verbosity: terse                 # terse | normal | detailed — how much prose surfaced text carries
+context_appetite: low            # low | medium | high — low => bundle all needed context inline; assume no digging
+escalation_floor: important      # minor | important | critical — minimum importance allowed to interrupt
+default_bias: aggressive         # conservative | balanced | aggressive — how readily to auto-resolve vs ask
+render: plain-bottom-up          # voice of surfaced text: plain language, bottom-up, recommended-default-first
+
+# Operational rules derived from the dials (the lens/triage reads these):
+rules:
+  # With escalation_floor: important, minor items never reach the user — suppress + log only.
+  suppress_below: important
+  # With default_bias: aggressive, anything the system can settle with a defensible default is
+  # auto-resolved and logged rather than asked.
+  auto_resolve_when_default_exists: true
+  # Hard rule (never overridden by dials): a decision the recipient cannot make from the bundled
+  # context alone is never surfaced as a bare question — bundle context or auto-resolve + inform.
+  never_context_less_decision: true
+  # Hard rule: every auto-resolved default is written to the audit log, never silent.
+  log_all_auto_resolutions: true

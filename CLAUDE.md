@@ -99,9 +99,24 @@ plugins/
       config.json           # Per-event toggles (beep, sound, notify, flash)
     skills/alert-sounds/
       SKILL.md              # /alert-sounds config skill
+
+  verifiability-lens/       # Auto-classifier: sorts work A (verifiable) / B (guess) / U (can't-tell),
+                            #   surfaces only important + actionable + fully-contextualized decisions
+    .claude-plugin/plugin.json
+    agents/
+      verifiability-lens.md # read-only classifier + surfacing triager (the substance)
+    references/rubric.md    # CANON — A/B/U classification + surfacing triage + recipient profile
+    defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded
+    commands/verifiability.md        # /verifiability [target] — manual trigger
+    hooks/
+      hooks.json            # Stop hook registration
+      scripts/verifiability-stop.{sh,js}  # auto-trigger (opt-in OFF) + fire-once loop guard
+    tests/verifiability-stop.test.js
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
+
+**verifiability-lens** (design source: `design/verifiability-awareness.md`) — two pillars. *Detection:* a read-only `verifiability-lens` agent sorts any plan/claim/result into class A (a cheap accurate check exists — name it), B (no check — guess/opinion/prediction/missing-context), or U (can't tell; never let a U pass as A — the false-clean failure). Class is capability-relative. *Delivery:* a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands the user ONLY important + actionable + fully-contextualized decisions and absorbs the rest — hard rule: never a context-less decision; auto-resolutions always logged. Generalizes essense-flow's `unknowns[]` (input-side) to the output-side, and extends librarian.md's surface-at-gate protocol. Fires automatically via a Stop hook (P1 — blocks the turn, runs the lens in-session, surfaces before yielding), **opt-in OFF by default** (`.claude/verifiability-lens.json` `{"enabled":true}`), fire-exactly-once guard, fail-open — same mechanism as essense-autopilot. Carries a hook → standalone, not in the mk-cc-all bundle.
 
 ## essense-flow Pipeline
 

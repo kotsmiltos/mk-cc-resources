@@ -1,0 +1,231 @@
+"use strict";
+
+/**
+ * verifiability-lens — Stop hook (P1: block + in-session classification).
+ *
+ * Mechanism: when Claude finishes a turn, this hook reads the transcript, and if
+ * the last assistant message asserted a plan / claim / result (classify-worthy),
+ * it returns {decision:"block", reason:"...dispatch the verifiability-lens..."}.
+ * Claude Code interprets that as "do not stop; act on this reason" — so the SAME
+ * session runs the lens over what it just produced and surfaces ONLY the triaged
+ * escalations before yielding. Same mechanism essense-autopilot uses.
+ *
+ * Fire-exactly-once guard (no infinite block):
+ *   - After a block, the NEXT fire is force-released (state.awaiting) — every
+ *     block is followed by exactly one forced allow, so a loop is impossible even
+ *     if content hashes drift.
+ *   - A content-hash of the triggering message also skips re-classifying the same
+ *     content on later fires.
+ *
+ * Opt-in: OFF unless .claude/verifiability-lens.json has {"enabled": true}
+ * (or env VERIFIABILITY_LENS_ENABLED=1). Default OFF — nothing fires until asked.
+ *
+ * Fail-open: any error or ambiguity falls through to "allow stop". Blocking
+ * wrongly (annoy / loop) is worse than missing one classification, so every
+ * uncertain path allows the stop.
+ *
+ * P1 note: the lens runs as an in-session subagent (Agent tool). A subagent
+ * finishing fires SubagentStop, NOT this Stop hook, so there is no reentrancy /
+ * nested-hook concern (unlike a spawned headless claude would have).
+ */
+
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const CONFIG_REL = path.join(".claude", "verifiability-lens.json");
+const STATE_REL = path.join(".claude", "verifiability-lens", "state.json");
+
+const BLOCK_REASON =
+  "[verifiability-lens] Before yielding: dispatch the `verifiability-lens` agent " +
+  "(Agent tool, subagent_type: verifiability-lens) over the work you just produced. " +
+  "Pass unit_type, the content, any context_refs, executor_capabilities, and the " +
+  "recipient_profile from plugins/verifiability-lens/defaults/recipient-profile.yaml " +
+  "(or a project override). Then surface ONLY the agent's triaged rollup — the " +
+  "headline + escalations (important + actionable, each with why-it-matters + a " +
+  "recommended default + bundled context) + a one-line note of what was auto-resolved " +
+  "(with the defaults taken) and how many items were suppressed. Do NOT dump the raw " +
+  "A/B/U list. Per references/rubric.md. Then stop.";
+
+// ---------- Pure logic (exported for tests) ----------
+
+function hashText(text) {
+  return crypto.createHash("sha1").update(text).digest("hex").slice(0, 16);
+}
+
+// Deterministic pre-filter: is the last assistant turn worth classifying?
+// Classify-worthy = it asserts a plan, makes a completion/correctness claim, or
+// the turn wrote code / ran a command. Leans inclusive (a false positive costs one
+// lens run; a false negative misses real B work), but skips pure conversational turns.
+const CLAIM_RX =
+  /\b(done|fixed|works|working|passes|passing|implemented|added|created|built|verified|complete|completed|resolved|should work|that works|now works|it works|all set|ready)\b/i;
+const PLAN_RX =
+  /(here'?s the plan|the plan is|i'?ll (build|implement|add|change|do|create|write|wire)|^\s*step\s*1\b|\bMODIFY\b|\bREMOVE\b|first,? i'?ll|plan:)/im;
+const CODE_TOOLS = new Set(["Write", "Edit", "NotebookEdit", "Bash"]);
+
+function classifyWorthy(lastAssistant) {
+  if (!lastAssistant) return false;
+  const text = lastAssistant.text || "";
+  const tools = lastAssistant.toolNames || [];
+  if (tools.some((t) => CODE_TOOLS.has(t))) return true;
+  if (CLAIM_RX.test(text)) return true;
+  if (PLAN_RX.test(text)) return true;
+  return false;
+}
+
+// Decide the action from (enabled, lastAssistant, state) — no IO. Returns
+// { action: "allow" | "block", newState, reason }.
+function decide({ enabled, lastAssistant, state }) {
+  const s = state && typeof state === "object"
+    ? state
+    : { last_block_hash: null, awaiting: false };
+
+  if (!enabled) return { action: "allow", newState: s, reason: "disabled" };
+  if (!lastAssistant || !lastAssistant.text) {
+    return { action: "allow", newState: s, reason: "no last assistant text (fail-open)" };
+  }
+  // Force-release after any prior block — guarantees one block then an allow.
+  if (s.awaiting) {
+    return {
+      action: "allow",
+      newState: { last_block_hash: s.last_block_hash, awaiting: false },
+      reason: "releasing after prior block (fire-once guard)",
+    };
+  }
+  if (!classifyWorthy(lastAssistant)) {
+    return { action: "allow", newState: s, reason: "not classify-worthy" };
+  }
+  const h = hashText(lastAssistant.text);
+  if (h === s.last_block_hash) {
+    return { action: "allow", newState: s, reason: "already classified this content" };
+  }
+  return {
+    action: "block",
+    newState: { last_block_hash: h, awaiting: true },
+    reason: BLOCK_REASON,
+  };
+}
+
+// ---------- Transcript parsing ----------
+
+// Extract the LAST assistant message's concatenated text + the tool names it used.
+// Defensive against the undocumented JSONL schema: on any ambiguity returns null
+// so the caller fails open (allows stop) rather than blocking on a bad read.
+function extractLastAssistant(transcriptPath) {
+  if (!transcriptPath) return null;
+  let raw;
+  try {
+    if (!fs.existsSync(transcriptPath)) return null;
+    raw = fs.readFileSync(transcriptPath, "utf8");
+  } catch (_e) {
+    return null;
+  }
+  const lines = raw.split("\n");
+  let last = null;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let obj;
+    try { obj = JSON.parse(line); } catch (_e) { continue; }
+    const msg = obj.message || obj;
+    const role = msg.role || obj.role || obj.type;
+    if (role !== "assistant") continue;
+    const content = msg.content;
+    let text = "";
+    const toolNames = [];
+    if (typeof content === "string") {
+      text = content;
+    } else if (Array.isArray(content)) {
+      for (const c of content) {
+        if (!c || typeof c !== "object") continue;
+        if (c.type === "text" && typeof c.text === "string") text += c.text + "\n";
+        else if (c.type === "tool_use" && c.name) toolNames.push(c.name);
+      }
+    }
+    last = { text: text.trim(), toolNames };
+  }
+  return last;
+}
+
+// ---------- IO helpers ----------
+
+function readPayload() {
+  return new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("end", () => {
+      if (!data.trim()) return resolve({});
+      try { resolve(JSON.parse(data)); } catch (_e) { resolve({}); }
+    });
+    if (process.stdin.isTTY) resolve({});
+  });
+}
+
+function isEnabled(cwd) {
+  if (process.env.VERIFIABILITY_LENS_ENABLED === "1") return true;
+  try {
+    const cfgPath = path.join(cwd, CONFIG_REL);
+    if (!fs.existsSync(cfgPath)) return false;
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+    return cfg && cfg.enabled === true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function readState(cwd) {
+  try {
+    const p = path.join(cwd, STATE_REL);
+    if (!fs.existsSync(p)) return null;
+    return JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch (_e) {
+    return null;
+  }
+}
+
+function writeState(cwd, state) {
+  try {
+    const p = path.join(cwd, STATE_REL);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify(state));
+    return true;
+  } catch (_e) {
+    return false; // best-effort; never fatal
+  }
+}
+
+function allowStop() { process.exit(0); }
+function blockStop(reason) {
+  process.stdout.write(JSON.stringify({ decision: "block", reason }));
+  process.exit(0);
+}
+
+// ---------- Main ----------
+
+async function main() {
+  const payload = await readPayload();
+  const cwd = process.cwd();
+
+  const enabled = isEnabled(cwd);
+  const lastAssistant = extractLastAssistant(payload.transcript_path);
+  const state = readState(cwd);
+
+  const { action, newState, reason } = decide({ enabled, lastAssistant, state });
+
+  // Persist state whenever it changed (block sets the marker; release clears awaiting).
+  if (newState && JSON.stringify(newState) !== JSON.stringify(state)) {
+    writeState(cwd, newState);
+  }
+
+  if (action === "block") return blockStop(reason);
+  return allowStop();
+}
+
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`[verifiability-lens] error: ${err.message} — allowing stop\n`);
+    process.exit(0);
+  });
+}
+
+module.exports = { hashText, classifyWorthy, decide, extractLastAssistant, BLOCK_REASON };

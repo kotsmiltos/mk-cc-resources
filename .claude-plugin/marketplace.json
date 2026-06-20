@@ -4,8 +4,8 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, and cross-platform alerts.",
-    "version": "2.15.2"
+    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
+    "version": "2.16.0"
   },
   "plugins": [
     {
@@ -57,10 +57,16 @@
       "version": "1.5.1"
     },
     {
+      "name": "verifiability-lens",
+      "source": "./plugins/verifiability-lens",
+      "description": "An automatic helper that sorts any plan/claim/result into verifiable (A) vs guess (B) vs can't-tell (U), then hands you only the important, actionable, fully-contextualized decisions — absorbing the rest (minor suppressed, settleable auto-resolved + logged). Detection: a read-only verifiability-lens agent classifies work by whether a cheap accurate check exists; class is capability-relative; a U dressed as A (false-clean) is the failure it catches. Delivery: a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile picks up the user's slack — hard rule, never a context-less decision; auto-resolutions always logged. Fires automatically: a Stop hook (opt-in, OFF by default) blocks each classify-worthy turn and runs the lens in-session before yielding, with a fire-exactly-once loop guard (same mechanism as essense-autopilot). Also a /verifiability manual trigger. Carries a hook — install separately from the mk-cc-all bundle.",
+      "version": "0.2.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot and alert-sounds carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.11.0"
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, alert-sounds, and verifiability-lens carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "version": "2.11.1"
     }
   ]
 }
