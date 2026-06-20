@@ -58,28 +58,62 @@ function hashText(text) {
 }
 
 // Deterministic pre-filter: is the last assistant turn worth classifying?
-// Classify-worthy = it asserts a plan, makes a completion/correctness claim, or
-// the turn wrote code / ran a command. Leans inclusive (a false positive costs one
-// lens run; a false negative misses real B work), but skips pure conversational turns.
-const CLAIM_RX =
-  /\b(done|fixed|works|working|passes|passing|implemented|added|created|built|verified|complete|completed|resolved|should work|that works|now works|it works|all set|ready)\b/i;
-const PLAN_RX =
-  /(here'?s the plan|the plan is|i'?ll (build|implement|add|change|do|create|write|wire)|^\s*step\s*1\b|\bMODIFY\b|\bREMOVE\b|first,? i'?ll|plan:)/im;
+//
+// DEFAULT trigger = the turn PRODUCED something checkable (a code/command tool ran).
+// That is the high-signal, low-false-positive case. Bare prose claims ("done", "works",
+// "ready", "the plan") appear constantly in normal conversation and made the hook fire
+// every turn in chat/coaching sessions — so prose-claim checking is OPT-IN
+// (check_prose_claims) and narrowed to strong shipping/verification phrasing.
+//
+// Two HARD SKIPS apply regardless of mode:
+//   - the lens's OWN surfaced output — never check the check (kills the meta-loop), and
+//   - a turn that is purely a question — nothing to verify.
 const CODE_TOOLS = new Set(["Write", "Edit", "NotebookEdit", "Bash"]);
 
-function classifyWorthy(lastAssistant) {
+// Markers of the lens's own surfaced rollup — a turn that contains these is reporting a
+// prior classification, not producing new work; classifying it loops the lens on itself.
+const LENS_SURFACING_RX =
+  /\[verifiability-lens\]|verifiability[_ -]?(class|lens|pass)|\brollup\b|\bescalations?\b|auto[_-]?resolved|suppressed_count|lens (clean|dispatched|caught|flag)/i;
+
+// Strong, build-specific claims only (used when check_prose_claims is on). Deliberately
+// narrow: about shipped/tested/committed work, not casual "done/ready/works".
+const STRONG_CLAIM_RX =
+  /\b(tests?\s+(pass|passing|are green)|all\s+(tests\s+)?green|shipped|committed|pushed|deployed|merged|implementation\s+(is\s+)?complete|done\s+implementing|verified\s+(working|fixed|on disk)|fix(ed)?\s+(is\s+)?confirmed|build\s+(passes|succeeds))\b/i;
+
+function isLensSurfacing(text) {
+  return LENS_SURFACING_RX.test(text || "");
+}
+
+// A turn whose operative content is a question (ends with '?') and carries no strong
+// completion claim — nothing checkable.
+function isQuestionOnly(text) {
+  const t = (text || "").trim();
+  if (!t) return false;
+  return /\?\s*$/.test(t) && !STRONG_CLAIM_RX.test(t);
+}
+
+function classifyWorthy(lastAssistant, opts) {
   if (!lastAssistant) return false;
   const text = lastAssistant.text || "";
   const tools = lastAssistant.toolNames || [];
+  const checkProse = !!(opts && opts.checkProse);
+
+  // Hard skips first — never check the lens's own output; never check a bare question.
+  if (isLensSurfacing(text)) return false;
+  if (isQuestionOnly(text)) return false;
+
+  // Primary trigger: this turn produced artifacts (code / tests / files / commands).
   if (tools.some((t) => CODE_TOOLS.has(t))) return true;
-  if (CLAIM_RX.test(text)) return true;
-  if (PLAN_RX.test(text)) return true;
+
+  // Opt-in: also check strong prose claims (OFF by default — keeps quiet in chat/coaching).
+  if (checkProse && STRONG_CLAIM_RX.test(text)) return true;
+
   return false;
 }
 
 // Decide the action from (enabled, lastAssistant, state) — no IO. Returns
 // { action: "allow" | "block", newState, reason }.
-function decide({ enabled, lastAssistant, state }) {
+function decide({ enabled, lastAssistant, state, checkProse }) {
   const s = state && typeof state === "object"
     ? state
     : { last_block_hash: null, awaiting: false };
@@ -96,7 +130,7 @@ function decide({ enabled, lastAssistant, state }) {
       reason: "releasing after prior block (fire-once guard)",
     };
   }
-  if (!classifyWorthy(lastAssistant)) {
+  if (!classifyWorthy(lastAssistant, { checkProse })) {
     return { action: "allow", newState: s, reason: "not classify-worthy" };
   }
   const h = hashText(lastAssistant.text);
@@ -165,18 +199,22 @@ function readPayload() {
   });
 }
 
-// Read the `enabled` flag from a config file. Returns true | false | null:
-// null means the file is absent or carries no explicit boolean (defer to the next level).
-function readEnabledFlag(file) {
+// Read a config file as an object (or null if absent/unreadable).
+function readConfigObject(file) {
   try {
     if (!fs.existsSync(file)) return null;
-    const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (cfg && cfg.enabled === true) return true;
-    if (cfg && cfg.enabled === false) return false;
-    return null;
+    const o = JSON.parse(fs.readFileSync(file, "utf8"));
+    return o && typeof o === "object" ? o : null;
   } catch (_e) {
     return null;
   }
+}
+
+// Extract a boolean key from a config object → true | false | null (key absent/non-bool).
+function cfgFlag(obj, key) {
+  if (obj && obj[key] === true) return true;
+  if (obj && obj[key] === false) return false;
+  return null;
 }
 
 // Resolve the effective on/off from the three sources (pure; exported for tests).
@@ -189,11 +227,31 @@ function resolveEnabled({ envOn, projectFlag, globalFlag }) {
   return false;
 }
 
-function isEnabled(cwd) {
+// Resolve a project-over-global boolean flag with a default (pure; exported for tests).
+function resolveFlag(projectFlag, globalFlag, dflt) {
+  if (projectFlag === true || projectFlag === false) return projectFlag;
+  if (globalFlag === true || globalFlag === false) return globalFlag;
+  return !!dflt;
+}
+
+// Read both config levels once → { enabled, checkProse }. check_prose_claims defaults OFF
+// (prose checking is opt-in; the default fires only on artifact-producing turns).
+function readSettings(cwd) {
   const envOn = process.env.VERIFIABILITY_LENS_ENABLED === "1";
-  const projectFlag = readEnabledFlag(path.join(cwd, CONFIG_REL));
-  const globalFlag = readEnabledFlag(path.join(os.homedir(), CONFIG_REL));
-  return resolveEnabled({ envOn, projectFlag, globalFlag });
+  const proj = readConfigObject(path.join(cwd, CONFIG_REL));
+  const glob = readConfigObject(path.join(os.homedir(), CONFIG_REL));
+  return {
+    enabled: resolveEnabled({
+      envOn,
+      projectFlag: cfgFlag(proj, "enabled"),
+      globalFlag: cfgFlag(glob, "enabled"),
+    }),
+    checkProse: resolveFlag(
+      cfgFlag(proj, "check_prose_claims"),
+      cfgFlag(glob, "check_prose_claims"),
+      false
+    ),
+  };
 }
 
 function readState(cwd) {
@@ -229,11 +287,11 @@ async function main() {
   const payload = await readPayload();
   const cwd = process.cwd();
 
-  const enabled = isEnabled(cwd);
+  const { enabled, checkProse } = readSettings(cwd);
   const lastAssistant = extractLastAssistant(payload.transcript_path);
   const state = readState(cwd);
 
-  const { action, newState, reason } = decide({ enabled, lastAssistant, state });
+  const { action, newState, reason } = decide({ enabled, lastAssistant, state, checkProse });
 
   // Persist state whenever it changed (block sets the marker; release clears awaiting).
   if (newState && JSON.stringify(newState) !== JSON.stringify(state)) {
@@ -253,5 +311,5 @@ if (require.main === module) {
 
 module.exports = {
   hashText, classifyWorthy, decide, extractLastAssistant, BLOCK_REASON,
-  resolveEnabled, readEnabledFlag,
+  resolveEnabled, resolveFlag, isLensSurfacing, isQuestionOnly,
 };

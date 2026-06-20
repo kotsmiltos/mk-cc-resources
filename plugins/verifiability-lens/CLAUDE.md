@@ -26,7 +26,9 @@ Tests: `node tests/verifiability-stop.test.js` (no framework). Enable auto-mode 
 precedence high→low: env `VERIFIABILITY_LENS_ENABLED=1` → project `./.claude/verifiability-lens.json`
 `{"enabled": true|false}` (explicit repo decision wins; `false` opts out of a global ON) → global
 `~/.claude/verifiability-lens.json` `{"enabled": true}` (everywhere switch). Resolved by the pure
-`resolveEnabled`. Runtime state: `.claude/verifiability-lens/state.json` (gitignored).
+`resolveEnabled`. Optional `"check_prose_claims": true` in the same config also classifies strong
+written claims (default OFF — without it, only artifact-producing turns trigger). Runtime state:
+`.claude/verifiability-lens/state.json` (gitignored).
 
 ## Conventions
 
@@ -44,8 +46,11 @@ precedence high→low: env `VERIFIABILITY_LENS_ENABLED=1` → project `./.claude
 - ✅ v0.1: lens agent + /verifiability + rubric + profile. Isolation-tested.
 - ✅ v0.2: the Stop hook (P1 — blocks the turn, runs the lens in-session, surfaces before
   yielding), opt-in OFF by default, fire-exactly-once loop guard (force-release after a block +
-  content-hash skip), fail-open. Mirrors essense-autopilot's Stop-hook block mechanism. 18/18 guard
-  + enable-precedence tests + process smoke pass.
+  content-hash skip), fail-open. Mirrors essense-autopilot's Stop-hook block mechanism.
+- ✅ v0.2.2: pre-filter precision fix. Default trigger = artifact-producing turns only (code tool
+  ran); prose-claim checking opt-in via `check_prose_claims` (narrowed to strong claims); hard-skip
+  questions + the lens's own surfaced output (meta-loop guard). 28/28 tests + conversation-misfire
+  process smoke pass.
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 

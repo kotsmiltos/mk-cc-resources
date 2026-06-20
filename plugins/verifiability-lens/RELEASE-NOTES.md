@@ -1,5 +1,30 @@
 # verifiability-lens — Release Notes
 
+## 0.2.2 — Fix: stop firing on conversation (artifact-trigger default + meta-loop guard)
+
+**Bug:** in chat/coaching sessions the hook fired nearly every turn — including on plain
+questions and on the lens's own surfaced output (the fact-checker checking its own report). Root
+cause: the pre-filter triggered on bare prose words (`done`, `works`, `ready`, `the plan`) that
+appear constantly in ordinary conversation.
+
+**Fix — the pre-filter is now precise:**
+- **Default trigger = artifact-producing turns only** (a code/command tool ran: Write / Edit /
+  NotebookEdit / Bash). High-signal; quiet in conversation.
+- **Prose-claim checking is opt-in** via `check_prose_claims: true` in the config, and narrowed to
+  strong shipping/verification phrasing (`tests pass`, `shipped`, `committed`, `pushed`, …) — not
+  casual "done/ready/works".
+- **Two hard skips regardless of mode:** a turn that is the lens's own surfaced rollup
+  (`[verifiability-lens]`, `rollup`, `escalations`, …) never triggers — kills the check-the-check
+  meta-loop; and a turn that is purely a question (`…?` with no strong claim) never triggers.
+
+**Verified:** 28/28 unit tests (adds question-skip, lens-surfacing-skip, artifact-default,
+prose-opt-in, `resolveFlag` cases) + a process smoke reproducing the report — question turn,
+lens-surfacing turn, and casual coaching prose all **allow** (no block); a real code turn still
+**blocks**. Fail-open + fire-once guard unchanged.
+
+**Enable prose checking (opt-in):** add `"check_prose_claims": true` to your
+`~/.claude/verifiability-lens.json` (or a project one). Off by default.
+
 ## 0.2.1 — Global enable switch (turn it on everywhere with one file)
 
 The opt-in can now be set globally, so it works across all your projects without dropping a config
