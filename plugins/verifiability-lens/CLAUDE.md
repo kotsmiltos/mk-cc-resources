@@ -44,8 +44,8 @@ precedence high→low: env `VERIFIABILITY_LENS_ENABLED=1` → project `./.claude
 - ✅ v0.1: lens agent + /verifiability + rubric + profile. Isolation-tested.
 - ✅ v0.2: the Stop hook (P1 — blocks the turn, runs the lens in-session, surfaces before
   yielding), opt-in OFF by default, fire-exactly-once loop guard (force-release after a block +
-  content-hash skip), fail-open. Mirrors essense-autopilot's Stop-hook block mechanism. 13/13 guard
-  tests + process smoke pass.
+  content-hash skip), fail-open. Mirrors essense-autopilot's Stop-hook block mechanism. 18/18 guard
+  + enable-precedence tests + process smoke pass.
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 
