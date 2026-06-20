@@ -1,5 +1,19 @@
 # verifiability-lens — Release Notes
 
+## 0.2.1 — Global enable switch (turn it on everywhere with one file)
+
+The opt-in can now be set globally, so it works across all your projects without dropping a config
+into each repo. Enable precedence (high → low), resolved by the new pure `resolveEnabled`:
+- env `VERIFIABILITY_LENS_ENABLED=1` — forces ON.
+- project `./.claude/verifiability-lens.json` `{"enabled": true|false}` — an **explicit repo
+  decision wins**, so a repo can opt OUT of a global ON with `{"enabled": false}`.
+- global `~/.claude/verifiability-lens.json` `{"enabled": true}` — the **everywhere switch**.
+- else OFF.
+
+**Verified:** 18/18 unit tests (adds 5 `resolveEnabled` precedence cases) + a global-config
+process smoke (global ON enables a project with no local config; project `{"enabled":false}`
+overrides global ON). Fail-open unchanged: any unreadable/ambiguous config defers, never blocks.
+
 ## 0.2.0 — Automatic trigger: the Stop hook (opt-in)
 
 The lens now fires by itself. A Stop hook (P1 — block + in-session classification) runs every

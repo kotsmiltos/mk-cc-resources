@@ -22,9 +22,11 @@ tests/verifiability-stop.test.js # 13 guard unit tests
 README.md / RELEASE-NOTES.md
 ```
 
-Tests: `node tests/verifiability-stop.test.js` (no framework). Enable auto-mode per project:
-`.claude/verifiability-lens.json` `{"enabled": true}` (default OFF). Runtime state lives in
-`.claude/verifiability-lens/state.json` (gitignored).
+Tests: `node tests/verifiability-stop.test.js` (no framework). Enable auto-mode (default OFF),
+precedence high→low: env `VERIFIABILITY_LENS_ENABLED=1` → project `./.claude/verifiability-lens.json`
+`{"enabled": true|false}` (explicit repo decision wins; `false` opts out of a global ON) → global
+`~/.claude/verifiability-lens.json` `{"enabled": true}` (everywhere switch). Resolved by the pure
+`resolveEnabled`. Runtime state: `.claude/verifiability-lens/state.json` (gitignored).
 
 ## Conventions
 

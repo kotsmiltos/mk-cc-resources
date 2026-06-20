@@ -43,17 +43,23 @@ tiers, `verified` flags); this names it once and acts on it.
 `/verifiability` — classify the most recent plan/claim/result and surface only what needs you.
 `/verifiability <plan or claim or file>` — classify a specific target.
 
-**Automatic mode (opt-in):** add `.claude/verifiability-lens.json` with `{"enabled": true}` to a
-project (or set env `VERIFIABILITY_LENS_ENABLED=1`). Then the Stop hook fires on every
-classify-worthy turn — it blocks, runs the lens over what was just produced, and surfaces the
-triaged result before the turn ends. OFF by default; nothing fires until you enable it. You wait a
-moment per classify-worthy turn for the in-session classification — the deliberate cost of catching
-the slack before you act on it.
+**Automatic mode (opt-in, OFF by default).** Turn it on at whichever scope you want — precedence
+high → low:
+- **Everywhere:** `~/.claude/verifiability-lens.json` → `{"enabled": true}`. One file, all projects.
+- **One project:** `./.claude/verifiability-lens.json` → `{"enabled": true}` (or `false` to opt a
+  repo OUT of a global ON — an explicit project decision wins).
+- **Env override:** `VERIFIABILITY_LENS_ENABLED=1` forces ON.
+
+Once enabled, the Stop hook fires on every classify-worthy turn — it blocks, runs the lens over
+what was just produced, and surfaces the triaged result before the turn ends. You wait a moment per
+classify-worthy turn for the in-session classification — the deliberate cost of catching the slack
+before you act on it.
 
 ## Status
 
-v0.2 ships the lens + manual trigger + rubric + profile + the automatic Stop hook (opt-in).
-Verified: 13/13 guard unit tests + a process-level smoke (block → release → no-loop). Design doc:
+v0.2.1 ships the lens + manual trigger + rubric + profile + the automatic Stop hook (opt-in, with
+a global/project/env enable switch). Verified: 18/18 guard + enable-precedence unit tests + process
+smokes (block → release → no-loop; global-config enables; project opt-out overrides). Design doc:
 `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending

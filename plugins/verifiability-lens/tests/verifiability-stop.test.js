@@ -12,6 +12,7 @@ const {
   decide,
   extractLastAssistant,
   hashText,
+  resolveEnabled,
 } = require("../hooks/scripts/verifiability-stop.js");
 
 let passed = 0;
@@ -108,5 +109,17 @@ test("extractLastAssistant pulls last assistant text + tools", () => {
 test("extractLastAssistant returns null for missing file (fail-open)", () => {
   assert.strictEqual(extractLastAssistant("/no/such/transcript.jsonl"), null);
 });
+
+// --- resolveEnabled precedence (env > explicit project > global > default-off) ---
+test("resolveEnabled: default off when nothing set", () =>
+  assert.strictEqual(resolveEnabled({ envOn: false, projectFlag: null, globalFlag: null }), false));
+test("resolveEnabled: env forces on", () =>
+  assert.strictEqual(resolveEnabled({ envOn: true, projectFlag: false, globalFlag: false }), true));
+test("resolveEnabled: global on enables everywhere", () =>
+  assert.strictEqual(resolveEnabled({ envOn: false, projectFlag: null, globalFlag: true }), true));
+test("resolveEnabled: project OFF overrides global ON (repo opt-out)", () =>
+  assert.strictEqual(resolveEnabled({ envOn: false, projectFlag: false, globalFlag: true }), false));
+test("resolveEnabled: project ON works with no global", () =>
+  assert.strictEqual(resolveEnabled({ envOn: false, projectFlag: true, globalFlag: null }), true));
 
 console.log(`\n${passed} passed`);

@@ -17,8 +17,11 @@
  *   - A content-hash of the triggering message also skips re-classifying the same
  *     content on later fires.
  *
- * Opt-in: OFF unless .claude/verifiability-lens.json has {"enabled": true}
- * (or env VERIFIABILITY_LENS_ENABLED=1). Default OFF — nothing fires until asked.
+ * Opt-in: OFF by default. Turn ON via any of (precedence high→low):
+ *   - env VERIFIABILITY_LENS_ENABLED=1 (forces on),
+ *   - project ./.claude/verifiability-lens.json {"enabled": true|false} (explicit repo decision wins),
+ *   - global ~/.claude/verifiability-lens.json {"enabled": true} (everywhere switch).
+ * A repo can opt OUT of a global ON with a project-level {"enabled": false}.
  *
  * Fail-open: any error or ambiguity falls through to "allow stop". Blocking
  * wrongly (annoy / loop) is worse than missing one classification, so every
@@ -30,6 +33,7 @@
  */
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
 
@@ -161,16 +165,35 @@ function readPayload() {
   });
 }
 
-function isEnabled(cwd) {
-  if (process.env.VERIFIABILITY_LENS_ENABLED === "1") return true;
+// Read the `enabled` flag from a config file. Returns true | false | null:
+// null means the file is absent or carries no explicit boolean (defer to the next level).
+function readEnabledFlag(file) {
   try {
-    const cfgPath = path.join(cwd, CONFIG_REL);
-    if (!fs.existsSync(cfgPath)) return false;
-    const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-    return cfg && cfg.enabled === true;
+    if (!fs.existsSync(file)) return null;
+    const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (cfg && cfg.enabled === true) return true;
+    if (cfg && cfg.enabled === false) return false;
+    return null;
   } catch (_e) {
-    return false;
+    return null;
   }
+}
+
+// Resolve the effective on/off from the three sources (pure; exported for tests).
+// Precedence: env var forces ON; else an explicit PROJECT decision wins (so a repo can
+// opt OUT of a global ON with {"enabled": false}); else the GLOBAL default; else OFF.
+function resolveEnabled({ envOn, projectFlag, globalFlag }) {
+  if (envOn) return true;
+  if (projectFlag === true || projectFlag === false) return projectFlag;
+  if (globalFlag === true || globalFlag === false) return globalFlag;
+  return false;
+}
+
+function isEnabled(cwd) {
+  const envOn = process.env.VERIFIABILITY_LENS_ENABLED === "1";
+  const projectFlag = readEnabledFlag(path.join(cwd, CONFIG_REL));
+  const globalFlag = readEnabledFlag(path.join(os.homedir(), CONFIG_REL));
+  return resolveEnabled({ envOn, projectFlag, globalFlag });
 }
 
 function readState(cwd) {
@@ -228,4 +251,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { hashText, classifyWorthy, decide, extractLastAssistant, BLOCK_REASON };
+module.exports = {
+  hashText, classifyWorthy, decide, extractLastAssistant, BLOCK_REASON,
+  resolveEnabled, readEnabledFlag,
+};
