@@ -33,8 +33,14 @@ const questionMsg = { text: "Ever priced something you built and shown a strange
 const lensSurface = { text: "Lens clean — only flag: the rollup shows 1 escalation, 3 suppressed.", toolNames: [] };
 const chatMsg = { text: "Sure, what would you like to explore about this topic?", toolNames: [] };
 
-// --- classifyWorthy: DEFAULT (checkProse off) fires only on artifact turns ---
+// --- classifyWorthy: DEFAULT fires on any WORK tool (produce/investigate/research) ---
 test("code-tool turn is worthy by default", () => assert.strictEqual(classifyWorthy(codeMsg), true));
+test("file-read turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Looked at the files.", toolNames: ["Read"] }), true));
+test("grep/glob turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Searched the tree.", toolNames: ["Grep"] }), true));
+test("web-search turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Checked sources.", toolNames: ["WebSearch"] }), true));
+test("web-fetch turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Pulled the page.", toolNames: ["WebFetch"] }), true));
+test("spawned-subagent turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Ran a research scout.", toolNames: ["Agent"] }), true));
+test("MCP research tool turn is worthy", () => assert.strictEqual(classifyWorthy({ text: "Fetched docs.", toolNames: ["mcp__context7__query-docs"] }), true));
 test("casual prose claim is NOT worthy by default", () => assert.strictEqual(classifyWorthy(casualClaim), false));
 test("strong prose claim is NOT worthy without checkProse", () => assert.strictEqual(classifyWorthy(strongClaim), false));
 test("plain chat is NOT worthy", () => assert.strictEqual(classifyWorthy(chatMsg), false));
@@ -47,6 +53,10 @@ test("casual prose stays NOT worthy even with checkProse", () => assert.strictEq
 // --- HARD SKIPS (regardless of mode) ---
 test("question turn is NEVER worthy", () => assert.strictEqual(classifyWorthy(questionMsg, { checkProse: true }), false));
 test("lens-surfacing turn is NEVER worthy (meta-loop guard)", () => assert.strictEqual(classifyWorthy(lensSurface, { checkProse: true }), false));
+test("a turn that DID work then asked a question still fires (work counts)", () =>
+  assert.strictEqual(classifyWorthy({ text: "Read the files — does this look right?", toolNames: ["Read"] }), true));
+test("lens-dispatch turn (Agent tool + verifiability-lens text) skips (meta-loop guard before tool test)", () =>
+  assert.strictEqual(classifyWorthy({ text: "Dispatching the verifiability-lens over the work.", toolNames: ["Agent"] }), false));
 test("isLensSurfacing detects rollup/escalations/[verifiability-lens]", () => {
   assert.strictEqual(isLensSurfacing("[verifiability-lens] dispatch..."), true);
   assert.strictEqual(isLensSurfacing("the rollup: 2 escalations, 3 suppressed"), true);

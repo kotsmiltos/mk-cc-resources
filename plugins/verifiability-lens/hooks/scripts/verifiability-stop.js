@@ -59,16 +59,28 @@ function hashText(text) {
 
 // Deterministic pre-filter: is the last assistant turn worth classifying?
 //
-// DEFAULT trigger = the turn PRODUCED something checkable (a code/command tool ran).
-// That is the high-signal, low-false-positive case. Bare prose claims ("done", "works",
-// "ready", "the plan") appear constantly in normal conversation and made the hook fire
-// every turn in chat/coaching sessions — so prose-claim checking is OPT-IN
+// DEFAULT trigger = the turn did substantive WORK whose output can carry unverifiable
+// claims — producing (code/files), investigating (file reads), or gathering external info
+// (web search/fetch, spawned subagents, MCP research tools). These are exactly where B/U
+// claims hide. Bare prose claims ("done", "works", "the plan") appear constantly in normal
+// conversation and made the hook fire every turn — so prose-only checking is OPT-IN
 // (check_prose_claims) and narrowed to strong shipping/verification phrasing.
 //
-// Two HARD SKIPS apply regardless of mode:
-//   - the lens's OWN surfaced output — never check the check (kills the meta-loop), and
+// Two HARD SKIPS apply regardless of mode (checked before the tool test):
+//   - the lens's OWN dispatch/surfaced output — never check the check (kills the meta-loop), and
 //   - a turn that is purely a question — nothing to verify.
-const CODE_TOOLS = new Set(["Write", "Edit", "NotebookEdit", "Bash"]);
+const WORK_TOOLS = new Set([
+  "Write", "Edit", "NotebookEdit", "Bash",   // produce / run
+  "Read", "Grep", "Glob",                    // investigate files
+  "Agent", "Task",                           // spawn subagents / research
+  "WebSearch", "WebFetch",                   // web research
+]);
+
+// A turn used a work tool if it called any WORK_TOOLS entry or any MCP tool (mcp__*),
+// which are research/data tools (Context7 docs, web, etc.).
+function usedWorkTool(tools) {
+  return (tools || []).some((t) => WORK_TOOLS.has(t) || /^mcp__/.test(t));
+}
 
 // Markers of the lens's own surfaced rollup — a turn that contains these is reporting a
 // prior classification, not producing new work; classifying it loops the lens on itself.
@@ -98,14 +110,17 @@ function classifyWorthy(lastAssistant, opts) {
   const tools = lastAssistant.toolNames || [];
   const checkProse = !!(opts && opts.checkProse);
 
-  // Hard skips first — never check the lens's own output; never check a bare question.
+  // Meta-loop guard first: never classify the lens's own dispatch/surfaced output — even if
+  // that turn used a tool (the dispatch turn calls the Agent tool).
   if (isLensSurfacing(text)) return false;
+
+  // Primary trigger: this turn did substantive work — produced, investigated, or researched
+  // (code/files/commands, file reads, web search/fetch, spawned subagents, MCP research).
+  if (usedWorkTool(tools)) return true;
+
+  // Text-only turn: skip a pure question (nothing to verify); otherwise check strong prose
+  // claims only when opted in (OFF by default — keeps quiet in chat/coaching).
   if (isQuestionOnly(text)) return false;
-
-  // Primary trigger: this turn produced artifacts (code / tests / files / commands).
-  if (tools.some((t) => CODE_TOOLS.has(t))) return true;
-
-  // Opt-in: also check strong prose claims (OFF by default — keeps quiet in chat/coaching).
   if (checkProse && STRONG_CLAIM_RX.test(text)) return true;
 
   return false;

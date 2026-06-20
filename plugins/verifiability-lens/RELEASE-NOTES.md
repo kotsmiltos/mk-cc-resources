@@ -1,5 +1,25 @@
 # verifiability-lens — Release Notes
 
+## 0.2.3 — Also fire on research, web, subagents, and file reads
+
+Per request: the default trigger now covers all **substantive-work** turns, not just code
+production — because research/web/agent output is exactly where unverifiable (class B/U) claims
+hide. The trigger tool set is now:
+- **produce/run:** Write, Edit, NotebookEdit, Bash
+- **investigate:** Read, Grep, Glob
+- **research:** Agent / Task (spawned subagents), WebSearch, WebFetch, and any MCP tool (`mcp__*`,
+  e.g. Context7 docs).
+
+Guards unchanged and reordered so they stay correct: the **meta-loop guard** (the lens's own
+dispatch/surfacing) is checked first — even a turn that calls the Agent tool to spawn the lens is
+skipped; a **pure question** (text-only, no work tool) is skipped; but a turn that *did* work and
+also asked something still fires (the work is worth checking). Prose-only claim checking remains
+opt-in (`check_prose_claims`).
+
+**Verified:** 36/36 unit tests (adds Read/Grep/WebSearch/WebFetch/Agent/MCP triggers, did-work-then-asked
+fires, lens-dispatch skips) + a process smoke: web-search / spawned-agent / file-read / MCP-fetch /
+code-edit all **block**; pure question / lens-dispatch / lens-surfacing / casual prose all **allow**.
+
 ## 0.2.2 — Fix: stop firing on conversation (artifact-trigger default + meta-loop guard)
 
 **Bug:** in chat/coaching sessions the hook fired nearly every turn — including on plain

@@ -50,12 +50,13 @@ high → low:
   repo OUT of a global ON — an explicit project decision wins).
 - **Env override:** `VERIFIABILITY_LENS_ENABLED=1` forces ON.
 
-**What triggers it (kept precise so it stays quiet in conversation):**
-- **Default:** only turns that *produced* something checkable — a code/command tool ran (Write /
-  Edit / NotebookEdit / Bash). Plain chat, questions, and the lens's own output never trigger it.
-- **Opt-in prose checking:** set `"check_prose_claims": true` in your config to also classify
-  strong written claims (`tests pass`, `shipped`, `committed`, …). Useful for research/writing
-  sessions; off by default so coaching/chat doesn't get interrupted.
+**What triggers it (substantive-work turns; stays quiet in pure conversation):**
+- **Default:** any turn that did real work — produced (Write/Edit/Bash), investigated
+  (Read/Grep/Glob), or researched (WebSearch/WebFetch, spawned subagents via Agent/Task, MCP tools
+  like Context7). That's where unverifiable claims hide. Pure chat/questions, and the lens's own
+  dispatch/output, never trigger it.
+- **Opt-in prose checking:** set `"check_prose_claims": true` to also classify strong *text-only*
+  claims (`tests pass`, `shipped`, …). Off by default.
 
 Once enabled, the Stop hook fires on a classify-worthy turn — it blocks, runs the lens over what
 was just produced, and surfaces the triaged result before the turn ends. You wait a moment for the
@@ -63,11 +64,11 @@ in-session classification — the deliberate cost of catching the slack before y
 
 ## Status
 
-v0.2.2 ships the lens + manual trigger + rubric + profile + the automatic Stop hook (opt-in;
-global/project/env enable switch; artifact-trigger default + opt-in prose checking; question and
-meta-loop hard-skips). Verified: 28/28 unit tests + process smokes (block → release → no-loop;
-global enable; project opt-out; and the conversation-misfire repro: question / lens-surfacing /
-casual prose all allow, real code turn blocks). Design doc: `design/verifiability-awareness.md`.
+v0.2.3 ships the lens + manual trigger + rubric + profile + the automatic Stop hook (opt-in;
+global/project/env enable switch; work-trigger covering code/reads/web/subagents/MCP + opt-in
+prose checking; question and meta-loop hard-skips). Verified: 36/36 unit tests + process smokes
+(block → release → no-loop; global enable; project opt-out; work triggers fire; question /
+lens-surfacing / casual prose skip). Design doc: `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending
 essense-flow's librarian surfacing protocol with the triage; the schema deepening.

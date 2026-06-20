@@ -47,10 +47,12 @@ written claims (default OFF — without it, only artifact-producing turns trigge
 - ✅ v0.2: the Stop hook (P1 — blocks the turn, runs the lens in-session, surfaces before
   yielding), opt-in OFF by default, fire-exactly-once loop guard (force-release after a block +
   content-hash skip), fail-open. Mirrors essense-autopilot's Stop-hook block mechanism.
-- ✅ v0.2.2: pre-filter precision fix. Default trigger = artifact-producing turns only (code tool
-  ran); prose-claim checking opt-in via `check_prose_claims` (narrowed to strong claims); hard-skip
-  questions + the lens's own surfaced output (meta-loop guard). 28/28 tests + conversation-misfire
-  process smoke pass.
+- ✅ v0.2.2: pre-filter precision fix. Stopped firing on conversation; prose-claim checking opt-in
+  via `check_prose_claims`; hard-skip questions + the lens's own surfaced output (meta-loop guard).
+- ✅ v0.2.3: default trigger broadened to all substantive-work turns — produce (Write/Edit/Bash),
+  investigate (Read/Grep/Glob), research (Agent/Task, WebSearch/WebFetch, `mcp__*`). Guards
+  reordered: meta-loop skip first (even Agent-tool dispatch turns), then work fires, then
+  question/prose guards apply to text-only turns. 36/36 tests + work-trigger process smoke pass.
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 
