@@ -10,7 +10,7 @@ const path = require("path");
 const {
   classifyWorthy,
   decide,
-  extractLastAssistant,
+  extractTurn,
   hashText,
   resolveEnabled,
   resolveFlag,
@@ -114,30 +114,49 @@ test("new artifact turn after release -> blocks again", () => {
   assert.strictEqual(r.newState.last_block_hash, hashText(codeMsg2.text));
 });
 
-// --- extractLastAssistant against a synthetic transcript ---
-test("extractLastAssistant pulls last assistant text + tools", () => {
+// --- extractTurn aggregates the WHOLE turn (the bug: tool in an earlier message,
+//     turn ENDS with a text-only summary; last-message-only would miss the tool) ---
+test("extractTurn aggregates tools across the turn, even when it ends text-only", () => {
   const tmp = path.join(os.tmpdir(), "vl-transcript-" + process.pid + ".jsonl");
   const lines = [
-    JSON.stringify({ message: { role: "user", content: "do it" } }),
+    JSON.stringify({ message: { role: "user", content: "fix the parser" } }),     // genuine prompt
     JSON.stringify({ message: { role: "assistant", content: [
-      { type: "text", text: "working on it" },
+      { type: "text", text: "Reading and patching." },
       { type: "tool_use", name: "Edit", id: "x1" },
     ] } }),
+    JSON.stringify({ message: { role: "user", content: [{ type: "tool_result", tool_use_id: "x1" }] } }), // NOT a boundary
     JSON.stringify({ message: { role: "assistant", content: [
-      { type: "text", text: "Patched parse.js" },
-      { type: "tool_use", name: "Edit", id: "x2" },
+      { type: "tool_use", name: "Bash", id: "x2" },
+    ] } }),
+    JSON.stringify({ message: { role: "user", content: [{ type: "tool_result", tool_use_id: "x2" }] } }),
+    JSON.stringify({ message: { role: "assistant", content: [
+      { type: "text", text: "Done. Build clean (99pp)." },   // <-- text-only closing summary, no tool
     ] } }),
   ];
   fs.writeFileSync(tmp, lines.join("\n"));
-  const la = extractLastAssistant(tmp);
+  const turn = extractTurn(tmp);
   fs.unlinkSync(tmp);
-  assert.strictEqual(la.text, "Patched parse.js");
-  assert.deepStrictEqual(la.toolNames, ["Edit"]);
-  assert.strictEqual(classifyWorthy(la), true); // artifact turn
+  assert.deepStrictEqual(turn.toolNames, ["Edit", "Bash"], "must see tools from earlier messages");
+  assert.ok(/Done\. Build clean/.test(turn.text), "must include the closing summary text");
+  assert.strictEqual(classifyWorthy(turn), true, "a turn that used tools fires even though it ended text-only");
 });
 
-test("extractLastAssistant returns null for missing file (fail-open)", () => {
-  assert.strictEqual(extractLastAssistant("/no/such/transcript.jsonl"), null);
+test("extractTurn only aggregates the CURRENT turn (since last genuine prompt)", () => {
+  const tmp = path.join(os.tmpdir(), "vl-transcript2-" + process.pid + ".jsonl");
+  const lines = [
+    JSON.stringify({ message: { role: "assistant", content: [{ type: "tool_use", name: "WebSearch", id: "a" }] } }), // prior turn
+    JSON.stringify({ message: { role: "user", content: "now just answer a question" } }),  // new genuine prompt = boundary
+    JSON.stringify({ message: { role: "assistant", content: [{ type: "text", text: "Sure, here's the answer." }] } }),
+  ];
+  fs.writeFileSync(tmp, lines.join("\n"));
+  const turn = extractTurn(tmp);
+  fs.unlinkSync(tmp);
+  assert.deepStrictEqual(turn.toolNames, [], "prior turn's WebSearch must NOT leak into this turn");
+  assert.strictEqual(classifyWorthy(turn), false, "this turn used no tools → not worthy");
+});
+
+test("extractTurn returns null for missing file (fail-open)", () => {
+  assert.strictEqual(extractTurn("/no/such/transcript.jsonl"), null);
 });
 
 // --- resolveEnabled precedence (env > explicit project > global > default-off) ---

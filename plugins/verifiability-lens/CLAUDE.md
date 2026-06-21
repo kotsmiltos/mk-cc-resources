@@ -52,7 +52,11 @@ written claims (default OFF — without it, only artifact-producing turns trigge
 - ✅ v0.2.3: default trigger broadened to all substantive-work turns — produce (Write/Edit/Bash),
   investigate (Read/Grep/Glob), research (Agent/Task, WebSearch/WebFetch, `mcp__*`). Guards
   reordered: meta-loop skip first (even Agent-tool dispatch turns), then work fires, then
-  question/prose guards apply to text-only turns. 36/36 tests + work-trigger process smoke pass.
+  question/prose guards apply to text-only turns.
+- ✅ v0.2.4: **critical fix** — `extractTurn` reads the WHOLE turn (all assistant messages since the
+  last genuine user prompt), not just the last message. Turns end with a text-only summary, so
+  last-message-only never saw the turn's tools → the hook silently never fired. Verified on a real
+  transcript. 37/37 tests.
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 

@@ -161,10 +161,42 @@ function decide({ enabled, lastAssistant, state, checkProse }) {
 
 // ---------- Transcript parsing ----------
 
-// Extract the LAST assistant message's concatenated text + the tool names it used.
-// Defensive against the undocumented JSONL schema: on any ambiguity returns null
-// so the caller fails open (allows stop) rather than blocking on a bad read.
-function extractLastAssistant(transcriptPath) {
+// Parse one transcript line into a normalized message, or null if it's not a
+// user/assistant message (meta lines like ai-title/mode/attachment are skipped).
+function parseMessage(line) {
+  let obj;
+  try { obj = JSON.parse(line); } catch (_e) { return null; }
+  const m = obj.message || obj;
+  const role = m.role || obj.role || obj.type;
+  if (role !== "user" && role !== "assistant") return null;
+  const content = m.content;
+  let text = "";
+  const tools = [];
+  let hasToolResult = false;
+  if (typeof content === "string") {
+    text = content;
+  } else if (Array.isArray(content)) {
+    for (const c of content) {
+      if (!c || typeof c !== "object") continue;
+      if (c.type === "text" && typeof c.text === "string") text += c.text + "\n";
+      else if (c.type === "tool_use" && c.name) tools.push(c.name);
+      else if (c.type === "tool_result") hasToolResult = true;
+    }
+  }
+  return { role, text: text.trim(), tools, hasToolResult };
+}
+
+// Aggregate the CURRENT TURN: all assistant messages since the last genuine user
+// prompt, returning their combined text + every tool name used across the turn.
+//
+// Why the whole turn, not just the last message: a turn calls tools in EARLIER
+// messages, then almost always ends with a text-only summary message. Reading only
+// the last message means the tool-based trigger never sees the tools — so the hook
+// silently never fired on real work. (The undocumented JSONL schema also carries
+// tool_results as user-role messages; those are NOT turn boundaries.)
+//
+// Defensive: on any read error returns null so the caller fails open (allows stop).
+function extractTurn(transcriptPath) {
   if (!transcriptPath) return null;
   let raw;
   try {
@@ -173,30 +205,32 @@ function extractLastAssistant(transcriptPath) {
   } catch (_e) {
     return null;
   }
-  const lines = raw.split("\n");
-  let last = null;
-  for (const line of lines) {
+  const msgs = [];
+  for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
-    let obj;
-    try { obj = JSON.parse(line); } catch (_e) { continue; }
-    const msg = obj.message || obj;
-    const role = msg.role || obj.role || obj.type;
-    if (role !== "assistant") continue;
-    const content = msg.content;
-    let text = "";
-    const toolNames = [];
-    if (typeof content === "string") {
-      text = content;
-    } else if (Array.isArray(content)) {
-      for (const c of content) {
-        if (!c || typeof c !== "object") continue;
-        if (c.type === "text" && typeof c.text === "string") text += c.text + "\n";
-        else if (c.type === "tool_use" && c.name) toolNames.push(c.name);
-      }
-    }
-    last = { text: text.trim(), toolNames };
+    const m = parseMessage(line);
+    if (m) msgs.push(m);
   }
-  return last;
+  if (!msgs.length) return null;
+
+  // Turn start = just after the last GENUINE user prompt (has text, not a tool_result
+  // relay). If none found, aggregate everything (conservative).
+  let start = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === "user" && msgs[i].text && !msgs[i].hasToolResult) {
+      start = i + 1;
+      break;
+    }
+  }
+
+  let text = "";
+  let toolNames = [];
+  for (let i = start; i < msgs.length; i++) {
+    if (msgs[i].role !== "assistant") continue;
+    if (msgs[i].text) text += msgs[i].text + "\n";
+    toolNames = toolNames.concat(msgs[i].tools);
+  }
+  return { text: text.trim(), toolNames };
 }
 
 // ---------- IO helpers ----------
@@ -303,10 +337,10 @@ async function main() {
   const cwd = process.cwd();
 
   const { enabled, checkProse } = readSettings(cwd);
-  const lastAssistant = extractLastAssistant(payload.transcript_path);
+  const turn = extractTurn(payload.transcript_path);
   const state = readState(cwd);
 
-  const { action, newState, reason } = decide({ enabled, lastAssistant, state, checkProse });
+  const { action, newState, reason } = decide({ enabled, lastAssistant: turn, state, checkProse });
 
   // Persist state whenever it changed (block sets the marker; release clears awaiting).
   if (newState && JSON.stringify(newState) !== JSON.stringify(state)) {
@@ -325,6 +359,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  hashText, classifyWorthy, decide, extractLastAssistant, BLOCK_REASON,
+  hashText, classifyWorthy, decide, extractTurn, parseMessage, BLOCK_REASON,
   resolveEnabled, resolveFlag, isLensSurfacing, isQuestionOnly,
 };

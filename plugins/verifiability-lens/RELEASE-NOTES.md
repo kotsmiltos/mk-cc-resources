@@ -1,5 +1,26 @@
 # verifiability-lens — Release Notes
 
+## 0.2.4 — Critical fix: read the whole turn, not just the last message (it never fired)
+
+**Bug (why it silently never fired on real work):** the hook inspected only the LAST assistant
+message of a turn. But a turn calls its tools in *earlier* messages and almost always **ends with a
+text-only summary** ("Done. Build clean."). So the tool-based trigger saw no tools → the hook
+allowed the stop → nothing fired. This is why 0.2.2/0.2.3 looked installed-and-enabled but produced
+`no fire` on a session that clearly did Edit/Bash/Read work. (0.2.0/0.2.1 accidentally fired because
+their loose prose regex matched words in the summary; making the trigger tool-based in 0.2.2 exposed
+the latent flaw.)
+
+**Fix:** `extractTurn` now aggregates the **entire current turn** — every assistant message since
+the last genuine user prompt (tool_result relay messages are *not* turn boundaries) — collecting all
+tool names used and the combined text. The trigger now sees the work even when the turn ends
+text-only.
+
+**Verified:** 37/37 unit tests (adds whole-turn aggregation across messages ending text-only, and
+current-turn-only isolation so a prior turn's tools don't leak) + run against a **real session
+transcript**: `extractTurn` returned `[Bash,Edit,…]` from a turn that ended with a text summary, and
+the hook returned `{"decision":"block"}`. Guards (meta-loop, question, fire-once, fail-open)
+unchanged.
+
 ## 0.2.3 — Also fire on research, web, subagents, and file reads
 
 Per request: the default trigger now covers all **substantive-work** turns, not just code
