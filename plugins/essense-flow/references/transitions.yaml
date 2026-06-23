@@ -140,6 +140,24 @@ transitions:
     auto_advance: false
     fields_changed: [phase, last_updated]
 
+  # A confirmed critical fixed directly in the working tree (rather than routed
+  # back through architecture → sprint → sprint-complete) needs a legal path
+  # back to re-review. Mirrors the reviewing-to-triaging outbound leg: triage is
+  # the sorting hat, so when every blocking item was dispositioned
+  # "fixed-in-tree, re-review requested" it routes straight back to reviewing.
+  # Closes the field gap (v0.20.0 issue report #1) where the documented "fix
+  # directly then re-enter review" option had no supported transition and forced
+  # a hand-edit of state.yaml phase: — an out-of-band mutation that defeats the
+  # deterministic-gate guarantee. Disposition-predicate-guarded (routed_to:
+  # reviewing) exactly like every other triage out-edge.
+  triaging-to-reviewing:
+    from: triaging
+    to: reviewing
+    triggered_by: triage-skill
+    requires: "triage routed fixed-in-tree items back for re-review"
+    auto_advance: false
+    fields_changed: [phase, last_updated]
+
   # --- architecture ---
 
   requirements-ready-to-architecture:

@@ -40,11 +40,12 @@ Heal's substance — Discover → Infer → Propose → Apply (one legal step at
 8. `step-advance --next-step apply-walk-forward-step-by-step` — cursor advances. **Per walk-forward step, in order**, master picks the appropriate CLI op:
    - **Legal transition between canonical phases** → `essense-flow-tools state-set-phase --value <to> [--sprint <n>]`. Existing legal-transition + prerequisite-predicate + per-task-record gate enforcement applies.
    - **Illegal-phase recovery** (current phase non-canonical, e.g., `phase: building` from a legacy state file) → `essense-flow-tools state-force-set-phase --value <canonical-phase> --reason "<one-line audit reason>"`. Use **only on the first step** of an illegal-phase walk per substance "use `force: true` on **only the first** finalize step" rule. The op refuses if current phase is already canonical AND state non-degraded (recovery-only guard, exit 9). The op atomically appends `force_actions[]` to HEAL-LOG.md frontmatter BEFORE writing state.yaml.
-   - **Stuck cursor from a prior aborted skill run** → `essense-flow-tools cursor-rewind`. Idempotent (no-op when cursor absent). Atomically appends `cursor_rewinds[]` to HEAL-LOG.md frontmatter.
+   - **Stuck cursor from a prior aborted skill run** → `essense-flow-tools cursor-rewind`. Idempotent (no-op when cursor absent). Atomically appends `cursor_rewinds[]` to HEAL-LOG.md frontmatter. Note: since v0.20.0 `step-advance` self-heals the *safe* foreign-cursor case automatically — when a new skill enters fresh (its first ordered step) and the current phase is legal for that skill, the stale cursor is auto-rewound inline (also logged to `cursor_rewinds[]`). This heal op remains the path for the ambiguous cases the inline self-rewind deliberately refuses: illegal current phase for the entering skill, or a foreign cursor encountered mid-sequence.
+   - **Dual-schema state.yaml from a migrated project** (foreign top-level keys — `pipeline.*`, `phases_completed`, `verification.*`, `next_action`, `session.*`, … — that trigger a per-call `state-shape WARN: unknown top-level key(s)`) → `essense-flow-tools state-quarantine-legacy`. Moves every foreign top-level key into a `legacy:` sub-namespace so the live cache is purely canonical and the WARN stops. Idempotent (no-op when no foreign keys). Atomically appends `legacy_quarantines[]` to HEAL-LOG.md frontmatter — the one-time migration note that replaces the perpetual per-call WARN. Run this once during a migration walk-forward; the quarantined schema is preserved (not deleted) under `legacy:` for reference. (NOTE: this quarantines top-level keys; foreign fields nested *inside* a canonical block — e.g. a legacy `triage.round` — are not the WARN's subject and stay put.)
    - **Manifest split / task-spec conversion** during improvised-schema architect-output recovery — ordinary file moves to `.pipeline/.heal-archive/` (substance verbatim) plus ordinary `Write` of converted YAML at canonical path. Each conversion is a separate user confirm. Un-convertible task specs (missing pseudocode + missing test contract) route to architect via `decomposing → architecture` (a legal transition) — never silently get a stub.
 9. `step-advance --next-step handoff` — cursor advances. Master surfaces the recommended next slash command for the now-current phase.
 10. `step-advance --next-step skill-complete` — sentinel deletes `.pipeline/cursor.yaml`.
-11. (Out-of-band) HEAL-LOG.md frontmatter now reflects the full audit trail: `force_actions[]`, `cursor_rewinds[]`, plus the substance-mandated `inferred_phase`, `confidence`, `artifacts_recognized`, `artifacts_unrecognized`. The body of HEAL-LOG.md is append-only and carries one human-readable line per applied step.
+11. (Out-of-band) HEAL-LOG.md frontmatter now reflects the full audit trail: `force_actions[]`, `cursor_rewinds[]`, `legacy_quarantines[]`, plus the substance-mandated `inferred_phase`, `confidence`, `artifacts_recognized`, `artifacts_unrecognized`. The body of HEAL-LOG.md is append-only and carries one human-readable line per applied step.
 
 **State-write surface re-routed through CLI ops:**
 
@@ -53,7 +54,8 @@ Heal's substance — Discover → Infer → Propose → Apply (one legal step at
 | `lib/finalize.js` per walk-forward step | `essense-flow-tools state-set-phase` (legal) or `state-force-set-phase` (illegal-phase recovery only) |
 | `lib/state.js assertLegalTransition` | Internal to `state-set-phase` (already enforced before writing). For force-set, the assertion is bypassed under recovery-only guard. |
 | Direct cursor file manipulation | `essense-flow-tools cursor-rewind` (idempotent delete + audit-trail append) |
-| HEAL-LOG.md write | Atomically owned by `state-force-set-phase` and `cursor-rewind` ops (audit-trail-before-state-mutation discipline). For ordinary discovery / inference / proposal narration, master appends body lines via ordinary `Write` to the canonical path from init JSON. |
+| Foreign top-level keys in a migrated state.yaml | `essense-flow-tools state-quarantine-legacy` (idempotent move into `legacy:` + audit-trail append) |
+| HEAL-LOG.md write | Atomically owned by `state-force-set-phase`, `cursor-rewind`, and `state-quarantine-legacy` ops (audit-trail-before-state-mutation discipline). For ordinary discovery / inference / proposal narration, master appends body lines via ordinary `Write` to the canonical path from init JSON. |
 
 `lib/finalize.js` and `lib/state.js` direct-call surfaces are **DEPRECATED for heal**. The CLI op path is the structural-containment surface that closes drift.
 
@@ -63,7 +65,7 @@ Pick up where you are, not where the pipeline wishes you were. Heal absorbs prio
 
 ## What you produce
 
-- `.pipeline/heal/HEAL-LOG.md` — append-only record of inferred phases, applied steps, and any reconciliations. Frontmatter carries `force_actions[]` (per `state-force-set-phase` invocation) and `cursor_rewinds[]` (per `cursor-rewind` invocation) automatically.
+- `.pipeline/heal/HEAL-LOG.md` — append-only record of inferred phases, applied steps, and any reconciliations. Frontmatter carries `force_actions[]` (per `state-force-set-phase` invocation), `cursor_rewinds[]` (per `cursor-rewind` invocation), and `legacy_quarantines[]` (per `state-quarantine-legacy` invocation) automatically.
 - `.pipeline/heal/proposal.yaml` — current walk-forward proposal awaiting user confirmation.
 - (after confirm) `.pipeline/state.yaml` — written via legal transitions, one step at a time. For illegal-phase recovery, the first step uses `state-force-set-phase`; subsequent steps use `state-set-phase`.
 

@@ -999,7 +999,7 @@ async function initTriage(projectRoot) {
   return {
     skill: 'triage',
     phase_from: ['triaging'],
-    phase_to: ['eliciting', 'research', 'requirements-ready', 'architecture', 'verifying'],
+    phase_to: ['eliciting', 'research', 'requirements-ready', 'architecture', 'verifying', 'reviewing'],
     transitions: [
       { name: 'triaging-to-eliciting', from: 'triaging', to: 'eliciting',
         auto_advance: false,
@@ -1016,6 +1016,13 @@ async function initTriage(projectRoot) {
       { name: 'triaging-to-verifying', from: 'triaging', to: 'verifying',
         auto_advance: false,
         requires: 'post-build triage routed all items to spec-compliance audit' },
+      // v0.20.0 issue #1 — fixed-in-tree re-review loop. When every blocking
+      // critical was dispositioned "fixed in working tree, re-review requested"
+      // triage routes straight back to reviewing (no architecture → sprint
+      // round-trip). Disposition-predicate-guarded (routed_to: reviewing).
+      { name: 'triaging-to-reviewing', from: 'triaging', to: 'reviewing',
+        auto_advance: false,
+        requires: 'triage routed fixed-in-tree items back for re-review' },
     ],
     canonical_paths: {
       triage_report_md: '.pipeline/triage/TRIAGE-REPORT.md',
@@ -1189,7 +1196,7 @@ async function appendHealLog(projectRoot, arrayKey, entry) {
 
   // arrayKey validation BEFORE entering the lock so an invalid call never
   // takes the wx-sentinel mutex.
-  if (arrayKey !== 'force_actions' && arrayKey !== 'cursor_rewinds') {
+  if (arrayKey !== 'force_actions' && arrayKey !== 'cursor_rewinds' && arrayKey !== 'legacy_quarantines') {
     throw new Error(`appendHealLog: unknown arrayKey '${arrayKey}'`);
   }
 
@@ -1224,6 +1231,7 @@ async function appendHealLog(projectRoot, arrayKey, entry) {
       artifacts_unrecognized: [],
       force_actions: [],
       cursor_rewinds: [],
+      legacy_quarantines: [],
     };
     let body = '';
 
@@ -1239,6 +1247,7 @@ async function appendHealLog(projectRoot, arrayKey, entry) {
         };
         if (!Array.isArray(frontmatter.force_actions)) frontmatter.force_actions = [];
         if (!Array.isArray(frontmatter.cursor_rewinds)) frontmatter.cursor_rewinds = [];
+        if (!Array.isArray(frontmatter.legacy_quarantines)) frontmatter.legacy_quarantines = [];
         if (!Array.isArray(frontmatter.artifacts_recognized)) frontmatter.artifacts_recognized = [];
         if (!Array.isArray(frontmatter.artifacts_unrecognized)) frontmatter.artifacts_unrecognized = [];
       }
@@ -1311,6 +1320,12 @@ function formatHealLogBodyLine(arrayKey, entry, now) {
       return `- **${now}** — \`cursor-rewind\`: no-op (cursor.yaml absent)`;
     }
     return `- **${now}** — \`cursor-rewind\`: cleared cursor (skill=${entry.prior_cursor_skill || 'null'}, step=${entry.prior_cursor_step || 'null'})`;
+  }
+  if (arrayKey === 'legacy_quarantines') {
+    if (entry.no_op) {
+      return `- **${now}** — \`state-quarantine-legacy\`: no-op (no foreign top-level keys)`;
+    }
+    return `- **${now}** — \`state-quarantine-legacy\`: moved ${entry.quarantined_keys.length} foreign top-level key(s) into legacy: [${entry.quarantined_keys.join(', ')}]`;
   }
   return `- **${now}** — heal action: ${arrayKey}`;
 }
@@ -1577,6 +1592,114 @@ async function cursorRewind({ projectRoot }) {
 }
 
 // ============================================================================
+// state-quarantine-legacy — heal-only migration op (v0.20.0 field issue #4).
+// ----------------------------------------------------------------------------
+// A project migrated INTO essence-flow via /heal carries both canonical keys
+// AND a large pre-migration custom schema (pipeline.*, phases_completed,
+// verification.*, next_action, session.*, ...). The shape validator tolerates
+// these as forward-compat but emits a per-call "unknown top-level key(s)" WARN
+// for them on EVERY CLI invocation, and the foreign fields silently rot (no
+// CLI op manages them). This op moves every foreign (non-canonical) top-level
+// key into a `legacy:` sub-namespace so the live cache is purely canonical and
+// the WARN stops. Idempotent: a state with no foreign keys is a no-op.
+// Audit-trail to HEAL-LOG.md legacy_quarantines[] (one-time migration note,
+// replacing the perpetual per-call WARN).
+// ============================================================================
+async function stateQuarantineLegacy({ projectRoot }) {
+  const opName = 'state-quarantine-legacy';
+  validateProjectRoot(projectRoot, opName);
+
+  const { readState, writeState, partitionLegacyKeys } = await stateLib();
+  const current = await readState(projectRoot);
+
+  // A 'missing' state has nothing to quarantine. A 'corrupt' marker is
+  // tolerated — a dual-schema state with a nested type-mismatch can surface
+  // corrupt, and repairing such a state is exactly this op's job; readState's
+  // corrupt branch still spreads the parsed keys so the partition is valid.
+  if (current.degraded === 'missing') {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: no state.yaml to quarantine (degraded: missing)`,
+    );
+  }
+
+  // Strip readState annotations (degraded/path/shape_error) before partition;
+  // partitionLegacyKeys also drops them defensively.
+  const { degraded, path: _statePath, shape_error, ...stateCore } = current;
+  const { canonical, foreign, foreignKeys } = partitionLegacyKeys(stateCore);
+
+  if (foreignKeys.length === 0) {
+    // Idempotent no-op — still log the (no-op) audit line so a re-run is
+    // traceable. Best-effort: a HEAL-LOG write failure does not fail the no-op.
+    let healLogPath = null;
+    try {
+      healLogPath = await appendHealLog(projectRoot, 'legacy_quarantines', {
+        at: new Date().toISOString(),
+        no_op: true,
+        quarantined_keys: [],
+      });
+    } catch (_e) {
+      /* fail-soft: no-op audit is best-effort */
+    }
+    return emitSuccess({
+      ok: true,
+      op: opName,
+      no_op: true,
+      quarantined_keys: [],
+      heal_log_path: healLogPath ? path.relative(projectRoot, healLogPath).replace(/\\/g, '/') : null,
+    });
+  }
+
+  // Merge the foreign keys into any pre-existing legacy bucket (a prior
+  // quarantine run, or a hand-authored one). Existing legacy entries win only
+  // on key collision against a NEW foreign key of the same name — which cannot
+  // happen here because a key already under `legacy:` is no longer a top-level
+  // foreign key. Order: prior legacy first, then this run's foreign keys.
+  const priorLegacy =
+    canonical.legacy && typeof canonical.legacy === 'object' && !Array.isArray(canonical.legacy)
+      ? canonical.legacy
+      : {};
+  const nextLegacy = { ...priorLegacy, ...foreign };
+  const nextState = { ...canonical, legacy: nextLegacy };
+
+  // Heal-repair write: phase is unchanged (self-transition), so {force: true}
+  // only bypasses the degraded-block — legality is identity-ok either way.
+  const result = await writeState(projectRoot, nextState, { force: true });
+  if (!result.ok) {
+    return emitFailure(
+      EXIT_GENERIC,
+      `essense-flow-tools ${opName}: write failed (${result.reason})`,
+    );
+  }
+
+  // Audit-trail AFTER the state write succeeded (the migration note). A
+  // HEAL-LOG failure here is surfaced — the quarantine landed but the audit
+  // trail is incomplete, which the user must know.
+  let healLogPath;
+  try {
+    healLogPath = await appendHealLog(projectRoot, 'legacy_quarantines', {
+      at: new Date().toISOString(),
+      no_op: false,
+      quarantined_keys: foreignKeys,
+    });
+  } catch (e) {
+    return emitFailure(
+      EXIT_VALIDATION_FAIL,
+      `essense-flow-tools ${opName}: ${foreignKeys.length} key(s) quarantined into legacy: but HEAL-LOG.md write failed (${e.message}); audit-trail incomplete`,
+    );
+  }
+
+  return emitSuccess({
+    ok: true,
+    op: opName,
+    no_op: false,
+    quarantined_keys: foreignKeys,
+    state_path: result.path,
+    heal_log_path: path.relative(projectRoot, healLogPath).replace(/\\/g, '/'),
+  });
+}
+
+// ============================================================================
 // Op family: state-set-* (S8 — per cli-spec.md §1.1)
 // ----------------------------------------------------------------------------
 // Setters share a common shape. Each setter declares: field name, value parser
@@ -1595,6 +1718,7 @@ async function runSetter({
   rawValue,      // string from --value or undefined
   parseValue,    // function (raw) → {ok, value} | {ok:false, msg}
   projectRoot,
+  reportMirror,  // optional {reportRelPath, block, keys[]} — v0.20.0 issue #3
 }) {
   if (rawValue === undefined || rawValue === null) {
     return emitFailure(
@@ -1627,7 +1751,24 @@ async function runSetter({
   const { degraded, path: _statePath, ...stateCore } = current;
   const fieldKeys = Array.isArray(fieldPath) ? fieldPath : [fieldPath];
   const previous = readNested(stateCore, fieldKeys);
-  const nextState = setNested(stateCore, fieldKeys, parsed.value);
+  let nextState = setNested(stateCore, fieldKeys, parsed.value);
+
+  // v0.20.0 issue #3 — on a *-completed finalize, mirror the authoritative
+  // report's frontmatter summary into the matching state.yaml cache block so
+  // the descriptive cache can't rot vs the report between runs (the field-
+  // report symptom: a 90-item triage left state.yaml's triage block showing
+  // the prior 26-item round). Fail-soft: a missing / unparseable report just
+  // mirrors nothing — the completed_at stamp still lands. Issue 3 is about
+  // freshness, never a new gate.
+  let mirrored = null;
+  if (reportMirror) {
+    const m = mirrorReportSummary(projectRoot, reportMirror, nextState);
+    nextState = m.state;
+    mirrored = m.mirrored;
+    if (m.note) {
+      process.stderr.write(`essense-flow-tools ${opName}: ${m.note}\n`);
+    }
+  }
 
   const result = await writeState(projectRoot, nextState);
   if (!result.ok) {
@@ -1647,7 +1788,47 @@ async function runSetter({
     current: parsed.value,
     state_path: result.path,
     last_updated: after.last_updated || null,
+    // Present only on report-mirroring setters; names the keys mirrored from
+    // the report into the state cache block (empty object when none matched).
+    ...(mirrored ? { mirrored_from_report: mirrored } : {}),
   });
+}
+
+// v0.20.0 issue #3 — mirror an authoritative report's frontmatter summary into
+// the matching state.yaml cache block. Pure-ish (reads one report file); never
+// throws — a missing / unparseable report or absent keys mirror nothing and
+// return a human-readable `note`. Returns { state, mirrored, note }.
+function mirrorReportSummary(projectRoot, cfg, stateCore) {
+  const fullPath = path.join(projectRoot, cfg.reportRelPath);
+  if (!fs.existsSync(fullPath)) {
+    return { state: stateCore, mirrored: {}, note: `report ${cfg.reportRelPath} absent; summary not mirrored into state.${cfg.block}` };
+  }
+  let fm;
+  try {
+    const raw = fs.readFileSync(fullPath, 'utf8');
+    const front = extractFrontmatter(raw);
+    if (front == null) {
+      return { state: stateCore, mirrored: {}, note: `report ${cfg.reportRelPath} has no YAML frontmatter; summary not mirrored` };
+    }
+    fm = require('js-yaml').load(front);
+  } catch (e) {
+    return { state: stateCore, mirrored: {}, note: `report ${cfg.reportRelPath} unreadable (${e.message}); summary not mirrored` };
+  }
+  if (!fm || typeof fm !== 'object' || Array.isArray(fm)) {
+    return { state: stateCore, mirrored: {}, note: `report ${cfg.reportRelPath} frontmatter is not an object; summary not mirrored` };
+  }
+  const priorBlock = stateCore[cfg.block] && typeof stateCore[cfg.block] === 'object' && !Array.isArray(stateCore[cfg.block])
+    ? stateCore[cfg.block]
+    : {};
+  const block = { ...priorBlock };
+  const mirrored = {};
+  for (const k of cfg.keys) {
+    if (k in fm) {
+      block[k] = fm[k];
+      mirrored[k] = fm[k];
+    }
+  }
+  return { state: { ...stateCore, [cfg.block]: block }, mirrored, note: null };
 }
 
 function readNested(obj, keys) {
@@ -1761,6 +1942,13 @@ const SETTERS = {
   'state-set-triage-completed': {
     fieldPath: ['triage', 'completed_at'],
     parseValue: parseIso8601(),
+    // v0.20.0 issue #3 — mirror TRIAGE-REPORT.md's frontmatter summary into the
+    // state.triage cache block so it reflects the latest run, not a prior round.
+    reportMirror: {
+      reportRelPath: '.pipeline/triage/TRIAGE-REPORT.md',
+      block: 'triage',
+      keys: ['entered_from', 'items_count', 'dispositions', 'routed_to'],
+    },
   },
   'state-set-architecture-completed': {
     fieldPath: ['architecture', 'completed_at'],
@@ -1773,6 +1961,14 @@ const SETTERS = {
   'state-set-verify-completed': {
     fieldPath: ['verify', 'completed_at'],
     parseValue: parseIso8601(),
+    // v0.20.0 issue #3 — mirror VERIFICATION-REPORT.md's frontmatter summary
+    // into the state.verify cache block (counts + completion_status) so the
+    // cache reflects the latest audit, not a prior round.
+    reportMirror: {
+      reportRelPath: '.pipeline/verify/VERIFICATION-REPORT.md',
+      block: 'verify',
+      keys: ['items_total', 'implemented', 'partial', 'missing', 'drift', 'confirmed_gaps', 'completion_status'],
+    },
   },
 };
 
@@ -2383,6 +2579,8 @@ const TRIAGE_DISPOSITION_PHRASES = new Map([
   ['all triage dispositions resolved; no upstream routes', 'requirements-ready'],
   ['triage routed item to architecture', 'architecture'],
   ['post-build triage routed all items to spec-compliance audit', 'verifying'],
+  // v0.20.0 issue #1 — fixed-in-tree re-review loop (triaging → reviewing).
+  ['triage routed fixed-in-tree items back for re-review', 'reviewing'],
 ]);
 
 // S10.5 Path A — verify-divergence content-property predicate phrase table.
@@ -2833,8 +3031,74 @@ async function stepAdvance({ skill, nextStep, mode, projectRoot, cursorPathArg }
     });
   }
 
-  // Cursor exists → skill must match
+  // Cursor exists → skill must match.
+  //
+  // EXCEPTION (v0.20.0 field issue #2): a foreign cursor left by an INTERRUPTED
+  // prior skill (crashed / abandoned before reaching skill-complete, so it was
+  // never unlinked) must not dead-end the next skill into "run /heal first".
+  // That forced a manual cursor-rewind detour on an ordinary phase progression
+  // (build → review). Self-heal instead, but ONLY when it is provably safe:
+  //   (1) the new skill is entering FRESH — nextStep is its first ordered step
+  //       (a foreign cursor with nextStep mid-sequence is a real error: you
+  //       cannot be mid-review holding a build cursor); AND
+  //   (2) the current phase is one this skill legitimately accepts
+  //       (state.phase ∈ initJson.phase_from) — proof the new skill is being
+  //       entered cleanly and the foreign cursor is stale leftover, not a
+  //       concurrent live run.
+  // When both hold, overwrite the stale cursor with this skill's fresh
+  // first-step cursor, append an audit line to HEAL-LOG.md (same ledger the
+  // heal-only cursor-rewind op writes), and proceed. Otherwise the hard error
+  // is preserved — /heal remains the path for genuinely ambiguous states.
   if (cursor.skill !== skill) {
+    const enteringFresh = nextStep === orderedSteps[0];
+    const phaseFrom = Array.isArray(initJson.phase_from) ? initJson.phase_from : null;
+    let phaseLegalForSkill = false;
+    if (enteringFresh && phaseFrom) {
+      const { readState } = await stateLib();
+      const st = await readState(projectRoot);
+      phaseLegalForSkill = !st.degraded && phaseFrom.includes(st.phase);
+    }
+    if (enteringFresh && phaseLegalForSkill) {
+      const priorSkill = cursor.skill;
+      const priorStep = cursor.current_step;
+      const newCursor = {
+        skill,
+        ...(skill === 'context' ? { mode } : {}),
+        current_step: nextStep,
+        step_index: 0,
+        total_steps: orderedSteps.length,
+        last_advanced_at: new Date().toISOString(),
+      };
+      await writeNewCursorAtomic(cursorPath, newCursor);
+      // Audit-trail the auto-rewind (best-effort; the rewind itself succeeds
+      // even if the HEAL-LOG append fails — fail-soft, never block the
+      // handoff the fix exists to unblock).
+      try {
+        await appendHealLog(projectRoot, 'cursor_rewinds', {
+          at: new Date().toISOString(),
+          prior_cursor_skill: priorSkill,
+          prior_cursor_step: priorStep,
+          auto_rewind: true,
+          rewound_for_skill: skill,
+        });
+      } catch (_e) {
+        /* fail-soft: audit append best-effort; rewind already applied */
+      }
+      return emitSuccess({
+        ok: true,
+        op: 'step-advance',
+        skill,
+        previous_step: null,
+        current_step: nextStep,
+        step_index: 0,
+        total_steps: orderedSteps.length,
+        cursor_path: CURSOR_REL,
+        skill_complete: false,
+        cursor_auto_rewound: true,
+        prior_cursor_skill: priorSkill,
+        prior_cursor_step: priorStep,
+      });
+    }
     return emitFailure(
       EXIT_SKILL_OR_MODE_MISMATCH,
       `essense-flow-tools step-advance: cursor.skill is '${cursor.skill}', --skill is '${skill}'; prior skill run incomplete — run /heal first`,
@@ -6360,6 +6624,10 @@ function printHelp() {
       '  cursor-rewind  [heal-only repair op]',
       '      → delete .pipeline/cursor.yaml (idempotent; no-op when absent). Atomic-append',
       '        HEAL-LOG.md cursor_rewinds[]. Per cli-spec §5 2026-05-08 Addendum §1.7.',
+      '  state-quarantine-legacy  [heal-only migration op — v0.20.0 field issue #4]',
+      '      → move foreign (non-canonical) top-level state.yaml keys into a legacy: bucket so',
+      '        the cache is purely canonical + the per-call unknown-key WARN stops. Idempotent;',
+      '        atomic-append HEAL-LOG.md legacy_quarantines[].',
       '  cursor-init --skill <name> --cursor <path>   [T-905 round-9 — DD-15 + D-Rd9-7]',
       '      → initialize fresh cursor.yaml at <path> for <skill> (one of elicit, research,',
       '        architect, build, verify, review) OR migrate a legacy cursor missing optional',
@@ -6458,6 +6726,7 @@ if (require.main === module) (async () => {
       rawValue: args.value,
       parseValue: setter.parseValue,
       projectRoot,
+      reportMirror: setter.reportMirror,
     });
     return;
   }
@@ -6594,6 +6863,11 @@ if (require.main === module) (async () => {
     }
     case 'cursor-rewind': {
       await cursorRewind({ projectRoot });
+      return;
+    }
+    case 'state-quarantine-legacy': {
+      // v0.20.0 field issue #4 — heal-only legacy-key quarantine.
+      await stateQuarantineLegacy({ projectRoot });
       return;
     }
     // ------------------------------------------------------------------

@@ -34,8 +34,8 @@ This skill is wired against the narrow CLI surface and registered subagents intr
 - `.pipeline/triage/TRIAGE-REPORT.md` — frontmatter (per `templates/triage-report.md`) carries `routed_to:` scalar that the disposition predicate evaluator reads. Frontmatter MUST include `schema_version`, `entered_from`, `items_count`, `dispositions` counts (`to_eliciting`, `to_research`, `to_architecture`, `to_user`, `accepted`, `carried_to_next_round`), `routed_to`. Body sections: Dispositions table, User-bound items, Carried items, Routing decision.
 
 **What you write through CLI ops (NEVER `Write` on `.pipeline/state.yaml` directly):**
-- `essense-flow-tools state-set-phase --value <target>` — advances `triaging → <target>` for `target ∈ {eliciting, research, requirements-ready, architecture, verifying}`. Op runs four checks at the CLI layer: (1) target is in the canonical 12-phase list (drift symptom #2 closes — invented values like `triaged`/`routed`/`done` reject with exit 3); (2) the `triaging → <target>` transition is legal per `transitions.yaml` (illegal targets reject with exit 6); (3) the disposition predicate fires (per cli-spec §5 2026-05-08 Addendum: reads TRIAGE-REPORT.md frontmatter `routed_to:` scalar; rejects with exit 7 if the scalar mismatches the locked phrase-table mapping); (4) the per-task-record gate is **not** applicable (no `--sprint` argument; triage is sprint-spanning). Exit codes per cli-spec §1.1 + §1.2.
-- `essense-flow-tools state-set-triage-completed --value <ISO 8601 datetime with millisecond precision>` — stamps `triage.completed_at`. ISO 8601 must include the millisecond suffix (e.g. `2026-05-08T10:00:00.000Z`); loose ISO without millis rejects with exit 3.
+- `essense-flow-tools state-set-phase --value <target>` — advances `triaging → <target>` for `target ∈ {eliciting, research, requirements-ready, architecture, verifying, reviewing}`. (`reviewing` is the fixed-in-tree re-review loop — see "Per-item categorization" below.) Op runs four checks at the CLI layer: (1) target is in the canonical 12-phase list (drift symptom #2 closes — invented values like `triaged`/`routed`/`done` reject with exit 3); (2) the `triaging → <target>` transition is legal per `transitions.yaml` (illegal targets reject with exit 6); (3) the disposition predicate fires (per cli-spec §5 2026-05-08 Addendum: reads TRIAGE-REPORT.md frontmatter `routed_to:` scalar; rejects with exit 7 if the scalar mismatches the locked phrase-table mapping); (4) the per-task-record gate is **not** applicable (no `--sprint` argument; triage is sprint-spanning). Exit codes per cli-spec §1.1 + §1.2.
+- `essense-flow-tools state-set-triage-completed --value <ISO 8601 datetime with millisecond precision>` — stamps `triage.completed_at` AND (v0.20.0 issue #3) mirrors `TRIAGE-REPORT.md`'s frontmatter summary (`entered_from`, `items_count`, `dispositions`, `routed_to`) into the `state.triage` cache block so the cache reflects THIS run, not a prior round. Mirroring is fail-soft — if TRIAGE-REPORT.md is absent or unparseable, the timestamp still stamps and a stderr note is emitted (write TRIAGE-REPORT.md BEFORE this call, per the finalize sequence, so the summary lands). ISO 8601 must include the millisecond suffix (e.g. `2026-05-08T10:00:00.000Z`); loose ISO without millis rejects with exit 3.
 
 **Why the disposition predicate matters.** Without a structural check at the `triaging → <target>` boundary, master could (under drift) call `state-set-phase --value architecture` after a triage run that wrote `routed_to: eliciting` to TRIAGE-REPORT.md frontmatter — collapsing the deterministic gate triage exists to enforce. The predicate evaluator reads the report, sees `routed_to: eliciting`, and rejects: `routed_to="eliciting", predicate requires routed_to == "architecture"`. The frontmatter scalar is the single source of truth for the routing decision; the body section's `Routing decision` rationale is human-readable companion text, not the gate.
 
@@ -65,7 +65,7 @@ dispositions:
   to_user: <count>
   accepted: <count>
   carried_to_next_round: <count>
-routed_to: eliciting | research | architecture | requirements-ready | verifying | user
+routed_to: eliciting | research | architecture | requirements-ready | verifying | reviewing | user
 ---
 ```
 
@@ -93,6 +93,7 @@ For each item:
    - **Design intent missing** → route to `eliciting` for an addendum.
    - **Design decision missing or wrong** → route to `architecture`.
    - **Implementation bug** → route to `architecture` (as a new task spec) → eventually `build`.
+   - **Confirmed finding already fixed directly in the working tree** → route to `reviewing` for re-review. This is the short loop for a review-blocked sprint whose criticals were patched in-tree (rather than re-decomposed): the fix is on disk and needs the adversarial lenses to re-confirm it cleared the gate, not a new architecture round. Only legal when EVERY blocking item was fixed-in-tree — if any item needs design or a new task spec, route to `architecture` instead (the earliest-phase rule below decides).
    - **Analysis missing** → route to `research` or `verify`.
    - **Genuinely ambiguous** → route to `user`.
    - **Real but acceptable** → mark `accepted`, no further routing.
@@ -113,6 +114,7 @@ The pipeline advances to **the earliest phase any item needs**. Earliest means: 
 - If any item needs `eliciting`: route there.
 - Otherwise if any item needs `research`: route there.
 - Otherwise if any item needs `architecture`: route there.
+- Otherwise if every blocking item was fixed directly in the working tree and needs only re-confirmation: route to `reviewing` (the fixed-in-tree re-review loop). This precedence is deliberate — `reviewing` is below `architecture` because any item needing design or a new task spec means the in-tree fixes are not the whole story and the sprint must re-decompose first.
 - Otherwise if items are post-build verify items only: route to `verifying`.
 - If all items resolved (accepted only, no upstream routes): route to `requirements-ready`.
 
@@ -165,7 +167,7 @@ Your agents are librarians: they hand over the best book they have, but they can
 
 State writes (via CLI ops, not `lib/finalize.js`):
 - `triage.completed_at` (ISO 8601 with millis) via `state-set-triage-completed`.
-- `phase` advanced to one of `{eliciting, research, requirements-ready, architecture, verifying}` via `state-set-phase`. The op's disposition predicate evaluator reads TRIAGE-REPORT.md frontmatter `routed_to:` to validate.
+- `phase` advanced to one of `{eliciting, research, requirements-ready, architecture, verifying, reviewing}` via `state-set-phase`. The op's disposition predicate evaluator reads TRIAGE-REPORT.md frontmatter `routed_to:` to validate.
 - `last_updated` server-stamped on every state write.
 
 Cursor file at `.pipeline/cursor.yaml` advances monotonically through the 8 ordered steps (`identify-entry-point → read-spec-and-upstream → extract-items → categorize-items → apply-deterministic-signal-precedence → reread-verification → compute-routing-decision → finalize`); deleted on `skill-complete` sentinel.
@@ -179,6 +181,7 @@ Cursor file at `.pipeline/cursor.yaml` advances monotonically through the 8 orde
 | triaging | architecture | item routed for decomposition | no |
 | triaging | requirements-ready | all items accepted | yes |
 | triaging | verifying | post-build items routed to spec compliance audit | no |
+| triaging | reviewing | confirmed findings fixed in-tree; re-review requested | no |
 
 ## Before you finalize
 
@@ -191,6 +194,7 @@ Last block — read it just before you act.
 - `triaging → architecture` — routed for decomposition
 - `triaging → requirements-ready` — all items accepted, no upstream routes
 - `triaging → verifying` — post-build items routed to spec compliance audit
+- `triaging → reviewing` — confirmed findings fixed in-tree; re-review requested (routed_to: reviewing)
 
 Not legal: `triaged`, `routed`, `done` (these reject at CLI exit 3 with the canonical 12-phase list).
 
@@ -211,7 +215,7 @@ The TRIAGE-REPORT.md write is required regardless of which target phase you chos
 
 **Self-check before the call:**
 
-1. Is the `--value` arg to `state-set-phase` exactly one of the legal targets above (`eliciting`, `research`, `architecture`, `requirements-ready`, `verifying`)? Past-tense forms (`triaged`, `routed`, `done`) reject at the CLI.
+1. Is the `--value` arg to `state-set-phase` exactly one of the legal targets above (`eliciting`, `research`, `architecture`, `requirements-ready`, `verifying`, `reviewing`)? Past-tense forms (`triaged`, `routed`, `done`) reject at the CLI.
 2. Does TRIAGE-REPORT.md exist at the canonical path with frontmatter `routed_to:` set to the same target you're passing to `state-set-phase`? Items with no disposition mean triage is incomplete — don't transition. Mismatched `routed_to:` rejects the predicate at the CLI layer.
 3. If item volume was large, did you dispatch **per-class sub-triagers** via the registered `essense-flow-sub-triager` agent (one per item kind: bug, drift, gap, ambiguity, missing-analysis)? Master cross-references against SPEC.md and routes; sub-triagers categorize per-class.
 4. Are ambiguous items surfaced to the user, not silently classified?

@@ -82,7 +82,46 @@ const OPTIONAL_KEYS = new Set([
   "halt_resolution",
   "halted_on_drift",
   "halt_reason",
+  // v0.20.0 field issue #4: `legacy` is the quarantine bucket the heal-driven
+  // state-quarantine-legacy op moves foreign (non-canonical) top-level keys
+  // into, so a project migrated into essence-flow stops emitting a per-call
+  // "unknown top-level key(s)" WARN for its pre-migration schema. Recognised
+  // here so the bucket itself never triggers the WARN — and so it counts as
+  // canonical for partitionLegacyKeys (the quarantine is idempotent).
+  "legacy",
 ]);
+
+// v0.20.0 field issue #4 — the canonical top-level key universe (REQUIRED ∪
+// OPTIONAL). Single source of truth shared by the shape validator's unknown-
+// key WARN (above) and the heal-driven legacy-key quarantine, so the two can
+// never disagree about which keys are "foreign".
+export const KNOWN_TOP_LEVEL_KEYS = new Set([...REQUIRED_KEYS, ...OPTIONAL_KEYS]);
+
+// readState annotates its return with these non-state fields; partitioning must
+// ignore them so they are never mistaken for foreign cache keys.
+const READ_STATE_ANNOTATIONS = new Set(["degraded", "path", "shape_error"]);
+
+// Partition a parsed state object into canonical top-level keys vs foreign
+// (legacy / forward-compat) keys. Pure — no I/O. `legacy` itself is canonical
+// (the quarantine bucket), so an already-quarantined state partitions with an
+// empty foreign set (the quarantine op is therefore idempotent). readState
+// annotation fields are dropped from both partitions. Returns
+// { canonical, foreign, foreignKeys }.
+export function partitionLegacyKeys(stateObj) {
+  const canonical = {};
+  const foreign = {};
+  const foreignKeys = [];
+  for (const k of Object.keys(stateObj)) {
+    if (READ_STATE_ANNOTATIONS.has(k)) continue;
+    if (KNOWN_TOP_LEVEL_KEYS.has(k)) {
+      canonical[k] = stateObj[k];
+    } else {
+      foreign[k] = stateObj[k];
+      foreignKeys.push(k);
+    }
+  }
+  return { canonical, foreign, foreignKeys };
+}
 
 export class ShapeValidationError extends Error {
   constructor(message, details) {

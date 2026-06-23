@@ -363,6 +363,7 @@ Delegation keeps the rule loud at validation. Each lens-agent returns evidence-b
 | from | to | trigger | auto |
 |------|----|---------|------|
 | sprint-complete | reviewing | initial entry | yes |
+| triaging | reviewing | re-review of fixed-in-tree findings | no |
 | reviewing | triaging | confirmed_unacknowledged_criticals > 0 | yes |
 | reviewing | verifying | confirmed_unacknowledged_criticals == 0 | no |
 
@@ -373,6 +374,7 @@ Last block — read it just before you act.
 **Phase targets** (verbatim from `references/transitions.yaml`):
 
 - `sprint-complete → reviewing` — initial entry to the review pass
+- `triaging → reviewing` — re-entry for re-review of a previously-blocked sprint whose confirmed criticals were fixed directly in the working tree (triage routes here with `routed_to: reviewing`; phase is already `reviewing` by the time /review runs, so the `state.phase == reviewing` check passes normally — no special entry handling needed)
 - `reviewing → triaging` — confirmed_unacknowledged_criticals > 0; route findings
 - `reviewing → verifying` — confirmed_unacknowledged_criticals == 0; advance to spec compliance
 
