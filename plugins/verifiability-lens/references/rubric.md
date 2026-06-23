@@ -27,7 +27,7 @@ Split every claim / decision / deliverable into one class — and verify what yo
 
 Rules: **verify before you rule** (a claim you could have checked but didn't is your miss, not a B);
 class is **capability-relative** (A if the doer can run the check, B if not); **substrate-verify**
-(existence ≠ a check — read the body, fetch the source).
+(existence ≠ a check — read the body, trace the wiring / who actually calls it, fetch the source).
 
 ### Check 2 — Completeness (was it all done; did we stop for a real reason?)
 

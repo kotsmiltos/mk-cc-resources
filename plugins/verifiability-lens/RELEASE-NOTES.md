@@ -1,5 +1,18 @@
 # verifiability-lens — Release Notes
 
+## 0.3.1 — Serena semantic code tools (trace, don't just grep)
+
+Added read-only Serena tools to the agent so code-claim verification can *trace* instead of
+text-match: `mcp__serena__find_symbol` (real definition + body), `find_referencing_symbols` (who
+actually calls it — proves wiring, not just existence), `get_symbols_overview` (structure),
+`search_for_pattern` (semantic search). Gives "existence ≠ implementation" real teeth.
+
+Agent prefers Serena where the workspace is onboarded as a Serena project; **falls back to
+Read/Grep/Glob** when it's unavailable (Serena is a per-workspace MCP — not present in every repo).
+Read-only, no new risk. Deliberately NOT added: Bash (execution breaks the judge-don't-run design +
+per-turn cost/risk), Write/Edit (it judges, never fixes), AskUserQuestion/Agent (surfacing goes
+through the main agent; no recursion). Trigger code unchanged — 37/37 hook tests still pass.
+
 ## 0.3.0 — Active verification + completeness + quality bar + strict stance
 
 The lens grows from a passive classifier into a strict, opinionated work-quality guardian.

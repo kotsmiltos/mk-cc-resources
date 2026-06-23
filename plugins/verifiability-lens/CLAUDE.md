@@ -2,7 +2,9 @@
 
 A strict, opinionated work-quality guardian. Two pillars:
 - **Detection — three checks, actively verified.** The `verifiability-lens` agent (tools: Read,
-  Grep, Glob, WebSearch, WebFetch, context7) runs: (1) **verifiability** A/B/U (verifies via
+  Grep, Glob, WebSearch, WebFetch, context7, Serena semantic trio — find_symbol /
+  find_referencing_symbols / get_symbols_overview / search_for_pattern, fall back to Read/Grep where
+  Serena isn't onboarded) runs: (1) **verifiability** A/B/U (verifies via
   read/web/docs, not just labels; capability-relative; never let a U pass as A — the false-clean);
   (2) **completeness** — was everything meant to be done done, or an arbitrary stop (presses to
   continue); (3) **quality bar** — tested, requirements met, robust, best achievable; rejects
@@ -66,6 +68,10 @@ written claims (default OFF — without it, only artifact-producing turns trigge
   flags); two new checks (completeness / no-arbitrary-stop; quality bar); strict `stance` dial.
   Hook BLOCK_REASON passes `intended_scope` + drives the 3 checks + says continue-not-stop on an
   arbitrary-stop flag. Trigger code unchanged (37/37 hook tests still pass).
+- ✅ v0.3.1: Serena read-only semantic tools (find_symbol / find_referencing_symbols /
+  get_symbols_overview / search_for_pattern) — trace code paths + callers, not just grep; falls
+  back to Read/Grep where Serena isn't onboarded. Bash/Write deliberately excluded (judge, don't
+  run/fix).
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 
