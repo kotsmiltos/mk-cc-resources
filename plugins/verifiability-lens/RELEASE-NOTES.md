@@ -1,5 +1,21 @@
 # verifiability-lens — Release Notes
 
+## 0.3.2 — Test hardening (lens-caught, on its own build)
+
+The lens ran against its own 0.3.0/0.3.1 ship and flagged two real gaps; both fixed here:
+- **BLOCK_REASON contract is now regression-proof.** The 37 hook tests asserted nothing about the
+  0.3.0 hook contract — a regression that stripped the completeness / `intended_scope` /
+  continue-not-stop instructions would have passed. Added two string-assertion tests that the
+  injected BLOCK_REASON contains `intended_scope`, `completeness`, `continue the work`,
+  `subagent_type: verifiability-lens`, and `Do NOT dump raw classes`. (The agent's LLM *judgment*
+  stays untestable — fair; the hook *contract* shouldn't be.)
+- **Test harness no longer hides a partial run.** Added a failure counter, a denominator
+  (`39/39 passed`), and an explicit `process.exit(failed ? 1 : 0)` — a mid-suite assertion failure
+  now prints `FAIL` + the count and exits non-zero, instead of printing a plausible-looking
+  `N passed`. **39/39 passed.**
+
+This release was driven by the tool judging itself — exactly its job (completeness + quality bar).
+
 ## 0.3.1 — Serena semantic code tools (trace, don't just grep)
 
 Added read-only Serena tools to the agent so code-claim verification can *trace* instead of

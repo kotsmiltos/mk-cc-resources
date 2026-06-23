@@ -72,6 +72,10 @@ written claims (default OFF — without it, only artifact-producing turns trigge
   get_symbols_overview / search_for_pattern) — trace code paths + callers, not just grep; falls
   back to Read/Grep where Serena isn't onboarded. Bash/Write deliberately excluded (judge, don't
   run/fix).
+- ✅ v0.3.2: test hardening (the lens caught these judging its own build) — BLOCK_REASON contract
+  tests (intended_scope/completeness/continue + dispatch + no-raw-dump) so a hook-contract
+  regression fails; test harness gains a failure counter + denominator + `process.exit` (no silent
+  partial). 39/39 pass.
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 

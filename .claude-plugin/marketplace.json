@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.17.1"
+    "version": "2.17.2"
   },
   "plugins": [
     {
@@ -60,7 +60,7 @@
       "name": "verifiability-lens",
       "source": "./plugins/verifiability-lens",
       "description": "A strict, opinionated work-quality guardian that fires automatically on your work and pushes it to the best achievable. Runs THREE checks and ACTIVELY verifies (web + docs + read tools — confirms/refutes, not just flags): (1) Verifiability — A (verified/checkable) / B (genuine guess) / U (can't tell; never let a U pass as A); (2) Completeness — was everything meant to be done actually done, or did we stop arbitrarily (presses to continue + finish, tested); (3) Quality bar — tested, requirements met, robust, not half-assed. A surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands you ONLY the important, actionable, fully-contextualized pushes — strict judgment, disciplined surfacing; never a context-less decision; auto-resolutions logged. Fires via an opt-in Stop hook (OFF by default) on substantive-work turns (code/files, reads, web, subagents, MCP), reading the WHOLE turn; pure questions + its own output never trigger it. Also a /verifiability manual trigger. Read/research-only — verifies and pushes, does not write code or run the build. Carries a hook — install separately from the mk-cc-all bundle.",
-      "version": "0.3.1"
+      "version": "0.3.2"
     },
     {
       "name": "mk-cc-all",

@@ -16,13 +16,22 @@ const {
   resolveFlag,
   isLensSurfacing,
   isQuestionOnly,
+  BLOCK_REASON,
 } = require("../hooks/scripts/verifiability-stop.js");
 
+// Harness: count failures (don't crash on the first), print a denominator, exit non-zero on any
+// failure — so a partial run can't read as a clean pass.
 let passed = 0;
+let failed = 0;
 function test(name, fn) {
-  fn();
-  passed++;
-  console.log("  ok  " + name);
+  try {
+    fn();
+    passed++;
+    console.log("  ok  " + name);
+  } catch (e) {
+    failed++;
+    console.log("  FAIL  " + name + " — " + e.message);
+  }
 }
 
 const codeMsg = { text: "Updated the module.", toolNames: ["Edit"] };           // artifact → worthy by default
@@ -179,4 +188,18 @@ test("resolveFlag: global true wins when no project", () =>
 test("resolveFlag: project false overrides global true", () =>
   assert.strictEqual(resolveFlag(false, true, false), false));
 
-console.log(`\n${passed} passed`);
+// --- BLOCK_REASON encodes the 0.3.0 hook contract (regression-proof the upgrade) ---
+// The agent's LLM judgment isn't unit-testable, but the instruction the hook injects IS — a
+// regression that strips the completeness/intended_scope/continue contract must fail here.
+test("BLOCK_REASON drives intended_scope + completeness + continue-not-stop", () => {
+  assert.ok(/intended_scope/.test(BLOCK_REASON), "must pass intended_scope for the completeness check");
+  assert.ok(/completeness/i.test(BLOCK_REASON), "must drive the completeness check");
+  assert.ok(/continue the work/i.test(BLOCK_REASON), "must instruct continue-not-stop on an arbitrary stop");
+});
+test("BLOCK_REASON dispatches the verifiability-lens agent + forbids raw dumps", () => {
+  assert.ok(/subagent_type: verifiability-lens/.test(BLOCK_REASON), "names the agent to dispatch");
+  assert.ok(/Do NOT dump raw classes/i.test(BLOCK_REASON), "keeps the surfacing discipline");
+});
+
+console.log(`\n${passed}/${passed + failed} passed` + (failed ? `  (${failed} FAILED)` : ""));
+process.exit(failed ? 1 : 0);

@@ -1,6 +1,6 @@
 {
   "name": "verifiability-lens",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A strict, opinionated work-quality guardian that fires automatically on your work and pushes it to the best achievable. It runs THREE checks and ACTIVELY verifies (it has web + docs + read tools — it confirms/refutes claims, not just flags them): (1) Verifiability — sorts each claim into A (verified/checkable), B (genuine guess), U (can't tell; never let a U pass as A); (2) Completeness — was everything meant to be done actually done, or did we stop arbitrarily (it presses to continue + finish, tested); (3) Quality bar — tested, requirements met, robust, not half-assed. Then a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands you ONLY the important, actionable, fully-contextualized pushes — strict judgment, disciplined surfacing; never a context-less decision; auto-resolutions logged. Fires via an opt-in Stop hook (OFF by default) on substantive-work turns — code/files, reads, web research, spawned subagents, MCP tools — reading the WHOLE turn; pure questions + its own output never trigger it. Also a /verifiability manual trigger. Read/research-only: it verifies and pushes; it does not write code or run the build. Carries a hook — install separately from the mk-cc-all bundle.",
   "author": {
     "name": "kotsmiltos"

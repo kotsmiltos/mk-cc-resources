@@ -77,7 +77,7 @@ v0.3.0 ships the guardian: three checks (verifiability A/B/U + completeness + qu
 active verification (web + docs + read), a strict stance (`stance` profile dial), the surfacing
 triage, the manual `/verifiability` trigger, and the automatic Stop hook (opt-in; global/project/env
 enable switch; whole-turn read; work-trigger covering code/reads/web/subagents/MCP; question +
-meta-loop hard-skips; fire-once guard; fail-open). Verified: 37/37 hook unit tests + process smokes
+meta-loop hard-skips; fire-once guard; fail-open). Verified: 39/39 hook unit tests (incl. BLOCK_REASON contract) + process smokes
 + real-transcript test. Design doc: `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending
