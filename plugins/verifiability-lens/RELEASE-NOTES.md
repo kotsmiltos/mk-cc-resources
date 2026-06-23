@@ -1,5 +1,33 @@
 # verifiability-lens — Release Notes
 
+## 0.3.0 — Active verification + completeness + quality bar + strict stance
+
+The lens grows from a passive classifier into a strict, opinionated work-quality guardian.
+
+- **Web + docs access (it can now fact-check, not just flag).** Agent tools expanded to
+  `Read, Grep, Glob, WebSearch, WebFetch, mcp__context7__*`. For a load-bearing research/factual
+  claim it now actively searches/fetches/checks docs to **confirm or refute** it — class A means
+  *verified*, not just *checkable*. (Closes the prior read-only blind spot on web claims.) It still
+  verifies judiciously — the claims that matter, not every trivial line.
+- **Completeness check (no arbitrary stops).** It measures what was *done* against what was *meant*
+  to be done (`intended_scope`). A turn that stopped with a real reason (blocker/gate/out-of-scope)
+  is fine; a turn that just stopped half-done → `incomplete-ARBITRARY-STOP`, a hard escalation that
+  names what remains and presses to continue + finish, tested. The hook now passes `intended_scope`
+  and, on an arbitrary-stop/unmet-requirement flag, instructs the doer to **continue rather than
+  stop**.
+- **Quality bar (push to the best achievable).** Holds the work to tested / requirements-met /
+  robust / best-achievable, and flags half-assed shortcuts, missing requirements, and untested
+  critical paths with the concrete push to fix each.
+- **Strict, opinionated stance.** New `stance` profile dial (default `strict`). Resolves the
+  tension with the recipient profile explicitly: **strict judgment, disciplined surfacing** — it
+  judges to a high bar (harsh, specific, no softening) but still surfaces only important+actionable
+  items. Strictness raises *what counts as a real gap*; it does not lower the noise floor. It does
+  NOT fabricate gaps — a genuinely complete, verified, high-quality result still gets "all clear."
+
+Unchanged: the Stop-hook trigger logic (whole-turn read, work-tool triggers, meta-loop + question
+hard-skips, fire-once guard, fail-open, opt-in). 37/37 hook unit tests still pass (this release
+changes the agent/rubric/profile/BLOCK_REASON prose + the agent's tool set, not the trigger code).
+
 ## 0.2.4 — Critical fix: read the whole turn, not just the last message (it never fired)
 
 **Bug (why it silently never fired on real work):** the hook inspected only the LAST assistant

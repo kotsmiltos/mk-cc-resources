@@ -43,13 +43,18 @@ const STATE_REL = path.join(".claude", "verifiability-lens", "state.json");
 const BLOCK_REASON =
   "[verifiability-lens] Before yielding: dispatch the `verifiability-lens` agent " +
   "(Agent tool, subagent_type: verifiability-lens) over the work you just produced. " +
-  "Pass unit_type, the content, any context_refs, executor_capabilities, and the " +
-  "recipient_profile from plugins/verifiability-lens/defaults/recipient-profile.yaml " +
-  "(or a project override). Then surface ONLY the agent's triaged rollup — the " +
-  "headline + escalations (important + actionable, each with why-it-matters + a " +
-  "recommended default + bundled context) + a one-line note of what was auto-resolved " +
-  "(with the defaults taken) and how many items were suppressed. Do NOT dump the raw " +
-  "A/B/U list. Per references/rubric.md. Then stop.";
+  "Pass unit_type, the content, context_refs, executor_capabilities, the recipient_profile " +
+  "from plugins/verifiability-lens/defaults/recipient-profile.yaml (or a project override), " +
+  "AND intended_scope = what the user asked for / this task set out to do (so it can check " +
+  "completeness). The agent runs THREE checks and actively verifies (reads code, searches the " +
+  "web, checks docs): (1) verifiability A/B/U, (2) completeness — was everything meant to be " +
+  "done actually done, or did we stop arbitrarily, (3) quality bar — tested, requirements met, " +
+  "best achievable. Then surface ONLY its triaged rollup — headline + escalations (important + " +
+  "actionable, each with why-it-matters + a recommended default + bundled context; include any " +
+  "arbitrary-stop or missing-requirement push) + a one-line note of what was auto-resolved and " +
+  "how many items were suppressed. Do NOT dump raw classes. Per references/rubric.md. If it " +
+  "flags an arbitrary stop or unmet requirement, act on it — continue the work — rather than " +
+  "stopping. Otherwise stop.";
 
 // ---------- Pure logic (exported for tests) ----------
 

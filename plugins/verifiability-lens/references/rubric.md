@@ -1,105 +1,95 @@
-# The verifiability rubric + surfacing triage
+# The verifiability rubric — three checks + surfacing triage
 
 > **type:** reference (canon — cite, do not copy)
-> **consumed_by:** the `verifiability-lens` agent; the Stop hook's injected instruction (later);
-> the `/verifiability` command. One source of truth for both pillars.
+> **consumed_by:** the `verifiability-lens` agent; the Stop hook's injected instruction;
+> the `/verifiability` command. One source of truth.
 
-This file defines two things that work as a pair:
-1. **Verifiability classification** — sort any unit of work into A / B / U (detection).
-2. **Surfacing triage** — decide what to do with each B/U item: auto-resolve, escalate, or
-   suppress, tuned by the recipient profile (delivery).
-
-The lens DETECTS uncertainty. The triage DECIDES what reaches the user. Detection without triage
-floods the user; triage without detection has nothing to act on. Both required.
+The lens is a strict, opinionated guardian of work quality. It runs THREE checks over the work that
+was just done, ACTIVELY verifying (read code, search web, check docs) rather than just labelling —
+then a surfacing triage decides what reaches the user. Strict in judgment; disciplined in surfacing.
 
 ---
 
-## Part 1 — Verifiability classification (A / B / U)
+## Part 1 — The three checks
 
-Split every produced claim / decision / deliverable into exactly one class:
+### Check 1 — Verifiability (A / B / U), actively verified
 
-- **A — verifiable.** A cheap, accurate check exists AND can be run now: a test passes, the code
-  path read confirms it, a deterministic diff/grep settles it. **Name the check.**
-- **B — unverifiable.** No cheap accurate check exists: an image, a prediction, a hard open
-  problem, subjective quality ("reads well"), a claim resting on context nobody loaded. **Do not
-  iterate blindly on a B item** — declare it, then route it through the triage (Part 2).
-- **U — indeterminate (the meta-case).** You cannot tell whether a check exists, or you lack the
-  tool to run one. **Resolve U:** acquire the check (→A) or declare it unverifiable (→B). **Never
-  let a U pass as A** — a U masquerading as A is the false-clean failure this whole system exists
-  to catch.
+Split every claim / decision / deliverable into one class — and verify what you can before ruling:
 
-**Class is capability-relative.** The same claim is A for an agent that can run the check and B
-for one that cannot ("the linter passes" is A with a shell, B without). Judge against the
-**downstream doer's** capabilities, not your own. When you downgrade, say why.
+- **A — verifiable / verified.** A cheap accurate check exists. **Run it if you can** — read the
+  cited code path, web-search the stat, check the library docs — and mark `verified`. If you can't
+  run it now but the doer can, name the check.
+- **B — unverifiable.** No cheap accurate check exists even with your tools: subjective quality, a
+  genuine prediction, a hard open problem, a claim resting on context nobody has. Flag it.
+- **U — indeterminate.** You can't tell whether a check exists, or you lack the tool. Resolve it:
+  verify (→A), or declare unverifiable (→B). **Never let a U pass as A** — that false-clean is the
+  core failure this whole system exists to catch.
 
-**Discipline when classifying:**
-- **Substrate-verify before classing A.** Existence ≠ a check. Read the cited code path / run the
-  reasoning before calling something verifiable. A function existing with the right name is not
-  evidence its body is correct.
-- **Do not manufacture B to look thorough.** An all-A unit is a valid, honest result. Fabricated
-  uncertainty is as harmful as fabricated certainty.
+Rules: **verify before you rule** (a claim you could have checked but didn't is your miss, not a B);
+class is **capability-relative** (A if the doer can run the check, B if not); **substrate-verify**
+(existence ≠ a check — read the body, fetch the source).
+
+### Check 2 — Completeness (was it all done; did we stop for a real reason?)
+
+Measure what was DONE against what was MEANT to be done (the request / plan / stated scope):
+
+- Everything intended is done and verified → **complete**.
+- Something is unfinished/deferred **with a real stated reason** (a true blocker, a user gate,
+  genuinely out of scope) → **incomplete-with-stated-reason** — fine, surface the reason.
+- Something is unfinished/half-done with **no real reason** — it just stopped → **arbitrary stop**.
+  This is a hard escalation: name exactly what remains and the next action to finish it, tested.
+  Premature finishing and silent dropped scope are failures, not style.
+
+### Check 3 — Quality bar (the best achievable, not half-assed)
+
+Hold the work to the highest achievable bar, opinionated and specific:
+
+- **Tested?** Untested functionality / a critical path with no test = a gap, named.
+- **Requirements met?** A missing or quietly-reinterpreted requirement = a gap, quoted.
+- **Robust?** Unhandled edges, swallowed errors, fragile shortcuts taken "because easier" = gaps.
+- **Is this the best we can do?** If a clearly better approach is achievable, say so with the
+  concrete push to get there.
+
+Do not accept "good enough" when better is achievable. Do **not** fabricate gaps either — a
+genuinely complete, verified, high-quality result gets "all clear." Strict ≠ inventing problems.
 
 ---
 
 ## Part 2 — Surfacing triage (auto-resolve / escalate / suppress)
 
-For every B/U item — and every genuinely important A-risk — choose exactly one lane. The gate is
-**importance × actionability-with-context**; both are required before anything reaches the user.
-
-### Importance (closed set)
-
-`critical | important | minor`. Score by: does it block convergence? does it touch correctness or
-the user's intent? is it costly or irreversible to get wrong? Only `critical` and `important` may
-escalate. `minor` never interrupts.
-
-### Actionability-with-context
-
-Can the recipient decide it **from the bundled context alone**, without going to study something?
-If not, it CANNOT be surfaced as a bare question — either bundle the context that makes it
-decidable, or auto-resolve it and inform.
-
-### The three lanes
+For every gap from the three checks, choose one lane. Gate = **importance × actionability-with-context**.
 
 | lane | when | action |
 |------|------|--------|
-| **auto-resolve** | the system can settle it — research reaches an answer, or a defensible default exists | resolve it, **log it visibly**, inform in one line. Do not ask. A ratified default IS an answer. **Default bias** under a low-context-appetite profile. |
-| **escalate** | `critical`/`important` AND genuinely needs the user's judgment (product intent, a trade-off only they own) AND actionable-with-context | surface in ONE batched gate (never per-item): plain-language *what*, *why it matters* (one line), the options, and a **recommended default first**. Bundle the context inline so no digging is needed. |
-| **suppress** | `minor`, low-impact, or cheaply reversible | record to the log; never interrupt. |
+| **auto-resolve** | the system can settle it — research/web reaches an answer, or a defensible default exists | resolve, **log it visibly**, inform in one line. Don't ask. Default bias under low context-appetite. |
+| **escalate** | `critical`/`important` AND needs the user's judgment AND actionable-with-context | surface in ONE batched gate: plain *what*, *why it matters*, options, **recommended default first**, context bundled inline. |
+| **suppress** | `minor`, low-impact, cheaply reversible | log; never interrupt. |
 
-### Hard rules (non-negotiable)
+**The strict-but-disciplined rule (resolves the tension):** judge to a HIGH bar — harsh, specific,
+no softening — but SURFACE with discipline: only important+ AND actionable reaches the user; trivia
+is suppressed or auto-resolved-and-logged. Strictness raises *what counts as a real gap* (a missing
+requirement, an untested critical path, an arbitrary stop are ALWAYS important) — it does not lower
+the noise floor. Demanding judge, clean signal.
 
-1. **Never hand the user a context-less decision.** Supply the context, or auto-resolve and inform
-   — never a bare choice they'd need to do homework to answer.
-2. **Auto-resolve is never silent.** Every default the system takes is written to a glanceable log
-   the user can audit and revisit. Silently deciding is the failure the verify-don't-claim value
-   forbids — the triage must not become a way to bury B work it should have shown.
-3. **Escalate sparingly, batched.** Bundle questions at one gate; do not interrupt per item.
-4. **Recommended default first.** Every escalated choice leads with the option the system would
-   pick, phrased so the user can simply accept it.
+**Hard rules:** never surface a context-less decision (supply context or auto-resolve + inform);
+auto-resolve is never silent (every default logged, auditable); escalate sparingly, batched,
+recommended-default-first.
 
 ---
 
 ## Part 3 — Recipient profile (who-it-serves)
 
-The triage thresholds and rendering are tuned by a **recipient profile** — a config block, never
-hardcoded (no personal setup baked into logic). Fields:
-
-- `verbosity` — how terse the surfaced text is.
-- `context_appetite` — how much the recipient will load themselves. Low → bundle everything,
-  assume no digging.
-- `escalation_floor` — the minimum importance that may interrupt. High → only `important`+.
-- `default_bias` — how aggressively to auto-resolve vs ask. Aggressive → absorb the slack.
-- `render` — voice of surfaced text: plain language, bottom-up, recommended-default-first.
-
-The default profile (`defaults/recipient-profile.yaml`) is tuned for a time-poor recipient:
-terse, low context-appetite, high escalation floor, aggressive auto-resolve, plain render. It is
-adjustable per project / per user — the rubric does not change, only the dials.
+Thresholds + rendering + stance are tuned by a **recipient profile** (`defaults/recipient-profile.yaml`)
+— config, never hardcoded. Fields: `verbosity`, `context_appetite`, `escalation_floor`,
+`default_bias`, `render`, and **`stance`** (default `strict` — push the work to the limit, reject
+half-assed/missing-requirement/untested; vs `advisory` for a lighter touch). The rubric never
+changes; only the dials.
 
 ---
 
 ## Part 4 — What the recipient sees (the deliverable)
 
-A short, plain, self-contained list of only the items that genuinely need them — each
-understandable without digging, each with a recommended answer they can accept. Everything else
-the system absorbs: minor items suppressed, settleable items auto-resolved and logged. That
-absorption — not the raw A/B/U dump — is the product.
+A short, plain, self-contained list of only what genuinely needs them — verified findings, real
+completeness gaps (especially arbitrary stops), and quality shortfalls that matter — each with a
+recommended action they can accept. Everything settleable is absorbed and logged. The product is
+the absorption **plus the few forceful pushes** that keep the work at its best — not a raw dump.

@@ -1,12 +1,17 @@
 # verifiability-lens — plugin notes
 
-Two pillars that work as a pair:
-- **Detection** — the `verifiability-lens` agent sorts work into A (verifiable) / B (unverifiable)
-  / U (can't-tell). Class is capability-relative; a U dressed as A (false-clean) is the failure it
-  catches.
+A strict, opinionated work-quality guardian. Two pillars:
+- **Detection — three checks, actively verified.** The `verifiability-lens` agent (tools: Read,
+  Grep, Glob, WebSearch, WebFetch, context7) runs: (1) **verifiability** A/B/U (verifies via
+  read/web/docs, not just labels; capability-relative; never let a U pass as A — the false-clean);
+  (2) **completeness** — was everything meant to be done done, or an arbitrary stop (presses to
+  continue); (3) **quality bar** — tested, requirements met, robust, best achievable; rejects
+  half-assed/missing-requirement/untested work.
 - **Delivery** — a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient
-  profile hands the user only the important, actionable, fully-contextualized decisions and
-  absorbs the rest. Hard rule: never a context-less decision; auto-resolutions always logged.
+  profile (incl. `stance`, default `strict`) hands the user only the important, actionable,
+  fully-contextualized pushes. **Strict judgment, disciplined surfacing** — high bar in what it
+  finds, only important+actionable in what it surfaces. Hard rule: never a context-less decision;
+  auto-resolutions always logged.
 
 ## Layout
 
@@ -57,6 +62,10 @@ written claims (default OFF — without it, only artifact-producing turns trigge
   last genuine user prompt), not just the last message. Turns end with a text-only summary, so
   last-message-only never saw the turn's tools → the hook silently never fired. Verified on a real
   transcript. 37/37 tests.
+- ✅ v0.3.0: guardian upgrade — agent gains web + docs tools (actively confirms/refutes, not just
+  flags); two new checks (completeness / no-arbitrary-stop; quality bar); strict `stance` dial.
+  Hook BLOCK_REASON passes `intended_scope` + drives the 3 checks + says continue-not-stop on an
+  arbitrary-stop flag. Trigger code unchanged (37/37 hook tests still pass).
 - later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
   surfacing protocol with the triage; the schema deepening.
 

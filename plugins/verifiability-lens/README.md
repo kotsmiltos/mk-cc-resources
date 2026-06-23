@@ -1,13 +1,22 @@
 # verifiability-lens
 
-An automatic helper that reads over Claude's shoulder. Every time work is planned, claimed, or
-produced, it sorts each piece into:
+A strict, opinionated work-quality guardian that reads over Claude's shoulder and pushes the work
+to the best achievable. Every time real work happens it runs **three checks** — and it **actively
+verifies** (it has web + docs + read tools, so it confirms or refutes claims, not just flags them):
 
-- **A — verifiable:** a real check exists (a test, the code path, a deterministic diff). Provable.
-- **B — unverifiable:** a guess — an opinion, a prediction, "looks right", a claim resting on
-  context nobody loaded. Where work quietly goes wrong and agents spin.
-- **U — can't tell yet:** you can't even say whether a check exists. Must resolve to A or B —
-  **never** allowed to pass as A (a U dressed as A is the false-clean failure).
+**1. Verifiability** — sorts each claim into:
+- **A — verifiable / verified:** a real check exists (a test, the code path, a web source) — and it
+  runs it where it can.
+- **B — unverifiable:** a genuine guess — opinion, prediction, "looks right", a claim resting on
+  context nobody loaded. Where work quietly goes wrong.
+- **U — can't tell yet:** can't even say whether a check exists. Must resolve to A or B — **never**
+  allowed to pass as A (a U dressed as A is the false-clean failure).
+
+**2. Completeness** — was everything that was *meant* to be done actually done? Stopped for a real
+reason = fine; just stopped half-done = an **arbitrary stop**, and it presses to continue + finish.
+
+**3. Quality bar** — tested? requirements met? robust? the best we can do? It rejects half-assed
+shortcuts, missing requirements, and untested critical paths — with the concrete push to fix each.
 
 Then it decides what's worth your time. It does **not** dump the classes on you. It triages:
 
@@ -32,7 +41,7 @@ tiers, `verified` flags); this names it once and acts on it.
 
 | piece | what it is |
 |-------|-----------|
-| `agents/verifiability-lens.md` | the read-only classifier + triager (the substance) |
+| `agents/verifiability-lens.md` | the guardian: 3 checks + active verification (read/web/docs) + triager (the substance) |
 | `references/rubric.md` | the canon: A/B/U definitions + the surfacing triage + recipient profile (cite, don't copy) |
 | `defaults/recipient-profile.yaml` | the dials — who it serves (default: time-poor, only-important, aggressive auto-resolve) |
 | `commands/verifiability.md` | `/verifiability [target]` — manual trigger |
@@ -64,11 +73,12 @@ in-session classification — the deliberate cost of catching the slack before y
 
 ## Status
 
-v0.2.3 ships the lens + manual trigger + rubric + profile + the automatic Stop hook (opt-in;
-global/project/env enable switch; work-trigger covering code/reads/web/subagents/MCP + opt-in
-prose checking; question and meta-loop hard-skips). Verified: 36/36 unit tests + process smokes
-(block → release → no-loop; global enable; project opt-out; work triggers fire; question /
-lens-surfacing / casual prose skip). Design doc: `design/verifiability-awareness.md`.
+v0.3.0 ships the guardian: three checks (verifiability A/B/U + completeness + quality bar) with
+active verification (web + docs + read), a strict stance (`stance` profile dial), the surfacing
+triage, the manual `/verifiability` trigger, and the automatic Stop hook (opt-in; global/project/env
+enable switch; whole-turn read; work-trigger covering code/reads/web/subagents/MCP; question +
+meta-loop hard-skips; fire-once guard; fail-open). Verified: 37/37 hook unit tests + process smokes
++ real-transcript test. Design doc: `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending
 essense-flow's librarian surfacing protocol with the triage; the schema deepening.

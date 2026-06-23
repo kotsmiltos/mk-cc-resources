@@ -13,10 +13,16 @@ target the most recent substantive work in this conversation (the latest plan, c
    brief containing:
    - `unit_type` — your best fit (`plan | claim | completion-claim | finding | freeform | …`).
    - `content` — the target.
+   - `intended_scope` — what the user asked for / this task set out to do (so it can judge
+     completeness — was it all done, or did we stop arbitrarily).
    - `context_refs` — any files the target touches (so the agent can substrate-verify).
    - `executor_capabilities` — what the downstream doer can run (note if shell/tests are available).
    - `recipient_profile` — load `plugins/verifiability-lens/defaults/recipient-profile.yaml` (or a
-     project override if one exists); pass its dials.
+     project override if one exists); pass its dials (including `stance`, default `strict`).
+
+   The agent runs three checks and actively verifies (it has web + docs + read tools): (1)
+   verifiability A/B/U, (2) completeness / no arbitrary stop, (3) quality bar — tested, requirements
+   met, best achievable.
 
 2. From the agent's return, show the user the **`rollup`**, not the raw class list:
    - the `headline`,

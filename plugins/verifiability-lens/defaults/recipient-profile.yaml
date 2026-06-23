@@ -11,6 +11,10 @@ context_appetite: low            # low | medium | high — low => bundle all nee
 escalation_floor: important      # minor | important | critical — minimum importance allowed to interrupt
 default_bias: aggressive         # conservative | balanced | aggressive — how readily to auto-resolve vs ask
 render: plain-bottom-up          # voice of surfaced text: plain language, bottom-up, recommended-default-first
+stance: strict                   # strict | advisory — strict: push work to the best achievable, reject half-assed /
+                                 #   missing-requirement / untested / arbitrary-stop work; advisory: lighter touch.
+                                 #   NOTE: stance sets how HARD the lens judges, NOT how much it surfaces — strict
+                                 #   judgment still passes through the disciplined surfacing (only important+actionable).
 
 # Operational rules derived from the dials (the lens/triage reads these):
 rules:
