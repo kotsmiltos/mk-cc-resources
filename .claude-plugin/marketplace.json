@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.18.0"
+    "version": "2.19.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
       "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize (post-architect) and /glossary (post-build) are optional DRY phases powered by the plugin-toolkit code-glossary engine; /glossary renders a functionality map (MAP.md) plus per-sprint duplication drift, /architect consults the map before deciding (reuse ledger in ARCH.md), /build dispatches carry existing-helper + neighbor context, and /review gains a glossary-fed dry-violation lens. Every phase-producing skill writes artifact + transitions state atomically. State is artifacts-authoritative: .pipeline/state.yaml is a derived cache that self-reconciles from disk (state-reconcile op; missing cache auto-rebuilds inside ops). Every agent self-report is re-validated against disk — drift is auditable, not silent. Producer agents follow the librarian protocol: what they cannot verify they research, what research cannot answer becomes a structured unknowns[] entry surfaced to the user at phase gates — never assumed. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state — never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
-      "version": "0.20.0"
+      "version": "0.21.0"
     },
     {
       "name": "essense-autopilot",
@@ -66,7 +66,7 @@
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, alert-sounds, and verifiability-lens carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.12.0"
+      "version": "2.13.0"
     }
   ]
 }

@@ -90,6 +90,12 @@ test_completion_contract:
       spec: tests/parser.test.js
 dependencies:
   - T-002
+exposes:
+  - 'parseLog(buffer) -> { records: Record[], errors: ParseError[] }'
+  - class LogReader — open(path), next() -> Record | null, close()
+consumes:
+  - 'storage.put(key, bytes) -> void   (provided by module: storage)'
+  - 'clock.now() -> epochMs            (provided by module: platform)'
 agency_level: guided
 agency_rationale: Parsing approach is flexible; output contract is fixed by FR-1.
 ```
@@ -107,7 +113,9 @@ Field rules:
   - `file_write_contract.scratch_space` (array; optional) — transient-write prefixes excluded from drift accounting. Entries: the sentinel "os.tmpdir()" (resolved by the runner at verify time) or an explicit absolute path prefix. Omit or [] when the task needs zero transient state. Exists because a test agent once destroyed shared fixtures via teardown writes its contract never covered — transient writes must be declared, everything else is drift.
 - `behavioral_pseudocode` (string; required, null allowed only when `agency_level: open`) — numbered procedural steps. null ONLY when agency_level is `open` (you genuinely want the build agent's judgment).
 - `test_completion_contract` (array; required) — acceptance criteria. check.type one of test | grep | file_exists | manual; check.spec is type-specific. Build honors the sprint test mode: must-pass (run + pass before return) or author-only (author tests, do not run).
-- `dependencies` (array; required) — cross-task or cross-module dependency refs (may be empty)
+- `dependencies` (array; required) — build-ORDERING refs only — task-ids that must complete before this one runs. NOT the interface contract (that is `consumes`). May be empty.
+- `exposes` (array; optional) — OPTIONAL but strongly recommended — the unit's public contract: the functions / types / endpoints and their shapes that callers may depend on. Everything NOT listed here is private and may change without notice. This is the decoupling boundary on the provider side: callers bind to this surface, never to internals. The `coupling` review lens checks that nothing outside this surface is depended on across a boundary.
+- `consumes` (array; optional) — OPTIONAL — the interfaces this unit depends on, each named by the CONTRACT it calls (the shape), not the concrete provider or its internals. Distinct from `dependencies` (build-ordering task-ids). Depend on the named shape and nothing past it; swapping a provider for another implementation of the same contract must not require editing this unit. The `coupling` review lens flags any cross-boundary reach-in not expressible as one of these contracts.
 - `agency_level` (string; required, one of `prescribed | guided | open`) — prescribed — pseudocode covers every requirement; use only when the implementation shape is non-negotiable. guided (default) — clear goal + key constraints; build agent designs within bounds. open — build agent designs freely.
 - `agency_rationale` (string; required, non-empty) — why this agency level fits this work
 <!-- AUTOGEN:task-spec-shape END -->

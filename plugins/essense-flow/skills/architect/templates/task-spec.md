@@ -12,5 +12,7 @@ behavioral_pseudocode: |
 {{behavioral_pseudocode}}
 test_completion_contract: {{test_completion_contract}}
 dependencies: {{dependencies}}
+exposes: {{exposes}}
+consumes: {{consumes}}
 agency_level: {{agency_level}}
 agency_rationale: "{{agency_rationale}}"

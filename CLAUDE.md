@@ -28,7 +28,8 @@ plugins/
       organize/             # Optional spec-level DRY pass (code-glossary engine, spec mode)
       build/                # Execute task specs in dependency-ordered waves
       glossary/             # Optional code-level DRY audit (code-glossary engine, code mode)
-      review/               # Adversarial QA — bug-finding + drift-finding
+      review/               # Adversarial QA — bug-finding + drift-finding + coupling-finding
+                            #   (the `coupling` lens blocks cross-boundary reach-ins)
       verify/               # Top-down spec compliance audit
       context/              # State plumbing — init, status, next-step
       heal/                 # Pipeline self-heal from any degraded state
@@ -37,7 +38,9 @@ plugins/
     references/             # transitions.yaml, phase-command-map.yaml, principles.md,
                             #   librarian.md (research-first + unknowns[] protocol),
                             #   code-conventions.md (how build agents write code — cited by
-                            #   task-agent + build + architect; craft, never contract),
+                            #   task-agent + build + architect; craft, never contract; leads with
+                            #   one rule: BUILD DECOUPLED — agents write blind, so units bind only
+                            #   to declared contracts. Enforced by the review `coupling` lens),
                             #   schemas/ (canonical artifact shapes: task-spec, completion-record,
                             #   register-item, unknown-entry — validators, templates, and agent-def
                             #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)

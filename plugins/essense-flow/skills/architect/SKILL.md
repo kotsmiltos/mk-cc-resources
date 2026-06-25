@@ -162,6 +162,8 @@ For every TOP-LEVEL design question implicit in spec + requirements: (1) arrive 
 
 You decide module-level boundaries here. **Internal-to-a-module decisions belong to that module's sub-architect, not to you** — more dispatches without finer-grained ownership is fragmentation, not decomposition.
 
+**Draw every boundary as a contract.** A boundary is only real if you can name the interface that crosses it — the shape one side exposes and the other consumes — without either side knowing the other's internals (the lead rule of `references/code-conventions.md`: build decoupled, because the agents that implement these units are blind to each other). For each seam, state the contract in the decisions/ARCH seam notes; sub-architects turn those into per-task `exposes`/`consumes` blocks. If two modules can only be described by how they reach into each other, the boundary is wrong — redraw it until a clean contract exists. A seam you cannot name a contract for is a coupling defect you are pushing downstream to review.
+
 Output: `Write` `decisions.yaml` populated with every closed top-level decision, plus an ARCH.md draft (module map + seams + decisions summary; body sections may be sparse pending sub-architect returns). If entering from `requirements-ready`, call `state-set-phase --value architecture` at the end of decide (the op enforces `.pipeline/requirements/REQ.md exists`).
 
 ### 2. Delegate (master spawns sub-architects in parallel)

@@ -1,5 +1,21 @@
 # Release notes — essense-flow
 
+## 0.21.0 — The one rule: build decoupled (enforced, not just stated)
+
+Build agents kept producing coupled code. The fix is not a better paragraph — in this pipeline a principle only binds when it's a **checked gate**. So decoupling becomes the primary, enforced coding principle across five layers, keystoned by a blocking review lens.
+
+The organizing rationale (stated identically everywhere it lands): **each unit is built by a separate agent, in parallel, blind to where it ends up, who calls it, or what it's used for. The only thing that survives that blindness is a contract.** So every unit exposes a contract, depends only on others' contracts, assumes nothing about its caller, and owns no shared mutable state.
+
+- **Layer 1 — doctrine.** `references/code-conventions.md` now leads with "**The one rule: build decoupled**" + the build-blind rationale; the former "Structure" bullets (acyclic deps, one-responsibility, centralized state, single-source) are reframed as explicit corollaries of it, not peers.
+- **Layer 2 — agent creed.** The task-agent's **first** substantive section is a "Prime directive: build decoupled" with the mechanical check: *trace every name you reach across a boundary; if a contract doesn't promise it, you coupled — pull it back.* The rest of the conventions are demoted to "downstream of" it.
+- **Layer 3 — contract-first specs (the one mechanically-tested layer).** Two OPTIONAL additive fields on the task-spec schema: **`exposes`** (the unit's public surface) and **`consumes`** (the interfaces it depends on, by contract — distinct from `dependencies`, which is build-ordering). Back-compat: specs without them still validate. Sub-architects must populate them ("design the contracts FIRST"); the master architect draws every boundary as a nameable contract. Schema is single-sourced → `npm run render-schemas` cascaded the new fields into the task-spec template + sub-architect + task-agent shape blocks; drift-tested.
+- **Layer 4 — neighbor-context reframed.** `/build`'s `NEIGHBORS IN THIS WAVE` block now shows a sibling's `exposes` **contract**, not its goal — neighbor-awareness that serves decoupling (integrate against the shape) instead of eroding it (couple to what it does).
+- **Layer 5 — keystone: the `coupling` review lens.** A new adversarial lens traces the real import/call/field-access edges against the `exposes`/`consumes` contracts and flags cross-boundary reach-ins, concrete-instead-of-contract deps, undeclared cross-unit deps, shared mutable state across units, and circular deps — each with `file_path:line_number` + verbatim quote. A confirmed reach-in is `critical` and **blocks the sprint at the existing deterministic gate**. Decoupling is now a gate, not advice. Dispatched whenever a sprint writes >1 unit.
+
+Regression: `node test/run-all.cjs` 54/54 (was 53; +1 new `test/task-spec-contract-fields.test.cjs`, 4 cases — back-compat + accept + type-reject + schema-declares-optional). Schema re-rendered (4 sites) + drift test green. Only self-test failure remains the pre-existing time-triggered `tests/ledger-compaction.test.js` (T-ENF-3), unrelated.
+
+Honest scope note: layers 1/2/4/5 are prompt content — their *efficacy* (does an agent actually decouple; does the lens actually catch a real reach-in) is only provable by a live build→review on a real multi-unit project, not by a unit test. Layer 3 (schema) is the only mechanically-verified layer. The wiring + internal consistency across all five layers was verified (the lens checks exactly what the schema declares and the neighbor block surfaces; no old content still treats decoupling as one-among-equals).
+
 ## 0.20.0 — Inter-phase plumbing: the state machine stops fighting clean handoffs
 
 Four fixes from a real-project field report (EMDE, a FastAPI/Next.js SaaS run through the pipeline at 0.19.0). All four are the same class: **phase, cursor, and the rich state cache are written by independent mechanisms that could legally disagree, with no clean cross-skill handoff to keep them in sync.** Each fix is verified by a new CLI end-to-end test (12 new assertions across 4 test files; `node test/run-all.cjs` 53/53).

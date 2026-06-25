@@ -31,7 +31,7 @@ Your brief is built from the template at `plugins/essense-flow/skills/review/tem
 - `decisions_path` — `.pipeline/architecture/decisions.yaml`.
 - `manifest_path` — `.pipeline/architecture/sprints/<n>/manifest.yaml`.
 - `sprint_report_path` — `.pipeline/build/sprints/<n>/SPRINT-REPORT.md`.
-- `lens_specific_instructions` — the lens's specific guidance (correctness lens reads task specs vs implementation; contract-compliance reads `file_write_contract` vs disk; hidden-state hunts globals/closures; failure-modes hunts edge errors; spec-drift verdicts each spec claim; functional-testing reads test files for what they actually verify).
+- `lens_specific_instructions` — the lens's specific guidance (correctness lens reads task specs vs implementation; contract-compliance reads `file_write_contract` vs disk; hidden-state hunts globals/closures; failure-modes hunts edge errors; spec-drift verdicts each spec claim; functional-testing reads test files for what they actually verify; coupling traces cross-boundary edges against the `exposes`/`consumes` contracts).
 - `min_quote_length` — minimum characters for a `verbatim_quote` to count as conclusive (configurable; default ~20).
 - `sentinel` — string master expects you to emit on the last line of your output.
 
@@ -81,6 +81,13 @@ The substituted text in your brief expands one of these patterns (the master pic
 - **`failure-modes`** — what happens at the edges? Unhandled errors, race conditions, missing input validation, swallowed exceptions.
 - **`spec-drift`** — does the implementation match the spec claim at the cited locator? For each spec claim (extracted by master in Job 1), verdict the implementation as `implemented | partial | missing | drift`.
 - **`functional-testing`** — read the tests for what they actually verify. Findings: tests that don't test the AC, tests that pass trivially (1+1=2), tests missing for must-pass criteria.
+- **`coupling`** — is each unit decoupled, or does it reach across a boundary into another unit's internals? This is the enforcement arm of the lead code convention ("build decoupled" — `references/code-conventions.md`). The units were written by separate, blind agents; the only legal cross-boundary dependency is a declared **contract** (`exposes` / `consumes` in the task specs). Trace the actual `import`/`require`/`call`/field-access edges in the implementation and flag, with a `file_path:line_number` + verbatim quote for each:
+  - **cross-boundary reach-in** — a unit imports or calls another module's *private* helper, internal class, or data field (anything not in that module's `exposes` block / documented public surface). The strongest signal: code that would break if the other unit changed something it never promised.
+  - **concrete-instead-of-contract dependency** — depends on a concrete implementation where its `consumes` block names (or should name) an interface/abstraction; a provider swap would force edits inside this unit.
+  - **undeclared dependency** — a real cross-unit dependency that appears in neither `dependencies` nor `consumes` — coupling that was never designed, discovered only in the code.
+  - **shared mutable state across units** — a global/singleton/module-level mutable two units both write, or one unit relying on a caller having pre-set state. (Overlaps `hidden-state`; file under `coupling` when the surprise is a *boundary* crossing, not just local mutability.)
+  - **circular dependency** — module A reaches into B and B into A (directly or transitively); the acyclic-layering convention is violated.
+  Severity guidance: a confirmed cross-boundary reach-in or circular dependency is normally `critical` (it blocks the sprint at the deterministic gate — that is the point; decoupling is a gate here, not advice). A concrete-instead-of-contract dependency with no declared interface to bind to yet is usually `major`. Do NOT flag two units that merely both touch the same file via their declared contracts, and do NOT flag intra-unit structure (that is `correctness`/`hidden-state`). Evidence rule is unchanged: no `file_path:line_number` + verbatim quote of the offending edge → not a finding.
 - **Adaptive lenses** — master may invent a lens for what the sprint touched (e.g. `concurrency` if the sprint added parallel code). Apply the same evidence discipline.
 
 ## Don't list

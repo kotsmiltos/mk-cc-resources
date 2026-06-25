@@ -1,6 +1,6 @@
 {
   "name": "essense-flow",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code with on-disk verification of every agent self-report. /organize and /glossary are optional DRY phases powered by the plugin-toolkit code-glossary engine; /glossary renders a functionality map (MAP.md) plus per-sprint duplication drift, /architect consults the map before deciding (reuse ledger in ARCH.md), /build dispatches carry existing-helper + neighbor context, and /review gains a glossary-fed dry-violation lens.",
   "author": {
     "name": "mkots"

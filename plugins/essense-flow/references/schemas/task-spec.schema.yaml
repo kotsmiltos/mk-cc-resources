@@ -148,7 +148,43 @@ fields:
     expected: 'array of strings (task-id refs)'
     example: ['T-002']
     placeholder: '{{dependencies}}'
-    doc: cross-task or cross-module dependency refs (may be empty)
+    doc: >
+      build-ORDERING refs only — task-ids that must complete before this one
+      runs. NOT the interface contract (that is `consumes`). May be empty.
+
+  exposes:
+    type: array
+    required: false
+    items: { type: string }
+    expected: 'array of strings naming the public surface this unit offers'
+    example:
+      - 'parseLog(buffer) -> { records: Record[], errors: ParseError[] }'
+      - 'class LogReader — open(path), next() -> Record | null, close()'
+    placeholder: '{{exposes}}'
+    doc: >
+      OPTIONAL but strongly recommended — the unit's public contract: the
+      functions / types / endpoints and their shapes that callers may depend on.
+      Everything NOT listed here is private and may change without notice. This
+      is the decoupling boundary on the provider side: callers bind to this
+      surface, never to internals. The `coupling` review lens checks that nothing
+      outside this surface is depended on across a boundary.
+
+  consumes:
+    type: array
+    required: false
+    items: { type: string }
+    expected: 'array of strings naming interfaces this unit depends on, by contract'
+    example:
+      - 'storage.put(key, bytes) -> void   (provided by module: storage)'
+      - 'clock.now() -> epochMs            (provided by module: platform)'
+    placeholder: '{{consumes}}'
+    doc: >
+      OPTIONAL — the interfaces this unit depends on, each named by the CONTRACT
+      it calls (the shape), not the concrete provider or its internals. Distinct
+      from `dependencies` (build-ordering task-ids). Depend on the named shape and
+      nothing past it; swapping a provider for another implementation of the same
+      contract must not require editing this unit. The `coupling` review lens
+      flags any cross-boundary reach-in not expressible as one of these contracts.
 
   agency_level:
     type: string
