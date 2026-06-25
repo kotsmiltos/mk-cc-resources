@@ -58,8 +58,8 @@ plugins/
   session-lifecycle/        # Session continuity + workflow improvement
     .claude-plugin/plugin.json
     skills/
-      handoff/              # Capture session state → .claude/handoff.md
-      resume/               # Restore context from handoff, validate state
+      handoff/              # Capture session state → .claude/handoffs/ (timestamped history + INDEX) + handoff.md alias
+      resume/               # Restore context from handoff.md alias, validate state, preserve history
       claude-md-sync/       # Propose CLAUDE.md updates for stale sections
       retro/                # Metrics-driven retrospective (gaps before strengths)
       meta-review/          # Diagnose session friction → multi-step chains + skill friction + coverage gaps
@@ -163,8 +163,8 @@ Five skills for cross-session continuity and workflow self-improvement.
 
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
-| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → `.claude/handoff.md`. Triggers `/claude-md-sync` if CLAUDE.md stale. |
-| `/resume` | Session start | Reads handoff, validates branch/pipeline state, reports discrepancies, suggests first action. Archives consumed handoffs. |
+| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → a permanent `.claude/handoffs/handoff-<ts>.md` + `INDEX.md` ledger (append-only history), with `.claude/handoff.md` as the latest-alias. Triggers `/claude-md-sync` if CLAUDE.md stale. |
+| `/resume` | Session start | Reads the `.claude/handoff.md` alias, validates branch/pipeline state, reports discrepancies, suggests first action. Marks consumed but **preserves** the `.claude/handoffs/` history (migrates a pre-1.2.0 single-file handoff into it). |
 | `/claude-md-sync` | After changes | Scans git diff, identifies stale CLAUDE.md sections, proposes edits for approval. Callable standalone or by handoff. |
 | `/retro` | After sprint/session | Metrics-driven retrospective. Gaps before strengths. Accepts `sprint-N`, `session`, or `all`. |
 | `/meta-review` | Periodically | Diagnose session friction — multi-step workflow chains, skill friction, plugin coverage gaps. Diagnostic only. |
@@ -219,4 +219,4 @@ When changing files that follow these patterns, CHECK the related files for cons
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
 - **Metadata convention** — pipeline template outputs include a blockquote metadata block as first content. Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. Format: `> **field_name:** value`
-- **Session artifacts** — handoff writes to `.claude/handoff.md`, retro writes to `.planning/retros/` or `.claude/retros/`
+- **Session artifacts** — handoff writes an append-only history: a permanent `.claude/handoffs/handoff-<ts>.md` per run + a newest-first `.claude/handoffs/INDEX.md` ledger, with `.claude/handoff.md` kept as the latest-alias `/resume` reads (resume preserves the history, never truncates). `@prompt` (thorough-mode) likewise saves each generated kickoff prompt to `.claude/prompts/` + `INDEX.md`. retro writes to `.planning/retros/` or `.claude/retros/`

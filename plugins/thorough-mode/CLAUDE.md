@@ -61,6 +61,7 @@ Produces a copy-paste prompt to start the NEXT session from a cold context:
 - Open decisions/blockers the next session must resolve
 - References durable artifacts (handoff.md, RELEASE-NOTES, task specs) instead of restating them
 - Carries forward working-style the work needs (e.g. `++`, `@verify`)
+- SAVES the generated prompt to an append-only `.claude/prompts/` history + `INDEX.md` ledger (not just shown once), so prompts accumulate for review — same history pattern session-lifecycle gives handoffs
 
 ### `@build` — Plan, Review, Build
 Plans a change, reviews the plan against the bar, then implements it:

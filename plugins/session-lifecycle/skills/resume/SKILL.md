@@ -1,6 +1,6 @@
 ---
 name: resume
-description: Resume from previous session handoff. Reads .claude/handoff.md, validates branch matches, checks for commits since handoff, compares pipeline phase, reports any state drift. Presents remaining work priority-ordered and recommends the single best first action. Archives consumed handoffs (keeps last 3). Use at session start.
+description: Resume from previous session handoff. Reads .claude/handoff.md (the latest-alias), validates branch matches, checks for commits since handoff, compares pipeline phase, reports any state drift. Presents remaining work priority-ordered and recommends the single best first action. Marks the handoff consumed without destroying history — the permanent copies + ledger in .claude/handoffs/ are never truncated (migrates an older single-file handoff into that history). Use at session start.
 disable-model-invocation: true
 ---
 
@@ -76,8 +76,13 @@ Based on remaining work priority + blockers + pipeline state:
 - If a pipeline exists, suggest running `/next` (essense-flow) for the recommended command and factor that in.
 - If blockers exist, suggest addressing the blocker first.
 
-## 5. Archive handoff
+## 5. Mark the handoff consumed (history is preserved — never deleted)
 
-After presenting, rename `.claude/handoff.md` to `.claude/handoff-<YYYY-MM-DDTHH-mm>.md` (full timestamp from frontmatter, colons replaced with `-` for filesystem safety) so it doesn't get re-consumed and same-day handoffs don't collide. Keep last 3 archived handoffs; delete older ones.
+`/handoff` now keeps the permanent copy in `.claude/handoffs/handoff-<ts>.md` and the ledger in `.claude/handoffs/INDEX.md`, so the full history already survives independently of `.claude/handoff.md`. After presenting:
+
+- **If `.claude/handoffs/INDEX.md` exists** (handoff written by the current format): the permanent copy is already on disk — just delete `.claude/handoff.md` (the latest-alias) so it isn't re-consumed next session. **Do NOT touch `.claude/handoffs/`** — that history is never truncated.
+- **Backward-compat — if `.claude/handoffs/` does NOT exist** (a handoff written by an older version): preserve it by renaming `.claude/handoff.md` to `.claude/handoffs/handoff-<YYYY-MM-DDTHH-mm-ssZ>.md` (full timestamp from frontmatter, colons → `-`) and seed `.claude/handoffs/INDEX.md` with its entry — migrating the old single-file handoff into the history rather than discarding it.
+
+Never delete entries from `.claude/handoffs/` — the ledger is the durable session track record.
 
 </instructions>

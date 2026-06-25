@@ -120,7 +120,8 @@ const MODIFIERS = [
 - List open decisions / blockers the next session must resolve (or that need the user).
 - Point to durable artifacts instead of restating them (handoff.md, RELEASE-NOTES, task specs) — reference, don't paste.
 - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
-- Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.`,
+- Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
+- THEN SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` — \`- \\\`<timestamp>\\\` · <one-line objective>  → prompts/prompt-<fs-ts>.md\` (create the file with a \`# Prompt index\` header if absent). Show the prompt AND confirm where it was saved. Never overwrite a prior prompt — this is an append-only history.`,
   },
   {
     name: "build",

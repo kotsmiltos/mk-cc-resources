@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.23.0"
+    "version": "2.24.0"
   },
   "plugins": [
     {
@@ -29,8 +29,8 @@
     {
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
-      "version": "1.6.0"
+      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @prompt also SAVES each generated kickoff prompt to an append-only .claude/prompts/ history + INDEX.md ledger (not just shown once). @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
+      "version": "1.7.0"
     },
     {
       "name": "project-note-tracker",
@@ -47,8 +47,8 @@
     {
       "name": "session-lifecycle",
       "source": "./plugins/session-lifecycle",
-      "description": "Session lifecycle tools — handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns.",
-      "version": "1.1.1"
+      "description": "Session lifecycle tools — handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns. Handoffs are an append-only history — each /handoff writes a permanent timestamped file + INDEX.md ledger under .claude/handoffs/ (latest mirrored to .claude/handoff.md for /resume); /resume preserves the history instead of truncating it.",
+      "version": "1.2.0"
     },
     {
       "name": "plugin-toolkit",
@@ -66,7 +66,7 @@
       "name": "mk-cc-all",
       "source": "./",
       "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, alert-sounds, and verifiability-lens carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.17.0"
+      "version": "2.18.0"
     }
   ]
 }

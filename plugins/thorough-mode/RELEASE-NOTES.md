@@ -1,5 +1,12 @@
 # Release notes — thorough-mode
 
+## 1.7.0 — `@prompt` now saves the prompt it generates (append-only history)
+
+`@prompt` produced a great kickoff prompt and then it vanished into the transcript — shown once, never kept. Now it accumulates, so you can review past prompts and improve the pattern from real examples.
+
+- **`@prompt` saves each generated prompt** to a permanent `.claude/prompts/prompt-<ts>.md` and PREPENDS a newest-first line to `.claude/prompts/INDEX.md` (created with a `# Prompt index` header if absent), then confirms where it saved. Never overwrites a prior prompt — an append-only history, the same pattern session-lifecycle 1.2.0 gives handoffs.
+- Purely additive to the existing `@prompt` injection (same prompt content + format); the only change is it now also persists + indexes. Hook syntax verified; `@prompt` still triggers and the injection now carries the save step.
+
 ## 1.6.0 — Two new modifiers: `@prompt` and `@build`
 
 **`@prompt` — next-session kickoff prompt.** Injects instructions to produce a **copy-paste prompt that kicks off the next session** — output as one fenced code block, assuming a fresh context with no memory of the current one: objective up top, minimal cold-start context (repo/branch, key paths, current state, done/remaining), concrete first action + its verifiable check, open decisions/blockers, references to durable artifacts (handoff.md, RELEASE-NOTES, task specs) rather than restating them, and any working-style to carry forward (`++`, `@verify`).

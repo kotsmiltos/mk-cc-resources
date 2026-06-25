@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Generate session handoff document — what was done (with file/commit refs), what remains (priority-ordered), critical context (decisions, gotchas, rejected approaches), blockers. Saves to .claude/handoff.md. Triggers /claude-md-sync if more than 10 files changed or impact-map sections touched. Use when ending a session, pausing mid-task, or switching projects.
+description: Generate session handoff document — what was done (with file/commit refs), what remains (priority-ordered), critical context (decisions, gotchas, rejected approaches), blockers. Saves a NEW timestamped handoff to .claude/handoffs/ each time (history is never overwritten), updates the .claude/handoffs/INDEX.md ledger, and refreshes .claude/handoff.md as the latest-alias /resume reads. Triggers /claude-md-sync if more than 10 files changed or impact-map sections touched. Use when ending a session, pausing mid-task, or switching projects.
 disable-model-invocation: true
 argument-hint: "[--sync] [optional notes to include in handoff]"
 ---
@@ -45,7 +45,12 @@ If the user confirms (or passed `--sync` in arguments), invoke the `claude-md-sy
 
 ## 3. Generate handoff document
 
-Write `.claude/handoff.md` with this exact structure:
+Handoffs are an append-only HISTORY — never overwrite a prior one. Compute a filesystem-safe stamp `<fs-ts>` from the `timestamp` value (ISO 8601 with `:` replaced by `-`, e.g. `2026-06-25T14-32-09Z`). Then write the document to BOTH:
+
+1. `.claude/handoffs/handoff-<fs-ts>.md` — the **permanent** copy (one per handoff; never overwritten).
+2. `.claude/handoff.md` — the **latest alias** (`/resume` reads this; same content as the permanent copy).
+
+Use this exact structure for both:
 
 ```markdown
 ---
@@ -75,8 +80,20 @@ pipeline_phase: <phase or "none">
 <User-provided notes from $ARGUMENTS, or "None">
 ```
 
-## 4. Confirm
+## 4. Update the handoff index
 
-Report: saved `.claude/handoff.md`. State the verifiable check: "handoff contains N accomplishments, M remaining items, branch is X."
+Maintain `.claude/handoffs/INDEX.md` — the newest-first ledger of every handoff. PREPEND one line for this handoff under the header (never rewrite existing lines):
+
+```markdown
+# Handoff index
+
+- `<timestamp>` · `<branch>` · <one-line summary: the top remaining item, or the session's headline>  → `handoffs/handoff-<fs-ts>.md`
+```
+
+If the file does not exist, create it with the header + this first line. If it exists, insert the new line directly under the `# Handoff index` header so the most recent is first. The index is the durable track record — it is never truncated.
+
+## 5. Confirm
+
+Report: saved `.claude/handoffs/handoff-<fs-ts>.md` (permanent) + refreshed `.claude/handoff.md` (latest) + indexed in `.claude/handoffs/INDEX.md`. State the verifiable check: "handoff contains N accomplishments, M remaining items, branch is X; index now lists K handoffs."
 
 </instructions>

@@ -1,5 +1,13 @@
 # Release notes — session-lifecycle
 
+## 1.2.0 — Handoffs are an append-only history (no more overwrite)
+
+Handoffs were being lost: `/handoff` overwrote a single `.claude/handoff.md` every run, and `/resume` archived only the last 3 (deleting older ones). You couldn't look back across a project's handoffs. Now they accumulate.
+
+- **`/handoff` writes a NEW permanent file each time** — `.claude/handoffs/handoff-<ts>.md` (filesystem-safe timestamp) — and PREPENDS a newest-first line to `.claude/handoffs/INDEX.md` (the durable ledger, never truncated). It still refreshes `.claude/handoff.md` as the **latest-alias**, so nothing downstream breaks.
+- **`/resume` preserves history.** It reads `.claude/handoff.md` (unchanged), and instead of the old keep-last-3-delete-older archive, it just marks the latest consumed — the permanent copies + ledger in `.claude/handoffs/` are never deleted. A pre-1.2.0 single-file handoff is **migrated** into the history on first resume rather than discarded.
+- **Fully backward-compatible / no backtrack.** `.claude/handoff.md` stays the canonical latest pointer (resume's contract unchanged); everything else is additive. Existing sessions behave identically; you simply gain the permanent indexed history.
+
 ## 1.1.1 — Portability + dead-field cleanup
 
 **meta-review made portable and audience-neutral.** Injected plugin listing no longer hardcodes a machine-specific absolute path (username leak) — now resolves the plugins root via `${CLAUDE_PLUGIN_ROOT}/../`. Repo-coupling removed: skill discovery uses the available-skills list already in context (plus each plugin's SKILL.md under the plugins root for deeper reading) instead of assuming cwd = mk-cc-resources and reading marketplace.json; "mk-cc-resources plugins" reframed as "installed plugins"; fix locations phrased as "in the plugin's source repository (for marketplace authors)". Memory path described generically (per-project memory directory under `~/.claude/projects/`, munged project path). Stale thorough-mode pointer fixed — its HINTS table lives in `plugins/thorough-mode/hooks/thorough-mode.js` (hooks-only plugin now).

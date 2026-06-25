@@ -1,7 +1,7 @@
 {
   "name": "thorough-mode",
-  "version": "1.6.0",
-  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
+  "version": "1.7.0",
+  "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. @prompt now also SAVES each generated kickoff prompt to an append-only .claude/prompts/ history + INDEX.md ledger (not just shown once), so prompts accumulate for review. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
   "author": {
     "name": "kotsmiltos"
   }
