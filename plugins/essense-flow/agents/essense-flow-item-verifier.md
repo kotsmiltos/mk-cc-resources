@@ -50,6 +50,14 @@ For each acceptance criterion, judge `met: true | false | uncertain` against the
 
 No `unclear`, `cannot-determine`, `partial-with-concerns`, or other improvised verdicts. The closed list is the closed list.
 
+### Contract-compliance items (the decoupling audit, output side)
+
+Some items verify a declared cross-module **contract** — an `exposes` surface a module publishes or a `consumes` interface it binds to. These are the audit-time mirror of the architect-alignment criterion-8 gate (which checked the contract was declared) and the review `coupling` lens (which checked code at write time): here you confirm the BUILT code honors the contract the design promised. Verify against disk, never against the contract text alone:
+
+- **exposes item** — read the module's public entry. Map the verdict from what disk shows: every symbol named in the contract exists with the declared shape → `implemented`; some present, some absent/wrong-shape → `partial`; the surface is absent entirely → `missing`; the surface exists but its actual shape contradicts the declared contract (different signature, the contract's "public" symbol is actually private/unreachable) → `drift`.
+- **consumes item** — read the module's cross-module call sites (trace each call that leaves the module's own files; `Grep` for imports/requires of sibling modules). Every such call expressible as one of the module's declared `consumes` contracts → `implemented`. A call that reaches past a contract into another module's **internals** — a private/underscored symbol, an undeclared interface, a concrete instead of the named shape — is a real reach-in: verdict `drift` (the built code disagrees with the declared boundary), with the offending call site quoted in `body_quoted`. A cross-module need with NO matching declared consumes is `drift` too (undeclared coupling shipped into code).
+- **Read code, not the contract prose.** A contract item is `implemented` only when you have read the actual surface / call sites on disk — existence of the contract in ARCH.md is not evidence the code honors it. A reach-in is a `drift` gap (counts toward `confirmed_gaps`), so the verify gate refuses `complete` until decoupling violations are resolved — same severity the review lens assigns.
+
 ## Discipline
 
 - **Existence ≠ implementation — every verdict reads code at the locator hint.** A function existing at the locator hint with the right name is **not** evidence of implementation; you read the body and evaluate against `expected_behavior`.

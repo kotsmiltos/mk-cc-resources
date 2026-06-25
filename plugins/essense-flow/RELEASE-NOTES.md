@@ -1,5 +1,15 @@
 # Release notes — essense-flow
 
+## 0.23.0 — Decoupling closes the loop: contract-compliance at verify (audit-time gate)
+
+0.21.0 gated coupling at code-write time; 0.22.0 added the design-time gate (architect-alignment criterion 8). This closes the loop at the far end: /verify now audits that the BUILT code honors the contracts the design promised. Design declared the contract → build wrote code → verify confirms reality matches.
+
+- **Contract-compliance is now an extracted item class** (`agents/essense-flow-extractor.md`). The extractor emits one verifiable item per declared cross-module contract — each `exposes` surface and each `consumes` interface — read at **signature fidelity** from the project's task specs (`.pipeline/architecture/sprints/*/tasks/*.yaml`, the concrete promise the build was held to) and corroborated against ARCH.md's seam table (the coarser cross-module reference; a seam no task spec elaborated is itself an undeclared-seam item), `source: arch`. No new schema field or `source` value: contracts are design decisions, extracted like any other.
+- **The item-verifier audits each contract against disk** (`agents/essense-flow-item-verifier.md`). An `exposes` item: the declared surface must exist in the built code with the declared shape (present+matches → `implemented`; absent → `missing`; shape contradicts the contract → `drift`). A `consumes` item: every cross-module call must be expressible as a declared consume — a reach into another module's internals (private symbol, undeclared interface, concrete-instead-of-contract), or an undeclared cross-module need, verdicts as `drift`. Read code, never the contract prose — existence of the contract in ARCH.md is not evidence the code honors it.
+- **Reach-ins count toward `confirmed_gaps`**, so the deterministic `verifying → complete` gate refuses to ship over an unresolved decoupling violation — same severity the review `coupling` lens assigns at code time.
+
+The decoupling principle now binds at all three points it can: **design** (architect-alignment criterion 8) → **code** (review `coupling` lens) → **audit** (verify contract-compliance), with the engine `runner coupling` (plugin-toolkit 2.4.0) computing the same facts deterministically on built code. 54 cjs + description/brief consistency tests green; verify's cursor-step anchors + frontmatter untouched (no CLI/schema change).
+
 ## 0.22.0 — Decoupling gets its design-time gate (architect-alignment criterion 8)
 
 0.21.0 made "build decoupled" a checked gate at code-write time (the review `coupling` lens). But the cheapest place to kill coupling is BEFORE a line is written — at architecture. This adds the design-time face: a new criterion in the architect-alignment lens that gates every sub-architect return's `exposes`/`consumes` contracts before the specs are packed for /build.

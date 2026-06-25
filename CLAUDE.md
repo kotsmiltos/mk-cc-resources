@@ -42,7 +42,9 @@ plugins/
                             #   one rule: BUILD DECOUPLED — agents write blind, so units bind only
                             #   to declared contracts. Enforced at design time by the
                             #   architect-alignment lens (criterion 8 — exposes/consumes contract
-                            #   integrity) and at code time by the review `coupling` lens),
+                            #   integrity), at code time by the review `coupling` lens, and at audit
+                            #   time by /verify's contract-compliance items (built surface honors
+                            #   the declared exposes/consumes; reach-ins verdict as drift)),
                             #   schemas/ (canonical artifact shapes: task-spec, completion-record,
                             #   register-item, unknown-entry — validators, templates, and agent-def
                             #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)

@@ -91,6 +91,8 @@ acceptance_criteria:
   - "<testable check>"
 ```
 
+Declared cross-module **contracts** are extracted as their own items: one per `exposes` surface a module publishes and per `consumes` interface it binds to. The extractor reads the signature-level shapes from the project's task specs (`.pipeline/architecture/sprints/*/tasks/*.yaml` — the concrete promise the build was held to) and corroborates against ARCH.md's seam table (the coarser cross-module reference; a seam no task spec elaborated is itself an undeclared-seam item). This is the output side of the decoupling audit — the build is held to the contract the design promised at signature fidelity, closing the loop the architect-alignment criterion-8 gate opened. The per-item verifier confirms the built surface matches a declared `exposes` shape, and that the module reaches into no sibling's internals beyond its declared `consumes` (a reach-in verdicts as `drift` → counts toward `confirmed_gaps`).
+
 Run as a parallel agent — extraction is mechanical and benefits from a fresh eye. Quorum: `all-required`.
 
 ### Job 2 — Verify
