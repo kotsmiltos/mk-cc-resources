@@ -90,6 +90,19 @@ what the spec promised. Closes the loop at audit time.
 Targets 4 (/organize boundary smell), 5 (/dry-refactor decouple face),
 6 (/skill-heal single-responsibility) revisited once the engine arc is proven.
 
+## Candidate (logged, not scheduled) — pack-time deterministic coupling check
+
+Target 2 made the design-time gate SEMANTIC (the per-return `arch-alignment-check`
+op cannot resolve `consumes`→`exposes` because a consumed module's `exposes`
+lives in a SIBLING sub-architect return). But at PACK time the master holds ALL
+synthesized returns — the full exposes/consumes corpus exists. A deterministic
+`spec-coupling-check` over the packed task specs could then check, with no false
+positives: every `consumes` resolves to some spec's `exposes`; no cross-spec
+`consumes`→internal; no cycle in the spec-level consumes graph. This is the
+design-time analog of Target 1's engine (`runner coupling`), corpus-complete and
+binary. Deferred — Target 2's semantic gate covers the judgment; this would add
+the deterministic backstop. Surfaced by the verifiability-lens over Target 2.
+
 ## Ship cadence
 
 Per-target minor bump via the manual cascade (plugin.json + package.json +
