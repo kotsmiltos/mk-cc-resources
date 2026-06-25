@@ -105,6 +105,13 @@ def _first_segments(path: str, depth: int) -> str:
     return "/".join(segments[: min(depth, len(segments) - 1)])
 
 
+def module_for_path(path: str, depth: int = DEFAULT_GROUP_DEPTH) -> str:
+    """Public: the module group key for ONE file path — the same rule the map
+    uses to bucket entries. Shared with the coupling stage so 'module' means the
+    identical thing in both (no drift between the map graph and the gate)."""
+    return _first_segments(path, depth)
+
+
 def _module_of(files: frozenset[str], depth: int) -> str:
     """Mode of the per-file group keys; sorted-first breaks ties so the
     grouping is deterministic across runs."""

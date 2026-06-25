@@ -1,5 +1,14 @@
 # Release notes — plugin-toolkit
 
+## 1.6.0 — code-glossary 2.4.0: the decoupling enforcer (`runner coupling`)
+
+Propagates essense-flow's "build decoupled" principle (0.21.0) into the shared engine — Target 1 of the decoupling propagation. The engine already measures DUPLICATION to enforce DRY; this measures COUPLING to enforce DECOUPLED, the same arc. One new deterministic subcommand, zero schema changes; the module is itself decoupled (pure, no engine-stage imports, reusable on any call graph).
+
+- **`runner coupling --records <records.yaml> --out COUPLING.yaml`** — reads the Stage-1 call graph and emits threshold-free facts: per-module afferent/efferent **counts** (measurements, reported never gated); **cycles** (module-graph SCCs >1 member — a dependency cycle exists or it does not); **reach-ins** (a cross-module call into a callee that is internal by the language's own naming convention — Python `_name`, dunders excluded, languages without an unambiguous private marker never flag). Cycles + reach-ins are the gate-worthy binary violations; `--fail-on-violation` exits 1 (CI gate), default report-only exits 0. Each violation is named `file:function` so a reviewer (or the essense-flow review `coupling` lens) substrate-verifies the cited site instead of re-hunting it.
+- **Scope-aware resolution is what makes the gate trustworthy** — a call binds to a same-module definition when one exists; it resolves cross-module ONLY when no local match. Without it, a private helper name duplicated across modules (two `_jaccard`s) fabricates phantom cross-module edges and phantom cycles. Verified on the engine itself: the naive name-resolver reported 5 reach-ins (4 false — `_jaccard`/`_build_parser` collisions, confirmed by reading source); scoped resolution leaves exactly 1 real reach-in (`block_scanner._build_block` → `signals.structural._serialize_shape`, a genuine private cross-module import at `indexer/block_scanner.py:48`).
+- **No arbitrary numbers** — every gate is a binary structural fact (cycle present? reach-in present?), never a magic threshold. Counts are surfaced but never gate. 25 new pure unit tests on hand-built graphs (591 total); the coupling module needs no engine run to test — it practices the decoupling it enforces.
+- Wired into the `/code-glossary` SKILL run (emits `COUPLING.yaml` alongside MAP.md). Engine consumers (essense-flow /architect design-time gate, /review coupling lens fed pre-computed evidence, /verify contract-compliance) land in following targets.
+
 ## 1.5.1 — code-glossary 2.3.1: indexer sees CommonJS/ESM source
 
 Two verified indexer-coverage gaps from a live run on essense-flow (engine 2.3.1, 566 tests):

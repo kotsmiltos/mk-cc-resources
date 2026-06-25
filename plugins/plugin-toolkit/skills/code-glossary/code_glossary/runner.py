@@ -55,6 +55,7 @@ from code_glossary.map import (
     DEFAULT_GROUP_DEPTH as DEFAULT_MAP_GROUP_DEPTH,
     DEFAULT_MIN_INSTANCES as DEFAULT_MAP_MIN_INSTANCES,
     MAP_NODE_BUDGET,
+    module_for_path,
 )
 from code_glossary.indexer.orchestrator import index_directory_with_report
 from code_glossary.indexer.spec_parser import index_sprint_specs
@@ -280,6 +281,28 @@ def _build_parser() -> argparse.ArgumentParser:
         help="index-only output (huge repos / pure machine consumption)",
     )
     p_map.set_defaults(func=_cmd_map)
+
+    p_coupling = sub.add_parser(
+        "coupling",
+        help="decoupling enforcer: emit COUPLING.yaml (module graph + cycles + "
+        "reach-ins) from a Stage-1 records.yaml",
+    )
+    p_coupling.add_argument("--records", required=True, help="records.yaml path (Stage 1 output)")
+    p_coupling.add_argument("--out", required=True, help="COUPLING.yaml output path")
+    p_coupling.add_argument(
+        "--group-depth",
+        type=int,
+        default=DEFAULT_MAP_GROUP_DEPTH,
+        help="leading path segments forming a module group "
+        f"(default {DEFAULT_MAP_GROUP_DEPTH}; 2 -> 'src/api'); same rule as `map`",
+    )
+    p_coupling.add_argument(
+        "--fail-on-violation",
+        action="store_true",
+        help="exit 1 when any binary decoupling violation (cycle or reach-in) is "
+        "found — the CI gate (report-only by default, exit 0)",
+    )
+    p_coupling.set_defaults(func=_cmd_coupling)
 
     return parser
 
@@ -725,6 +748,96 @@ def _cmd_map(args: argparse.Namespace) -> int:
     print(f"edges: {len(model.edges)}")
     print(f"node_budget: {model.node_budget}")
     print(f"overflowed: {str(model.overflowed).lower()}")
+    return EXIT_OK
+
+
+def _cmd_coupling(args: argparse.Namespace) -> int:
+    import yaml as _yaml
+
+    from code_glossary.coupling import (
+        build_coupling_model,
+        build_name_index,
+        is_internal_name,
+        resolve_scoped_edges,
+    )
+
+    path = Path(args.records)
+    if not path.is_file():
+        print(f"error: --records not found: {path}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+    records = io_yaml.load_records(path)
+    if not records:
+        print(f"error: zero records in {path}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+
+    module_of = {r.id: module_for_path(r.location.file, args.group_depth) for r in records}
+
+    # Scope-aware edge resolution: a call binds locally when its module defines
+    # the name, so a private helper name shared across modules does NOT fabricate
+    # a phantom cross-module edge. (The flat abstraction-stage resolver is too
+    # loose for a gate — it over-emits cross-module edges on name collisions.)
+    name_index = build_name_index(
+        [(r.id, module_of[r.id], r.location.function or "") for r in records]
+    )
+    call_sites = [(r.id, module_of[r.id], r.notable_calls) for r in records]
+    edges = resolve_scoped_edges(call_sites, name_index)
+
+    private_of = {
+        r.id: is_internal_name(r.location.function or "", r.language) for r in records
+    }
+
+    model = build_coupling_model(edges, module_of, private_of)
+
+    # record id -> "file:func" so cycles/reach-ins are substrate-verifiable by
+    # a human or the review lens without re-resolving ids.
+    where = {r.id: f"{r.location.file}:{r.location.function or '?'}" for r in records}
+
+    payload = {
+        "schema_version": 1,
+        "generator": "code-glossary-coupling",
+        "metadata": {
+            "records": len(records),
+            "modules": len(model.modules),
+            "group_depth": args.group_depth,
+        },
+        "summary": {
+            "has_violations": model.has_violations,
+            "cycles": len(model.cycles),
+            "reach_ins": len(model.reach_ins),
+            "module_edges": len(model.module_edges),
+        },
+        "modules": [
+            {"name": m, "afferent": model.afferent.get(m, 0), "efferent": model.efferent.get(m, 0)}
+            for m in model.modules
+        ],
+        "module_edges": [[src, dst] for src, dst in model.module_edges],
+        "cycles": [list(cycle) for cycle in model.cycles],
+        "reach_ins": [
+            {
+                "caller": where.get(r.caller_id, r.caller_id),
+                "callee": where.get(r.callee_id, r.callee_id),
+                "caller_module": r.caller_module,
+                "callee_module": r.callee_module,
+            }
+            for r in model.reach_ins
+        ],
+    }
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_yaml.safe_dump(payload, sort_keys=False, allow_unicode=True, width=4096))
+
+    print(f"coupling_yaml: {out_path}")
+    print(f"records: {len(records)}")
+    print(f"modules: {len(model.modules)}")
+    print(f"module_edges: {len(model.module_edges)}")
+    print(f"cycles: {len(model.cycles)}")
+    print(f"reach_ins: {len(model.reach_ins)}")
+    print(f"has_violations: {str(model.has_violations).lower()}")
+
+    if args.fail_on_violation and model.has_violations:
+        return EXIT_DRIFT_FOUND
     return EXIT_OK
 
 

@@ -154,6 +154,20 @@ runner map --glossary <target>/glossary/GLOSSARY.yaml --out <target>/glossary/MA
 
 MAP.md = mermaid graph (subgraph per module; duplication families ×N, composites as hexagons with `composed_of` arrows, cross-module edges dashed) + a lossless machine index (fenced yaml, sliceable per module) + collapsed singles list. This is the artifact downstream consumers (essense-flow /architect + /build, or any human) consult BEFORE designing or building — the map of what already exists. Flags: `--group-depth` (module granularity), `--min-instances`, `--include-singles`, `--max-nodes`, `--per-module-graphs`, `--no-graph`. The graph is the lossy human view; the machine index always carries every entry.
 
+### Coupling (the decoupling enforcer)
+
+```
+runner coupling --records <work>/records.yaml --out <target>/glossary/COUPLING.yaml
+```
+
+Measures COUPLING to enforce DECOUPLED (the same arc the glossary uses to enforce DRY by measuring duplication). Reads the Stage-1 records (call graph), resolves each call with **lexical scoping** (a call binds to a same-module definition when one exists, so a private helper name shared across modules never fabricates a phantom cross-module edge), then emits deterministic, **threshold-free** facts:
+
+- per-module afferent/efferent **counts** — measurements, *reported, never gated*;
+- **cycles** — module-graph SCCs with >1 member (a dependency cycle exists, or it does not — a binary fact);
+- **reach-ins** — a cross-module call into a callee that is internal by the language's own naming convention (Python `_name`; dunders excluded; languages without an unambiguous private marker never flag).
+
+Cycles and reach-ins are the gate-worthy violations. Default exit 0 (report-only); `--fail-on-violation` makes any cycle or reach-in exit 1 (the CI gate). `--group-depth` sets module granularity (the same rule `map` uses — a coarse root package that lumps a shared types module with the CLI entrypoint will read as a cycle; deepen the grouping to separate them). COUPLING.yaml names each violation as `file:function` so a reviewer (or the essense-flow review `coupling` lens) can substrate-verify the cited site instead of re-hunting it.
+
 ## 10. Report
 
 ```
@@ -175,6 +189,7 @@ Outputs:
   <target>/glossary/GLOSSARY.yaml   (frozen schema v1 — /dry-refactor input)
   <target>/glossary/GLOSSARY.md     (human summary, sorted by score)
   <target>/glossary/MAP.md          (functionality map — consult before designing/building)
+  <target>/glossary/COUPLING.yaml   (decoupling facts — cycles + reach-ins; gate via --fail-on-violation)
   <target>/glossary/.work/          (stage artifacts, kept for inspection)
 ```
 
