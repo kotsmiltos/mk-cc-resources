@@ -1,5 +1,17 @@
 # Release notes — essense-flow
 
+## 0.24.0 — Open-for-extension: architect-alignment criterion 9 (default-closed)
+
+The toolkit's job is to build things whose feature set keeps growing (open-ended sims — ant castes, threat types, resource types, room types added forever). Decoupling (criterion 8) makes units bind only to contracts; this adds the next design-time question: when the domain GROWS, can you add a variant WITHOUT editing the dispatcher?
+
+**Criterion 9 — open-for-extension along declared growth axes** (in `agents/essense-flow-architect-alignment-lens.md`). A behavior-selecting dispatch (`switch`/`match`/`instanceof`-chain/enum if-ladder) over a **declared growth axis**, with no extension seam (a new variant must be added by creating a new unit that binds to a contract, not by editing the dispatcher) → `misaligned-by-criterion-9`. Where criterion 8 checks a seam's contract is clean, criterion 9 checks a seam **exists** where the domain grows.
+
+**Grounded in Martin's Open/Closed Principle, and deliberately bounded to never false-flag:**
+- **Default-closed.** A `growth_evidence` quote from SPEC/REQ is a PRECONDITION for any finding. No declared/intrinsic growth signal for the axis → NO finding, even if a closed switch is present. Closure is *strategic* (Martin) — you open only the axes the spec declares probable; forcing polymorphism on a stable axis is the over-engineering error.
+- Explicitly **passes** bounded domain constants (days-of-week, RGB, compass, suits, fixed protocol codes), deliberately-sealed exhaustive unions (Rust `enum`+`match`, Kotlin `sealed`, TS discriminated-union + `never`), and data-mapping switches.
+
+**No backtrack — fully backward-compatible.** Additive prose in the existing alignment lens (no new agent — folds into the criterion-8 dispatch already made per sub-arch return; near-zero added cost). Default-closed means **every existing/closed project behaves identically** — criterion 9 simply never fires without a declared growth signal. The master consumes the lens by `overall_verdict` + `misaligned-by-criterion-N` (count-agnostic); no downstream consumer or test pins the criteria count. 54 cjs + description/brief consistency tests green; the CLI op's six deterministic criteria untouched.
+
 ## 0.23.0 — Decoupling closes the loop: contract-compliance at verify (audit-time gate)
 
 0.21.0 gated coupling at code-write time; 0.22.0 added the design-time gate (architect-alignment criterion 8). This closes the loop at the far end: /verify now audits that the BUILT code honors the contracts the design promised. Design declared the contract → build wrote code → verify confirms reality matches.
