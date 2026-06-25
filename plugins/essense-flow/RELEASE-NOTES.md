@@ -1,5 +1,20 @@
 # Release notes — essense-flow
 
+## 0.22.0 — Decoupling gets its design-time gate (architect-alignment criterion 8)
+
+0.21.0 made "build decoupled" a checked gate at code-write time (the review `coupling` lens). But the cheapest place to kill coupling is BEFORE a line is written — at architecture. This adds the design-time face: a new criterion in the architect-alignment lens that gates every sub-architect return's `exposes`/`consumes` contracts before the specs are packed for /build.
+
+**Criterion 8 — exposes/consumes contract integrity** (in `agents/essense-flow-architect-alignment-lens.md`, dispatched per sub-arch return at architect step 3.5). Four binary sub-checks, no thresholds:
+
+- **8a — consumes names a contract, not an internal.** A `consumes` that reaches past a contract into a provider's internals (private symbol, file path, class field, shared global) is a design-time reach-in.
+- **8b — pseudocode coupling is declared.** Every cross-module call in a task spec's `behavioral_pseudocode` must be covered by a declared `consumes`. The design-time mirror of the review `coupling` lens — an undeclared cross-module reach is undeclared coupling.
+- **8c — exposes is a real surface.** Each `exposes` entry must name a concrete shape callers can bind to, not a vague capability ("the parser stuff"). A vague surface cannot be a decoupling boundary.
+- **8d — no undeclared seam.** A spec that depends on another module but declares no matching `consumes` is pushing a coupling defect downstream (the architect-time form of SKILL.md's "a seam you cannot name a contract for is a coupling defect").
+
+**Why semantic-only, no deterministic CLI counterpart** (like criterion 7): `arch-alignment-check` parses ONE sub-architect return = one module, but a consumed module's `exposes` lives in a SIBLING return — so a deterministic provider→exposes resolution at that scope would false-flag every legitimate cross-module consume (substrate-verified against the op at `bin/essense-flow-tools.cjs:4926`). The lens has the `{{module_seam_table}}` (master-authored cross-module contracts) in its brief, so it resolves contracts semantically where the per-return op cannot. The six deterministic criteria the CLI op checks are unchanged.
+
+The decoupling principle now binds at all three points: **design** (architect-alignment criterion 8) → **code** (review `coupling` lens) → and the engine `runner coupling` (plugin-toolkit 2.4.0) computes it on built code. 54 cjs + description/brief consistency tests green; the CLI op's deterministic criteria untouched.
+
 ## 0.21.0 — The one rule: build decoupled (enforced, not just stated)
 
 Build agents kept producing coupled code. The fix is not a better paragraph — in this pipeline a principle only binds when it's a **checked gate**. So decoupling becomes the primary, enforced coding principle across five layers, keystoned by a blocking review lens.

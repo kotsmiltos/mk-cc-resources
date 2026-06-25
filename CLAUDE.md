@@ -40,7 +40,9 @@ plugins/
                             #   code-conventions.md (how build agents write code — cited by
                             #   task-agent + build + architect; craft, never contract; leads with
                             #   one rule: BUILD DECOUPLED — agents write blind, so units bind only
-                            #   to declared contracts. Enforced by the review `coupling` lens),
+                            #   to declared contracts. Enforced at design time by the
+                            #   architect-alignment lens (criterion 8 — exposes/consumes contract
+                            #   integrity) and at code time by the review `coupling` lens),
                             #   schemas/ (canonical artifact shapes: task-spec, completion-record,
                             #   register-item, unknown-entry — validators, templates, and agent-def
                             #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)
