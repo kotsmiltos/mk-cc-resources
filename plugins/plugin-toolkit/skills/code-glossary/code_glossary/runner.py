@@ -304,6 +304,38 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_coupling.set_defaults(func=_cmd_coupling)
 
+    p_ext = sub.add_parser(
+        "extensibility",
+        help="open-closed enforcer: emit EXTENSIBILITY.yaml (per-axis "
+        "add-one-instance edit-sites) by scanning source for dispatch over axes",
+    )
+    p_ext.add_argument("--root", required=True, help="source tree to scan")
+    p_ext.add_argument("--out", required=True, help="EXTENSIBILITY.yaml output path")
+    p_ext.add_argument(
+        "--axes",
+        default=None,
+        help="optional growth_axes ledger YAML (declared axes; from /elicit). "
+        "Declared-open axes gate; intrinsic enums are measured + advisory.",
+    )
+    p_ext.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="path substring to exclude (repeatable); same rule as `index`",
+    )
+    p_ext.add_argument(
+        "--include-tests",
+        action="store_true",
+        help="include test files in the scan (excluded by default)",
+    )
+    p_ext.add_argument(
+        "--fail-on-violation",
+        action="store_true",
+        help="exit 1 when any DECLARED-OPEN axis still carries a dispatch site "
+        "— the CI gate (report-only by default, exit 0)",
+    )
+    p_ext.set_defaults(func=_cmd_extensibility)
+
     return parser
 
 
@@ -834,6 +866,119 @@ def _cmd_coupling(args: argparse.Namespace) -> int:
     print(f"module_edges: {len(model.module_edges)}")
     print(f"cycles: {len(model.cycles)}")
     print(f"reach_ins: {len(model.reach_ins)}")
+    print(f"has_violations: {str(model.has_violations).lower()}")
+
+    if getattr(args, "fail_on_violation", False) and model.has_violations:
+        return EXIT_DRIFT_FOUND
+    return EXIT_OK
+
+
+def _load_declared_axes(path: Path):
+    """Load a growth_axes ledger -> {type_name: (instances:set, open:bool)}.
+
+    Shape (solution A output):
+        growth_axes:
+          - type_name: JobClass
+            instances: [Worker, Soldier, Scout]
+            open: true
+    Missing file -> empty (intrinsic-only run). Malformed -> ArtifactError.
+    """
+    import yaml as _yaml
+
+    if not path.is_file():
+        raise io_yaml.ArtifactError(f"--axes ledger not found: {path}")
+    data = _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    declared: dict[str, tuple[set, bool]] = {}
+    for entry in data.get("growth_axes", []) or []:
+        name = entry.get("type_name")
+        if not name:
+            continue
+        instances = {str(v) for v in entry.get("instances", []) or []}
+        declared[name] = (instances, bool(entry.get("open", False)))
+    return declared
+
+
+def _cmd_extensibility(args: argparse.Namespace) -> int:
+    import yaml as _yaml
+
+    from code_glossary.extensibility import Axis, build_extensibility_model
+    from code_glossary.indexer.dispatch_scanner import scan_directory
+
+    root = Path(args.root)
+    if not root.is_dir():
+        print(f"error: --root not a directory: {root}", file=sys.stderr)
+        return EXIT_HARD_FAILURE
+
+    declared = _load_declared_axes(Path(args.axes)) if args.axes else {}
+
+    intrinsic_axes, sites = scan_directory(
+        root, excludes=args.exclude, include_tests=args.include_tests
+    )
+
+    # Merge: a declared axis wins (carries the `open` intent + unions its
+    # instances with any intrinsic enum of the same name, so an incomplete
+    # ledger still catches every discovered member). Intrinsic-only axes stay
+    # advisory.
+    intrinsic_by_name = {a.type_name: a for a in intrinsic_axes}
+    axes: list[Axis] = []
+    for name, (instances, is_open) in sorted(declared.items()):
+        merged = set(instances)
+        if name in intrinsic_by_name:
+            merged |= set(intrinsic_by_name[name].instances)
+        axes.append(
+            Axis(type_name=name, instances=frozenset(merged), open=is_open, source="declared")
+        )
+    for axis in intrinsic_axes:
+        if axis.type_name not in declared:
+            axes.append(axis)
+
+    model = build_extensibility_model(sites, axes)
+
+    payload = {
+        "schema_version": 1,
+        "generator": "code-glossary-extensibility",
+        "metadata": {
+            "root": str(root),
+            "axes": len(axes),
+            "declared_axes": len(declared),
+            "intrinsic_axes": len(intrinsic_axes),
+            "dispatch_sites": len(sites),
+        },
+        "summary": {
+            "has_violations": model.has_violations,
+            "violations": len(model.violations),
+        },
+        "axes": [
+            {
+                "type_name": f.axis.type_name,
+                "source": f.axis.source,
+                "open": f.axis.open,
+                "is_violation": f.is_violation,
+                "edit_count": f.edit_count,
+                "files": f.files,
+                "edit_sites": [
+                    {
+                        "file": s.file,
+                        "line": s.line,
+                        "kind": s.kind,
+                        "function": s.function,
+                    }
+                    for s in f.edit_sites
+                ],
+            }
+            for f in model.findings
+        ],
+    }
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(_yaml.safe_dump(payload, sort_keys=False, allow_unicode=True, width=4096))
+
+    print(f"extensibility_yaml: {out_path}")
+    print(f"axes: {len(axes)}")
+    print(f"dispatch_sites: {len(sites)}")
+    print(f"violations: {len(model.violations)}")
     print(f"has_violations: {str(model.has_violations).lower()}")
 
     if args.fail_on_violation and model.has_violations:
