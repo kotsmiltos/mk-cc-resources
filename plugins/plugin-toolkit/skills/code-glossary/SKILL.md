@@ -168,6 +168,19 @@ Measures COUPLING to enforce DECOUPLED (the same arc the glossary uses to enforc
 
 Cycles and reach-ins are the gate-worthy violations. Default exit 0 (report-only); `--fail-on-violation` makes any cycle or reach-in exit 1 (the CI gate). `--group-depth` sets module granularity (the same rule `map` uses — a coarse root package that lumps a shared types module with the CLI entrypoint will read as a cycle; deepen the grouping to separate them). COUPLING.yaml names each violation as `file:function` so a reviewer (or the essense-flow review `coupling` lens) can substrate-verify the cited site instead of re-hunting it.
 
+### Extensibility (the open-for-extension enforcer)
+
+```
+runner extensibility --root <source-root> --out <target>/glossary/EXTENSIBILITY.yaml [--axes <growth-axes-ledger>.yaml]
+```
+
+Measures DISPATCH ENUMERATION to enforce OPEN-FOR-EXTENSION (the same arc — DRY via duplication, decoupled via coupling, open-for-extension via dispatch). `<source-root>` is the same tree passed to `index`. Scans source directly (its own tree-sitter pass; needs no records). Answers "add one new instance of an axis → how many existing sites must I edit?" Per axis it emits, deterministically and **threshold-free**:
+
+- the **edit_sites** — every site you must touch to add one instance: the enum declaration plus each `switch` / switch-expression / if-else-if ladder / dict dispatch that enumerates the axis's instances — and their **count** (a measurement, *reported, never gated*);
+- **is_violation** — a binary fact: a **declared-OPEN** axis (from the `--axes` growth-axes ledger) that still carries ≥1 dispatch site (you promised it open; an exhaustive switch breaks that).
+
+Sites bind to an axis by **case-label membership** (a construct's labels overlap an axis's instance set by ≥2 members — no type inference). Axes come from the optional declared ledger (`growth_axes:` with `type_name`, `instances`, `open`) and/or **intrinsic** enums (any enum with ≥2 members — measured + advisory; never gated, since we don't know the human wanted it open). No axis → no flag. Default exit 0 (report-only); `--fail-on-violation` exits 1 on a declared-open violation. EXTENSIBILITY.yaml names each site `file:line` so a reviewer (or the essense-flow review `extensibility` lens) substrate-verifies it instead of re-hunting. **MVP scans C# only** (the per-language extractor seam is in place; TS/JS + Python next).
+
 ## 10. Report
 
 ```
@@ -190,6 +203,7 @@ Outputs:
   <target>/glossary/GLOSSARY.md     (human summary, sorted by score)
   <target>/glossary/MAP.md          (functionality map — consult before designing/building)
   <target>/glossary/COUPLING.yaml   (decoupling facts — cycles + reach-ins; gate via --fail-on-violation)
+  <target>/glossary/EXTENSIBILITY.yaml (open-for-extension facts — per-axis edit-sites; gate via --fail-on-violation)
   <target>/glossary/.work/          (stage artifacts, kept for inspection)
 ```
 
