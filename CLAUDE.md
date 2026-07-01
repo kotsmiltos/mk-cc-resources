@@ -119,6 +119,15 @@ plugins/
       hooks.json            # Stop hook registration
       scripts/verifiability-stop.{sh,js}  # auto-trigger (opt-in OFF) + fire-once loop guard
     tests/verifiability-stop.test.js
+
+  reuse-gate/               # Reuse-first reminder at the moment code is written (hooks-only)
+    .claude-plugin/plugin.json
+    hooks/
+      hooks.json            # PreToolUse (Write|Edit|MultiEdit|NotebookEdit) registration
+      scripts/reuse-gate.js # once/user-message (dedupe on prompt_id) on first SOURCE write — injects
+                            #   reminder via hookSpecificOutput.additionalContext (check codebase/glossary +
+                            #   packages before writing new). Never blocks; opt-in OFF; fail-open; no permissionDecision
+    tests/reuse-gate.test.js
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.

@@ -44,6 +44,15 @@ Engineer what's needed: clear, concise, maintainable, scalable. Don't overengine
 
 Before you write code, read `references/code-conventions.md` and apply the conventions that fit the task's language/stack. The lead convention is the **Prime directive** above — build decoupled; everything else (verify-by-reading-the-code-path, fix-at-root, layered acyclic core, named constants, fail-fast validated config, classify-errors-before-retry, atomic writes, nothing-fails-silently, portable paths) is downstream of it. The task spec remains the only contract for **what** to build — never let a convention override `behavioral_pseudocode`, `file_write_contract`, or an acceptance criterion. On conflict, follow the spec and note the tension in your `agent_claim`.
 
+## Before you write: reuse check
+
+Writing new code is the last resort. Before you implement the task, confirm the capability is not already served — a gate `references/code-conventions.md` ("Before you build: reuse what exists") makes non-negotiable, and you have every tool to run it:
+
+1. **Codebase first** — Grep/Glob for an existing function/module that already does this. If one exists, consume it through its contract; do not reimplement. Name it in `consumes`.
+2. **Then a package/library** — for well-solved general problems (parsing, dates, HTTP, crypto, retries, validation), check for a mature dependency (Context7 / registry). Prefer adopting one — pinned, wrapped behind your own contract — over hand-rolling it.
+
+You execute a **closed** task spec — you cannot rewrite scope. So if you discover the capability already exists (a codebase function that serves the goal, or a package that should be adopted instead of the pseudocode's hand-rolled approach), do **not** silently rebuild it and do **not** silently skip the task. Surface it: a `surfaced_concern` when the pseudocode still stands but a better path exists, or a `blocking: true` unknown when building as specified would duplicate an existing implementation. Master triages. (The reusable-output half is already the Prime directive — build it so it could be lifted out whole.)
+
 ## Inputs you receive in your brief
 
 There is no dedicated brief template: the closed task spec yaml from architect IS your brief input. Master concatenates the task spec fields into your dispatch prompt. Canonical shape (rendered from `references/schemas/task-spec.schema.yaml`):
@@ -216,7 +225,7 @@ Field rules:
 
 `all-required (with synthetic record on crash)`. If you crash without returning, master writes a synthetic record with `agent_claim.status: crashed`, `synthetic: true`, and a paused-task verdict; the sprint pauses for triage. Per Graceful-Degradation, missing signal surfaces — never hidden.
 
-## Six quality gates before you return
+## Seven quality gates before you return
 
 1. **Did you read the task spec fully?** Re-read `goal` + `requirements_traced` + `behavioral_pseudocode` + `test_completion_contract`. Confirm your implementation maps each AC to a verifiable check.
 2. **Did you honor `file_write_contract`?** Every path you wrote is either IN `paths` OR recorded in `out_of_contract_writes` with rationale.
@@ -224,5 +233,6 @@ Field rules:
 4. **Did you preserve raw evidence?** `agent_claim` carries verbatim claims; you did not summarize-and-discard. Master compares to disk; only verbatim survives.
 5. **Did you surface concerns rather than patch silently?** If the spec was wrong on contact, `surfaced_concerns` carries the rationale; you did not silently rewrite scope.
 6. **Did you return a single YAML shape master can parse?** No prose preamble. No multiple blocks. Just the YAML in the Returns shape.
+7. **Did you check reuse before writing?** You confirmed no existing codebase function and no adoptable package already serves the goal; if one did, you surfaced it (`surfaced_concern` or `blocking` unknown) rather than silently rebuilding or skipping.
 
 If any answer is no, do not return. Re-read.

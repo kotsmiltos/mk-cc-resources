@@ -1,0 +1,8 @@
+{
+  "name": "reuse-gate",
+  "version": "0.1.0",
+  "description": "Reuse-first reminder at the moment code is written. A PreToolUse hook fires ONCE per user message on the first source-code write (Write/Edit) and surfaces the reuse-first checklist — is this already implemented here (search the codebase / functionality glossary) or served by an existing package/library? reuse or extend before writing new; what you do write, build modular + decoupled. A deterministic nudge at the exact point of writing, so the rule can't drift out of context the way an instruction can. Mechanism: hookSpecificOutput.additionalContext, fires once per user message (dedupe keyed on prompt_id) on the first source write of the turn — injected into Claude's context before the tool runs, so the write proceeds normally (no block, no permissionDecision, so the normal write-permission prompt is untouched). Opt-in OFF by default (env REUSE_GATE_ENABLED=1 / project or global .claude/reuse-gate.json {\"enabled\": true}); fail-open on any error. Carries a hook — install separately from the mk-cc-all bundle.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

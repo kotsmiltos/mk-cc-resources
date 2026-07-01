@@ -1,5 +1,11 @@
 # Release notes — thorough-mode
 
+## 1.8.0 — `@build` gains a reuse-first REVIEW gate
+
+`@build`'s REVIEW step now asks **"is it already built?"** before adding code — is the capability already implemented here (codebase / functionality glossary) or served by an existing package/library? reuse or extend, don't reinvent; only write new when neither fits.
+
+- New REVIEW bullet in the `@build` injection (`hooks/thorough-mode.js`); the `@build` description in `CLAUDE.md` kept in sync. Purely additive to the existing plan → review → build flow.
+
 ## 1.7.0 — `@prompt` now saves the prompt it generates (append-only history)
 
 `@prompt` produced a great kickoff prompt and then it vanished into the transcript — shown once, never kept. Now it accumulates, so you can review past prompts and improve the pattern from real examples.

@@ -136,6 +136,7 @@ const MODIFIERS = [
    - The order of operations, and the verifiable check that proves each step.
 2. REVIEW the plan against the bar before building:
    - Is this the BEST option? Name the simpler/alternative approach you considered and why you rejected it.
+   - Is it already built? Before adding new code, confirm the capability isn't already implemented here (search the codebase / functionality glossary) or served by an existing package/library — reuse or extend instead of reinventing; only write new when neither fits, and say why.
    - Does it match the codebase's existing style and implementation patterns? Read neighboring code; reuse existing helpers/abstractions instead of reinventing.
    - Does it honor project conventions (if \`references/code-conventions.md\` or a CLAUDE.md exists, follow them): named constants, layered/acyclic deps, fail-fast config, no silent errors, atomic writes, verify-beyond-units.
    - Surface open decisions, risks, or unknowns the plan cannot resolve alone — flag them, don't guess.

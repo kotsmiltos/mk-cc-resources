@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.24.0"
+    "version": "2.25.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
       "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize (post-architect) and /glossary (post-build) are optional DRY phases powered by the plugin-toolkit code-glossary engine; /glossary renders a functionality map (MAP.md) plus per-sprint duplication drift, /architect consults the map before deciding (reuse ledger in ARCH.md), /build dispatches carry existing-helper + neighbor context, and /review gains a glossary-fed dry-violation lens. Every phase-producing skill writes artifact + transitions state atomically. State is artifacts-authoritative: .pipeline/state.yaml is a derived cache that self-reconciles from disk (state-reconcile op; missing cache auto-rebuilds inside ops). Every agent self-report is re-validated against disk — drift is auditable, not silent. Producer agents follow the librarian protocol: what they cannot verify they research, what research cannot answer becomes a structured unknowns[] entry surfaced to the user at phase gates — never assumed. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state — never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
-      "version": "0.24.0"
+      "version": "0.25.0"
     },
     {
       "name": "essense-autopilot",
@@ -30,7 +30,7 @@
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
       "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @prompt also SAVES each generated kickoff prompt to an append-only .claude/prompts/ history + INDEX.md ledger (not just shown once). @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
-      "version": "1.7.0"
+      "version": "1.8.0"
     },
     {
       "name": "project-note-tracker",
@@ -63,10 +63,16 @@
       "version": "0.3.2"
     },
     {
+      "name": "reuse-gate",
+      "source": "./plugins/reuse-gate",
+      "description": "Reuse-first reminder at the moment code is written. A PreToolUse hook fires ONCE per user message on the first source-code write (Write/Edit/MultiEdit/NotebookEdit) and surfaces the reuse-first checklist — is this already implemented here (search the codebase / functionality glossary MAP.md) or served by an existing package/library? reuse or extend before writing new; what you do write, build modular + decoupled. A deterministic nudge at the exact point of writing, so the rule can't drift out of context the way an instruction can. Mechanism: hookSpecificOutput.additionalContext fires once per user message (dedupe keyed on prompt_id) on the first source write of the turn — injected before the tool runs so the write proceeds normally (no block, no permissionDecision, so your normal write-permission prompt is untouched). Source-only — docs/config/data files never trigger. Opt-in OFF by default (env REUSE_GATE_ENABLED=1 / project or global .claude/reuse-gate.json {\"enabled\": true}, project overrides global); fail-open on any error. Companion to the reuse-first instructions in essense-flow code-conventions.md, global CLAUDE.md, and thorough-mode @build. Carries a hook — install separately from the mk-cc-all bundle.",
+      "version": "0.1.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, thorough-mode, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, alert-sounds, and verifiability-lens carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.18.0"
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, and reuse-gate carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "version": "2.19.0"
     }
   ]
 }

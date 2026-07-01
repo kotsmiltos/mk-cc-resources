@@ -1,5 +1,13 @@
 # Release notes — essense-flow
 
+## 0.25.0 — Reuse-first gate: don't build what already exists
+
+Before writing code, the pipeline now establishes the capability isn't already served — in the codebase (functionality glossary) or by an existing package/library — and writes new only when neither fits. What gets written must stay modular/decoupled/reusable (the existing "build decoupled" rule). Two layers, design-time and build-time.
+
+- **`references/code-conventions.md`** — new section "Before you build: reuse what exists", paired with the lead "build decoupled" rule. Propagates to task-agent, architect, build, and review via their existing citations.
+- **Design-time — `agents/essense-flow-sub-architect.md` + `skills/architect/SKILL.md` decide step + `templates/sub-architect-brief.md`.** The reuse ledger and the module brief now prompt BOTH axes (codebase functionality map **and** package/library via WebFetch), not codebase-only. A task spec that rebuilds a listed function or reimplements what an available package serves must justify why in `agency_rationale`. New sub-architect quality gate #7.
+- **Build-time — `agents/essense-flow-task-agent.md`.** New "Before you write: reuse check" (Grep/Glob for existing code, Context7 for packages). Because it runs a closed spec, it SURFACES discovered duplication (`surfaced_concern` / blocking unknown) rather than silently rebuilding or skipping. Six → seven quality gates.
+
 ## 0.24.0 — Open-for-extension: architect-alignment criterion 9 (default-closed)
 
 The toolkit's job is to build things whose feature set keeps growing (open-ended sims — ant castes, threat types, resource types, room types added forever). Decoupling (criterion 8) makes units bind only to contracts; this adds the next design-time question: when the domain GROWS, can you add a variant WITHOUT editing the dispatcher?
