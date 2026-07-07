@@ -36,6 +36,11 @@ plugins/
     commands/               # 14 slash commands (/init, /elicit, /organize, /glossary, etc.)
     defaults/               # config.yaml, state.yaml templates
     references/             # transitions.yaml, phase-command-map.yaml, principles.md,
+                            #   generativity-protocol.md (FORK→BOTH→ABSTRACT→GENERALIZE→
+                            #   DECOUPLE→IMPLEMENT — the rung-2 design-fork protocol, single
+                            #   source referenced at architect decide, elicit's declared-growth-
+                            #   axes SPEC section, and build's mid-flight fork routing; default-
+                            #   closed guard mirrors alignment-lens criterion 9),
                             #   librarian.md (research-first + unknowns[] protocol),
                             #   code-conventions.md (how build agents write code — cited by
                             #   task-agent + build + architect; craft, never contract; leads with

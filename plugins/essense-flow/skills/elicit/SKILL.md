@@ -51,6 +51,7 @@ Body sections, in order:
 - **Non-goals** — explicitly out of scope
 - **Constraints** — technical, organizational, regulatory
 - **Design decisions** — closed choices with one-line rationale each
+- **Declared growth axes** — bullet list of domain families the user expects to keep growing (entity kinds, formats, providers, threat types…), each with the user's verbatim quote as evidence. This is the `growth_evidence` source consumed downstream by the generativity protocol (`references/generativity-protocol.md`) and architect-alignment criterion 9 — declare axes here so those checks read a signal instead of inferring from prose. An explicit `none declared` is a valid entry (default-closed holds; no axis is forced open).
 - **Open questions** — anything still unresolved (ideal: empty by build-ready)
 - **Risks** — what could break, with severity
 

@@ -1,5 +1,20 @@
 # Release notes — essense-flow
 
+## 0.25.0 — Generativity protocol: design forks resolve to the open model, instructed where they fire
+
+Criterion 9 (0.24.0) is the rung-4 backstop — it catches a closed dispatch on a declared growth axis at design-REVIEW time. This ships the rung-2 layer: the protocol as an explicit, referenced step at the moments a fork is actually decided, so criterion 9 finds nothing to flag. An abstract "be generic" principle predictably under-fires; an instruction placed at the design moment does not.
+
+**One source, three fire-points (DRY — the protocol text lives in exactly one file):**
+
+- **`references/generativity-protocol.md`** (new, canonical): the ordered protocol — **FORK → BOTH → ABSTRACT → GENERALIZE → DECOUPLE → IMPLEMENT**. Detect the fork ("X or Y for different goals?") → assume both are needed → abstract the shared flow → design the OPEN base along the variation axis → name the contract variants drop into (criterion 8's clean-contract + criterion 9's seam-exists, at authoring time) → only then implement base + 1-2 starters. Plus the anti-signals (typechecking a subtype, hardcoding a concrete target, asking A-or-B when the answer is "both, generically") and the **default-closed guard** mirroring criterion 9's `growth_evidence` precondition — no declared/intrinsic growth signal → the fork is a genuine closed choice; bounded constants, sealed unions, and data-mapping switches stay closed. Premature abstraction is itself a defect.
+- **architect decide step** (`skills/architect/SKILL.md`): on any design fork, run the protocol before drafting — close the decision as the OPEN model (contract + extension surface, drop-in variants); a surviving fork asks the user about the EXTENSION SURFACE, never A-or-B between two narrow models.
+- **elicit SPEC output** (`skills/elicit/SKILL.md`): new **Declared growth axes** body section — a bullet list of domain families the user expects to grow, each with a verbatim user quote. This gives criterion 9 + the protocol a real `growth_evidence` source instead of inferring from prose; an explicit `none declared` is valid (default-closed holds; no build-ready gate change).
+- **build dispatch brief** (`skills/build/SKILL.md`): one reminder line per task brief — a fork discovered mid-build routes through the protocol via `surfaced_concerns` per Front-Loaded-Design; never hardcode the one instance you happened to need.
+
+**Deliberately NOT built (rung discipline):** no new review-lens agent, no AXES.md artifact/CLI system. The rung-4 escalation (a review-time "generativity" adversarial lens reusing criterion 9's guard) is documented in the protocol file with its drop-in points, to be built only on observed evidence that the rung-2 instruction under-fires.
+
+**Proven on a fixture** (fresh-context decide-step dry-run, two forks): the "email or Slack?" fork with a declared channels growth axis produced a `NotificationChannel` contract + registry with Slack/Email as drop-in starters and a user question about the contract's coverage (ack semantics, per-recipient addressing) — not an A-or-B; the HTTP-status-classification choice with no growth signal stayed a closed data-mapping decision, protocol explicitly not run (default-closed held). Suite: 54 test files, all green (one tight-loop tmp-name flake in `atomic-write.test.cjs` re-run standalone 4/4 twice — unrelated; this release touches only markdown).
+
 ## 0.24.0 — Open-for-extension: architect-alignment criterion 9 (default-closed)
 
 The toolkit's job is to build things whose feature set keeps growing (open-ended sims — ant castes, threat types, resource types, room types added forever). Decoupling (criterion 8) makes units bind only to contracts; this adds the next design-time question: when the domain GROWS, can you add a variant WITHOUT editing the dispatcher?
