@@ -172,7 +172,7 @@ Five skills for cross-session continuity and workflow self-improvement.
 
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
-| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → a permanent `.claude/handoffs/handoff-<ts>.md` + `INDEX.md` ledger (append-only history), with `.claude/handoff.md` as the latest-alias. Triggers `/claude-md-sync` if CLAUDE.md stale. |
+| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → a permanent `.claude/handoffs/handoff-<ts>.md` + `INDEX.md` ledger (append-only history), with `.claude/handoff.md` as the latest-alias. Critical Context is quality-gated: must name ≥1 rejected approach/gotcha/constraint with its why (or a reasoned "none") or the handoff isn't done. Triggers `/claude-md-sync` if CLAUDE.md stale. |
 | `/resume` | Session start | Reads the `.claude/handoff.md` alias, validates branch/pipeline state, reports discrepancies, suggests first action. Marks consumed but **preserves** the `.claude/handoffs/` history (migrates a pre-1.2.0 single-file handoff into it). |
 | `/claude-md-sync` | After changes | Scans git diff, identifies stale CLAUDE.md sections, proposes edits for approval. Callable standalone or by handoff. |
 | `/retro` | After sprint/session | Metrics-driven retrospective. Gaps before strengths. Accepts `sprint-N`, `session`, or `all`. |
