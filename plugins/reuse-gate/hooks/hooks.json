@@ -1,0 +1,16 @@
+{
+  "description": "Fires a reuse-first reminder on the first source-code write after each user message — check the codebase/glossary and existing packages before writing new code. Injects via additionalContext (never blocks), once per message (keyed on prompt_id), opt-in OFF, fail-open.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reuse-gate.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

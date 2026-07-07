@@ -44,7 +44,12 @@ Things we build need access from claude to be tested so we can build things like
 
 {{existing_functionality}}
 
-These functions ALREADY EXIST in the codebase and are relevant to your module (master selected them from the functionality map). Before writing a task spec that creates a helper, check this list — if the functionality exists, the task spec's `goal` says *call the existing X at `<path>`*, not *implement X*. If you deliberately re-implement, the task's `agency_rationale` must state why the existing one doesn't fit.
+Writing new code is the last resort — see `references/code-conventions.md` "Before you build: reuse what exists". Check two axes before any task spec creates a helper:
+
+1. **Codebase.** The functions listed above ALREADY EXIST and are relevant to your module (master selected them from the functionality map). If the functionality exists, the task spec's `goal` says *call the existing X at `<path>`*, not *implement X* — and name it in the task's `consumes`.
+2. **Package / library.** For well-solved general problems (parsing, dates, HTTP, crypto, retries, validation, serialization), a mature, maintained dependency usually beats a hand-rolled version. Use WebFetch to confirm what's available and fits; when one does, the task spec ADOPTS it (pinned, wrapped behind the unit's own contract) rather than reimplementing it.
+
+If you deliberately re-implement — a listed function OR what an available package serves — the task's `agency_rationale` must state why (license, size, security, constraint), never silence.
 
 ## Your job
 

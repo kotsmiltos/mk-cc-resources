@@ -69,7 +69,7 @@ Produces a copy-paste prompt to start the NEXT session from a cold context. Orde
 ### `@build` — Plan, Review, Build
 Plans a change, reviews the plan against the bar, then implements it:
 - PLAN: enumerate code to MODIFY (file/symbol + what changes), ADD (new files/functions/types + where), REMOVE (what's deleted/replaced + why safe); order of ops + verifiable check per step
-- REVIEW: is it the best option (name the rejected alternative)? does it match existing style/implementation patterns (read neighbors, reuse helpers)? does it honor project conventions (code-conventions.md / CLAUDE.md)? surface risks/unknowns
+- REVIEW: is it the best option (name the rejected alternative)? is it already built here or served by a package/library (reuse-first — reuse/extend, don't reinvent)? does it match existing style/implementation patterns (read neighbors, reuse helpers)? does it honor project conventions (code-conventions.md / CLAUDE.md)? surface risks/unknowns
 - BUILD: smallest viable steps, verify after each, fix at root, no drift from the plan — if the plan was wrong, revise and re-review rather than patch around it
 
 ## Smart Hints

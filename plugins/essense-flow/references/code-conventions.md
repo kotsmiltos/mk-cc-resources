@@ -58,6 +58,45 @@ blocks the sprint. Decoupling is not advice here; it is a gate.
 
 ---
 
+## Before you build: reuse what exists
+
+**Writing new code is the last resort, not the first move.** Before you implement
+anything, establish that the capability is not already served — inside this
+codebase or by a dependency you can adopt. Duplicated capability is the same
+defect as duplicated definition (see *Single source of truth*): two
+implementations of one thing, drifting apart, doubling the surface to maintain,
+test, and secure.
+
+Two places to look, in order:
+
+- **Inside the codebase first.** Search for an existing function/module that
+  already does this — Grep/Glob, and the functionality map (glossary `MAP.md`)
+  when one exists. If it exists, **consume it through its contract; do not
+  reimplement it.** If it *almost* fits, extend it or depend on it — a near-
+  duplicate is still a duplicate.
+- **Then a package or library.** For general, well-solved problems (parsing,
+  dates, HTTP, crypto, retries, validation, serialization), a mature, actively-
+  maintained dependency usually beats a hand-rolled version. Check what's
+  available (Context7 / the package registry). Adopt it when it fits: pin the
+  version, and **wrap it behind your own contract** so the rest of the code
+  depends on the shape, not the vendor.
+
+Only when neither serves the need — nothing in the codebase, no dependency that
+fits, or a hard constraint rules them out (license, size, security, or an
+over-heavy dep for a trivial need) — do you write it yourself. Record *why* the
+existing options were rejected; "I didn't look" is not a reason. And when you do
+write it, build it decoupled and reusable (the rule above) so the *next* unit
+finds and reuses yours instead of writing a third copy.
+
+This is a **design-time decision first**: the architect prefers reuse when
+shaping task specs, and any spec that rebuilds an existing function or
+reimplements what an available package serves must justify why in its
+`agency_rationale`. At **build time** it is a *check*, not a licence to rewrite
+scope — a task agent that discovers the capability already exists surfaces it; it
+does not silently rebuild, and it does not silently skip a closed spec.
+
+---
+
 ## Correctness you can prove
 
 - **Verify by reading the code path, not by checking a file exists.** A function

@@ -40,7 +40,7 @@ The master sends you a brief built from `plugins/essense-flow/skills/architect/t
 - `{{spec_slice}}` — the SPEC.md excerpt relevant to this module.
 - `{{req_slice}}` — the FRs/NFRs traced to this module.
 - `{{master_decisions}}` — closed top-level decisions that constrain this module.
-- `{{existing_functionality}}` — functions that ALREADY EXIST in the codebase, relevant to this module (master's slice of the functionality map; may read `None — no functionality map at design time`). Reuse before re-implementing: a task spec that re-implements a listed functionality must say why in its `agency_rationale`.
+- `{{existing_functionality}}` — functions that ALREADY EXIST in the codebase, relevant to this module (master's slice of the functionality map; may read `None — no functionality map at design time`). **Reuse before re-implementing** (`references/code-conventions.md` "Before you build: reuse what exists") — writing new code is the last resort. Before you emit a task spec to build something, establish it is not already served: (1) by a listed existing function → the task spec should `consume` it, not rebuild it; or (2) by a mature, maintained package/library for a well-solved general problem (parsing, dates, HTTP, crypto, retries, validation) → prefer a spec that ADOPTS the dependency, pinned and wrapped behind a contract, over one that hand-rolls it (use WebFetch to confirm what's available and fits). Any task spec that rebuilds a listed function OR reimplements what an available package serves must justify why in its `agency_rationale` (license, size, security, constraint — never "didn't look"). Nothing serves it → build it, decoupled and reusable.
 
 Do NOT read the full SPEC.md or full REQ.md unless your brief explicitly directs you to. The slices are what the master decided is in-scope for your module.
 
@@ -203,6 +203,7 @@ Re-read your task specs. For each:
 4. Every cross-module dependency declared in `dependencies:` references an actual task ID from another module's brief OR a future task the master will pack — if uncertain, declare it; master synthesizes the global graph.
 5. `task_id` values are unique within your return AND match the canonical pattern `^[A-Z]+-[A-Za-z0-9_-]+$` (uppercase prefix + hyphen + slug, per the task-spec schema above).
 6. `behavioral_pseudocode` is concrete + present (or `null` only when `agency_level: open` with rationale).
+7. **Reuse checked.** No task spec rebuilds a listed `{{existing_functionality}}` entry or reimplements a well-solved problem an available package serves — or, if one legitimately must, its `agency_rationale` states why (license / size / security / constraint), not silence.
 
 If any gate fails, re-do the affected spec. Do not return until all gates pass.
 

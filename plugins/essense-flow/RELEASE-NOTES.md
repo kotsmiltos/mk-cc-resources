@@ -1,6 +1,6 @@
 # Release notes — essense-flow
 
-## 0.25.0 — Generativity protocol: design forks resolve to the open model, instructed where they fire
+## 0.26.0 — Generativity protocol: design forks resolve to the open model, instructed where they fire
 
 Criterion 9 (0.24.0) is the rung-4 backstop — it catches a closed dispatch on a declared growth axis at design-REVIEW time. This ships the rung-2 layer: the protocol as an explicit, referenced step at the moments a fork is actually decided, so criterion 9 finds nothing to flag. An abstract "be generic" principle predictably under-fires; an instruction placed at the design moment does not.
 
@@ -14,6 +14,13 @@ Criterion 9 (0.24.0) is the rung-4 backstop — it catches a closed dispatch on 
 **Deliberately NOT built (rung discipline):** no new review-lens agent, no AXES.md artifact/CLI system. The rung-4 escalation (a review-time "generativity" adversarial lens reusing criterion 9's guard) is documented in the protocol file with its drop-in points, to be built only on observed evidence that the rung-2 instruction under-fires.
 
 **Proven on a fixture** (fresh-context decide-step dry-run, two forks): the "email or Slack?" fork with a declared channels growth axis produced a `NotificationChannel` contract + registry with Slack/Email as drop-in starters and a user question about the contract's coverage (ack semantics, per-recipient addressing) — not an A-or-B; the HTTP-status-classification choice with no growth signal stayed a closed data-mapping decision, protocol explicitly not run (default-closed held). Suite: 54 test files, all green (one tight-loop tmp-name flake in `atomic-write.test.cjs` re-run standalone 4/4 twice — unrelated; this release touches only markdown).
+## 0.25.0 — Reuse-first gate: don't build what already exists
+
+Before writing code, the pipeline now establishes the capability isn't already served — in the codebase (functionality glossary) or by an existing package/library — and writes new only when neither fits. What gets written must stay modular/decoupled/reusable (the existing "build decoupled" rule). Two layers, design-time and build-time.
+
+- **`references/code-conventions.md`** — new section "Before you build: reuse what exists", paired with the lead "build decoupled" rule. Propagates to task-agent, architect, build, and review via their existing citations.
+- **Design-time — `agents/essense-flow-sub-architect.md` + `skills/architect/SKILL.md` decide step + `templates/sub-architect-brief.md`.** The reuse ledger and the module brief now prompt BOTH axes (codebase functionality map **and** package/library via WebFetch), not codebase-only. A task spec that rebuilds a listed function or reimplements what an available package serves must justify why in `agency_rationale`. New sub-architect quality gate #7.
+- **Build-time — `agents/essense-flow-task-agent.md`.** New "Before you write: reuse check" (Grep/Glob for existing code, Context7 for packages). Because it runs a closed spec, it SURFACES discovered duplication (`surfaced_concern` / blocking unknown) rather than silently rebuilding or skipping. Six → seven quality gates.
 
 ## 0.24.0 — Open-for-extension: architect-alignment criterion 9 (default-closed)
 
