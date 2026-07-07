@@ -110,7 +110,7 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
     triggers: [
       /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
     ],
-    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
+    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. The failure this guards: stale or unchecked citations — the cold session inherits them as ground truth and burns its first minutes on paths that don't exist. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
 1. DRAFT it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block:
    - Lead with the objective in one or two sentences: what the next session should accomplish.
    - Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
@@ -121,8 +121,9 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
    - Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
 2. VERIFY the draft against the substrate NOW (substrate-verify before prescribing): every file path, command, branch name, and artifact the prompt cites must be checked against current disk/git state — the cold session inherits your citations as ground truth, so one stale path poisons its first minutes. Fix or drop anything that fails the check; a citation you didn't check doesn't go in the prompt.
 3. COLD-READ the draft as its reader: a fresh context with zero memory — can it act from this alone, without re-deriving? A question surfacing on re-read means the prompt is NOT done; close the gap and re-read again.
-4. SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` — \`- \\\`<timestamp>\\\` · <one-line objective>  → prompts/prompt-<fs-ts>.md\` (create the file with a \`# Prompt index\` header if absent). Never overwrite a prior prompt — this is an append-only history.
+4. SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` in the shape "- \`<timestamp>\` · <one-line objective>  → prompts/prompt-<fs-ts>.md" (create the file with a \`# Prompt index\` header if absent). Never overwrite a prior prompt — this is an append-only history.
 5. SHOW the prompt AND confirm where it was saved.
+ANTI-SIGNALS (stop; back to step 2): about to include a path, command, or branch you did not check this turn; showing the prompt without saving it; narrating this session's back-and-forth inside the block; restating a durable artifact instead of pointing to it.
 EXIT CHECK: every citation in the saved prompt was disk-verified this turn, and the cold-read surfaced no open question.`,
   },
   {

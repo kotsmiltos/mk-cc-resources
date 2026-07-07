@@ -1,5 +1,14 @@
 # Release notes — thorough-mode
 
+## 1.8.1 — `@prompt` completes the shape it claimed; INDEX format line escaping fixed
+
+Verifiability-lens caught 1.8.0's docs overstating the code: the convention section claimed all three rewritten modifiers carry the full shape, but `@prompt` shipped without ANTI-SIGNALS or a named failure. Fixed code-up, not claim-down:
+
+- **`@prompt` now names its failure** (stale/unchecked citations — the cold session inherits them as ground truth) **and carries ANTI-SIGNALS**: about to include a path/command/branch not checked this turn; showing without saving; narrating this session inside the block; restating a durable artifact instead of pointing to it.
+- **INDEX.md format line escaping fixed**: the injected save-step described the ledger line with `\\\`` (emitting a literal backslash+backtick the model could copy into INDEX.md); now a quoted plain-backtick shape matching the rest of the injection.
+
+Verified: `node --check` clean; piped `@prompt` payload fires both "failure this guards" and "ANTI-SIGNALS" (grep 2) and emits the format line with plain backticks.
+
 ## 1.8.0 — Protocol-shaped injections: `@thorough`, `@fresh`, `@prompt` fire where the work happens
 
 An abstract imperative list ("be careful", "re-read key files") under-fires — it drifts out of working memory at exactly the moment it matters. Same lesson that shipped essense-flow's generativity protocol (0.25.0): instruct the protocol WHERE IT RUNS, not as background text. The three most-used modifiers now carry a full protocol shape — **failure named → ordered RESPONSE → ANTI-SIGNALS → EXIT CHECK** — instead of a flat bullet list. The shape is documented once in the plugin CLAUDE.md as the convention new modifiers drop into.

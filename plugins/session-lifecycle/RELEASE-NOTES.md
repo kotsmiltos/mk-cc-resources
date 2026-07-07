@@ -1,5 +1,14 @@
 # Release notes — session-lifecycle
 
+## 1.3.0 — Handoff: Critical Context gets a quality gate (no more empty raison-d'être)
+
+A protocol-shape sweep (same lesson as thorough-mode 1.8.0: flat imperatives detached from the work moment under-fire) surveyed all five skills. Four are already step-sequenced with concrete gates — untouched, over-applying the shape is itself a defect. One real gap: `/handoff`'s **Critical Context** section — the reason the skill exists (a next session that repeats a rejected approach or re-hits a solved gotcha lost exactly what belonged there) — was descriptive template text with no anti-signal, and the step-5 exit check counted accomplishments/remaining items but never verified Critical Context was substantive. An empty section passed clean.
+
+- **Template gains the gate** (an HTML comment in the section, invisible in rendered handoffs): ANTI-SIGNAL — empty or restating What-Was-Done means under-capturing; re-scan for one decision with a discarded alternative, one gotcha that cost time, one discovered constraint. EXIT — names ≥1 rejected approach/gotcha/constraint WITH its why, or explicitly states "no non-obvious context" plus the reason.
+- **Step-5 verifiable check extended** to cover it: a handoff whose Critical Context fails the clause is not done — back to step 3.
+
+`/resume` benefits for free — it can only surface what handoff captured.
+
 ## 1.2.0 — Handoffs are an append-only history (no more overwrite)
 
 Handoffs were being lost: `/handoff` overwrote a single `.claude/handoff.md` every run, and `/resume` archived only the last 3 (deleting older ones). You couldn't look back across a project's handoffs. Now they accumulate.

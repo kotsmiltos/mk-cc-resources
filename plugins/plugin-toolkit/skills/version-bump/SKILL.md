@@ -56,13 +56,13 @@ Edit `.claude-plugin/marketplace.json`:
 
 Read `.claude-plugin/plugin.json` (root). If `skills` array contains `./plugins/<plugin-name>/skills/`, the plugin is bundled.
 
-If bundled AND bump type is minor or major:
-- Bump mk-cc-all bundle: minor bump (e.g. 2.2.0 → 2.3.0)
-- Update both `.claude-plugin/plugin.json` and the `mk-cc-all` entry in `.claude-plugin/marketplace.json`
+If bundled AND bump type is minor or major, the bundle version lives in TWO files — each is its own write, verified separately (the observed failure this guards: the root file gets bumped, the marketplace entry silently lags behind; it drifted 2 versions before this became explicit):
+1. `.claude-plugin/plugin.json` (root) `version` — bump minor (e.g. 2.2.0 → 2.3.0).
+2. `.claude-plugin/marketplace.json` → the `mk-cc-all` entry's `version` — set to the SAME value as write 1.
 
 If bundled AND bump type is patch: no bundle bump (patches don't cascade).
 
-If not bundled: skip.
+If not bundled: skip the bump — but still run the equality check in step 8; the two bundle-version fields must be equal whether or not this ship touched them.
 
 ## 6. Bump marketplace.json metadata
 
@@ -91,6 +91,7 @@ Run grep-style checks:
 - `plugins/<plugin-name>/.claude-plugin/plugin.json` version matches new version
 - `marketplace.json` entry for plugin matches new version
 - If bundled: mk-cc-all bundle version updated
+- ALWAYS (bundled or not): root `.claude-plugin/plugin.json` version == marketplace.json `mk-cc-all` entry version — if unequal, a prior ship dropped one write; fix now, don't carry the drift
 - marketplace.json metadata.version updated
 - RELEASE-NOTES.md has new entry at top
 

@@ -1,6 +1,6 @@
 {
   "name": "session-lifecycle",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Session lifecycle tools — handoff (capture state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (retrospective), meta-review (skill evolution). Designed as a cohesive set: handoff triggers claude-md-sync when needed, resume reads handoff output, meta-review proposes skill improvements from session patterns. Handoffs are an append-only history: each /handoff writes a permanent timestamped file under .claude/handoffs/ + a newest-first INDEX.md ledger (never overwritten), with .claude/handoff.md kept as the latest-alias /resume reads; /resume marks consumed without truncating the history.",
   "author": {
     "name": "mkots"

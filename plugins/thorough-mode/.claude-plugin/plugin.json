@@ -1,6 +1,6 @@
 {
   "name": "thorough-mode",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. @thorough, @fresh, and @prompt injections are protocol-shaped (failure named -> ordered steps -> anti-signals -> exit check) so they fire at the moment of work instead of floating as principles; @prompt DRAFT->VERIFY->COLD-READ->SAVE protocol disk-verifies every citation and persists each prompt to an append-only .claude/prompts/ history + INDEX.md ledger. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
   "author": {
     "name": "kotsmiltos"

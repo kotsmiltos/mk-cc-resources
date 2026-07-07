@@ -68,6 +68,14 @@ pipeline_phase: <phase or "none">
 ## Critical Context
 <Non-obvious things the next session MUST know. Decisions made, constraints discovered, gotchas hit, approaches tried and rejected with WHY they failed.>
 
+<!-- Quality gate — this section is why the handoff exists (a next session that repeats a
+     rejected approach or re-hits a solved gotcha lost exactly what should have been captured
+     here). ANTI-SIGNAL: the section is empty, or only restates What Was Done — you are
+     under-capturing; re-scan the session for one decision with a discarded alternative, one
+     gotcha that cost time, one constraint discovered. EXIT: the section names at least one
+     rejected approach/gotcha/constraint WITH its why — or explicitly states "no non-obvious
+     context this session" plus the reason that's true (e.g. pure mechanical batch). -->
+
 ## Blockers
 <Anything preventing progress. External dependencies, open questions, missing info. "None" if clear.>
 
@@ -94,6 +102,6 @@ If the file does not exist, create it with the header + this first line. If it e
 
 ## 5. Confirm
 
-Report: saved `.claude/handoffs/handoff-<fs-ts>.md` (permanent) + refreshed `.claude/handoff.md` (latest) + indexed in `.claude/handoffs/INDEX.md`. State the verifiable check: "handoff contains N accomplishments, M remaining items, branch is X; index now lists K handoffs."
+Report: saved `.claude/handoffs/handoff-<fs-ts>.md` (permanent) + refreshed `.claude/handoff.md` (latest) + indexed in `.claude/handoffs/INDEX.md`. State the verifiable check: "handoff contains N accomplishments, M remaining items, branch is X; index now lists K handoffs; Critical Context carries ≥1 rejected-approach/gotcha/constraint with its why (or an explicit reasoned 'none')." A handoff whose Critical Context fails that last clause is not done — go back to step 3 and re-scan the session.
 
 </instructions>

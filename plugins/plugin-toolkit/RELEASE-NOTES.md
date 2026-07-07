@@ -1,5 +1,14 @@
 # Release notes — plugin-toolkit
 
+## 1.7.1 — /version-bump: the bundle version is TWO writes, each verified
+
+Observed failure (drifted 2 versions before caught): step 5 packed both bundle-version writes into one bullet ("Update both ..."), and real ships bumped the root `.claude-plugin/plugin.json` while the `mk-cc-all` entry in `marketplace.json` silently lagged (2.18.0 vs 2.20.0). One-bullet-two-actions is the classic under-fire shape.
+
+- Step 5 now names the failure and lists the two writes as separate numbered items (root plugin.json version; mk-cc-all marketplace entry set to the SAME value).
+- Step 8 verification gains an ALWAYS-run equality check: root plugin.json version == mk-cc-all marketplace entry version, bundled or not — inequality means a prior ship dropped a write; fix now, don't carry the drift.
+
+Verified: the live drift this documents was found and fixed in the same commit (mk-cc-all entry 2.18.0 → 2.20.0, now equal to root).
+
 ## 1.7.0 — code-glossary 2.5.0: the open-for-extension enforcer (`runner extensibility`)
 
 The keystone of the "modularity drift" fix. essense-flow *stated* modularity as a value but never *measured* it, so the human was the only open-closed gate and corrections never propagated (a fix landed on one site; identical coupling survived elsewhere). This makes extensibility a CHECKED FACT — the same arc the engine already uses: it measures DUPLICATION to enforce DRY, COUPLING to enforce DECOUPLED, and now **DISPATCH ENUMERATION to enforce OPEN-FOR-EXTENSION**.
