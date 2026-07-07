@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.25.0"
+    "version": "2.26.0"
   },
   "plugins": [
     {
@@ -29,8 +29,8 @@
     {
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @prompt also SAVES each generated kickoff prompt to an append-only .claude/prompts/ history + INDEX.md ledger (not just shown once). @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
-      "version": "1.7.0"
+      "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @thorough, @fresh, and @prompt injections are protocol-shaped (failure named -> ordered steps -> anti-signals -> exit check); @prompt DRAFT->VERIFY->COLD-READ->SAVE disk-verifies every citation and SAVES each prompt to an append-only .claude/prompts/ history + INDEX.md ledger. @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
+      "version": "1.8.0"
     },
     {
       "name": "project-note-tracker",

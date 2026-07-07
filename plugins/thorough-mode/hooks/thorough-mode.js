@@ -24,13 +24,12 @@ const MODIFIERS = [
       /(?:^|\s)\+\+(?:\s|$)/,       // ++ as standalone token
       /(?:^|\s)@thorough(?:\s|$)/i,  // @thorough as standalone token
     ],
-    injection: `[thorough-mode] Be thorough, not hasty. Take the time to do this right:
-- READ and UNDERSTAND fully before acting — do not skim, assume, or jump to conclusions.
-- Do not skip, drop, or silently omit things. If something is relevant, address it.
-- Do not take shortcuts that sacrifice quality — prefer the careful path over the fast one.
-- When working through multiple items, handle each one properly — do not batch, merge, or hand-wave.
-- When in doubt, INCLUDE rather than exclude.
-- If you realize you missed something, go back and fix it rather than hoping it doesn't matter.`,
+    injection: `[thorough-mode] Be thorough, not hasty. The failure this guards: satisficing — stopping at "looks addressed" instead of "each item verifiably addressed". Run this shape:
+1. ENUMERATE first — before acting, list every item, file, question, and constraint the request contains. The request IS the checklist; write it out.
+2. WORK THE LIST — handle each item fully, one at a time. Never batch, merge, or hand-wave. When in doubt, INCLUDE rather than exclude.
+3. RE-READ before ending — check the original request against your list; anything skimmed, assumed, dropped, or silently omitted goes back to step 2. If you realize you missed something, fix it rather than hoping it doesn't matter.
+ANTI-SIGNALS (stop; return to the list): about to write "the rest are similar"; sampling a few of many; paraphrasing an instruction you haven't re-read; ending the turn without running step 3.
+EXIT CHECK: for every enumerated item you can name what was done + the evidence. An item without evidence is not done.`,
   },
   {
     name: "ship",
@@ -98,30 +97,33 @@ const MODIFIERS = [
     triggers: [
       /(?:^|\s)@fresh(?:\s|$)/i,  // @fresh as standalone token
     ],
-    injection: `[fresh-mode] Context refresh — re-read before acting:
-- Re-read key files NOW — do not trust earlier reads that may have been compressed or summarized.
-- After implementing multi-step work, run available verification tools to catch what you missed.
-- If you notice you are skimming, simplifying, or forgetting earlier instructions — STOP and re-read the source files.
-- When instructions reference multiple files or constraints, verify EACH one against current disk state.
-- More context is better than less — do not limit what you read to save time.
-- Verify that what you read is still what you are acting on — files may have changed during this session.
-- When in a long conversation, assume your mental model has drifted. Check, don't assume.`,
+    injection: `[fresh-mode] Context refresh — assume your mental model has drifted; rebuild it from disk, not memory. Run this shape:
+1. NAME the load-bearing sources for what you're about to do: the files you'll edit, the constraint docs (CLAUDE.md / spec / task), the user's most recent instructions.
+2. RE-READ each one NOW from disk — earlier reads may have been compressed or summarized and don't count; files may have changed during this session. More context is better than less.
+3. DIFF against your mental model — state what changed vs what you believed. An explicit "no drift found on X" counts; silence doesn't.
+4. Only then act — and verify each named constraint against current disk state as you go. After multi-step work, run available verification tools to catch what you missed.
+ANTI-SIGNALS (stop; back to step 2): citing a file:line from memory; editing a file whose current content you haven't seen this turn; writing "as established earlier" without re-checking; noticing you are skimming or simplifying earlier instructions.
+EXIT CHECK: you can list what was re-read + the drift found (or "none" per source). If you can't, the refresh didn't happen.`,
   },
   {
     name: "prompt",
     triggers: [
       /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
     ],
-    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation:
-- Output it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block.
-- Lead with the objective in one or two sentences: what the next session should accomplish.
-- Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
-- Name the concrete first action AND the verifiable check that proves it done.
-- List open decisions / blockers the next session must resolve (or that need the user).
-- Point to durable artifacts instead of restating them (handoff.md, RELEASE-NOTES, task specs) — reference, don't paste.
-- Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
-- Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
-- THEN SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` — \`- \\\`<timestamp>\\\` · <one-line objective>  → prompts/prompt-<fs-ts>.md\` (create the file with a \`# Prompt index\` header if absent). Show the prompt AND confirm where it was saved. Never overwrite a prior prompt — this is an append-only history.`,
+    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
+1. DRAFT it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block:
+   - Lead with the objective in one or two sentences: what the next session should accomplish.
+   - Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
+   - Name the concrete first action AND the verifiable check that proves it done.
+   - List open decisions / blockers the next session must resolve (or that need the user).
+   - Point to durable artifacts instead of restating them (handoff.md, RELEASE-NOTES, task specs) — reference, don't paste.
+   - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
+   - Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
+2. VERIFY the draft against the substrate NOW (substrate-verify before prescribing): every file path, command, branch name, and artifact the prompt cites must be checked against current disk/git state — the cold session inherits your citations as ground truth, so one stale path poisons its first minutes. Fix or drop anything that fails the check; a citation you didn't check doesn't go in the prompt.
+3. COLD-READ the draft as its reader: a fresh context with zero memory — can it act from this alone, without re-deriving? A question surfacing on re-read means the prompt is NOT done; close the gap and re-read again.
+4. SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` — \`- \\\`<timestamp>\\\` · <one-line objective>  → prompts/prompt-<fs-ts>.md\` (create the file with a \`# Prompt index\` header if absent). Never overwrite a prior prompt — this is an append-only history.
+5. SHOW the prompt AND confirm where it was saved.
+EXIT CHECK: every citation in the saved prompt was disk-verified this turn, and the cold-read surfaced no open question.`,
   },
   {
     name: "build",

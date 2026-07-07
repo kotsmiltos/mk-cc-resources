@@ -92,9 +92,13 @@ plugins/
       SKILL.md
       tool/                 # Standalone Python CLI package (typer + openpyxl + rich)
 
-  thorough-mode/            # Prompt modifiers (++, @thorough, @ship, @present) — hooks-only
+  thorough-mode/            # Prompt modifiers (++/@thorough, @ship, @present, @debug, @verify,
+                            #   @fresh, @prompt, @build) — hooks-only. @thorough/@fresh/@prompt
+                            #   injections are protocol-shaped (failure named → ordered steps →
+                            #   anti-signals → exit check; convention documented in the plugin
+                            #   CLAUDE.md for future modifiers to drop into)
     .claude-plugin/plugin.json
-    hooks/thorough-mode.js    # UserPromptSubmit hint injection (HINTS table)
+    hooks/thorough-mode.js    # UserPromptSubmit modifier injection (MODIFIERS) + hint injection (HINTS)
 
   project-note-tracker/     # Question + bug tracker with Excel backend
     .claude-plugin/plugin.json

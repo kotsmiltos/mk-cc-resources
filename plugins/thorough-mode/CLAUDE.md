@@ -2,16 +2,19 @@
 
 Keyword triggers that inject behavioral rules into the current response.
 
+## Injection shape (the convention new modifiers drop into)
+
+An abstract imperative list ("be careful", "re-read") under-fires — it drifts out of working memory at exactly the moment it matters. Protocol-bearing injections follow this shape instead: **failure named** (what the modifier guards against) → **ordered RESPONSE** (numbered steps run in order) → **ANTI-SIGNALS** (concrete tells that the failure is happening right now; each names where to return to) → **EXIT CHECK** (the verifiable condition that proves the modifier was honored, not just read). `@thorough`, `@fresh`, and `@prompt` carry the full shape; a new modifier should too. Checklist-style modifiers (`@ship`) and already-stepped ones (`@build`, `@debug`, `@verify`) are exempt where their form is inherently concrete.
+
 ## Available Modifiers
 
 ### `++` / `@thorough` — Thorough Mode
-Be thorough, not hasty — take the time to do it right:
-- Read and understand fully before acting — don't skim or assume
-- Don't skip, drop, or silently omit things
-- Don't take shortcuts that sacrifice quality — prefer careful over fast
-- Handle each item properly — don't batch, merge, or hand-wave
-- Include rather than exclude when in doubt
-- Go back and fix if you missed something
+Guards against satisficing — stopping at "looks addressed" instead of "each item verifiably addressed":
+- ENUMERATE first: list every item/file/question/constraint the request contains — the request IS the checklist
+- WORK THE LIST: each item fully, one at a time — never batch, merge, or hand-wave; in doubt, include
+- RE-READ before ending: check the request against the list; anything skimmed/dropped goes back to the list
+- Anti-signals: "the rest are similar", sampling a few of many, paraphrasing an unre-read instruction
+- Exit check: every enumerated item has what-was-done + evidence — an item without evidence is not done
 
 ### `@ship` — Pre-Push Checklist
 Enforces documentation and versioning hygiene before pushing:
@@ -47,21 +50,21 @@ Proves every claim with evidence before declaring done:
 - If you can't verify, say so explicitly
 
 ### `@fresh` — Context Refresh
-Forces re-reading key files and verifying against current state:
-- Re-read key files NOW — don't trust compressed/summarized earlier reads
-- After multi-step work, run verification tools
-- When instructions reference multiple files, verify EACH against current disk
-- Assume mental model has drifted in long conversations — check, don't assume
+Assumes the mental model has drifted; rebuilds it from disk, not memory:
+- NAME the load-bearing sources (files to edit, constraint docs, latest user instructions)
+- RE-READ each from disk NOW — compressed/summarized earlier reads don't count
+- DIFF against the mental model: state what changed vs what was believed ("no drift found on X" counts; silence doesn't)
+- Only then act, verifying each constraint against current disk state
+- Anti-signals: citing file:line from memory, editing a file not seen this turn, "as established earlier" unchecked
+- Exit check: can list what was re-read + drift found (or "none" per source)
 
 ### `@prompt` — Next-Session Kickoff Prompt
-Produces a copy-paste prompt to start the NEXT session from a cold context:
-- Output as ONE fenced code block, verbatim-copyable — no preamble inside it
-- Objective first; then minimal cold-start context (repo/branch, key paths, current state, done/remaining)
-- Concrete first action + the verifiable check that proves it done
-- Open decisions/blockers the next session must resolve
-- References durable artifacts (handoff.md, RELEASE-NOTES, task specs) instead of restating them
-- Carries forward working-style the work needs (e.g. `++`, `@verify`)
+Produces a copy-paste prompt to start the NEXT session from a cold context. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
+- DRAFT as ONE fenced code block, verbatim-copyable — objective first; minimal cold-start context (repo/branch, key paths, current state, done/remaining); concrete first action + the verifiable check that proves it done; open decisions/blockers; references to durable artifacts (handoff.md, RELEASE-NOTES, task specs) instead of restating them; working-style carried forward (e.g. `++`, `@verify`)
+- VERIFY every citation against the substrate: each file path, command, branch, and artifact the prompt cites is checked against current disk/git before it goes in — the cold session inherits citations as ground truth; one stale path poisons its first minutes
+- COLD-READ the draft as its zero-memory reader: can it act from this alone? A question surfacing on re-read means the prompt isn't done
 - SAVES the generated prompt to an append-only `.claude/prompts/` history + `INDEX.md` ledger (not just shown once), so prompts accumulate for review — same history pattern session-lifecycle gives handoffs
+- Exit check: every citation disk-verified this turn + cold-read surfaced no open question
 
 ### `@build` — Plan, Review, Build
 Plans a change, reviews the plan against the bar, then implements it:
