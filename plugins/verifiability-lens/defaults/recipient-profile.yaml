@@ -15,6 +15,11 @@ stance: strict                   # strict | advisory — strict: push work to th
                                  #   missing-requirement / untested / arbitrary-stop work; advisory: lighter touch.
                                  #   NOTE: stance sets how HARD the lens judges, NOT how much it surfaces — strict
                                  #   judgment still passes through the disciplined surfacing (only important+actionable).
+focus: []                        # OPTIONAL, per-project: what "best achievable" means HERE — a short list of the
+                                 #   concerns the quality-bar check should weight hardest (e.g. for a game:
+                                 #   ["runs in the real app, not just unit-green", "feel/behavior regressions"]).
+                                 #   Empty = generic bar. Project override location: .claude/verifiability-lens/profile.yaml
+                                 #   (full copy of this file with tuned dials). Copyable presets: defaults/presets/.
 
 # Operational rules derived from the dials (the lens/triage reads these):
 rules:

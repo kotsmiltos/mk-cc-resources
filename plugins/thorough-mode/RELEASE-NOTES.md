@@ -1,5 +1,21 @@
 # Release notes — thorough-mode
 
+## 1.10.0 — Machine-text guard (misfire class fixed) + steward-aware `@prompt`
+
+- **Machine-text guard, all 8 modifiers + hints.** Trigger keywords quoted inside
+  machine-generated user-role content (task notifications, Stop-hook feedback, local-command
+  transcripts, system reminders) no longer fire anything — observed misfire: `@prompt` inside a
+  background-task notification injected the full prompt-mode protocol twice on 2026-07-21.
+  Guard matches known markers at the START of the prompt only; a genuine user message that
+  *mentions* a marker mid-text still fires normally.
+- **Steward-aware `@prompt`.** In a project carrying a `.steward/` living model, `@prompt` now
+  injects a RENDER → SPOT-CHECK → SAVE → SHOW protocol that renders the kickoff FROM the model
+  (the maintained truth) instead of re-deriving state via the full DRAFT→VERIFY ritual. Same
+  append-only `.claude/prompts/` save discipline. Non-steward projects unchanged.
+- **Test suite added** (`tests/thorough-mode.test.js`, no framework): 21 checks — all 8 keywords
+  fire on user text, 6 machine-marker fixtures stay silent, hints suppressed on machine text,
+  mid-text mention still fires, steward/classic `@prompt` variant selection. 21/21 pass.
+
 ## 1.9.1 — `@prompt` completes the shape it claimed; INDEX format line escaping fixed
 
 Verifiability-lens caught 1.9.0's docs overstating the code: the convention section claimed all three rewritten modifiers carry the full shape, but `@prompt` shipped without ANTI-SIGNALS or a named failure. Fixed code-up, not claim-down:

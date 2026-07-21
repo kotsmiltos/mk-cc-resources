@@ -44,6 +44,23 @@ function main() {
   const root = path.join(cwd, '.steward');
   if (!fs.existsSync(root)) return; // not a steward project — total silence
 
+  // Fleet auto-registration: opening a steward project records it in the user-global
+  // fleet file so /steward:fleet can show every ship at a glance. Idempotent, fail-open.
+  try {
+    const os = require('os');
+    const fleetDir = path.join(os.homedir(), '.claude', 'steward');
+    const fleetFile = path.join(fleetDir, 'fleet.json');
+    let fleet = { projects: [] };
+    try { fleet = JSON.parse(fs.readFileSync(fleetFile, 'utf8')); } catch (_) { /* first run */ }
+    if (!Array.isArray(fleet.projects)) fleet.projects = [];
+    const norm = path.resolve(cwd);
+    if (!fleet.projects.some((p) => path.resolve(p) === norm)) {
+      fleet.projects.push(norm);
+      fs.mkdirSync(fleetDir, { recursive: true });
+      fs.writeFileSync(fleetFile, JSON.stringify(fleet, null, 2) + '\n');
+    }
+  } catch (_) { /* fleet registration must never block the briefing */ }
+
   let briefing = '';
   try {
     briefing = fs.readFileSync(path.join(root, 'briefing.md'), 'utf8').trim();

@@ -1,0 +1,20 @@
+# Preset: research / thesis / data project — copy to <project>/.claude/verifiability-lens/profile.yaml
+# What "best achievable" means here: the data and derivations are sound; wrong numbers falsify the work.
+
+verbosity: terse
+context_appetite: low
+escalation_floor: important
+default_bias: conservative   # data errors are expensive — ask more, auto-resolve less
+render: plain-bottom-up
+stance: strict
+focus:
+  - "numbers trace to their source: every stat/figure has a provenance (raw data, script, run log) — no reconstructed-from-memory precision"
+  - "derivations re-checkable: the exact command/methodology that produced a result is written down and reproducible"
+  - "silent data-pipeline failures (parse errors swallowed, partial loads, stale caches) — the corrupt-state.yaml class"
+  - "claims about statistical significance/comparisons carry their n, method, and caveats"
+
+rules:
+  suppress_below: important
+  auto_resolve_when_default_exists: false
+  never_context_less_decision: true
+  log_all_auto_resolutions: true

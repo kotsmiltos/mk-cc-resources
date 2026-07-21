@@ -1,0 +1,21 @@
+# Preset: plugin/tooling repo (mk-cc-resources style) — copy to <project>/.claude/verifiability-lens/profile.yaml
+# What "best achievable" means here: hooks fire, tests pass, docs/versions cascade, nothing ships half-wired.
+
+verbosity: terse
+context_appetite: low
+escalation_floor: important
+default_bias: aggressive
+render: plain-bottom-up
+stance: strict
+focus:
+  - "hooks/commands actually fire — registration + a live or piped invocation, not file existence"
+  - "test suites run after each substantive change, output shown"
+  - "doc/version cascade complete: plugin.json + marketplace + bundle + README + CLAUDE.md + RELEASE-NOTES agree"
+  - "cross-file contradictions (a rule stated two ways in two files) — the writer-rule class of defect"
+  - "injected-text/protocol changes verified against their consumers (agents, sessions) not just written"
+
+rules:
+  suppress_below: important
+  auto_resolve_when_default_exists: true
+  never_context_less_decision: true
+  log_all_auto_resolutions: true

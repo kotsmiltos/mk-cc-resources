@@ -53,8 +53,8 @@ recommended path once the transition completes.
 - New plugins / prompt modifiers (protocol-shaped injection convention is the drop-in
   surface).
 - Steward verbs beyond seed/brief/sync/next (/discuss, /test, /work — Phase B).
-- External-project generalization of the steward loop (mk-cc-resources is the Phase 0
-  pilot; Phase D seeds crowd-game first, then EMDE/psience).
+- External-project generalization of the steward loop (mk-cc-resources = Phase 0
+  pilot; crowd-game seeded 2026-07-21, running in parallel; EMDE/psience next).
 - Glossary engine language coverage (Python/TS/JS/C# today; extensibility measure is
   C#-only MVP).
 - Lens firing economics (Phase C: hand-back + risk-triggered, not per-turn).

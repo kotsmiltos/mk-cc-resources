@@ -1,0 +1,20 @@
+# Preset: game project (Unity etc.) — copy to <project>/.claude/verifiability-lens/profile.yaml
+# What "best achievable" means here: it runs and FEELS right in the real app; unit-green is not done.
+
+verbosity: terse
+context_appetite: low
+escalation_floor: important
+default_bias: aggressive
+render: plain-bottom-up
+stance: strict
+focus:
+  - "runs in the real app (editor/play mode), not just unit-green — 'works' claims need a live check or an explicit 'untested in-app' label"
+  - "feel/behavior regressions: pacing, responsiveness, visual glitches — flag claims that touch them without an in-app look"
+  - "editor-bound test constraints honored (fast suite per step; slow/editor-seizing suites batched, never claimed as run when they weren't)"
+  - "no silent breakage of scenes/prefabs/serialized assets by code-only reasoning"
+
+rules:
+  suppress_below: important
+  auto_resolve_when_default_exists: true
+  never_context_less_decision: true
+  log_all_auto_resolutions: true

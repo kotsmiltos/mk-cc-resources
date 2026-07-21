@@ -30,6 +30,7 @@ Design source of truth: `design/continuous-transformation.md` (v3) in this repo.
 | `/steward:brief` | Want the briefing again mid-session |
 | `/steward:sync` | Force integration + diff right now |
 | `/steward:next` | Do the top task right now |
+| `/steward:fleet` | All your steward projects in one glance — position, top task, inbox — for choosing where tonight's energy goes (projects register automatically when opened) |
 
 ## The model (`.steward/` at project root)
 

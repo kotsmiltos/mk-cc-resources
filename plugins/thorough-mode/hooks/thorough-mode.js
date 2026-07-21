@@ -6,6 +6,13 @@
  * structured behavioral instructions into the context.
  * Also detects intent-without-keyword patterns and suggests modifiers.
  *
+ * Machine-text guard: UserPromptSubmit also fires on machine-generated user-role
+ * content (task notifications, Stop-hook feedback, local-command output). Trigger
+ * keywords quoted inside such text must NOT fire modifiers — observed misfire:
+ * "@prompt" inside a background-task notification injected the full prompt-mode
+ * protocol twice on 2026-07-21. Any prompt that OPENS with a known machine marker
+ * is skipped entirely (a genuine user message never begins with these).
+ *
  * Modifiers:
  *   ++ / @thorough  — exhaustive processing, no skipping
  *   @ship           — pre-push documentation and versioning checklist
@@ -16,6 +23,24 @@
  *   @prompt         — produce a copy-paste kickoff prompt for the next session
  *   @build          — plan the change, review the plan, then build it
  */
+
+// Markers that identify machine-generated user-role content. Matched against the
+// START of the prompt (after whitespace) — machine turns begin with these; user
+// messages don't. Mid-text occurrences are deliberately NOT matched (a user may
+// legitimately paste or mention them while asking about the content).
+const MACHINE_TEXT_MARKERS = [
+  "[SYSTEM NOTIFICATION",       // background-task events
+  "<task-notification>",        // task-notification blocks
+  "Stop hook feedback:",        // Stop-hook re-invocations
+  "<local-command-caveat>",     // local command transcripts (/plugin etc.)
+  "<command-name>",             // slash-command invocation records
+  "<system-reminder>",          // system reminder blocks
+];
+
+function isMachineText(prompt) {
+  const head = prompt.replace(/^\s+/, "").slice(0, 200);
+  return MACHINE_TEXT_MARKERS.some((m) => head.startsWith(m));
+}
 
 const MODIFIERS = [
   {
@@ -147,6 +172,16 @@ EXIT CHECK: every citation in the saved prompt was disk-verified this turn, and 
   },
 ];
 
+// Steward-aware @prompt variant: in a project with a .steward/ living model, the
+// model IS the verified state — a kickoff prompt renders from it instead of
+// re-deriving via the full DRAFT→VERIFY ritual. Same SAVE discipline.
+const PROMPT_STEWARD_INJECTION = `[prompt-mode/steward] This project carries a .steward/ living model — render the kickoff FROM the model instead of re-deriving state. Protocol — RENDER → SPOT-CHECK → SAVE → SHOW:
+1. RENDER one fenced code block from .steward/: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`++\`, \`@verify\`).
+2. SPOT-CHECK only what the block cites beyond the model: any file path or branch named that is NOT already in the model gets disk-verified now; model-sourced content is already the maintained truth — if you doubt it, dispatch the steward agent (job: brief) rather than re-deriving inline.
+3. SAVE to \`.claude/prompts/prompt-<fs-ts>.md\` + prepend the INDEX.md line (same append-only history as always).
+4. SHOW the prompt + where it was saved. If briefing.md is stale vs tasks.md/log.md, say so and have the steward regenerate it first.
+EXIT CHECK: block renders from the model, non-model citations disk-verified, prompt saved.`;
+
 // Patterns that suggest a modifier would help, but the user didn't use it.
 // Each hint only fires if the corresponding modifier was NOT already triggered.
 const HINTS = [
@@ -242,15 +277,28 @@ async function main() {
   const prompt = await readPrompt();
   if (!prompt) return;
 
+  // Machine-generated user-role content never fires modifiers or hints.
+  if (isMachineText(prompt)) return;
+
   // Check which modifiers are explicitly triggered
   const activeModifiers = new Set();
   const injections = [];
+
+  const stewardModelExists = (() => {
+    try { return require("fs").existsSync(require("path").join(process.cwd(), ".steward")); }
+    catch (_e) { return false; }
+  })();
 
   for (const modifier of MODIFIERS) {
     const triggered = modifier.triggers.some((rx) => rx.test(prompt));
     if (triggered) {
       activeModifiers.add(modifier.name);
-      injections.push(modifier.injection);
+      // @prompt renders from the living model where one exists (cheaper, consistent)
+      if (modifier.name === "prompt" && stewardModelExists) {
+        injections.push(PROMPT_STEWARD_INJECTION);
+      } else {
+        injections.push(modifier.injection);
+      }
     }
   }
 

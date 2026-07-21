@@ -1,5 +1,16 @@
 # steward — Release Notes
 
+## 0.2.0 — Fleet briefing (owner-routed via model Q8)
+
+- **/steward:fleet** — every steward project's ship position, top task, and inbox count in one
+  glance, for choosing where tonight's energy goes. Deterministic renderer
+  (`bin/steward-fleet.js`), zero-LLM, fail-soft per project.
+- **Auto-registration:** opening a steward project registers it in `~/.claude/steward/fleet.json`
+  (SessionStart hook; idempotent, fail-open). Vanished projects (`.steward/` deleted) are
+  reported once and pruned from the registry.
+- **Test isolation fix:** all hook test invocations now run against an isolated fake home — an
+  earlier run leaked two tmp projects into the real fleet registry (cleaned). 17/17 pass.
+
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
 > - Positive mindset: every gap solvable. Find the way by working carefully.

@@ -96,9 +96,14 @@ plugins/
                             #   @fresh, @prompt, @build) — hooks-only. @thorough/@fresh/@prompt
                             #   injections are protocol-shaped (failure named → ordered steps →
                             #   anti-signals → exit check; convention documented in the plugin
-                            #   CLAUDE.md for future modifiers to drop into)
+                            #   CLAUDE.md for future modifiers to drop into). Machine-text guard:
+                            #   prompts opening with machine markers (notifications, Stop-hook
+                            #   feedback, command transcripts) never fire modifiers or hints.
+                            #   @prompt is steward-aware: with a .steward/ model present it
+                            #   renders the kickoff FROM the model (RENDER→SPOT-CHECK→SAVE→SHOW)
     .claude-plugin/plugin.json
     hooks/thorough-mode.js    # UserPromptSubmit modifier injection (MODIFIERS) + hint injection (HINTS)
+    tests/thorough-mode.test.js  # 21 checks, no framework
 
   project-note-tracker/     # Question + bug tracker with Excel backend
     .claude-plugin/plugin.json
@@ -116,13 +121,26 @@ plugins/
     skills/alert-sounds/
       SKILL.md              # /alert-sounds config skill
 
+  statusline/               # Segment-based statusline (no hooks/skills — settings-level wiring).
+                            #   Segments: model | current task | dir | steward anchor (⚓+inbox) |
+                            #   context counter (normalized used-% bar, ~16.5% autocompact buffer
+                            #   accounted; green/yellow/orange/skull). Fail-soft per segment;
+                            #   extend = drop a function into SEGMENTS
+    .claude-plugin/plugin.json
+    bin/mk-statusline.js
+    tests/mk-statusline.test.js  # 12 checks incl. normalization math
+
   verifiability-lens/       # Auto-classifier: sorts work A (verifiable) / B (guess) / U (can't-tell),
                             #   surfaces only important + actionable + fully-contextualized decisions
     .claude-plugin/plugin.json
     agents/
       verifiability-lens.md # read-only classifier + surfacing triager (the substance)
     references/rubric.md    # CANON — A/B/U classification + surfacing triage + recipient profile
-    defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded
+    defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded;
+                            #   optional focus: list = what "best achievable" means per project.
+                            #   Project override: .claude/verifiability-lens/profile.yaml;
+                            #   agent reads it ONCE per dispatch (never per item)
+    defaults/presets/       # copyable per-project profiles: game-project, plugin-repo, research-data
     commands/verifiability.md        # /verifiability [target] — manual trigger
     hooks/
       hooks.json            # Stop hook registration
@@ -148,11 +166,14 @@ plugins/
     .claude-plugin/plugin.json
     agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/
     skills/steward/         # ambient session protocol + workflows/seed.md (existing-project onboarding)
-    commands/               # seed | brief | sync | next — optional aliases only
+    commands/               # seed | brief | sync | next | fleet — optional aliases only
+    bin/steward-fleet.js    # fleet briefing renderer — all steward projects at a glance;
+                            #   registry ~/.claude/steward/fleet.json auto-populated by the hook
     hooks/
       hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
-      scripts/steward-brief.js  # deterministic briefing+inbox injection; silent without .steward/; fail-open
-    tests/steward-brief.test.js  # 9 checks, no framework
+      scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
+                            #   silent without .steward/; fail-open
+    tests/steward-brief.test.js  # 17 checks, isolated fake home, no framework
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.

@@ -6,7 +6,7 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**None open.** All 7 seed questions answered by the owner 2026-07-21 (AskUserQuestion).
+**None open.** 7 seed questions answered 2026-07-21; Q8 answered + executed 2026-07-22.
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
@@ -26,3 +26,7 @@
   plugins/essense-flow/.claude/); files stay on disk, ignored.
 - **Q7 · `.steward/` → commit the model; `inbox/` gitignored** (rule added by session,
   incl. `!.gitkeep` exception). Public-repo safe: raw captures stay local.
+- **Q8 · Toolset candidates → "also build fleet briefing now."** GSD uninstall +
+  fleet briefing executed same session (both DONE — see log 2026-07-22); sessionless
+  drop channel DEFERRED behind the crowd-game eval (multiplier of a proven loop);
+  psience hygiene PARKED for a psience session.

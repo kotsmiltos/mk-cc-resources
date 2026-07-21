@@ -18,7 +18,7 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.2.0)
+.claude-plugin/plugin.json       # metadata (v0.4.0)
 agents/verifiability-lens.md     # the read-only classifier + triager
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
 defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded
@@ -76,8 +76,14 @@ written claims (default OFF — without it, only artifact-producing turns trigge
   tests (intended_scope/completeness/continue + dispatch + no-raw-dump) so a hook-contract
   regression fails; test harness gains a failure counter + denominator + `process.exit` (no silent
   partial). 39/39 pass.
-- later (own gates): in-band pipeline-gate dispatch; PostToolUse fire points; extend librarian.md's
-  surfacing protocol with the triage; the schema deepening.
+- ✅ v0.4.0: per-project recipient profiles — standard override `<project>/.claude/verifiability-lens/profile.yaml`
+  (named in hook BLOCK_REASON + agent def); optional `focus:` list = what "best achievable" means
+  for THIS project (quality-bar weighting); copyable presets in `defaults/presets/`
+  (game-project / plugin-repo / research-data); read-ONCE-per-dispatch profile rule (kills the
+  measured 90×-reads waste). Hook contract tests 39/39.
+- later (own gates): firing economics (hand-back + risk-triggered, not per-turn — Phase C of
+  design/continuous-transformation.md); in-band pipeline-gate dispatch; PostToolUse fire points;
+  extend librarian.md's surfacing protocol with the triage; the schema deepening.
 
 ## Relation to existing pieces
 

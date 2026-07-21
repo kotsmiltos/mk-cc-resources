@@ -54,8 +54,14 @@ you surface (see the surfacing rule — strictness is not noise).
 - `context_refs` — files/paths the work touches; READ them to verify (existence ≠ implementation).
 - `executor_capabilities` — the tools the DOWNSTREAM doer has (especially: can they run
   shell/tests?). Verifiability is capability-relative — judge against THIS, not your own tools.
-- `recipient_profile` — the dials from `defaults/recipient-profile.yaml` (including `stance`,
-  default `strict`). Tune surfacing to these. If absent, use the shipped strict default.
+- `recipient_profile` — the dials that tune surfacing (including `stance`, default `strict`).
+  Resolution order: the project's `.claude/verifiability-lens/profile.yaml` if it exists, else
+  the shipped `defaults/recipient-profile.yaml`. **Read the profile file ONCE at dispatch start
+  and hold it — never re-read it per item or per claim** (measured waste: up to 90 re-reads in a
+  single session before this rule). If the profile carries a `focus:` list, weight the quality-bar
+  check toward those concerns — they are what "best achievable" means for THIS project (a game
+  project's bar differs from a plugin repo's differs from a thesis's). Copyable starting points
+  live in `defaults/presets/`. If absent entirely, use the shipped strict default.
 
 ## Job
 

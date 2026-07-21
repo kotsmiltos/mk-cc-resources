@@ -43,7 +43,8 @@ tiers, `verified` flags); this names it once and acts on it.
 |-------|-----------|
 | `agents/verifiability-lens.md` | the guardian: 3 checks + active verification (read/web/docs) + triager (the substance) |
 | `references/rubric.md` | the canon: A/B/U definitions + the surfacing triage + recipient profile (cite, don't copy) |
-| `defaults/recipient-profile.yaml` | the dials — who it serves (default: time-poor, only-important, aggressive auto-resolve) |
+| `defaults/recipient-profile.yaml` | the dials — who it serves (default: time-poor, only-important, aggressive auto-resolve). **Per-project override:** copy to `<project>/.claude/verifiability-lens/profile.yaml` and tune; the optional `focus:` list defines what "best achievable" means for THAT project. Read ONCE per dispatch, never per item. |
+| `defaults/presets/` | copyable per-project profiles: `game-project` (runs-in-app, feel regressions, editor-test etiquette), `plugin-repo` (hooks fire, doc/version cascade, cross-file contradictions), `research-data` (provenance, reproducibility, conservative auto-resolve) |
 | `commands/verifiability.md` | `/verifiability [target]` — manual trigger |
 | `hooks/` (Stop hook) | fires it **automatically** every classify-worthy turn — blocks the turn, runs the lens in-session, surfaces the triaged result before yielding. **Opt-in, OFF by default.** Fire-exactly-once loop guard, fail-open. |
 

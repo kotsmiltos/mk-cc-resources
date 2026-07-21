@@ -23,10 +23,15 @@ function check(name, cond) {
   else { failures += 1; console.error(`FAIL - ${name}`); }
 }
 
+// ALL hook invocations use an isolated fake home — the hook writes fleet registration
+// to the home dir, and tests must never touch the user's real ~/.claude/steward/fleet.json
+// (a leak here polluted the real fleet once; this guard is the fix).
+const fakeHomeGlobal = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-home-iso-'));
 function runHook(cwd) {
   return execFileSync(process.execPath, [SCRIPT], {
     input: JSON.stringify({ cwd }),
-    encoding: 'utf8'
+    encoding: 'utf8',
+    env: { ...process.env, HOME: fakeHomeGlobal, USERPROFILE: fakeHomeGlobal }
   });
 }
 
@@ -65,6 +70,39 @@ check('oversized briefing truncated', out4.hookSpecificOutput.additionalContext.
 // 6. Garbage stdin → fail-open (falls back to process.cwd(); from this test dir there is no .steward/, so silence)
 const garbage = execFileSync(process.execPath, [SCRIPT], { input: 'not json', encoding: 'utf8', cwd: bare });
 check('garbage stdin fails open silently', garbage === '');
+
+// 7. Fleet auto-registration: steward project registers in fleet.json; bare project doesn't; no dupes
+const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-home-'));
+const fleetFile = path.join(fakeHome, '.claude', 'steward', 'fleet.json');
+function runHookHome(cwd) {
+  return execFileSync(process.execPath, [SCRIPT], {
+    input: JSON.stringify({ cwd }), encoding: 'utf8',
+    env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome }
+  });
+}
+runHookHome(proj); // steward project (from test 2)
+const fleet1 = JSON.parse(fs.readFileSync(fleetFile, 'utf8'));
+check('steward project auto-registers in fleet', fleet1.projects.length === 1 && path.resolve(fleet1.projects[0]) === path.resolve(proj));
+runHookHome(proj); // again — idempotent
+check('registration is idempotent', JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.length === 1);
+runHookHome(bare); // non-steward project — no registration
+check('bare project not registered', JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.length === 1);
+
+// 8. Fleet renderer: shows registered ship's position + prunes vanished projects
+const FLEET_SCRIPT = path.join(__dirname, '..', 'bin', 'steward-fleet.js');
+fs.writeFileSync(path.join(proj, '.steward', 'tasks.md'), '# Tasks\n\n## 1. Fix the thing [Q]\n- What: x\n');
+const goneProj = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-gone-'));
+fs.mkdirSync(path.join(goneProj, '.steward'), { recursive: true });
+runHookHome(goneProj);
+fs.rmSync(path.join(goneProj, '.steward'), { recursive: true });
+const fleetOut = execFileSync(process.execPath, [FLEET_SCRIPT], {
+  encoding: 'utf8', env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome }
+});
+check('fleet shows registered ship', fleetOut.includes(path.basename(proj)));
+check('fleet shows ship position from briefing', fleetOut.includes('Ship: test project.') || fleetOut.includes('position:'));
+check('fleet shows top task', fleetOut.includes('Fix the thing'));
+check('fleet reports vanished project pruned', fleetOut.includes('no longer exists'));
+check('fleet registry pruned on disk', JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.every((p) => p !== path.resolve(goneProj)));
 
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

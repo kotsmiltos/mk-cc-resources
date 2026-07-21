@@ -1,0 +1,8 @@
+{
+  "name": "statusline",
+  "version": "0.1.0",
+  "description": "Segment-based statusline for Claude Code: model | current task | directory | steward anchor (⚓ + inbox count in .steward projects) | context counter (the GSD-edition normalized bar — 100% = usable-window limit accounting for the ~16.5% autocompact buffer; green/yellow/orange/skull thresholds). Each segment is an independent fail-soft function — add new ones by dropping a function into SEGMENTS. Statusline is a settings-level surface, so wiring is one settings.json line: \"statusLine\": {\"type\": \"command\", \"command\": \"node <path>/bin/mk-statusline.js\"} — see README. No hooks, no skills.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

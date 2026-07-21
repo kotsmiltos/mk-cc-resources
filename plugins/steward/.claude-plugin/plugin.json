@@ -1,6 +1,6 @@
 {
   "name": "steward",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The project's living-model keeper — the guy behind the inbox. Per project it maintains a rich model (.steward/: vision, state, parts+contracts, open questions, next tasks) and an inbox your stray thoughts land in. On every input it RECOMPUTES the whole model (adds/edits/deletes, cascades pivots) and shows you the diff, so you always know where the ship is and why. Interface is ambient — zero commands to remember: opening the project auto-briefs you (SessionStart hook, silent in projects without a model), talking normally captures ideas, plain words drive work ('what's next', 'do it'), session leftovers integrate at next open. Slash commands (/steward:seed|brief|sync|next) are optional aliases only. Work happens only while you watch — the steward never moves code or the model in your absence (inbox staging only). Carries a hook — install standalone, not part of the mk-cc-all bundle.",
   "author": {
     "name": "kotsmiltos"

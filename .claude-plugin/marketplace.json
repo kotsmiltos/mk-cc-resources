@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.29.0"
+    "version": "2.30.0"
   },
   "plugins": [
     {
@@ -30,7 +30,7 @@
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
       "description": "Prompt modifiers — keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @thorough, @fresh, and @prompt injections are protocol-shaped (failure named -> ordered steps -> anti-signals -> exit check); @prompt DRAFT->VERIFY->COLD-READ->SAVE disk-verifies every citation and SAVES each prompt to an append-only .claude/prompts/ history + INDEX.md ledger. @build REVIEW carries a reuse-first gate (already built here, or served by a package? reuse/extend, do not reinvent). @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
-      "version": "1.9.1"
+      "version": "1.10.0"
     },
     {
       "name": "project-note-tracker",
@@ -60,7 +60,7 @@
       "name": "verifiability-lens",
       "source": "./plugins/verifiability-lens",
       "description": "A strict, opinionated work-quality guardian that fires automatically on your work and pushes it to the best achievable. Runs THREE checks and ACTIVELY verifies (web + docs + read tools — confirms/refutes, not just flags): (1) Verifiability — A (verified/checkable) / B (genuine guess) / U (can't tell; never let a U pass as A); (2) Completeness — was everything meant to be done actually done, or did we stop arbitrarily (presses to continue + finish, tested); (3) Quality bar — tested, requirements met, robust, not half-assed. A surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands you ONLY the important, actionable, fully-contextualized pushes — strict judgment, disciplined surfacing; never a context-less decision; auto-resolutions logged. Fires via an opt-in Stop hook (OFF by default) on substantive-work turns (code/files, reads, web, subagents, MCP), reading the WHOLE turn; pure questions + its own output never trigger it. Also a /verifiability manual trigger. Read/research-only — verifies and pushes, does not write code or run the build. Carries a hook — install separately from the mk-cc-all bundle.",
-      "version": "0.3.2"
+      "version": "0.4.0"
     },
     {
       "name": "reuse-gate",
@@ -72,12 +72,18 @@
       "name": "steward",
       "source": "./plugins/steward",
       "description": "The project's living-model keeper — 'the guy behind the inbox.' Per project it maintains a rich model (.steward/: vision, state, parts+contracts, open questions, next tasks) and an inbox your stray thoughts land in; on every input it RECOMPUTES the whole model (adds/edits/deletes, cascades pivots) and shows the diff, so you always know where the ship is and why. Ambient interface, zero commands to remember: opening the project auto-briefs you (SessionStart hook, totally silent in projects without a model), talking normally captures ideas, plain words drive work ('what's next', 'do it'), session leftovers integrate at next open — owner present. /steward:seed builds the model FOR you from an existing project's docs/code/history plus 3-7 quick questions; /steward:brief|sync|next are optional aliases. The steward agent is the only writer of .steward/ and never touches product code; no work happens in your absence (inbox staging only, permanently). Design source: design/continuous-transformation.md v3. Carries a hook — install standalone, not part of the mk-cc-all bundle.",
+      "version": "0.2.0"
+    },
+    {
+      "name": "statusline",
+      "source": "./plugins/statusline",
+      "description": "Segment-based statusline: model | current task | directory | steward anchor (⚓ + inbox count in .steward projects) | context counter (normalized used-% bar — 100% = usable-window limit accounting for the ~16.5% autocompact buffer; green/yellow/orange/skull). Each segment is an independent fail-soft function — extend by dropping a function into SEGMENTS. Statusline is a settings-level surface: wiring is one settings.json statusLine line pointing at bin/mk-statusline.js (see README). No hooks, no skills — install is just the wiring.",
       "version": "0.1.0"
     },
     {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, reuse-gate, and steward carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, reuse-gate, and steward carry hooks and must be installed separately. statusline is neither (settings-level wiring — see its README). Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
       "version": "2.21.1"
     }
   ]

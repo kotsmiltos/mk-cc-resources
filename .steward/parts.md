@@ -10,15 +10,23 @@ Root registry: `.claude-plugin/marketplace.json` (must list every plugin in `plu
 Root bundle: `.claude-plugin/plugin.json` (mk-cc-all — skills paths into `plugins/`;
 hook-carrying plugins excluded, installed standalone).
 
-## steward (0.1.0) — the active thrust
+## steward (0.2.0) — the active thrust
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
-  capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`.
+  capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
+  `/steward:fleet` — cross-project briefing aggregation (`bin/steward-fleet.js`,
+  deterministic) over `~/.claude/steward/fleet.json`, auto-registered at SessionStart.
 - **Consumes:** project docs/code/history at seed; `design/continuous-transformation.md`
   v3 as design source; MAP.md/`runner map` for parts-vs-code honesty (planned, Phase A).
 - **Files:** `plugins/steward/{agents/steward.md, hooks/scripts/steward-brief.js,
-  skills/steward/, commands/}` · **Tests:** `node plugins/steward/tests/steward-brief.test.js` (9 checks).
+  bin/steward-fleet.js, skills/steward/, commands/}` · **Tests:**
+  `node plugins/steward/tests/*.test.js` (brief 9 + fleet suite, 17/17 total).
 - **Contract:** steward agent is the ONLY writer of model files; session writes inbox +
   log appends only; no Stop/per-turn hook, by design.
+- **Known limitation (integration mechanics):** the steward agent's toolset
+  (Read/Grep/Glob/Write/Edit) cannot delete or move files — "move to inbox/done/" is
+  executed as verbatim COPY to done/ + one-line "INTEGRATED — DELETE ME" stub at the
+  original path; the SESSION deletes the stubs after each integration (the brief hook
+  counts any inbox/*.md, so undeleted stubs flag falsely).
 
 ## essense-flow (0.26.0) — classic pipeline (headline today; dissolves per v3 §2)
 - **Exposes:** 11 phase skills + 14 commands; `.pipeline/` artifacts; state machine

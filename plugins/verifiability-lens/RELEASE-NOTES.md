@@ -1,5 +1,20 @@
 # verifiability-lens — Release Notes
 
+## 0.4.0 — Per-project profiles ("too generic" fix) + read-once profile rule
+
+- **Per-project recipient profiles are now concrete.** Standard override location:
+  `<project>/.claude/verifiability-lens/profile.yaml` (full copy of the default with tuned
+  dials); named in the hook's BLOCK_REASON and the agent def. New optional `focus:` list defines
+  what "best achievable" means for THIS project — the quality-bar check weights those concerns
+  hardest. Copyable presets shipped in `defaults/presets/`: `game-project.yaml` (runs-in-app,
+  feel regressions, editor-bound test etiquette), `plugin-repo.yaml` (hooks fire, doc/version
+  cascade, cross-file contradictions), `research-data.yaml` (provenance, reproducibility,
+  conservative auto-resolve).
+- **Read-once profile rule.** The agent reads the profile ONCE per dispatch and holds it — never
+  per item (measured waste before this rule: up to 90 profile re-reads in one session,
+  crowd-game transcripts, 2026-07-21 audit).
+- Hook contract tests: 39/39 still pass (BLOCK_REASON text updated to name the override path).
+
 ## 0.3.2 — Test hardening (lens-caught, on its own build)
 
 The lens ran against its own 0.3.0/0.3.1 ship and flagged two real gaps; both fixed here:

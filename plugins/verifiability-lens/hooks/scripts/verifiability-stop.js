@@ -44,7 +44,9 @@ const BLOCK_REASON =
   "[verifiability-lens] Before yielding: dispatch the `verifiability-lens` agent " +
   "(Agent tool, subagent_type: verifiability-lens) over the work you just produced. " +
   "Pass unit_type, the content, context_refs, executor_capabilities, the recipient_profile " +
-  "from plugins/verifiability-lens/defaults/recipient-profile.yaml (or a project override), " +
+  "(project override .claude/verifiability-lens/profile.yaml if it exists, else " +
+  "plugins/verifiability-lens/defaults/recipient-profile.yaml; the agent reads it ONCE per " +
+  "dispatch — never per item), " +
   "AND intended_scope = what the user asked for / this task set out to do (so it can check " +
   "completeness). The agent runs THREE checks and actively verifies (reads code, searches the " +
   "web, checks docs): (1) verifiability A/B/U, (2) completeness — was everything meant to be " +
