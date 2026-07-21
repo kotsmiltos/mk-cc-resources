@@ -52,5 +52,8 @@
 
 Scratch files (`apolymansi_notice.pdf`, `make_notice.py`, `oh/`, `tree.json`,
 `plugins/essense-flow/.claude/`) — confirmed scratch by owner; .gitignore entries
-appended by the session; files stay on disk, ignored. RESOLVED. `.steward/` model +
-.gitignore changes await commit (tasks.md #2).
+appended by the session; files stay on disk, ignored. RESOLVED. `.steward/` model
+COMMITTED — 655f644 "chore(steward): seed the toolkit's own living model — Phase 0
+pilot is this repo", HEAD of main; inbox rule shipped in corrected dir-pattern form
+(`.steward/inbox/*` + `!.steward/inbox/.gitkeep`), proven with `git check-ignore`.
+Push to remote NOT done — awaits owner word (tasks.md #3).

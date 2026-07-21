@@ -6,6 +6,13 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-21 · LANDED: `.steward/` model committed (pilot seed closed on disk)
+Commit 655f644 "chore(steward): seed the toolkit's own living model — Phase 0 pilot
+is this repo" — confirmed HEAD of main. Includes corrected inbox gitignore rule
+(`.steward/inbox/*` + `!.steward/inbox/.gitkeep`; dir-pattern negation trap caught,
+proven with `git check-ignore`). Check: commit hash = HEAD of main. Residual: push
+awaits owner word (tasks.md #3). Tasks recomputed: done task deleted, push sliver kept.
+
 ## 2026-07-21 · Seed answers integrated — all 7 questions resolved
 Owner (AskUserQuestion): pilot = mk-cc-resources itself (not crowd-game → Phase D);
 lens stays ON, Phase C baseline = rough session measurements (24–30 fires,

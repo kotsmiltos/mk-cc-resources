@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-07-21, post-owner-answers)
+# Tasks — ordered, executor-ready (recomputed 2026-07-21, post model-commit)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,11 +6,11 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Ordering rationale: **mk-cc-resources IS the Phase 0 pilot** (Q1) — the model is seeded,
-so Phase 0 is live now and validates passively during normal use here. The @prompt
-misfire audit is the top active item (observed friction, small, independent). Committing
-the model + doc sync closes the seed. Phases A–E measure against THIS repo; crowd-game
-graduates to Phase D.
+Ordering rationale: **mk-cc-resources IS the Phase 0 pilot** (Q1) — model seeded AND
+committed (655f644 = HEAD of main); only the push sliver remains, gated on owner word
+(never push unasked), placed after the CLAUDE.md sync so one push carries both. The
+modifier misfire audit stays top (observed friction, small, independent). Phases A–E
+measure against THIS repo; crowd-game graduates to Phase D.
 
 ## 1. Fix modifier misfire class — audit all 8 (thorough-mode) [Q3: full audit]
 - **What:** anchor trigger detection to user-authored prompt text so regexes can't
@@ -20,18 +20,17 @@ graduates to Phase D.
 - **Done-check:** notification-text fixture fires NO modifier; genuine keyword in user
   text still fires, per modifier; existing tests green; patch version bump cascaded.
 
-## 2. Commit the seeded `.steward/` model [Q7]
-- **What:** commit model files + the session's .gitignore additions (scratch entries +
-  `.steward/inbox/` with `!.gitkeep`); verify inbox contents are excluded.
-- **Done-check:** `git status` shows model tracked, inbox captures + scratch ignored;
-  `git check-ignore` confirms `.steward/inbox/x.md` ignored, `.gitkeep` not.
-
-## 3. Sync CLAUDE.md architecture snapshot (steward plugin missing)
+## 2. Sync CLAUDE.md architecture snapshot (steward plugin missing)
 - **What:** add steward to the CLAUDE.md plugin tree + any other 3791b7f drift; run
   /docs-audit to confirm no other stale entries.
 - **Where:** `C:\Users\mkots\mk-cc-resources\CLAUDE.md` (+ /docs-audit report).
 - **Done-check:** /docs-audit reports zero drift for steward across CLAUDE.md,
   README.md, marketplace.json.
+
+## 3. Push main to remote — AWAITS OWNER WORD (residual of the done commit task)
+- **What:** push main (655f644 + whatever lands above) once the owner says so — never
+  push unasked (global rule).
+- **Done-check:** remote main == local HEAD.
 
 ## 4. Phase 0 validation — passive, on THIS repo (live now)
 - **What:** use mk-cc-resources normally with the steward loop: auto-brief at open,
