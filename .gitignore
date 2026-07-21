@@ -234,3 +234,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Session scratch (owner-confirmed 2026-07-21)
+apolymansi_notice.pdf
+make_notice.py
+oh/
+tree.json
+plugins/essense-flow/.claude/
+
+# Steward: raw inbox thoughts stay local; the model itself is committed
+# (ignore CONTENTS not the dir — a dir-pattern ignore would kill the .gitkeep negation)
+.steward/inbox/*
+!.steward/inbox/.gitkeep
