@@ -16,7 +16,8 @@ Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI dev
 | **alert-sounds** | 1.1.1 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
 | **verifiability-lens** | 0.3.2 | Work-quality guardian — classifies claims/results as verifiable (A) / guess (B) / can't-tell (U), checks completeness (arbitrary stops) and the quality bar, actively verifying (reads code, web, docs). Surfaces only important + actionable + fully-contextualized escalations via a recipient profile. Fires via an opt-in Stop hook (OFF by default) or /verifiability. Carries a hook — install separately. |
 | **reuse-gate** | 0.1.0 | Reuse-first reminder at the moment code is written — PreToolUse hook injects a once-per-message checklist (check codebase/functionality glossary + existing packages before writing new source). Never blocks, opt-in OFF by default, fail-open. Carries a hook — install separately. |
-| **mk-cc-all** | 2.21.0 | Bundle install — essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, and reuse-gate carry hooks and must be installed separately. |
+| **steward** | 0.1.0 | The project's living-model keeper — "the guy behind the inbox." Keeps a per-project `.steward/` model (vision, state, parts, questions, tasks) + an inbox your stray thoughts land in; on every input it RECOMPUTES the whole plan (add/edit/delete, cascades pivots) and shows the diff. Ambient: opening the project auto-briefs you (silent without a model), talking captures ideas, "do it"/"sync" in plain words drive work. `/steward:seed` builds the model from an existing project. No work in your absence, ever. Carries a hook — install separately. |
+| **mk-cc-all** | 2.21.1 | Bundle install — essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, reuse-gate, and steward carry hooks and must be installed separately. |
 
 ## Benched plugins
 
@@ -47,6 +48,7 @@ claude plugin install essense-autopilot
 claude plugin install thorough-mode
 claude plugin install alert-sounds
 claude plugin install reuse-gate
+claude plugin install steward
 
 # Or install session-lifecycle standalone
 claude plugin install session-lifecycle
@@ -294,6 +296,30 @@ claude plugin install plugin-toolkit
 - `/skill-heal` → hints at `/docs-audit` when descriptions are weak across skills
 - `/plugin-scaffold` → creates v1.0.0 directly (doesn't call `/version-bump`)
 - Standalone use is the most common pattern
+
+## Steward — the Living-Model Keeper
+
+Per project, a `.steward/` model (vision · current state · parts+contracts · open questions ·
+next tasks · outcome log · briefing · inbox) maintained by a steward agent that RECOMPUTES the
+whole plan on every input — adds, edits, deletes, cascades pivots — and shows you the diff.
+Interface is ambient: zero commands to memorize.
+
+```bash
+claude plugin install steward     # carries a hook — separate install
+```
+
+Then once per project:
+
+```
+/steward:seed    # builds the model FOR you from docs/code/history + 3-7 quick questions
+```
+
+From then on: open the project → auto-briefing (where the ship is, next 3 tasks, decisions
+waiting) · talk normally → ideas captured to the inbox · "do it" → next task built while you
+watch (tests + named checks) · "sync" / "wrap up" → inbox integrated, diff shown. Leftovers
+integrate at next open, always owner-present — the steward never moves code or the model in your
+absence. `/steward:brief|sync|next` exist as optional aliases. The hook is completely silent in
+projects without a `.steward/` model. Design source: `design/continuous-transformation.md`.
 
 ## Credits
 

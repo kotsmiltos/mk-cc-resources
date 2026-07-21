@@ -4,8 +4,8 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.28.0"
+    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
+    "version": "2.29.0"
   },
   "plugins": [
     {
@@ -69,10 +69,16 @@
       "version": "0.1.0"
     },
     {
+      "name": "steward",
+      "source": "./plugins/steward",
+      "description": "The project's living-model keeper — 'the guy behind the inbox.' Per project it maintains a rich model (.steward/: vision, state, parts+contracts, open questions, next tasks) and an inbox your stray thoughts land in; on every input it RECOMPUTES the whole model (adds/edits/deletes, cascades pivots) and shows the diff, so you always know where the ship is and why. Ambient interface, zero commands to remember: opening the project auto-briefs you (SessionStart hook, totally silent in projects without a model), talking normally captures ideas, plain words drive work ('what's next', 'do it'), session leftovers integrate at next open — owner present. /steward:seed builds the model FOR you from an existing project's docs/code/history plus 3-7 quick questions; /steward:brief|sync|next are optional aliases. The steward agent is the only writer of .steward/ and never touches product code; no work happens in your absence (inbox staging only, permanently). Design source: design/continuous-transformation.md v3. Carries a hook — install standalone, not part of the mk-cc-all bundle.",
+      "version": "0.1.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, and reuse-gate carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.21.0"
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, reuse-gate, and steward carry hooks and must be installed separately. Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "version": "2.21.1"
     }
   ]
 }

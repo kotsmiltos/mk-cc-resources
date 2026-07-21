@@ -137,6 +137,22 @@ plugins/
                             #   reminder via hookSpecificOutput.additionalContext (check codebase/glossary +
                             #   packages before writing new). Never blocks; opt-in OFF; fail-open; no permissionDecision
     tests/reuse-gate.test.js
+
+  steward/                  # Living-model keeper — "the guy behind the inbox" (design source:
+                            #   design/continuous-transformation.md v3). Per project: .steward/ model
+                            #   (vision/state/parts/questions/tasks/log/briefing + inbox/) that the
+                            #   steward agent RECOMPUTES on every input (add/edit/DELETE, cascade
+                            #   pivots) and diffs visibly. Ambient interface, zero commands to
+                            #   remember; owner-present work only (absent-owner = inbox staging,
+                            #   permanently). Carries a hook — standalone, not in mk-cc-all
+    .claude-plugin/plugin.json
+    agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/
+    skills/steward/         # ambient session protocol + workflows/seed.md (existing-project onboarding)
+    commands/               # seed | brief | sync | next — optional aliases only
+    hooks/
+      hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
+      scripts/steward-brief.js  # deterministic briefing+inbox injection; silent without .steward/; fail-open
+    tests/steward-brief.test.js  # 9 checks, no framework
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.

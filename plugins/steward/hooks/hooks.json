@@ -1,0 +1,15 @@
+{
+  "description": "Steward ambient loop: at session start, inject the project's .steward/briefing.md + inbox status + the ambient protocol. Deterministic, zero-LLM, totally silent in projects without a .steward/ model, fail-open (a broken hook never blocks a session). No Stop/per-turn hooks — integration happens at owner-present moments only.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/steward-brief.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
