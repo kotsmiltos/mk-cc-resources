@@ -29,7 +29,7 @@ hook-carrying plugins excluded, installed standalone).
   original path; the SESSION deletes the stubs after each integration (the brief hook
   counts any inbox/*.md, so undeleted stubs flag falsely).
 
-## kb (0.3.0) — the pull surface (counterpart to steward/lens push)
+## kb (0.4.0) — the pull surface (counterpart to steward/lens push)
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a
   second tool). One facade `lib/kb.js` (query/read/overview), four reach surfaces as
@@ -43,22 +43,35 @@ hook-carrying plugins excluded, installed standalone).
   themes) enables mixed-kind stores.
 - **Consumes:** the markdown a project already keeps — `.steward/` model+log,
   `.claude/handoffs/`, `.claude/prompts/`, CLAUDE.md — via generic `markdown-dir`
-  source type + `term-overlap` ranker; Node stdlib only, zero deps.
+  source type (+ `skipThinPreamble` since 0.4.0) + `term-overlap` ranker (0.4.0
+  rung-1 upgrades: stemming, edit-distance-1 typo tier, config alias groups);
+  Node stdlib only, zero deps.
 - **Contract:** engine READ-ONLY permanently — skills write markdown it indexes.
   Capture-routing rule: knowledge that CHANGES the model goes to `.steward/inbox/`
   (steward recomputes); point-knowledge goes to kb captures. Steward writes
   `.steward/`, kb only reads it. Bundle carries the skills only — MCP ships with
   installing kb itself.
 - **Files:** `plugins/kb/{lib/, mcp/, bin/, skills/, commands/, .mcp.json}` ·
-  **Tests:** `node plugins/kb/tests/kb.test.js` (166) + `kb-mcp.test.js` (32, incl.
+  **Tests:** `node plugins/kb/tests/kb.test.js` (198) + `kb-mcp.test.js` (32, incl.
   live stdio e2e).
-- **Parked (design decided, unbuilt):** characterization pass (Q9 — awaiting owner
-  ratification), kb_capture MCP write tool, session journal + hooks.
+- **Retrieval roadmap (Q9 ANSWERED 2026-07-25 — 3-rung ladder, cheapest substrate
+  first):** rung 1 deterministic upgrades SHIPPED (0.4.0); rung 2 characterization
+  pass (LLM once at index time, cached by content hash — the vocabulary-mismatch
+  class) and rung 3 embeddings (drop-in ranker) both EVIDENCE-GATED on where
+  matching fails in the crowd-game seed corpus.
+- **Pending protocol change (owner direction):** kb-seed's mandatory owner-confirm
+  gate relaxes — seeder judges worth autonomously, reports what it wrote (tasks #2).
+- **Parked (design decided, unbuilt):** kb_capture MCP write tool, session journal
+  + hooks.
 
-## essense-flow (0.26.0) — classic pipeline (headline today; dissolves per v3 §2)
+## essense-flow (0.26.1) — classic pipeline (headline today; dissolves per v3 §2)
 - **Exposes:** 11 phase skills + 14 commands; `.pipeline/` artifacts; state machine
   (artifacts-authoritative, `state-reconcile`); librarian unknowns[] protocol;
-  generativity protocol; code-conventions (BUILD DECOUPLED).
+  generativity protocol; code-conventions (BUILD DECOUPLED). Context-inject
+  economics CORRECT since 0.26.1: never-initialized repos silent (`pipeline_present`
+  probe), parse-corrupt loud (DEGRADED banner). hooks.test.js 11 checks.
+- **Known red:** `tests/ledger-compaction.test.js` T-ENF-3 — calendar drift
+  (>30d unarchived ledger entries), fails on clean tree; chore queued (tasks #3).
 - **Consumes:** plugin-toolkit code-glossary engine for /organize + /glossary (hard
   stop if absent); Node.js `lib/` (19 modules).
 - **Files:** `plugins/essense-flow/` · references/schemas single-source artifact shapes

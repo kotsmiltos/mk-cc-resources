@@ -6,22 +6,8 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**ONE open.** (7 seed questions answered 2026-07-21; Q8 answered + executed 2026-07-22.)
-
-## Q9 · Ratify the characterization-pass park (kb)
-- **Context:** the characterization pass (an enrich job that pre-labels/summarizes kb
-  entries, cached by content hash) was phase 2 of the four-phase kb plan and the owner
-  DID ask for it — but it shipped as design only, not code. The lens audit judged the
-  park sound: with only this repo's corpus (57 entries, term-overlap ranking already
-  serving hits), enrichment has nothing hard to prove against yet. It is parked
-  owner-UNRATIFIED — an owner-asked feature deferred by session judgment, so it needs
-  your explicit word.
-- **Options:** (a) ratify the park — revisit after the first foreign seed (/kb-seed on
-  crowd-game) shows where raw term-overlap fails; (b) overrule — build it next, before
-  foreign corpora; (c) drop it — if MCP dogfood shows narrowing hints suffice.
-- **Recommended default:** (a) — the crowd-game seed is already tasks #4 and is the
-  first corpus kb didn't grow up on; it will show whether characterization earns its
-  cost. Decide with real failure examples, not speculation.
+**None open.** (7 seed questions answered 2026-07-21; Q8 answered + executed
+2026-07-22; Q9 answered 2026-07-25.)
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
@@ -45,3 +31,11 @@
   fleet briefing executed same session (both DONE — see log 2026-07-22); sessionless
   drop channel DEFERRED behind the crowd-game eval (multiplier of a proven loop);
   psience hygiene PARKED for a psience session.
+- **Q9 · kb retrieval → ANSWERED 2026-07-25: improve it** ("yeah we need to improve
+  that, fuzzy matching? other techniques?") — NOT a plain ratify of the
+  characterization park. Law: 3-rung ladder, cheapest substrate first —
+  (1) deterministic term-overlap upgrades [SHIPPED same session, kb 0.4.0: stemming
+  + edit-distance-1 typos + config alias groups + skipThinPreamble],
+  (2) characterization pass, (3) embeddings as drop-in ranker — rungs 2/3
+  evidence-gated on where matching fails in the crowd-game seed (tasks #5).
+  Provenance: inbox/done/20260725-0337-retrieval-improvement-direction.md.

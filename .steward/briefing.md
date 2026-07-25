@@ -1,9 +1,9 @@
-# mk-cc-resources — briefing (2026-07-25, post kb-ship integration)
-Ship position: kb 0.3.0 SHIPPED + PUSHED (94a3b17 == origin/main) — the pull surface joins the loop (kind x caste KB; MCP + skill + /kb + CLI; seed/capture writes markdown, engine read-only). Marketplace 2.33.0; kb installed locally, MCP tools live after restart. Two steward pilots still running.
-Last change: owner's 07-24 "session-scope counterpart" direction went idea → kb 0.1.0→0.3.0 → lens-audited (1 defect fixed) → shipped in two days; integrated as executed.
+# mk-cc-resources — briefing (2026-07-25, post "do them all" batch)
+Ship position: local main d830d62 UNPUSHED (origin = 1159497, which shipped the arrival-check row fix). The batch: kb 0.4.0 (retrieval rung 1 — stemming/typos/aliases, 198+32 tests) + essense-flow 0.26.1 (context-inject inversion FIXED both ways) + first /kb-seed here (6 cited entries) + cascade (marketplace 2.34.0, bundle 2.23.0). Push awaits owner word.
+Last change: owner answered Q9 ("improve retrieval — fuzzy? other techniques?") → 3-rung ladder became law and rung 1 shipped SAME session; owner also directed kb-seed to judge on its own (confirm gate relaxes).
 Next 3 tasks:
-1. Arrival check (first minutes HERE): /mcp shows kb → kb_overview → both suites; PLUS fix marketplace mk-cc-all row 2.21.1→2.22.0 (drift @ship missed, found at integration).
-2. Watch whether Claude self-calls kb_query unprompted (the ambient-availability requirement) — log the first real hit or the absence.
-3. Next crowd-game session: game-project lens preset + /kb-seed pilot (first foreign corpus; triggers Q9 revisit).
-Decisions waiting: Q9 — ratify the characterization-pass park (owner-asked, shipped as design only; recommended: keep parked until the crowd-game seed shows where term-overlap fails).
-Crowd-game steward eval still due (~5 sessions/~1 week post-seed; recipe in inbox/done/); context-inject inversion fix remains queued (tasks #3).
+1. Push d830d62 on owner word (+ this .steward reconcile commit).
+2. kb-seed autonomy: SKILL.md step 3 → judge-then-report, no mandatory pre-confirm (before the crowd-game seed runs).
+3. T-ENF-3 chore: ledger-compaction calendar drift, red on clean tree.
+Decisions waiting: none open (Q9 resolved → ladder; rungs 2/3 evidence-gated on the crowd-game seed's miss list).
+Watch: kb ambient signal still unlit (6 protocol-driven calls, 0 unprompted); next Diploma session must show the corrupt-state DEGRADED banner (task-#3 residual).

@@ -1,4 +1,4 @@
-# State — current truth (2026-07-25)
+# State — current truth (2026-07-25, post "do them all" batch)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,79 +8,89 @@
 
 ## What exists and works
 
-- **Marketplace 2.33.0** — 13 active plugins + mk-cc-all bundle on `main`; 7 benched
-  plugins preserved on `archive/benched-plugins`.
-- **Shipped position: origin/main == local main == 94a3b17** (refs-verified 2026-07-25).
-  The 2026-07-22 batch shipped earlier as b12e932 (tm 1.10.0, lens 0.4.0, steward 0.2.0
-  fleet, statusline 0.1.0); the kb batch (0.1.0→0.3.0, 32 files) shipped 94a3b17 after
-  a lens audit (14A/2B/2U, one defect fixed) + @ship checklist; owner waived their own
-  next-session wiring gate ("@ship it").
-- **kb 0.3.0 SHIPPED — the pull surface** (2026-07-24/25, three versions in two days):
-  knowledge base on KIND (CoALA: episodic/semantic/procedural/working) x CASTE
-  (session/thread/project/fleet/owner). Pure read-only engine + facade `lib/kb.js`;
-  four reach surfaces (always-load MCP kb_query/kb_read/kb_overview · `kb` skill ·
-  /kb /kb-seed /kb-capture commands · CLI); create+maintain via skills that write
-  markdown the engine indexes (`.claude/kb/extracted/`, `.claude/kb/captures/`,
-  frontmatter mixed-kind stores). Tests 166/166 + 32/32 incl. live stdio e2e; live
-  capture-path e2e ranks #1. Owner installed kb locally ("✓ Installed kb"); skills
-  already visible; **MCP tools pending /reload-plugins or restart** — first real
-  MCP dogfood is next session.
-- **steward 0.2.0** — agent + SessionStart briefing + /steward:fleet + auto-registration
-  (`~/.claude/steward/fleet.json`). Tests 17/17. TWO pilots live: this repo (Phase 0)
-  + crowd-game (seeded 2026-07-21 by owner, eval terms pinned in inbox/done/,
-  summarized tasks.md).
-- **thorough-mode 1.10.0** — machine-text guard (misfire class RESOLVED) + steward-aware
-  @prompt (kickoff rendered from the model). Tests 21/21.
-- **verifiability-lens 0.4.0** — per-project profile override + focus list + 3 presets +
-  read-once rule (Phase C profile side, landed early). Tests 39/39. Dogfooded HERE
-  (plugin-repo preset active); crowd-game's game-project half pending.
-- **statusline 0.1.0** — segment-based (model | task | dir | steward anchor | context
-  counter, GSD normalization); wired in user settings; 12/12 tests. Replaced the GSD
-  statusline after the GSD uninstall (140-file backup in `~/.claude/gsd-uninstalled-backup/`).
-- **Plugin versions:** essense-flow 0.26.0 · essense-autopilot 0.4.0 · session-lifecycle
-  1.3.0 · plugin-toolkit 1.7.1 · schema-scout 1.2.1 · thorough-mode 1.10.0 ·
-  project-note-tracker 1.8.0 · alert-sounds 1.1.1 · verifiability-lens 0.4.0 ·
-  reuse-gate 0.1.0 · steward 0.2.0 · statusline 0.1.0 · kb 0.3.0 · mk-cc-all bundle
-  2.22.0 (root plugin.json; marketplace row drifted — see gaps).
-- **Recent arc:** generativity protocol → protocol-shaped injections → lens
-  follow-through → reuse-gate → steward 0.1.0/0.2.0 + tm 1.10.0 + lens 0.4.0 +
-  statusline (b12e932) → kb 0.1.0→0.3.0 pull surface (94a3b17).
+- **Marketplace 2.34.0** — 13 active plugins + mk-cc-all bundle 2.23.0 (row + root
+  plugin.json CONSISTENT — the 2.21.1/2.22.0 drift fixed and shipped in 1159497);
+  7 benched plugins on `archive/benched-plugins`.
+- **Ship position: local main == d830d62, UNPUSHED; origin/main == 1159497**
+  (refs-stated 2026-07-25). 1159497 = arrival-check patch (marketplace row fix),
+  pushed on owner word. d830d62 = the "do them all" batch (kb 0.4.0 + essense-flow
+  0.26.1 + cascade) — push awaits owner word (tasks #1).
+- **kb 0.4.0 — pull surface LIVE, retrieval rung 1 shipped** (2026-07-25):
+  - Arrival check PASSED: /mcp shows kb connected, kb_overview in-session, suites
+    green. The 0.3.0 alwaysLoad B-class is CLOSED — observed live.
+  - Rung 1 (deterministic ranker upgrades, answered-Q9 ladder): stemming +
+    edit-distance-1 typo tier + config alias groups + `skipThinPreamble` (corpus
+    75→71 here, boilerplate preambles gone). Tests 166→198 + MCP 32/32.
+  - First /kb-seed ran on THIS repo: 6 cited entries → `.claude/kb/extracted/`
+    (gitignored, local); lens caught one false universal in the test-convention
+    entry, amended in place.
+- **essense-flow 0.26.1 — context-inject inversion FIXED both ways**:
+  never-initialized repos silent (`pipeline_present` probe in lib/state.js, both
+  hooks); parse-corrupt VISIBLE (ShapeValidationError caught → DEGRADED banner;
+  was stderr-only). hooks.test.js 7→11 green. Companion fix outside repo: the
+  generalize-first over-trigger root-caused (jq absent → raw-payload matching) and
+  fixed in `~/.claude/hooks/generalize-first.sh` (node .prompt extraction, no
+  raw-payload fallback, machine-text guard).
+- **steward 0.2.0** — agent + SessionStart briefing + /steward:fleet +
+  auto-registration. Tests 17/17. TWO pilots live: this repo (Phase 0) + crowd-game
+  (seeded 2026-07-21, eval terms pinned in inbox/done/).
+- **thorough-mode 1.10.0** — machine-text guard + steward-aware @prompt. Tests 21/21.
+- **verifiability-lens 0.4.0** — per-project profile + focus list + 3 presets +
+  read-once rule. Tests 39/39. Active HERE (plugin-repo preset); crowd-game half
+  pending. Earning its keep: caught the seed false-universal + task-#3's foreign-repo
+  residual this session.
+- **statusline 0.1.0** — wired in user settings; 12/12 tests.
+- **Plugin versions:** essense-flow 0.26.1 · essense-autopilot 0.4.0 ·
+  session-lifecycle 1.3.0 · plugin-toolkit 1.7.1 · schema-scout 1.2.1 ·
+  thorough-mode 1.10.0 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 ·
+  verifiability-lens 0.4.0 · reuse-gate 0.1.0 · steward 0.2.0 · statusline 0.1.0 ·
+  kb 0.4.0 · mk-cc-all 2.23.0. README + RELEASE-NOTES + both CLAUDE.mds synced in
+  d830d62.
+- **Recent arc:** kb 0.1.0→0.3.0 pull surface (94a3b17) → arrival check + row fix
+  (1159497, pushed) → "do them all" batch: first seed + Q9-answered rung 1 (kb 0.4.0)
+  + inversion fix (essense-flow 0.26.1) — d830d62, unpushed.
 - **Measurement machinery exists:** `runner coupling` (2.4.0), `runner extensibility`
   (2.5.0, C#-only), MAP.md, drift diff.
 
 ## Known-broken / known-gaps
 
-- **Version-pair drift SHIPPED in 94a3b17** (found at 2026-07-25 integration, disk-
-  verified): marketplace.json's mk-cc-all row says 2.21.1 while root plugin.json says
-  2.22.0. The @ship cascade check missed the marketplace row. One-line fix → tasks #1.
-- **kb .mcp.json registration + alwaysLoad = B-class until next session start** (plugin
-  MCP servers load at session start only). Arrival check next session: /mcp shows kb
-  connected → kb_overview → both suites. If absent, .mcp.json is the suspect (one-line
-  fix + patch push).
-- **kb named gaps** (from 0.1.0, still true): `working` kind unwritten; `session` caste
-  thin (handoffs + kickoff prompts, both written at session end); kind x caste being the
-  right index UNPROVEN — hand-driven + MCP dogfood eval decides.
+- **Pre-existing red: essense-flow `tests/ledger-compaction.test.js` T-ENF-3** —
+  governance-ledger entries >30d unarchived; calendar drift, fails on a clean tree
+  too. Small chore (tasks #3).
+- **Task-#3 foreign-repo residual (lens-flagged, must not vanish):** the done-check
+  clause "Diploma launch surfaces its corruption instead of silence" is only
+  observable IN Diploma — next Diploma session: confirm the corrupt-state DEGRADED
+  banner appears (tasks #7).
+- **kb ambient-availability signal not yet observed:** 6 kb_query calls this session,
+  ALL protocol-driven (seed dupe checks), zero unprompted. Watch continues (tasks #4);
+  zero after ~5 sessions is itself a finding.
+- **kb named gaps** (from 0.1.0, still true): `working` kind unwritten; `session`
+  caste thin; kind x caste being the right index UNPROVEN — dogfood + foreign-corpus
+  eval decide.
+- **kb-seed confirm gate = owner-flagged friction:** mandatory confirm-every-time
+  contradicts owner direction "it should be able to see on its own" — relax queued
+  (tasks #2), preferably before the crowd-game seed.
 - **Coupling/extensibility gates run in ZERO projects.** Phase A closes this.
-- **verifiability-lens firing economics still open:** per-turn where enabled (baseline
-  24–30 fires/long session, ~25–55k tok/dispatch). Phase C = hand-back + risk-triggered;
-  kb-pull now part of the answer.
-- **essense-flow context-inject economics INVERTED** (code-verified 2026-07-22):
-  never-existed `.pipeline` → loud banner every prompt (`lib/state.js:433-437`,
-  `context-inject.js:57-68`); yaml-parse-corrupt → silent (`state.js:439-466` throw
-  swallowed at `context-inject.js:34` — Diploma's silent-fail). Fix queued (tasks #3).
+- **verifiability-lens firing economics still open:** per-turn where enabled
+  (baseline 24–30 fires/long session, ~25–55k tok/dispatch). Phase C = hand-back +
+  risk-triggered; kb-pull part of the answer.
 - **essense-flow slash-command adoption:** all 14 commands abandoned after week 1;
   owner-as-engine pattern. The steward loop is the fix, not an in-place patch.
-- **essense-autopilot slated to retire** (Phase E, Q4); doc repositioning holds until
-  Phase D/E (Q5).
+- **essense-autopilot slated to retire** (Phase E, Q4); doc repositioning holds
+  until Phase D/E (Q5).
 
 ## Working tree
 
-Clean except `.steward/log.md` (session outcome appends, reconciled at this
-integration — commit with the next batch). `inbox/` gitignored (raw captures local).
+d830d62 committed; `.steward/` model files modified by this reconcile (commit as the
+chore batch). `inbox/` gitignored (raw captures local; two DELETE-ME stubs await
+session deletion).
 
 ## Outside-repo (log-only context)
 
+- `~/.claude/hooks/generalize-first.sh` fixed this session (see above) — user-space,
+  not in this repo.
 - Serena read-nag wrapper active (doc/data reads skip nag, code reads keep it).
-- BinanceRepo key scare RESOLVED 2026-07-22 (keys never committed/pushed, verified).
-- External hygiene debt: Diploma corrupt state.yaml (surfaces once tasks #3 lands);
-  psience missing root CLAUDE.md + untouched deploy queue (parked, Q8).
+- BinanceRepo key scare RESOLVED 2026-07-22 (verified never committed/pushed).
+- External hygiene debt: Diploma corrupt state.yaml — fix SHIPPED here (0.26.1),
+  banner confirm pending a Diploma session (tasks #7); psience missing root
+  CLAUDE.md + deploy queue (parked, Q8).

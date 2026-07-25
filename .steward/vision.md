@@ -69,5 +69,8 @@ session."
   an instrument here: pull replaces push wherever a session can ask instead of being fed.
 - kb axes are drop-in surfaces: new kinds (working unwritten), castes, source types
   (`markdown-dir` is the first), rankers (`term-overlap` is the first), and adapters
-  (MCP/CLI are peers over one facade); parked: characterization pass, kb_capture MCP
-  write tool, session journal + hooks.
+  (MCP/CLI are peers over one facade). Retrieval improves along an ANSWERED 3-rung
+  ladder (Q9, 2026-07-25): deterministic term-overlap upgrades (rung 1 SHIPPED, kb
+  0.4.0) → characterization pass → embeddings — each rung evidence-gated on real
+  corpora (crowd-game seed is the first gate). Still parked: kb_capture MCP write
+  tool, session journal + hooks.
