@@ -137,6 +137,13 @@ async function main() {
 
   const digest = digestBlock(root);
   if (digest) out.push(digest);
+  else if (strong.length) {
+    // Bootstrap: without this line the digest can never come into existence —
+    // the maintenance nudge lives INSIDE the injected digest, which requires a
+    // digest. Ride the hint injection (never a standalone fire) so it costs no
+    // extra injections and stops appearing the moment the file exists.
+    out.push(`(no session digest yet — create ${DIGEST_REL} at the first significant decision; it becomes this session's rolling short-term memory, injected every prompt)`);
+  }
 
   if (out.length) {
     process.stdout.write(`${out.join('\n')}\n`);

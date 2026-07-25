@@ -53,7 +53,7 @@ commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
 tests/kb.test.js             # 209 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 20 checks — hook guards, floor, digest, traces
+tests/kb-pull.test.js        # 23 checks — hook guards, floor, digest, traces
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
 
@@ -139,7 +139,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   per-call JSONL traces (`.claude/kb/trace.jsonl` — MCP calls + hook fires), pattern split
   mode (`split: {type:'pattern', pattern}` for bullet/timestamp ledgers; crowd-game log
   1→45 entries via its project config), seed depth mandate + judge-then-report autonomy.
-  209 + 35 + 20 tests. Partially delivers roadmap item 4 (the journal's inject half; hook
+  209 + 35 + 23 tests. Partially delivers roadmap item 4 (the journal's inject half; hook
   fire-points for capture remain).
 - later (each behind its own gate, in this order):
   1. **Dogfood** — does Claude call the MCP tools mid-work? Does /kb-seed produce entries
@@ -163,6 +163,7 @@ run the loop, and a false empty reads as "we know nothing about that."
 
 - **steward** is a *writer* and a *caller* of the KB, not its owner — which is exactly why
   the KB is its own plugin. The lens, hooks and any cli-agent wrapper are peers.
-- **Bundle vs standalone:** the `mk-cc-all` bundle carries only the skill (its `skills` array
-  pulls `plugins/kb/skills/`); the MCP server ships with installing the `kb` plugin itself
-  (`.mcp.json` at plugin root). No hooks either way.
+- **Bundle vs standalone:** the `mk-cc-all` bundle carries only the skills (its `skills` array
+  pulls `plugins/kb/skills/`); the MCP server AND the kb-pull hook ship with installing the
+  `kb` plugin itself (`.mcp.json` + `hooks/hooks.json` at plugin root). Since 0.5.0 kb is a
+  hooks-carrying plugin — standalone install required for the ambient surfaces.

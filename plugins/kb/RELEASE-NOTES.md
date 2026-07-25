@@ -39,7 +39,18 @@ instructions lose to a full working context). Owner directive: "you have to buil
   judges autonomously, then REPORTS what landed for after-the-fact pruning (owner directive:
   "it should be able to see on its own"); pre-confirmation gate removed.
 
-Tests: 209 (kb) + 35 (mcp, +3 trace) + 20 (kb-pull hook, new suite) = 264.
+Measured per-prompt hook cost (spawnSync, 5-run median): **130 ms** on this repo (~75
+entries), **163 ms** on crowd-game (140 entries) — node startup dominates; corpus collect is
+the growth term. Revisit with an index/cache file if a corpus pushes this past ~250 ms.
+
+Bootstrap + discipline (post-review hardening): the hook emits a one-line digest bootstrap
+nudge when hints fire and no digest exists (rides the existing injection — never a
+standalone fire, disappears once the file is created), and `skills/kb/SKILL.md` carries the
+write-side discipline (create at first significant decision; one bullet per landed outcome;
+compress under the cap; graduate durable items to /kb-capture or the steward inbox at
+session end).
+
+Tests: 209 (kb) + 35 (mcp, +3 trace) + 23 (kb-pull hook, new suite) = 267.
 
 ## 0.4.0 — 2026-07-25
 

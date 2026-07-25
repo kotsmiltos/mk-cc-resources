@@ -81,6 +81,21 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('fire is traced', last.tool === 'kb-pull-hook' && last.fired === true && last.hints.length >= 1);
 }
 
+// ---- e2e: digest bootstrap line ----
+
+{
+  const root = fixture();
+  const r = runHook(root, JSON.stringify({ prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?' }));
+  check('no digest + hints fired -> bootstrap line rides the injection', r.stdout.includes('no session digest yet') && r.stdout.includes('session-digest.md'));
+
+  const r2 = runHook(root, JSON.stringify({ prompt: 'completely unrelated cooking recipe for lasagna tonight' }));
+  check('no digest + no hints -> no standalone bootstrap fire', r2.stdout === '');
+
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), '# Now\nporter question settled\n');
+  const r3 = runHook(root, JSON.stringify({ prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?' }));
+  check('digest exists -> bootstrap line gone', !r3.stdout.includes('no session digest yet') && r3.stdout.includes('<session-digest>'));
+}
+
 // ---- e2e: disabled by project config ----
 
 {

@@ -237,7 +237,7 @@ plugins/
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
     tests/kb.test.js        # 209 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
-    tests/kb-pull.test.js   # 20 checks — hook guards, score floor, digest, trace
+    tests/kb-pull.test.js   # 23 checks — hook guards, score floor, digest, trace
 ```
 
 **kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions

@@ -97,3 +97,23 @@ Stop narrowing when the returned entries actually answer the question, or when t
   (one memory → `.claude/kb/captures/`); to bulk-extract an existing project, `/kb-seed`.
   Only steward-MODEL changes route to `.steward/inbox/` for the steward to recompute.
 </orientation>
+
+<session-digest-discipline>
+The SHORT-TERM half of the KB is the **session digest**: `.claude/kb/session-digest.md`, a
+rolling distillation of the CURRENT sitting that the kb-pull hook injects into every prompt —
+so the important parts live next to now instead of far back in a long conversation.
+
+The hook only delivers it; **the session writes it**. The discipline:
+
+- **Create it** at the first significant decision/outcome of a working session (a heading +
+  dated bullets is enough). No digest file = nothing injected = the session has no short-term
+  memory.
+- **Update it when things land**: a decision made (with its one-line why), a direction change,
+  a verified outcome, an open question that must not be lost. One bullet each — this is a
+  distillation, not a log.
+- **Compress, don't append forever**: it is capped (~1500 chars, truncates LOUDLY). Fold
+  superseded bullets away; keep what the next prompt needs.
+- **End of session**: durable items graduate — decisions worth keeping → `/kb-capture`;
+  steward-model changes → `.steward/inbox/`; then the digest can be cleared or left for the
+  next sitting to prune.
+</session-digest-discipline>
