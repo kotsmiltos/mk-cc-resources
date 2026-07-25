@@ -178,6 +178,14 @@ plugins/
   kb/                       # The project's queryable knowledge base — the PULL side of the
                             #   long-lens tools (steward + lens PUSH a fixed briefing at open;
                             #   kb lets a session ask for what it needs, when it needs it).
+                            #   0.5.0 adds the awareness surface: hooks/kb-pull.js
+                            #   (UserPromptSubmit — deterministic ranker over the prompt,
+                            #   score-floored one-line hints + rolling session-digest
+                            #   injection, machine-text guarded, fail-open, config
+                            #   off-switch), per-call JSONL traces (.claude/kb/trace.jsonl),
+                            #   pattern split mode for non-heading ledgers, seed
+                            #   depth+autonomy. kb now CARRIES A HOOK — standalone install
+                            #   for hook+MCP; bundle ships only its skills.
                             #   Two ORTHOGONAL axes, never collapsed into one enum:
                             #   KIND (which catalog — episodic/semantic/procedural/working, the
                             #   CoALA taxonomy, arXiv 2309.02427) x CASTE (which scope tier,
@@ -227,8 +235,9 @@ plugins/
                             #   steward-MODEL changes route to .steward/inbox/ instead (recompute
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 198 checks, own temp fixtures (never reads the host repo)
-    tests/kb-mcp.test.js    # 32 checks — tool contract + handlers + live stdio e2e
+    tests/kb.test.js        # 209 checks, own temp fixtures (never reads the host repo)
+    tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
+    tests/kb-pull.test.js   # 20 checks — hook guards, score floor, digest, trace
 ```
 
 **kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions

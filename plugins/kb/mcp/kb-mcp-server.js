@@ -30,13 +30,49 @@
  */
 
 const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
 const { openKb } = require('../lib/kb');
+
+// ---------- Call traces ----------
+//
+// One JSONL line per tool call: what was asked, what came back. This is the
+// objective record for the dogfood question ("does Claude reach for the KB
+// unprompted?") and tuning data for the ranker — without it, measuring use
+// means transcript archaeology. Telemetry must never break retrieval: a
+// failed trace write warns on stderr and the call proceeds.
+
+const TRACE_REL = path.join('.claude', 'kb', 'trace.jsonl');
+
+function writeTrace(root, record) {
+  try {
+    const file = path.join(root, TRACE_REL);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, `${JSON.stringify(record)}\n`);
+  } catch (err) {
+    process.stderr.write(`[kb-mcp] trace write failed (call unaffected): ${err.message}\n`);
+  }
+}
+
+function traceFor(tool, args, payload) {
+  const rec = { t: new Date().toISOString(), tool };
+  if (args && args.text !== undefined) rec.text = args.text;
+  if (args && args.id !== undefined) rec.id = args.id;
+  if (args && args.kind) rec.kind = args.kind;
+  if (args && args.caste) rec.caste = args.caste;
+  if (payload && typeof payload.matched === 'number') {
+    rec.matched = payload.matched;
+    rec.returned = Array.isArray(payload.hits) ? payload.hits.map((h) => h.id) : [];
+  }
+  if (payload && payload.isError) rec.error = payload.message;
+  return rec;
+}
 
 // Latest MCP protocol revision this server knows; echoed when the client asks for
 // something newer, otherwise we accept the client's (older) revision.
 const PROTOCOL_VERSION = '2025-06-18';
 
-const SERVER_INFO = { name: 'kb', version: '0.3.0' };
+const SERVER_INFO = { name: 'kb', version: '0.5.0' };
 
 // JSON-RPC 2.0 error codes (spec constants, not magic numbers).
 const PARSE_ERROR = -32700;
@@ -245,10 +281,13 @@ function main() {
         if (!handler) return replyError(id, INVALID_PARAMS, `unknown tool '${name}'`);
         const args = (params && params.arguments) || {};
         try {
-          return reply(id, toolResult(handler(getKb(), args)));
+          const payload = handler(getKb(), args);
+          writeTrace(root, traceFor(name, args, payload));
+          return reply(id, toolResult(payload));
         } catch (err) {
           // Facade-level rejections (unknown kind/caste, malformed config) go back
           // as isError content so the model reads the message and self-corrects.
+          writeTrace(root, traceFor(name, args, { isError: true, message: err.message }));
           return reply(id, toolResult({ isError: true, message: err.message }));
         }
       }
@@ -268,4 +307,8 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { TOOLS, INSTRUCTIONS, PROTOCOL_VERSION, toSnippet, handleQuery, handleRead, handleOverview };
+module.exports = {
+  TOOLS, INSTRUCTIONS, PROTOCOL_VERSION, toSnippet,
+  handleQuery, handleRead, handleOverview,
+  writeTrace, traceFor, TRACE_REL,
+};

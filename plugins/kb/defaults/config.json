@@ -4,6 +4,7 @@
   "limit": 8,
   "ranker": "term-overlap",
   "aliases": [],
+  "pull": { "enabled": true, "minScore": 6, "maxHints": 3 },
   "sources": [
     {
       "id": "steward-vision",
@@ -76,6 +77,16 @@
       "recursive": true,
       "split": "file",
       "themes": ["extracted"]
+    },
+    {
+      "id": "session-digest",
+      "type": "markdown-dir",
+      "kind": "working",
+      "caste": "session",
+      "dir": ".claude/kb",
+      "include": ["session-digest.md"],
+      "split": "file",
+      "themes": ["digest", "now"]
     },
     {
       "id": "kb-captures",

@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.4.0)
+.claude-plugin/plugin.json   # metadata (v0.5.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -39,14 +39,22 @@ mcp/kb-mcp-server.js         # MCP stdio adapter — kb_query/kb_read/kb_overvie
                              #   per tool call; isError content for model-correctable misuse
 skills/kb/SKILL.md           # reach-surface: Claude reaches for it unprompted
 skills/kb-seed/SKILL.md      # CREATE: extract an existing project's knowledge -> .claude/kb/extracted/
-                             #   (owner confirms first; mandatory Extracted-from: citations; re-runs top up)
+                             #   (depth-mandated sweep; seeder judges then reports — owner
+                             #   prunes after the fact; mandatory Extracted-from: citations;
+                             #   re-runs top up)
 skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .claude/kb/captures/
                              #   (steward-MODEL changes route to .steward/inbox/ instead — recompute rule)
+hooks/hooks.json             # UserPromptSubmit registration (kb-pull)
+hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over the prompt ->
+                             #   score-floored hint lines (title+id, kb_read to pull) +
+                             #   session-digest injection; machine-text guard; fail-open;
+                             #   .claude/kb.json {"pull":{...}} knobs
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 198 checks, no framework, own temp fixtures
-tests/kb-mcp.test.js         # 32 checks — handler layer + stdio e2e
+tests/kb.test.js             # 209 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 20 checks — hook guards, floor, digest, traces
+tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
 
 **Write model (0.3.0):** the ENGINE stays read-only permanently. Skills write markdown files
@@ -74,7 +82,7 @@ Both markdown surfaces teach the **narrowing loop** (re-query on the hint before
 the **citation rule** (name the `path`). If they ever diverge, the skill wins — it is the one
 that fires unprompted.
 
-Ships in the `mk-cc-all` bundle (no hooks, so nothing forces a standalone install).
+Since 0.5.0 kb CARRIES A HOOK (kb-pull) — standalone install required for hook+MCP; the bundle ships only the skills.
 
 ## Conventions
 
@@ -124,6 +132,15 @@ run the loop, and a false empty reads as "we know nothing about that."
   (`aliases: [[...]]`, replace-wholesale, built into the query by `buildAliasLookup`), and
   `skipThinPreamble` on h2 sources (boilerplate-only preambles dropped; ON for shipped
   steward-model/log + project-instructions). 198 + 32 tests.
+- ✅ v0.5.0: the awareness surface (owner build directive 2026-07-25, answering the T13
+  missed-moment datum) — kb-pull UserPromptSubmit hook (score-floored hints + session-digest
+  injection; the hook makes kb a hooks-carrying plugin), rolling session digest
+  (working/session — first use of the working kind; model-maintained, capped LOUD),
+  per-call JSONL traces (`.claude/kb/trace.jsonl` — MCP calls + hook fires), pattern split
+  mode (`split: {type:'pattern', pattern}` for bullet/timestamp ledgers; crowd-game log
+  1→45 entries via its project config), seed depth mandate + judge-then-report autonomy.
+  209 + 35 + 20 tests. Partially delivers roadmap item 4 (the journal's inject half; hook
+  fire-points for capture remain).
 - later (each behind its own gate, in this order):
   1. **Dogfood** — does Claude call the MCP tools mid-work? Does /kb-seed produce entries
      worth querying on a real foreign project (crowd-game is the natural pilot)? Do the two

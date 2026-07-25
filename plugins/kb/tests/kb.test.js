@@ -424,6 +424,45 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   check('sections are never skipped, only preambles', skipped.every((e) => e.title !== 'preamble'));
 }
 
+// -------------------------------------------------------- pattern split ---
+
+{
+  const LEDGER =
+    '# Log\n\npre text line\n\n' +
+    '- **2026-07-21 (integrate):** first outcome\n  detail line one\n' +
+    '- **2026-07-22 (T1 Stage C):** second outcome\n' +
+    '- **2026-07-22 (T1 Stage C):** third outcome, same title\n';
+  const RX = /^- \*\*(20\d\d-\d\d-\d\d[^*]*)\*\*/;
+
+  const secs = markdownDir.splitByLinePattern(LEDGER, RX);
+  check('pattern split: preamble + one section per matching line', secs.length === 4);
+  check('pattern split: title from capture group', secs[1].title === '2026-07-21 (integrate):');
+  check('pattern split: matching line stays in the body', secs[1].body.startsWith('- **2026-07-21'));
+  check('pattern split: continuation lines belong to the section', secs[1].body.includes('detail line one'));
+  check('pattern split: duplicate titles get distinct keys', secs[2].key !== secs[3].key && secs[3].key.endsWith('~2'));
+
+  // through collect(): entries get per-section dates + distinct ids
+  const patRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-pat-'));
+  fs.mkdirSync(path.join(patRoot, 'st'), { recursive: true });
+  fs.writeFileSync(path.join(patRoot, 'st', 'log.md'), LEDGER);
+  const patSpec = {
+    id: 'plog', type: 'markdown-dir', kind: 'episodic', caste: 'project', dir: 'st',
+    split: { type: 'pattern', pattern: '^- \\*\\*(20\\d\\d-\\d\\d-\\d\\d[^*]*)\\*\\*' },
+  };
+  const patEntries = markdownDir.collect(patSpec, { root: patRoot, registry: reg });
+  check('pattern collect: one entry per section plus preamble', patEntries.length === 4);
+  check('pattern collect: section date from its own title', patEntries[1].when.startsWith('2026-07-21'));
+  check('pattern collect: distinct ids for duplicate titles', new Set(patEntries.map((e) => e.id)).size === 4);
+
+  throws('invalid split object is loud',
+    () => markdownDir.collect({ ...patSpec, split: { type: 'pattern' } }, { root: patRoot, registry: reg }),
+    /invalid split object/);
+  throws('non-compiling split pattern is loud',
+    () => markdownDir.collect({ ...patSpec, split: { type: 'pattern', pattern: '(' } }, { root: patRoot, registry: reg }),
+    /does not compile/);
+  check('string split values still work', markdownDir.resolveSplit({ split: 'h2' }).mode === 'h2');
+}
+
 // --------------------------------------------------------- alias lookup ---
 
 {

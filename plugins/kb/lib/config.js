@@ -78,6 +78,11 @@ function loadConfig(root, inline) {
     if (Array.isArray(layer.kinds) && layer.kinds.length) merged.kinds = layer.kinds.slice();
     if (Array.isArray(layer.castes) && layer.castes.length) merged.castes = layer.castes.slice();
     if (Array.isArray(layer.aliases)) merged.aliases = layer.aliases.slice();
+    if (layer.pull !== undefined && typeof layer.pull === 'object' && layer.pull) {
+      // per-key patch (like sources-by-id, unlike axes): {"pull":{"enabled":false}}
+      // must not silently reset the shipped floor values.
+      merged.pull = { ...merged.pull, ...layer.pull };
+    }
     if (layer.limit !== undefined) merged.limit = layer.limit;
     if (layer.ranker !== undefined) merged.ranker = layer.ranker;
     if (layer.sources !== undefined) merged.sources = mergeSources(merged.sources, layer.sources);

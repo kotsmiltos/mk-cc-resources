@@ -6,6 +6,29 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-25 · kb 0.5.0 BUILT — the awareness surface (owner directive "you have to build it")
+Same session, second build wave. Owner answered the ambient-use analysis with a build-all
+directive (inbox 20260725-1445). Shipped, each disk-checked:
+- **kb-pull hook** (kb now hooks-carrying): deterministic ranker over each prompt →
+  score-floored hint lines (title + kb_read id); machine-text guard; fail-open; config
+  off-switch. Live check HERE: prompt about "second agent for narrowing" → 3 correct hints.
+- **Session digest**: rolling .claude/kb/session-digest.md injected every prompt (capped
+  1500 chars, LOUD truncation); shipped source working/session — first use of working kind.
+  Model-maintained; the short-term half owner asked for ("lives much closer to now").
+- **Call traces**: .claude/kb/trace.jsonl — every MCP call + hook fire, JSONL. Dogfood
+  measurement now objective (tasks #4).
+- **Pattern split mode**: split:{type:'pattern',pattern} for non-heading ledgers. Field
+  result: crowd-game log 1 → 45 entries (its .claude/kb.json override written), total there
+  96 → 140; probe "T13 founding phase" ranks the T13 task entry #1.
+- **Seed depth + autonomy**: ALL substrate rows mandated (full git messages, ledgers,
+  addenda); judge-then-report replaces pre-confirm (executes queued task #2). Owner's
+  "run or update?" answered: updated — next crowd-game session runs the deep seed.
+- Checks: kb 209/209 + mcp 35/35 + kb-pull 20/20 (new suite); versions kb 0.5.0 /
+  bundle 2.24.0 / marketplace 2.35.0 consistent (node check); README/RELEASE-NOTES/
+  CLAUDE.mds synced; packaging decision taken: hooks live IN kb, standalone-install note.
+- steward: inbox has the build directive + 3 prior items to integrate; briefing/tasks now
+  one wave stale again (expected — recompute at next sync).
+
 ## 2026-07-25 · Arrival check PASS + first seed + "do them all" batch (tasks #1, #3, retrieval rung 1)
 Session outcomes, each disk-checked:
 - **Task #1 DONE**: MCP live (kb_overview in-session, 67 entries), suites 166+32 green,

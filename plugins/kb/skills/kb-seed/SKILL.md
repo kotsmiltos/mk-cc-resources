@@ -35,20 +35,26 @@ Each extracted file declares itself via frontmatter (kind / caste / themes / whe
 
 <instructions>
 
-**1. Inventory the substrate — breadth first, cheap reads.**
+**1. Inventory the substrate — ALL of it, not just the top layer.**
 
-Sweep in this order; each row names what knowledge it tends to hold:
+Sweep EVERY row; each names what knowledge it tends to hold. A seed that stops at the
+README extracts the project's advertisement, not its experience — the deep rows (full git
+messages, ledgers, addenda) are where the reversals and dead ends live, and those die
+first:
 
 | substrate | look for | typical kind |
 |---|---|---|
 | README, CLAUDE.md, docs/, ADRs, design/ | stated decisions, architecture, constraints | semantic / procedural |
-| `git log --oneline -100` + notable full messages | what changed and WHY, reversals, rejected paths | episodic |
-| pipeline artifacts (`.pipeline/`, specs, reports) | requirements, review findings | semantic / episodic |
+| `git log --oneline` (ALL of it) + FULL messages of feat/fix/refactor/merge commits | what changed and WHY, reversals, rejected paths | episodic |
+| pipeline artifacts (`.pipeline/`, specs, reports, VISION addenda) | requirements, review findings, superseded designs | semantic / episodic |
+| ledgers and logs (steward log, QA reports, sprint records) | outcomes, failures, gates | episodic |
 | code structure (top-level dirs, configs, build files) | de-facto conventions no doc states | procedural |
 | TODO/FIXME/HACK comments (grep) | known debt, open questions | episodic |
 
-Do NOT read every file — read indexes, headers, and messages; open bodies only where a
-decision clearly lives.
+Read efficiently (indexes/headers first, bodies where a decision clearly lives) but read
+DEEP: on a re-run, target the rows the previous pass thinned out — check `kb stat` per
+source and existing entry dates to see where coverage stops. When the volume exceeds what
+one context can sweep, dispatch read-only sub-agents per substrate row and synthesize.
 
 **2. Distill candidate entries.** One finding = one entry. Target the knowledge that dies
 first: decisions **with their why**, rejected approaches, constraints, conventions. Skip
@@ -56,8 +62,13 @@ what the code states plainly (existence is not knowledge) and anything an existi
 already covers — run `node "${CLAUDE_PLUGIN_ROOT}/bin/kb.js" query <topic>` to check before
 writing a duplicate.
 
-**3. Confirm with the owner before writing.** Show the candidate list — title + kind + one
-line + source citation each. Owner prunes; only confirmed entries land. Never seed silently.
+**3. Judge, write, then report — do not gate on pre-confirmation.** (Owner directive
+2026-07-25: "it should be able to see on its own.") The seeder judges worth autonomously:
+extract what meets the bar (decision-with-why, rejected approach, constraint, convention —
+cited), skip what doesn't. After writing, SHOW the owner the list of what landed — title +
+kind + one line + citation each — so they can prune after the fact. Wrong entries are cheap:
+the store is regenerable and every file cites its source. Never seed invisibly (the report
+is mandatory); just don't make the owner approve every row up front.
 
 **4. Write.** One file per entry, into `.claude/kb/extracted/`:
 

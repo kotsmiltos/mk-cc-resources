@@ -27,6 +27,7 @@ const { whenFromName, whenForFile } = require('../dates');
 const MARKDOWN_EXT = '.md';
 const SPLIT_FILE = 'file';
 const SPLIT_H2 = 'h2';
+const SPLIT_PATTERN = 'pattern';
 const DEFAULT_SPLIT = SPLIT_FILE;
 
 // Frontmatter keys a file may use to override its source's defaults. This is what
@@ -181,15 +182,96 @@ function splitByH2(text) {
 }
 
 /**
+ * Cut a document at lines matching a config-supplied regex — the generic
+ * boundary detector for ledgers whose entry marker is NOT a heading (dated
+ * bullets, timestamped lines, custom markers). The matching line STAYS in the
+ * section body (unlike h2, where the heading is structure): a bullet's first
+ * line is content. Title = capture group 1 when the pattern has one, else the
+ * whole matching line stripped of leading list markers/emphasis.
+ *
+ * Sections whose computed key repeats get an ordinal suffix ('~2', '~3') so
+ * every section keeps a distinct id even when a ledger reuses titles
+ * ("2026-07-22 (integrate)" twice in one file).
+ */
+function splitByLinePattern(text, rx) {
+  const lines = text.split(/\r?\n/);
+  const sections = [];
+  let current = null;
+  const preamble = [];
+
+  for (const line of lines) {
+    const m = rx.exec(line);
+    if (m) {
+      if (current) sections.push(current);
+      const title = (m[1] !== undefined ? m[1] : line)
+        .replace(/^[-*+]\s+/, '')
+        .replace(/\*\*/g, '')
+        .trim();
+      current = { key: title, title, lines: [line] };
+      continue;
+    }
+    if (current) current.lines.push(line);
+    else preamble.push(line);
+  }
+  if (current) sections.push(current);
+
+  const out = [];
+  const preambleText = preamble.join('\n').trim();
+  if (preambleText) {
+    out.push({
+      key: PREAMBLE_KEY,
+      title: firstH1(preamble) || PREAMBLE_KEY,
+      body: preambleText,
+    });
+  }
+  const seen = new Map();
+  for (const s of sections) {
+    const n = (seen.get(s.key) || 0) + 1;
+    seen.set(s.key, n);
+    out.push({
+      key: n > 1 ? `${s.key}~${n}` : s.key,
+      title: s.title,
+      body: s.lines.join('\n').trim(),
+    });
+  }
+  return out;
+}
+
+/**
+ * Normalise the spec's split knob: 'file' | 'h2' | {type:'pattern', pattern}.
+ * An invalid pattern throws — a source that silently fell back to whole-file
+ * indexing would look like the KB losing granularity.
+ */
+function resolveSplit(spec) {
+  const s = spec.split;
+  if (s && typeof s === 'object') {
+    if (s.type !== SPLIT_PATTERN || typeof s.pattern !== 'string' || !s.pattern) {
+      throw new Error(
+        `kb: source '${spec.id}' has an invalid split object — expected {type:'pattern', pattern:'<regex>'}`,
+      );
+    }
+    let rx;
+    try {
+      rx = new RegExp(s.pattern);
+    } catch (err) {
+      throw new Error(`kb: source '${spec.id}' split pattern does not compile: ${err.message}`);
+    }
+    return { mode: SPLIT_PATTERN, rx };
+  }
+  return { mode: s === SPLIT_H2 ? SPLIT_H2 : DEFAULT_SPLIT, rx: null };
+}
+
+/**
  * @param {object} spec - {id, type, kind, caste, dir, include, exclude, recursive,
- *                         split: 'file'|'h2', themes}
+ *                         split: 'file'|'h2'|{type:'pattern',pattern}, themes,
+ *                         skipThinPreamble}
  * @param {{root: string, registry: object}} ctx
  * @returns {object[]} entries
  */
 function collect(spec, ctx) {
   const root = ctx.root;
   const dir = path.resolve(root, spec.dir || '.');
-  const split = spec.split === SPLIT_H2 ? SPLIT_H2 : DEFAULT_SPLIT;
+  const { mode: split, rx: splitRx } = resolveSplit(spec);
   const specThemes = Array.isArray(spec.themes) ? spec.themes : [];
   const entries = [];
 
@@ -221,7 +303,8 @@ function collect(spec, ctx) {
       continue;
     }
 
-    for (const section of splitByH2(text)) {
+    const sections = split === SPLIT_PATTERN ? splitByLinePattern(text, splitRx) : splitByH2(text);
+    for (const section of sections) {
       if (
         section.key === PREAMBLE_KEY &&
         spec.skipThinPreamble &&
@@ -262,6 +345,7 @@ module.exports = {
   describe: () => 'a directory of .md files; one entry per file or per ## section',
   collect,
   // exported for tests
-  splitByH2, patternToRegex, listMarkdown, parseFrontmatter, substanceLineCount,
-  SPLIT_FILE, SPLIT_H2, MIN_PREAMBLE_SUBSTANCE_LINES,
+  splitByH2, splitByLinePattern, resolveSplit, patternToRegex, listMarkdown,
+  parseFrontmatter, substanceLineCount,
+  SPLIT_FILE, SPLIT_H2, SPLIT_PATTERN, MIN_PREAMBLE_SUBSTANCE_LINES,
 };

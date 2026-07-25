@@ -166,6 +166,16 @@ e2e().then((responses) => {
 
   check('e2e unknown method gets METHOD_NOT_FOUND', byId[5].error && byId[5].error.code === -32601);
 
+  // ---- call traces: every tools/call leaves a JSONL record ----
+  const tracePath = path.join(fixtureRoot, '.claude', 'kb', 'trace.jsonl');
+  const traceLines = fs.readFileSync(tracePath, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  check('e2e tools/call writes a trace line', traceLines.length >= 2);
+  const queryTrace = traceLines.find((r) => r.tool === 'kb_query' && typeof r.matched === 'number');
+  check('trace records the query text + matched count + returned ids',
+    queryTrace && queryTrace.text !== undefined && Array.isArray(queryTrace.returned));
+  const errTrace = traceLines.find((r) => r.error);
+  check('trace records isError calls too', !!errTrace);
+
   console.log(`\n${total - failures}/${total} checks passed`);
   if (failures) { console.error(`${failures} FAILURE(S)`); process.exit(1); }
   process.exit(0);
