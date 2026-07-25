@@ -1,9 +1,9 @@
-# mk-cc-resources — briefing (2026-07-22, post Q8-execution)
-Ship position: TWO steward pilots live (this repo Phase 0 + crowd-game). steward 0.2.0 shipped-in-tree (/steward:fleet + auto-registration, 17/17); GSD uninstalled (140 files backed up, next restart); lens plugin-repo preset ACTIVE here. Whole 07-22 batch UNCOMMITTED.
-Last change: Q8 answered ("also build fleet briefing now") + executed same session — fleet + GSD done; drop channel deferred behind crowd-game eval; psience hygiene parked.
+# mk-cc-resources — briefing (2026-07-25, post kb-ship integration)
+Ship position: kb 0.3.0 SHIPPED + PUSHED (94a3b17 == origin/main) — the pull surface joins the loop (kind x caste KB; MCP + skill + /kb + CLI; seed/capture writes markdown, engine read-only). Marketplace 2.33.0; kb installed locally, MCP tools live after restart. Two steward pilots still running.
+Last change: owner's 07-24 "session-scope counterpart" direction went idea → kb 0.1.0→0.3.0 → lens-audited (1 defect fixed) → shipped in two days; integrated as executed.
 Next 3 tasks:
-1. Crowd-game half of preset dogfood: game-project.yaml → its .claude/verifiability-lens/profile.yaml (next session there).
-2. Fix context-inject inversion (never-existed = loud, parse-corrupt = silent; state.js:433-466).
-3. Commit the whole 07-22 batch (+@ship checks); push only on your word (655f644 also unpushed).
-Decisions waiting: none — questions.md all resolved.
-Crowd-game eval due ~5 sessions/~1 week post-seed (recipe in inbox/done/); its outcome also unlocks the drop-channel decision. Fleet grows as projects self-register at open.
+1. Arrival check (first minutes HERE): /mcp shows kb → kb_overview → both suites; PLUS fix marketplace mk-cc-all row 2.21.1→2.22.0 (drift @ship missed, found at integration).
+2. Watch whether Claude self-calls kb_query unprompted (the ambient-availability requirement) — log the first real hit or the absence.
+3. Next crowd-game session: game-project lens preset + /kb-seed pilot (first foreign corpus; triggers Q9 revisit).
+Decisions waiting: Q9 — ratify the characterization-pass park (owner-asked, shipped as design only; recommended: keep parked until the crowd-game seed shows where term-overlap fails).
+Crowd-game steward eval still due (~5 sessions/~1 week post-seed; recipe in inbox/done/); context-inject inversion fix remains queued (tasks #3).

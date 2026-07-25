@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-07-22, post inbox-integration)
+# Tasks — ordered, executor-ready (recomputed 2026-07-25, post kb-ship integration)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,51 +6,67 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Ordering rationale: Q8 executed same-session (GSD uninstalled, fleet briefing shipped
-as steward 0.2.0 — outcomes in log, not tasks). Preset dogfood is HALF done (this repo
-active; crowd-game half waits for a session THERE). Context-inject inversion is the
-code-verified bug in the most-fired hook; commit+push clears the growing uncommitted
-07-22 batch. Then passive validation, the ~1-week crowd-game eval (which also unlocks
-the deferred drop-channel decision), and Phases A–E (C shrunk: profile side shipped in
-lens 0.4.0; D shrunk: first external seed already happened).
+Ordering rationale: old #3 (ship the 07-22 batch) DONE (b12e932) — deleted. kb shipped
+(94a3b17) with one B-class only observable next session start → arrival check is first
+minutes of the next session here, and it carries the marketplace-row fix found at
+integration. MCP dogfood is passive and overlaps everything. Context-inject inversion
+remains the code-verified bug in the most-fired hook. The two crowd-game items (lens
+preset half + /kb-seed pilot) need a session THERE → merged into one session bundle;
+the seed pilot is also the Q9 revisit trigger. Then passive Phase 0 validation, the
+crowd-game eval, and Phases A–E.
 
-## 1. Finish lens-preset dogfood — crowd-game half (this repo's half DONE)
-- **What:** at the next crowd-game session, copy
-  `plugins/verifiability-lens/defaults/presets/game-project.yaml` → crowd-game's
-  `.claude/verifiability-lens/profile.yaml`. (plugin-repo preset already active here.)
-- **Done-check:** file exists at crowd-game's override path; next lens fire there
-  reads it (read-once rule) — focus items appear in its output.
+## 1. kb arrival check + marketplace-row fix (first minutes of next session HERE)
+- **What:** (a) /mcp shows `kb` connected → call kb_overview → run both suites
+  (`node plugins/kb/tests/kb.test.js` + `kb-mcp.test.js`). Closes the .mcp.json
+  alwaysLoad B-class. If kb absent from /mcp: `.mcp.json` is the suspect — one-line
+  fix. (b) Either way: fix marketplace.json's mk-cc-all row 2.21.1 → 2.22.0 (drift vs
+  root plugin.json, shipped in 94a3b17; @ship's cascade check missed the marketplace
+  row). Patch-commit both together; push on owner word.
+- **Done-check:** kb_overview returns corpus stats in-session; suites 166/166 + 32/32;
+  grep shows a single consistent bundle version across plugin.json + marketplace.json.
 
-## 2. Fix context-inject economics inversion (essense-flow)
-- **What:** the injection layer is inverted both ways (code-verified by lens,
-  2026-07-22): never-existed `.pipeline` → LOUD banner every prompt
-  (`lib/state.js:433-437` has no never-existed probe; `hooks/scripts/context-inject.js:57-68`
-  uniform — fired ~40x in one session for a pipeline that never existed), while
-  yaml-parse-corrupt → SILENT (`state.js:439-466` throws → `context-inject.js:34`
-  catches → stderr only — exactly Diploma's silent-fail, state.yaml line 123 duplicate
-  key). Fix = silence never-existed AND un-silence parse-corrupt. Also damp
+## 2. Dogfood the kb MCP loop (passive, this repo, overlaps #1)
+- **What:** the owner's hard requirement was ambient availability ("I don't want to
+  have to call it each time"). Observe over the next few sessions: does Claude
+  self-call kb_query mid-work, unprompted, when reasoning wants known facts? Do the
+  narrowing hints actually drive re-calls (the ReAct loop)?
+- **Done-check:** ≥1 unprompted kb_query in a real work turn whose answer changed the
+  work; noted in log with the query + what it saved. If zero after ~5 sessions, that's
+  a finding too — capture it (server instructions or alwaysLoad need rework).
+
+## 3. Fix context-inject economics inversion (essense-flow)
+- **What:** injection layer inverted both ways (code-verified 2026-07-22):
+  never-existed `.pipeline` → LOUD banner every prompt (`lib/state.js:433-437` has no
+  never-existed probe; `hooks/scripts/context-inject.js:57-68` uniform — ~40x in one
+  session), yaml-parse-corrupt → SILENT (`state.js:439-466` throws →
+  `context-inject.js:34` catches → stderr only — Diploma's silent-fail, state.yaml:123
+  duplicate key). Fix = silence never-existed AND un-silence parse-corrupt. Also damp
   generalize-first over-trigger on feature-ish phrasing.
 - **Done-check:** repo without `.pipeline/` gets zero banner; corrupt-yaml fixture gets
   a visible degradation warning; existing hook tests green; Diploma launch surfaces its
   corruption instead of silence.
 
-## 3. Commit 2026-07-22 work + push on owner word
-- **What:** commit thorough-mode 1.10.0 + lens 0.4.0 + steward 0.2.0 (fleet) +
-  marketplace 2.30.0 + lens profile + doc cascade + model updates (all uncommitted per
-  log); run @ship checks (/docs-audit) pre-push; push main ONLY on owner word (655f644
-  still unpushed too).
-- **Done-check:** git status clean; /docs-audit zero drift; after owner word:
-  remote main == local HEAD.
+## 4. Crowd-game session bundle: lens preset half + /kb-seed pilot (next session THERE)
+- **What:** (a) copy `plugins/verifiability-lens/defaults/presets/game-project.yaml` →
+  crowd-game's `.claude/verifiability-lens/profile.yaml` (this repo's half DONE).
+  (b) run /kb-seed on crowd-game — the FIRST foreign project: sweep docs/git-history/
+  code, owner confirms candidates, dated files with Extracted-from citations →
+  `.claude/kb/extracted/`. (c) the seed outcome triggers the Q9 revisit
+  (characterization park) with real failure examples in hand.
+- **Done-check:** profile file exists + next lens fire there reads it (focus items in
+  output); `kb stat` on crowd-game shows a populated kb-extracted store; a hand-driven
+  query finds a seeded fact; Q9 gets re-presented with concrete evidence.
 
-## 4. Phase 0 validation — passive, on THIS repo (live)
+## 5. Phase 0 validation — passive, on THIS repo (live)
 - **What:** use mk-cc-resources normally with the steward loop: auto-brief at open,
   captures during talk, owner-present integration diffs.
 - **Done-check:** design §5 Phase 0 checks measured HERE — (a) zero pasted context at
   session start; (b) diffs read correctly; (c) ~0 steering turns between "do it" and
   hand-back; (d) ≥1 direction-change lands as thought → recompute → diff → rebuilt
-  part (the pilot-switch answer is a first candidate).
+  part (the kb thread 07-24→07-25 is a strong candidate: direction captured, built,
+  shipped, integrated).
 
-## 5. Crowd-game steward evaluation (~5 sessions or ~1 week after its seed)
+## 6. Crowd-game steward evaluation (~5 sessions or ~1 week after its seed)
 - **What:** re-run the 2026-07-21 audit methodology on crowd-game transcripts
   (baseline = 43 .jsonl files existing 2026-07-21; after-set = post-seed mtime;
   exclude eval sessions). Before/after on 5 signals: (a) start ritual (new files in
@@ -66,39 +82,42 @@ lens 0.4.0; D shrunk: first external seed already happened).
   B-inherited vs disk-verified). **Owner annoyance = veto regardless of numbers.**
   Eval outcome also unlocks the deferred drop-channel decision (Q8 routing).
 
-## 6. Phase A — wire the gates (on this repo)
+## 7. Phase A — wire the gates (on this repo)
 - **What:** coupling/extensibility + tests into every executor step; deterministic
   model-vs-code drift check (parts.md contracts vs `runner map`).
 - **Done-check:** a deliberate reach-in fails a hand-back; a stale parts.md entry is
-  flagged. (Gated on task 4 showing the loop holds here.)
+  flagged. (Gated on task 5 showing the loop holds here.)
 
-## 7. Phase B — harden the steward
+## 8. Phase B — harden the steward
 - **What:** adversarial inbox suite (pivot, vision-contradiction, deletion, duplicate →
   correct cascaded diffs); recurring spot-check re-injection; verbs /discuss /test /work.
 - **Done-check:** each adversarial item produces a correct diff incl. cascaded
   deletions; spot-check fires periodically in normal use.
 
-## 8. Phase C — injection-layer economics (scope updated 2026-07-22)
+## 9. Phase C — injection-layer economics (scope updated 2026-07-25)
 - **What:** REMAINING lens work: hand-back + risk-triggered firing (not per-turn) —
-  the profile side (per-project override + focus + presets + read-once) SHIPPED early
-  in 0.4.0. BROADENED per owner: apply the same economics to the whole per-prompt
-  injection stack (verification-rules, caveman, generalize-first, hints) — fire
-  conditionally, not unconditionally.
+  the profile side SHIPPED early in 0.4.0. BROADENED per owner: apply the same
+  economics to the whole per-prompt injection stack (verification-rules, caveman,
+  generalize-first, hints) — fire conditionally, not unconditionally. NEW instrument:
+  kb-pull — wherever a session can ASK (kb_query) instead of being FED, prefer pull;
+  task #2's dogfood findings feed this design.
 - **Done-check:** lens fire-count drops vs the rough 2026-07-21 baseline (24–30
   fires/long session, ~25–55k tok/dispatch) with zero missed hand-back failures;
   injection stack fires only where its trigger condition holds.
 
-## 9. Phase D — generalization pass (seed part DONE early)
-- **What:** crowd-game seeded 2026-07-21 (owner, ahead of plan) — remaining:
-  extract anything mk-cc-resources-specific from the loop after the task-5 eval;
-  verb set + model structure prove open or get fixed; then EMDE/psience seed.
-- **Done-check:** next project (EMDE or psience) onboards by seeding alone — no
-  tooling code changes.
+## 10. Phase D — generalization pass (seed part DONE early; kb-seed joins it)
+- **What:** crowd-game steward-seeded 2026-07-21 (owner, ahead of plan) — remaining:
+  extract anything mk-cc-resources-specific from the loop after the task-6 eval;
+  verb set + model structure prove open or get fixed; /kb-seed generalization rides
+  the same pass (task 4b is its first datum); then EMDE/psience seed.
+- **Done-check:** next project (EMDE or psience) onboards by steward-seeding +
+  kb-seeding alone — no tooling code changes.
 
-## 10. Phase E — retire ceremony officially [Q4, Q5 land here]
+## 11. Phase E — retire ceremony officially [Q4, Q5 land here]
 - **What:** docs + marketplace reposition; classic pipeline preserved;
   essense-autopilot retires (Q4). Absorption fodder (2026-07-22 candidates list):
-  handoff/resume redundant in steward projects; retro/meta-review → steward verbs;
-  GSD uninstall; truth split memory=owner / model=project / CLAUDE.md=code.
+  handoff/resume redundant in steward projects (and now double-indexed by kb —
+  session-caste sources); retro/meta-review → steward verbs; truth split memory=owner /
+  model=project / CLAUDE.md=code / kb=queryable everything.
 - **Done-check:** new toy project goes idea → running slice through the steward loop
   only, in one evening.

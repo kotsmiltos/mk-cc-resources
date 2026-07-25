@@ -21,6 +21,14 @@ pull-based owner-present work. Ceremony retires (Phase E); the craft survives in
 steward + executor protocols. The classic pipeline stays available, no longer the
 recommended path once the transition completes.
 
+The loop now has BOTH context directions (owner direction, 2026-07-24): the long-lens
+tools (steward, verifiability-lens) PUSH a fixed briefing at session open; **kb** is the
+permanent PULL surface — a session asks for exactly what it needs, when it needs it
+(kind x caste axes, MCP/skill/command/CLI reach). Steward stays the sole writer of
+`.steward/`; kb reads it downstream. Push what's always needed, pull the rest — this is
+the session-scope answer to "the big tools handle too much context to help in one
+session."
+
 ## Who it serves
 
 - The owner, primarily — real projects (crowd-game, EMDE, psience, Binance tooling…).
@@ -57,4 +65,9 @@ recommended path once the transition completes.
   pilot; crowd-game seeded 2026-07-21, running in parallel; EMDE/psience next).
 - Glossary engine language coverage (Python/TS/JS/C# today; extensibility measure is
   C#-only MVP).
-- Lens firing economics (Phase C: hand-back + risk-triggered, not per-turn).
+- Lens firing economics (Phase C: hand-back + risk-triggered, not per-turn) — kb is now
+  an instrument here: pull replaces push wherever a session can ask instead of being fed.
+- kb axes are drop-in surfaces: new kinds (working unwritten), castes, source types
+  (`markdown-dir` is the first), rankers (`term-overlap` is the first), and adapters
+  (MCP/CLI are peers over one facade); parked: characterization pass, kb_capture MCP
+  write tool, session journal + hooks.

@@ -6,7 +6,22 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**None open.** 7 seed questions answered 2026-07-21; Q8 answered + executed 2026-07-22.
+**ONE open.** (7 seed questions answered 2026-07-21; Q8 answered + executed 2026-07-22.)
+
+## Q9 · Ratify the characterization-pass park (kb)
+- **Context:** the characterization pass (an enrich job that pre-labels/summarizes kb
+  entries, cached by content hash) was phase 2 of the four-phase kb plan and the owner
+  DID ask for it — but it shipped as design only, not code. The lens audit judged the
+  park sound: with only this repo's corpus (57 entries, term-overlap ranking already
+  serving hits), enrichment has nothing hard to prove against yet. It is parked
+  owner-UNRATIFIED — an owner-asked feature deferred by session judgment, so it needs
+  your explicit word.
+- **Options:** (a) ratify the park — revisit after the first foreign seed (/kb-seed on
+  crowd-game) shows where raw term-overlap fails; (b) overrule — build it next, before
+  foreign corpora; (c) drop it — if MCP dogfood shows narrowing hints suffice.
+- **Recommended default:** (a) — the crowd-game seed is already tasks #4 and is the
+  first corpus kb didn't grow up on; it will show whether characterization earns its
+  cost. Decide with real failure examples, not speculation.
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
