@@ -387,6 +387,23 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   fs.writeFileSync(path.join(badRoot, '.claude', 'kb.json'), '{ not json');
   throws('malformed project config throws instead of silently reverting', () => loadConfig(badRoot), /cannot read config/);
 
+  // --- generic layer merge: a new knob needs no config.js change ---
+  const { mergeLayer } = require('../lib/config');
+  const base = { limit: 8, pull: { enabled: true, minScore: 6 }, kinds: ['a', 'b'], sources: [{ id: 's1', x: 1 }] };
+  check('object knob patches per key',
+    JSON.stringify(mergeLayer({ ...base }, { pull: { enabled: false } }).pull) === JSON.stringify({ enabled: false, minScore: 6 }));
+  check('unknown object knob is carried through',
+    mergeLayer({ ...base }, { scribe: { enabled: false } }).scribe.enabled === false);
+  check('unknown scalar knob is carried through', mergeLayer({ ...base }, { newKnob: 42 }).newKnob === 42);
+  check('scalar replaces', mergeLayer({ ...base }, { limit: 3 }).limit === 3);
+  check('axis list replaces wholesale', JSON.stringify(mergeLayer({ ...base }, { kinds: ['z'] }).kinds) === JSON.stringify(['z']));
+  check('empty axis list is ignored (never drops tiers)',
+    JSON.stringify(mergeLayer({ ...base }, { kinds: [] }).kinds) === JSON.stringify(['a', 'b']));
+  check('sources still merge by id', mergeLayer({ ...base }, { sources: [{ id: 's1', x: 9 }] }).sources[0].x === 9);
+  check('undefined values do not clobber', mergeLayer({ ...base }, { limit: undefined }).limit === 8);
+  check('non-object layer is a no-op', mergeLayer({ ...base }, null).limit === 8);
+  check('scribe defaults ship enabled', loadConfig(fixtureRoot).scribe.enabled === true);
+
   // --- alias config plumbing ---
   const aliasRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-alias-'));
   fs.mkdirSync(path.join(aliasRoot, '.claude'), { recursive: true });

@@ -13,13 +13,16 @@
  * is load-bearing: a project with entirely different stores replaces `sources`
  * wholesale and every other module behaves identically.
  *
- * Merge rules, chosen so an override is predictable rather than clever:
+ * Merge rules, chosen so an override is predictable rather than clever, and
+ * GENERIC so a new knob needs no code here (see mergeLayer):
  *   - scalars (limit, ranker)      -> project value replaces default
  *   - axis lists (kinds, castes)   -> replace wholesale when present (a partial
  *                                     axis list would silently drop tiers)
  *   - aliases (list of groups)     -> replace wholesale when present (alias
  *                                     groups are one owner-authored vocabulary,
  *                                     not a mergeable set)
+ *   - object knobs (pull, scribe,  -> PER-KEY patch: {"pull":{"enabled":false}}
+ *     and any future one)             keeps the shipped floors beside it
  *   - sources                      -> merged BY ID: same id patches the default,
  *                                     new id appends, and `"enabled": false`
  *                                     switches a shipped source off without
@@ -62,10 +65,48 @@ function mergeSources(base, override) {
   return Array.from(byId.values()).filter((s) => s.enabled !== false);
 }
 
+// The axis lists: a partial override would silently drop tiers, so these replace
+// wholesale rather than merging. Every OTHER key follows the generic rules in
+// mergeLayer — which is what lets a new knob (pull, scribe, the next one) be pure
+// config instead of another branch here.
+const REPLACE_WHOLE = new Set(['kinds', 'castes', 'aliases']);
+const SOURCES_KEY = 'sources';
+
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Apply one override layer onto the merged config. Generic rules, no key list:
+ *   - `sources`        -> merged BY ID (a source is an identified thing)
+ *   - axis lists       -> replace wholesale (partial axes lose tiers)
+ *   - plain objects    -> PER-KEY patch, so {"scribe":{"enabled":false}} keeps the
+ *                         shipped siblings instead of resetting them
+ *   - everything else  -> replace (scalars, other arrays)
+ * A knob added to defaults/config.json is therefore overridable immediately, with
+ * no code change — the same reason sources are config rather than adapters.
+ */
+function mergeLayer(merged, layer) {
+  if (!isPlainObject(layer)) return merged;
+  for (const [key, value] of Object.entries(layer)) {
+    if (value === undefined) continue;
+    if (key === SOURCES_KEY) {
+      merged[key] = mergeSources(merged[key], value);
+    } else if (REPLACE_WHOLE.has(key)) {
+      if (Array.isArray(value) && (key === 'aliases' || value.length)) merged[key] = value.slice();
+    } else if (isPlainObject(value) && isPlainObject(merged[key])) {
+      merged[key] = { ...merged[key], ...value };
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
 /**
  * @param {string} root - project root.
  * @param {object} [inline] - programmatic override, highest precedence.
- * @returns {{kinds,castes,limit,ranker,sources,configPath}}
+ * @returns {{kinds,castes,limit,ranker,sources,aliases,pull,scribe,configPath}}
  */
 function loadConfig(root, inline) {
   const defaults = loadDefaults();
@@ -73,23 +114,11 @@ function loadConfig(root, inline) {
   const project = readJson(projectPath) || {};
   const extra = inline && typeof inline === 'object' ? inline : {};
 
-  const merged = { ...defaults };
-  for (const layer of [project, extra]) {
-    if (Array.isArray(layer.kinds) && layer.kinds.length) merged.kinds = layer.kinds.slice();
-    if (Array.isArray(layer.castes) && layer.castes.length) merged.castes = layer.castes.slice();
-    if (Array.isArray(layer.aliases)) merged.aliases = layer.aliases.slice();
-    if (layer.pull !== undefined && typeof layer.pull === 'object' && layer.pull) {
-      // per-key patch (like sources-by-id, unlike axes): {"pull":{"enabled":false}}
-      // must not silently reset the shipped floor values.
-      merged.pull = { ...merged.pull, ...layer.pull };
-    }
-    if (layer.limit !== undefined) merged.limit = layer.limit;
-    if (layer.ranker !== undefined) merged.ranker = layer.ranker;
-    if (layer.sources !== undefined) merged.sources = mergeSources(merged.sources, layer.sources);
-  }
+  let merged = { ...defaults };
+  for (const layer of [project, extra]) merged = mergeLayer(merged, layer);
 
   merged.configPath = fs.existsSync(projectPath) ? projectPath : null;
   return merged;
 }
 
-module.exports = { loadConfig, loadDefaults, mergeSources, PROJECT_CONFIG_REL, DEFAULTS_PATH };
+module.exports = { loadConfig, loadDefaults, mergeSources, mergeLayer, PROJECT_CONFIG_REL, DEFAULTS_PATH };

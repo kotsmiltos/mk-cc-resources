@@ -5,6 +5,7 @@
   "ranker": "term-overlap",
   "aliases": [],
   "pull": { "enabled": true, "minScore": 6, "maxHints": 3 },
+  "scribe": { "enabled": true },
   "sources": [
     {
       "id": "steward-vision",

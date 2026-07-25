@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.5.0)
+.claude-plugin/plugin.json   # metadata (v0.6.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -44,16 +44,22 @@ skills/kb-seed/SKILL.md      # CREATE: extract an existing project's knowledge -
                              #   re-runs top up)
 skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .claude/kb/captures/
                              #   (steward-MODEL changes route to .steward/inbox/ instead — recompute rule)
-hooks/hooks.json             # UserPromptSubmit registration (kb-pull)
+hooks/hooks.json             # UserPromptSubmit (kb-pull) + Stop (kb-scribe) registration
 hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over the prompt ->
                              #   score-floored hint lines (title+id, kb_read to pull) +
                              #   session-digest injection; machine-text guard; fail-open;
                              #   .claude/kb.json {"pull":{...}} knobs
+hooks/scripts/kb-scribe-stop.js # the ENFORCED write side: on a producing turn, blocks the
+                             #   yield until the session distills the turn into the digest +
+                             #   graduates durable items (captures/ or .steward/inbox/).
+                             #   Fire-once + hash-skip + fail-open (lens contract); IMPORTANT
+                             #   defined inline, sharpened per project by scribe.focus
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 209 checks, no framework, own temp fixtures
+tests/kb.test.js             # 219 checks, no framework, own temp fixtures
 tests/kb-pull.test.js        # 23 checks — hook guards, floor, digest, traces
+tests/kb-scribe.test.js      # 37 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
 
@@ -132,6 +138,16 @@ run the loop, and a false empty reads as "we know nothing about that."
   (`aliases: [[...]]`, replace-wholesale, built into the query by `buildAliasLookup`), and
   `skipThinPreamble` on h2 sources (boilerplate-only preambles dropped; ON for shipped
   steward-model/log + project-instructions). 198 + 32 tests.
+- ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
+  kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
+  the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for
+  model changes), so one pass feeds both memory lengths. Lens contract reused verbatim
+  (fire-once + hash-skip + fail-open + own-marker guard); NO scribe agent — the session
+  already holds the turn, and only a *judge* needs independence. IMPORTANT is stated (the
+  dies-first classes + an explicit NOT list) and sharpened per project via
+  `{"scribe":{"focus":[...]}}` — shipped focus lists derived from each project's own model.
+  Config gains a GENERIC `mergeLayer` (object knobs patch per key by rule; a future knob
+  needs no code). 219 + 35 + 23 + 37 tests. kb now carries TWO hooks.
 - ✅ v0.5.0: the awareness surface (owner build directive 2026-07-25, answering the T13
   missed-moment datum) — kb-pull UserPromptSubmit hook (score-floored hints + session-digest
   injection; the hook makes kb a hooks-carrying plugin), rolling session digest

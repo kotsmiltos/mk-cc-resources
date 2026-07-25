@@ -6,6 +6,35 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-25 · kb 0.6.0 BUILT — the ENFORCED write side (owner: "a nudge… not gonna be enough")
+Owner rejected the nudge-only write path and asked whether a lens-like agent should pick up
+the important parts. Decision taken (technical side on the session, per owner): same
+ENFORCEMENT as the lens, no second agent — the session already holds the whole turn; only a
+JUDGE needs independence, a SCRIBE does not (agent escalation stays available if traces show
+under-firing).
+- **kb-scribe Stop hook**: on a PRODUCING turn (Write/Edit/Bash/Agent; investigation-only
+  excluded so it isn't per-turn noise) returns {decision:"block"} → session must distill the
+  turn into the digest AND graduate durable items (captures/ = project-length,
+  .steward/inbox/ = model changes). One pass feeds BOTH memory lengths — the answer to
+  owner's "session length and the project length".
+- **Loop safety = lens contract verbatim**: fire-exactly-once (block → forced release),
+  content-hash skip, own-marker guard, digest-already-written satisfies, fail-open, off via
+  {"scribe":{"enabled":false}}.
+- **IMPORTANT is stated, not assumed** (owner: "you should have enough context… be
+  diligent"): dies-first classes + explicit NOT-important list in the instruction, plus
+  per-project `scribe.focus` lists DERIVED from each project's own model — this repo (forks
+  resolved open, rejected approaches, the verifiable check, cross-file contracts, measured
+  numbers) and crowd-game (vision-gap movement, open-model forks, retired hypotheses,
+  invariants, gate numbers, drop-in seams). Both configs written + load-verified (defaults
+  preserved beside the override — proves the new merge).
+- **Generic config merge** (`mergeLayer`): object knobs patch per key BY RULE; a future knob
+  is config, not a new branch. Caught by the scribe's own first test run (project scribe key
+  was being dropped) — fixed at the root instead of adding a third hardcoded branch.
+- Checks: kb 219/219 (+10 merge) · kb-pull 23/23 · kb-scribe 37/37 (new) · kb-mcp 35/35 =
+  314; versions kb 0.6.0 / bundle 2.25.0 / marketplace 2.36.0 node-verified equal; README +
+  RELEASE-NOTES + both CLAUDE.mds + plugin/marketplace descriptions synced.
+- NOTE: hooks live only after a kb plugin update + session restart; kb now carries TWO hooks.
+
 ## 2026-07-25 · kb 0.5.0 BUILT — the awareness surface (owner directive "you have to build it")
 Same session, second build wave. Owner answered the ambient-use analysis with a build-all
 directive (inbox 20260725-1445). Shipped, each disk-checked:
