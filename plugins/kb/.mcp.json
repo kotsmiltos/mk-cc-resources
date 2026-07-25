@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "kb": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/kb-mcp-server.js"],
+      "alwaysLoad": true
+    }
+  }
+}

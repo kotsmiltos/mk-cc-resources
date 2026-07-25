@@ -1,0 +1,98 @@
+{
+  "kinds": ["episodic", "semantic", "procedural", "working"],
+  "castes": ["session", "thread", "project", "fleet", "owner"],
+  "limit": 8,
+  "ranker": "term-overlap",
+  "sources": [
+    {
+      "id": "steward-vision",
+      "type": "markdown-dir",
+      "kind": "semantic",
+      "caste": "project",
+      "dir": ".steward",
+      "include": ["vision.md"],
+      "split": "file",
+      "themes": ["vision", "why"]
+    },
+    {
+      "id": "steward-model",
+      "type": "markdown-dir",
+      "kind": "semantic",
+      "caste": "project",
+      "dir": ".steward",
+      "include": ["parts.md", "state.md", "tasks.md", "questions.md"],
+      "split": "h2",
+      "themes": ["model", "plan"]
+    },
+    {
+      "id": "steward-log",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "project",
+      "dir": ".steward",
+      "include": ["log.md"],
+      "split": "h2",
+      "themes": ["outcome", "history"]
+    },
+    {
+      "id": "steward-inbox",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "project",
+      "dir": ".steward/inbox",
+      "recursive": true,
+      "split": "file",
+      "themes": ["capture", "idea"]
+    },
+    {
+      "id": "handoffs",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "session",
+      "dir": ".claude/handoffs",
+      "exclude": ["INDEX.md"],
+      "split": "file",
+      "themes": ["handoff", "session"]
+    },
+    {
+      "id": "kickoff-prompts",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "session",
+      "dir": ".claude/prompts",
+      "exclude": ["INDEX.md"],
+      "split": "file",
+      "themes": ["kickoff", "session"]
+    },
+    {
+      "id": "kb-extracted",
+      "type": "markdown-dir",
+      "kind": "semantic",
+      "caste": "project",
+      "dir": ".claude/kb/extracted",
+      "recursive": true,
+      "split": "file",
+      "themes": ["extracted"]
+    },
+    {
+      "id": "kb-captures",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "project",
+      "dir": ".claude/kb/captures",
+      "recursive": true,
+      "split": "file",
+      "themes": ["capture"]
+    },
+    {
+      "id": "project-instructions",
+      "type": "markdown-dir",
+      "kind": "procedural",
+      "caste": "project",
+      "dir": ".",
+      "include": ["CLAUDE.md"],
+      "split": "h2",
+      "themes": ["convention", "instruction"]
+    }
+  ]
+}

@@ -1,10 +1,56 @@
 # Log — outcome ledger (append-only)
 
+## 2026-07-25 · kb 0.3.0 — create + maintain (seed + capture skills)
+Owner pushed back ("didn't I ask for it?") — correct: the seeder WAS asked for; phase-1-only
+was too narrow a reading of "let's build it." Shipped same session: /kb-seed (extraction
+seeder for existing projects — sweep docs/git-history/code, owner confirms candidate list,
+one dated file per finding with mandatory Extracted-from citation -> .claude/kb/extracted/,
+re-runs top up) + /kb-capture (one memory at a time -> .claude/kb/captures/, steward-routing
+rule: model changes go to .steward/inbox/ for recompute) + frontmatter in markdown-dir
+(per-file kind/caste/title/when/themes override spec; file themes EXTEND spec themes; the
+mixed-kind-store enabler) + two shipped sources (kb-extracted, kb-captures). Engine stays
+read-only permanently — skills write markdown it indexes. Versions: kb 0.2.0->0.3.0 (incl.
+SERVER_INFO), marketplace 2.32.0->2.33.0. Check: kb.test.js 166/166 (+15 frontmatter/mixed-
+kind) + kb-mcp.test.js 32/32; LIVE e2e — real decision (captures-vs-extracted split) filed
+through the capture path, ranks #1 at 13.75 on its own terms, stat shows kb-captures=1.
+Still parked: characterization pass, kb_capture MCP write tool, session journal + hooks.
+
+## 2026-07-25 · kb 0.2.0 — MCP adapter, kb becomes self-serve
+Phase 1 of the four-phase plan (MCP -> characterization -> seeder -> writes/journal), built on
+owner's "Claude should call it whenever it thinks it needs it, ReAct-style." New: .mcp.json
+(alwaysLoad:true — schemas in context every turn, never deferred) + mcp/kb-mcp-server.js
+(stdio, hand-rolled JSON-RPC 2.0, zero deps; kb_query with narrowing hints inside the tool
+result / kb_read full-entry-by-id / kb_overview; server instructions teach ask-before-re-derive;
+isError content for model-correctable misuse; corpus refreshed per call). Facade gains read(id).
+Versions: kb 0.1.0->0.2.0, marketplace 2.31.0->2.32.0. Bundle unchanged (skill only; MCP ships
+with installing kb itself). Check: kb.test.js 151/151 + kb-mcp.test.js 32/32 (incl. live stdio
+e2e: initialize -> tools/list -> tools/call -> isError -> METHOD_NOT_FOUND); real-repo smoke =
+initialize ok + query over stdio returns 9 matches with hint line. NOTE: server not live in
+THIS session (plugin installs load at session start) — first real dogfood next session.
+Remaining phases parked: characterization (enrich job, cached by content hash), seeder
+(kb:seed -> .claude/kb/extracted/, new store only), write tools, session journal.
+
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
 > - Positive mindset: every gap solvable. Find the way by working carefully.
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
+
+## 2026-07-24 · kb 0.1.0 built — the pull surface (read-only slice)
+New plugin `kb`: queryable knowledge base on two orthogonal axes, KIND (CoALA —
+episodic/semantic/procedural/working) x CASTE (ordered narrow->wide —
+session/thread/project/fleet/owner). Answers the owner's "session-scope counterpart"
+thread: steward + lens PUSH a briefing at open; kb is the PULL side. Core = pure engine
+(filter -> rank -> narrowing hints) + entry contract + `markdown-dir` generic source type
++ `term-overlap` deterministic ranker + config merge; CLI is one adapter over `lib/kb.js`,
+a peer of the future MCP adapter (not its parent). Read-only on purpose — no writes, no
+hooks, no MCP until retrieval quality is proven by hand. Registered in marketplace
+(2.30.0 -> 2.31.0, 14 plugins); README + CLAUDE.md tree + dependency row updated.
+Check: `node plugins/kb/tests/kb.test.js` = 148/148; `kb stat` on this repo = 57 entries
+(semantic 30 / episodic 19 / procedural 8) across 6 populated sources; a 28-match query
+returns 3 hits + a narrow_by facet breakdown. Named gaps: `working` kind unwritten,
+`session` caste thin (handoffs + kickoff prompts only, both written at session end),
+kind x caste being the right index still UNPROVEN — that is what hand-driven eval is for.
 
 ## 2026-07-22 · Q8 outcomes reconciled into the model
 Q8 → resolved ledger ("also build fleet briefing now"; drop channel deferred behind
@@ -100,3 +146,10 @@ RELEASE-NOTES).
   README (override + presets rows). Steward README backslash claim = lens false positive
   (disk has forward slashes, verified cat -A). Check: all suites green (12/12, 17/17, 21/21,
   39/39), all JSON valid. Statusline active next restart. Uncommitted, same gated batch.
+
+## 2026-07-22 — batch SHIPPED (owner: "@ship it")
+- b12e932 pushed to origin/main (36 files, +908/-108), carrying 655f644 + 29b7839 (seed model).
+- Check: origin/main == local HEAD == b12e932; tracked tree clean; suites at ship: 16/16, 17/17,
+  21/21, 39/39; version pairs verified consistent pre-push.
+- tasks.md #3 (commit+@ship+push) now DONE — next session's sync reconciles it + regenerates
+  briefing (no inbox items pending; briefing is one-step stale until then, expected).

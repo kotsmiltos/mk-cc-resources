@@ -4,8 +4,8 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.30.0"
+    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, queryable project knowledge base (kb), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
+    "version": "2.33.0"
   },
   "plugins": [
     {
@@ -79,6 +79,12 @@
       "source": "./plugins/statusline",
       "description": "Segment-based statusline: model | current task | directory | steward anchor (⚓ + inbox count in .steward projects) | context counter (normalized used-% bar — 100% = usable-window limit accounting for the ~16.5% autocompact buffer; green/yellow/orange/skull). Each segment is an independent fail-soft function — extend by dropping a function into SEGMENTS. Statusline is a settings-level surface: wiring is one settings.json statusLine line pointing at bin/mk-statusline.js (see README). No hooks, no skills — install is just the wiring.",
       "version": "0.1.0"
+    },
+    {
+      "name": "kb",
+      "source": "./plugins/kb",
+      "description": "The project's queryable knowledge base — the pull surface the long-lens tools (steward, verifiability-lens) have been missing; they push a fixed briefing at session open, kb lets a session ask for what it needs when it needs it. Files knowledge on two orthogonal axes: KIND (which catalog — episodic what-happened, semantic settled-facts, procedural how-we-work; the CoALA taxonomy Letta/Mem0/LangChain share) x CASTE (which scope tier, ordered narrow to wide — session, thread, project, fleet, owner). Indexes the markdown stores a project already keeps (steward model/log/inbox, handoffs, kickoff prompts, CLAUDE.md) with zero config; an append-only ledger splits per ## section so a hit points at the answer, not the file. Every result reports what it held back and which facet separates the remainder — Claude Code has no MCP sampling, so the session itself is the retrieval loop rather than a second agent. Four reach-surfaces over one facade: always-loaded MCP tools (kb_query/kb_read/kb_overview — Claude self-serves knowledge mid-work, ReAct-style, narrowing hints riding inside each tool result; hand-rolled stdio JSON-RPC, ships via plugin .mcp.json), the `kb` skill (ask before re-deriving), the /kb command (you ask), and the CLI (hooks, scripts, cli-agent). 0.3.0 adds create + maintain: /kb-seed extracts an existing project's knowledge (docs, git history, code; owner-confirmed, Extracted-from citations) into .claude/kb/extracted/, /kb-capture files one decision/dead-end/finding at a time into .claude/kb/captures/ — per-file frontmatter carries kind/caste/themes so one dir holds mixed kinds; the engine stays read-only, and steward-model changes still route to .steward/inbox/ for recompute. Node only, no dependencies, 166+32 tests. Bundle carries the skills only — install kb itself for the MCP server.",
+      "version": "0.3.0"
     },
     {
       "name": "mk-cc-all",

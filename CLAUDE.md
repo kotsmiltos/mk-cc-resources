@@ -174,7 +174,67 @@ plugins/
       scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
                             #   silent without .steward/; fail-open
     tests/steward-brief.test.js  # 17 checks, isolated fake home, no framework
+
+  kb/                       # The project's queryable knowledge base — the PULL side of the
+                            #   long-lens tools (steward + lens PUSH a fixed briefing at open;
+                            #   kb lets a session ask for what it needs, when it needs it).
+                            #   Two ORTHOGONAL axes, never collapsed into one enum:
+                            #   KIND (which catalog — episodic/semantic/procedural/working, the
+                            #   CoALA taxonomy, arXiv 2309.02427) x CASTE (which scope tier,
+                            #   ORDERED narrow->wide — session/thread/project/fleet/owner; the
+                            #   ordering is the only thing engine logic knows, which is what makes
+                            #   `--caste X --wider` work without naming a tier in code).
+                            #   Read-only in 0.1.0 — no writes, no hooks, no MCP, no protocol
+                            #   commitment until retrieval quality is proven by hand.
+    .claude-plugin/plugin.json
+    defaults/config.json    # shipped axes + the source set for this ecosystem (steward
+                            #   model/log/inbox, handoffs, kickoff prompts, CLAUDE.md).
+                            #   A configured dir that doesn't exist is simply empty.
+    lib/
+      registry.js           # the KIND x CASTE axes; castesFrom() = the widening primitive
+      entry.js              # THE contract — one shape sources emit and adapters read;
+                            #   `path` mandatory (a memory you can't open is a rumour)
+      dates.js              # timestamp recovery: filename first (stable across copies), mtime second
+      config.js             # defaults + .claude/kb.json; sources merge BY ID, enabled:false removes;
+                            #   malformed config THROWS (silent revert-to-defaults looks like data loss)
+      query.js              # caller request -> normalised Query; validates + throws (a false
+                            #   empty reads as "we know nothing about that")
+      engine.js             # filter -> rank -> NARROWING HINTS. Pure: no disk/network/clock
+      rankers/              # scoring extension surface: index.js registry + term-overlap.js
+                            #   (deterministic, title/theme weighted, coverage beats repetition)
+      sources/              # ingestion extension surface: index.js registry + markdown-dir.js
+                            #   (the generic TYPE — every shipped source is CONFIG over it;
+                            #   split:'h2' gives each ledger section its own entry + timestamp)
+      kb.js                 # THE FACADE — every adapter binds here; nothing reaches past it
+    .mcp.json               # wires the MCP server on plugin install; alwaysLoad:true keeps
+                            #   tool schemas in context EVERY turn (never deferred behind tool
+                            #   search) — the property that makes kb self-serve, ReAct-style
+    bin/kb.js               # CLI adapter — a PEER of the MCP adapter, not its parent;
+                            #   both hold zero retrieval logic so they cannot drift
+    mcp/kb-mcp-server.js    # MCP stdio adapter: kb_query (hints ride in the tool result) /
+                            #   kb_read (full entry by id) / kb_overview. Hand-rolled JSON-RPC
+                            #   (tools-only = 3 methods, zero deps); corpus refreshed per call;
+                            #   misuse -> isError content the model reads and self-corrects
+    skills/kb/SKILL.md      # reach-surface: model-driven ("ask before re-deriving"); description
+                            #   names the QUESTIONS, not the mechanism, or it never fires
+    skills/kb-seed/         # CREATE: extraction seeder for existing projects — sweep docs/git
+                            #   history/code, owner confirms, one cited file per finding ->
+                            #   .claude/kb/extracted/ (re-runs top up, never overwrite)
+    skills/kb-capture/      # MAINTAIN: one memory at a time -> .claude/kb/captures/;
+                            #   steward-MODEL changes route to .steward/inbox/ instead (recompute
+                            #   rule — a record of deciding is a capture; the new plan is steward's)
+    commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
+    tests/kb.test.js        # 166 checks, own temp fixtures (never reads the host repo)
+    tests/kb-mcp.test.js    # 32 checks — tool contract + handlers + live stdio e2e
 ```
+
+**kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions
+across the MCP reference), so a knowledge base can never borrow the client's model to
+disambiguate a request on its own. Rather than add a second agent with its own context to keep
+in sync, every result reports `matched` / `truncated` plus which facet separates the entries it
+held back — and the session, which already holds a model, re-asks with a narrower query. The
+conversation *is* the retrieval loop: no extra tokens, nothing to sync. A zero-match result
+lists what *is* available under the filters for the same reason.
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
 
@@ -262,6 +322,7 @@ When changing files that follow these patterns, CHECK the related files for cons
 | plugin-toolkit (code-glossary engine) | Python >= 3.11 via uv; pyyaml, tree-sitter + tree-sitter-typescript + tree-sitter-c-sharp; pytest (dev) |
 | session-lifecycle | None (pure SKILL.md + `!`command`` shell injection) |
 | schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
+| kb | None (Node CommonJS, stdlib only — no dependencies) |
 | thorough-mode | None (hooks-only, stdlib JS) |
 | project-note-tracker | Python >= 3.10, openpyxl (via uvx) |
 | alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
