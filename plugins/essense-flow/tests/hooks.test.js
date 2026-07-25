@@ -28,15 +28,46 @@ function runHook(script, cwd) {
   });
 }
 
-test("context-inject: missing state.yaml exits 0 with degraded warning", async () => {
+test("context-inject: never-initialized repo (no .pipeline/) emits NOTHING", async () => {
   const root = await tmpProject();
   try {
+    const r = runHook(CONTEXT_INJECT, root);
+    assert.equal(r.status, 0, "must exit 0 — fail-soft");
+    assert.equal(r.stdout, "", "non-pipeline repo must get zero banner");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("context-inject: .pipeline/ exists but state.yaml lost → visible degraded warning", async () => {
+  const root = await tmpProject();
+  try {
+    await mkdir(join(root, ".pipeline"), { recursive: true });
     const r = runHook(CONTEXT_INJECT, root);
     assert.equal(r.status, 0, "must exit 0 — fail-soft");
     assert.match(r.stdout, /<essense-flow-context>/);
     assert.match(r.stdout, /DEGRADED/);
     assert.match(r.stdout, /missing/);
     assert.match(r.stdout, /tool calls are NOT blocked/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("context-inject: yaml PARSE error (duplicate key) → visible DEGRADED corrupt, not stderr-only", async () => {
+  const root = await tmpProject();
+  try {
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    // Duplicate mapping key — js-yaml throws at parse time (the Diploma case).
+    await writeFile(
+      join(root, ".pipeline/state.yaml"),
+      "schema_version: 1\nphase: idle\nphase: eliciting\n",
+      "utf8",
+    );
+    const r = runHook(CONTEXT_INJECT, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /DEGRADED \(corrupt\)/);
+    assert.match(r.stdout, /duplicated mapping key/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -75,13 +106,43 @@ test("context-inject: valid state surfaces phase + canonical artifact paths", as
   }
 });
 
-test("next-step: degraded state recommends /heal, exits 0", async () => {
+test("next-step: never-initialized repo (no .pipeline/) emits NOTHING", async () => {
   const root = await tmpProject();
   try {
     const r = runHook(NEXT_STEP, root);
     assert.equal(r.status, 0);
+    assert.equal(r.stdout, "", "non-pipeline repo must get zero suggestion");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("next-step: .pipeline/ exists but state.yaml lost → recommends /heal, exits 0", async () => {
+  const root = await tmpProject();
+  try {
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    const r = runHook(NEXT_STEP, root);
+    assert.equal(r.status, 0);
     assert.match(r.stdout, /<essense-flow-next>/);
     assert.match(r.stdout, /degraded/);
+    assert.match(r.stdout, /\/heal/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("next-step: yaml PARSE error → visible degraded /heal recommendation", async () => {
+  const root = await tmpProject();
+  try {
+    await mkdir(join(root, ".pipeline"), { recursive: true });
+    await writeFile(
+      join(root, ".pipeline/state.yaml"),
+      "schema_version: 1\nphase: idle\nphase: eliciting\n",
+      "utf8",
+    );
+    const r = runHook(NEXT_STEP, root);
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /degraded \(corrupt\)/);
     assert.match(r.stdout, /\/heal/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -134,7 +195,8 @@ test("next-step: complete phase recommends /status", async () => {
 
 test("hooks never exit non-zero — even with read-only filesystem-like errors", async () => {
   // Invoke from a path we know exists but where state file is malformed YAML
-  // that yaml.load will throw on AFTER initial parse. The hook must still exit 0.
+  // that yaml.load will throw on AFTER initial parse. The hook must still exit 0
+  // AND the degradation must be visible on stdout (not stderr-only silence).
   const root = await tmpProject();
   try {
     await mkdir(join(root, ".pipeline"), { recursive: true });
@@ -144,6 +206,8 @@ test("hooks never exit non-zero — even with read-only filesystem-like errors",
     const r2 = runHook(NEXT_STEP, root);
     assert.equal(r1.status, 0);
     assert.equal(r2.status, 0);
+    assert.match(r1.stdout, /DEGRADED \(corrupt\)/, "non-object root must be visible");
+    assert.match(r2.stdout, /degraded \(corrupt\)/, "non-object root must be visible");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

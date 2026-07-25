@@ -21,6 +21,28 @@ const MAX_LIMIT = 100;
 const MIN_LIMIT = 1;
 
 /**
+ * Turn config alias GROUPS (`[["auth","login","authentication"], ...]`) into a
+ * per-term lookup the ranker can use: every member of a group maps to its
+ * other members, all run through the same tokenize() the query and entries
+ * get — so "authentication" in a group meets a query for "authenticating" at
+ * the same stem. A multi-word member contributes each of its tokens.
+ */
+function buildAliasLookup(groups) {
+  if (!Array.isArray(groups) || !groups.length) return null;
+  const lookup = {};
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue;
+    const tokens = Array.from(new Set(group.flatMap((m) => tokenize(String(m)))));
+    if (tokens.length < 2) continue;
+    for (const token of tokens) {
+      const others = tokens.filter((t) => t !== token);
+      lookup[token] = lookup[token] ? Array.from(new Set(lookup[token].concat(others))) : others;
+    }
+  }
+  return Object.keys(lookup).length ? lookup : null;
+}
+
+/**
  * @param {object} raw - caller request:
  *        {text, kind, caste, wider, themes, since, until, limit, ranker}
  *        `wider: true` widens `caste` outward through the tier order
@@ -71,6 +93,7 @@ function makeQuery(raw, registry, defaults) {
     until: typeof r.until === 'string' && r.until ? r.until : null,
     limit,
     ranker: typeof r.ranker === 'string' && r.ranker ? r.ranker : (d.ranker || null),
+    aliases: buildAliasLookup(d.aliases),
   };
 }
 
@@ -82,4 +105,4 @@ function clampLimit(requested, fallback) {
   return Math.max(MIN_LIMIT, Math.min(MAX_LIMIT, Math.floor(base)));
 }
 
-module.exports = { makeQuery, clampLimit, DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT };
+module.exports = { makeQuery, clampLimit, buildAliasLookup, DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT };

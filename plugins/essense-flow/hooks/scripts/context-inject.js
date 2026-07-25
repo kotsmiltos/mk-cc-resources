@@ -32,7 +32,21 @@ async function main() {
     const { readState } = await import(STATE_LIB_URL);
     state = await readState(projectRoot);
   } catch (err) {
-    libErr = err;
+    // readState still THROWS ShapeValidationError for yaml-parse failures and
+    // empty/non-object roots (CLI consumers rely on the throw). For the
+    // session surface that throw must become a VISIBLE degraded banner, not a
+    // stderr-only note — a silently-inherited corrupt state.yaml is the
+    // failure this hook exists to surface.
+    if (err && err.name === "ShapeValidationError") {
+      state = {
+        phase: "idle",
+        degraded: "corrupt",
+        reason: err.message,
+        path: (err.details && err.details.path) || undefined,
+      };
+    } else {
+      libErr = err;
+    }
   }
 
   // If the lib itself crashed (e.g. js-yaml missing), emit a warning and
@@ -41,6 +55,13 @@ async function main() {
     process.stderr.write(
       `[essense-flow context-inject] lib unavailable: ${libErr.message} — continuing\n`,
     );
+    process.exit(0);
+  }
+
+  // Never-initialized repo (no .pipeline/ at all): this project isn't running
+  // the pipeline — say NOTHING. Bannering every prompt in non-pipeline repos
+  // is the injection-economics inversion this probe closes.
+  if (state.degraded === "missing" && state.pipeline_present === false) {
     process.exit(0);
   }
 

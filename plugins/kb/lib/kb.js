@@ -70,7 +70,7 @@ function openKb(root, overrides) {
      * @returns {{query, result, errors, sourceCounts}}
      */
     query(raw) {
-      const q = makeQuery(raw, registry, { limit: config.limit, ranker: config.ranker });
+      const q = makeQuery(raw, registry, { limit: config.limit, ranker: config.ranker, aliases: config.aliases });
       const ranker = rankers.get(q.ranker || rankers.DEFAULT_RANKER_ID);
       const { entries, errors, perSource } = collect();
       return {

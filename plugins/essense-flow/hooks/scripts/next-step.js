@@ -28,7 +28,20 @@ async function main() {
     const { readState } = await import(STATE_LIB_URL);
     state = await readState(projectRoot);
   } catch (err) {
-    process.stderr.write(`[essense-flow next-step] lib unavailable: ${err.message}\n`);
+    // Parse-corrupt state.yaml throws ShapeValidationError; surface it as a
+    // visible degraded recommendation (same fate as shape-corrupt) instead of
+    // stderr-only silence. Other errors = lib unavailable, stay quiet.
+    if (err && err.name === "ShapeValidationError") {
+      state = { phase: "idle", degraded: "corrupt", reason: err.message };
+    } else {
+      process.stderr.write(`[essense-flow next-step] lib unavailable: ${err.message}\n`);
+      process.exit(0);
+    }
+  }
+
+  // Never-initialized repo (no .pipeline/ at all): not a pipeline project —
+  // no suggestion, no banner. Mirrors context-inject's probe.
+  if (state.degraded === "missing" && state.pipeline_present === false) {
     process.exit(0);
   }
 

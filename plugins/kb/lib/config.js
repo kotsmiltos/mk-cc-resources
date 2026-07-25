@@ -17,6 +17,9 @@
  *   - scalars (limit, ranker)      -> project value replaces default
  *   - axis lists (kinds, castes)   -> replace wholesale when present (a partial
  *                                     axis list would silently drop tiers)
+ *   - aliases (list of groups)     -> replace wholesale when present (alias
+ *                                     groups are one owner-authored vocabulary,
+ *                                     not a mergeable set)
  *   - sources                      -> merged BY ID: same id patches the default,
  *                                     new id appends, and `"enabled": false`
  *                                     switches a shipped source off without
@@ -74,6 +77,7 @@ function loadConfig(root, inline) {
   for (const layer of [project, extra]) {
     if (Array.isArray(layer.kinds) && layer.kinds.length) merged.kinds = layer.kinds.slice();
     if (Array.isArray(layer.castes) && layer.castes.length) merged.castes = layer.castes.slice();
+    if (Array.isArray(layer.aliases)) merged.aliases = layer.aliases.slice();
     if (layer.limit !== undefined) merged.limit = layer.limit;
     if (layer.ranker !== undefined) merged.ranker = layer.ranker;
     if (layer.sources !== undefined) merged.sources = mergeSources(merged.sources, layer.sources);

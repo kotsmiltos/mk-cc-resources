@@ -6,6 +6,32 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-25 · Arrival check PASS + first seed + "do them all" batch (tasks #1, #3, retrieval rung 1)
+Session outcomes, each disk-checked:
+- **Task #1 DONE**: MCP live (kb_overview in-session, 67 entries), suites 166+32 green,
+  marketplace row fixed 2.21.1→2.22.0, committed 1159497, pushed on owner word
+  (local==origin verified). The 0.3.0 B-class (alwaysLoad wiring) is CLOSED — observed live.
+- **First /kb-seed on this repo**: 6 entries → .claude/kb/extracted/ (owner approved all;
+  candidate 7 skipped as vision-dup). Lens caught 1 false universal in the test-convention
+  entry — amended in place. Owner direction captured to inbox: seed should judge on its own
+  (relax confirm gate) — 20260725-0337-kb-seed-should-see-on-its-own.md.
+- **Q9 ANSWERED, not parked-as-ratified**: owner wants retrieval improved ("fuzzy matching?
+  other techniques?") — inbox 20260725-0337-retrieval-improvement-direction.md. Rung 1
+  SHIPPED same session (kb 0.4.0): stemming + edit-distance-1 typo tier + config alias
+  groups + skipThinPreamble (corpus 75→71, boilerplate preambles gone). 198+32 tests.
+- **Task #3 DONE** (essense-flow 0.26.1): context-inject inversion fixed both ways —
+  never-initialized repos silent (pipeline_present probe), parse-corrupt VISIBLE (was
+  stderr-only; reproduced with duplicate-key fixture pre-fix). hooks.test.js 7→11 green.
+  PLUS root-caused the generalize-first over-trigger: jq absent on this machine → hook
+  matched the RAW payload where cwd "mk-cc-resources" contains noun 'resource' → fired on
+  ~every verb-bearing prompt. Fixed in ~/.claude/hooks/generalize-first.sh (node extracts
+  .prompt; no raw-payload fallback). 4-case behavior check green.
+- Versions cascaded: kb 0.4.0, essense-flow 0.26.1, bundle 2.23.0, marketplace 2.34.0;
+  README + RELEASE-NOTES + both CLAUDE.mds synced. Pre-existing red noted: essense-flow
+  ledger-compaction T-ENF-3 (calendar drift, fails on clean tree too) — separate chore.
+- **Dogfood (task #2)**: kb_query fired 6× this session — all protocol-driven (seed dupe
+  checks), zero unprompted. Not yet the ambient signal; watch continues.
+
 ## 2026-07-25 · Inbox integrated (kb thread) — model recomputed
 Item 20260724-1100 (session-scope counterpart + kb query surface) integrated as
 largely-EXECUTED direction: kb 0.1.0→0.3.0 shipped 94a3b17, pushed (refs-verified

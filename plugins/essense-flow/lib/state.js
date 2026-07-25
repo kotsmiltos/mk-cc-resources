@@ -1,7 +1,9 @@
 // state.js — read/write .pipeline/state.yaml, validate transitions.
 //
 // Honours degraded states explicitly:
-//   missing   → returns { phase: 'idle', degraded: 'missing' }
+//   missing   → returns { phase: 'idle', degraded: 'missing', pipeline_present }
+//               (pipeline_present=false ⇒ repo never ran the pipeline;
+//                per-prompt hooks stay silent, CLI treats as 'missing')
 //   corrupt   → returns { phase: 'idle', degraded: 'corrupt', reason }
 //   valid     → returns the parsed state with degraded: null
 //
@@ -434,7 +436,16 @@ export function statePath(projectRoot) {
 export async function readState(projectRoot) {
   const path = statePath(projectRoot);
   if (!existsSync(path)) {
-    return { phase: "idle", degraded: "missing", path };
+    // pipeline_present distinguishes "state.yaml lost from a live pipeline"
+    // (banner-worthy degradation) from "this repo never ran essense-flow"
+    // (per-prompt hooks must stay silent — injection economics). CLI
+    // consumers branch on degraded === 'missing' either way, unchanged.
+    return {
+      phase: "idle",
+      degraded: "missing",
+      pipeline_present: existsSync(dirname(path)),
+      path,
+    };
   }
   let raw;
   try {

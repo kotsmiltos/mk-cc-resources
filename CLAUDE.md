@@ -201,10 +201,13 @@ plugins/
                             #   empty reads as "we know nothing about that")
       engine.js             # filter -> rank -> NARROWING HINTS. Pure: no disk/network/clock
       rankers/              # scoring extension surface: index.js registry + term-overlap.js
-                            #   (deterministic, title/theme weighted, coverage beats repetition)
+                            #   (deterministic, title/theme weighted, coverage beats repetition;
+                            #   0.4.0: light stemming both sides, edit-distance-1 typo tier at
+                            #   0.7x weight, owner-declared alias groups via config `aliases`)
       sources/              # ingestion extension surface: index.js registry + markdown-dir.js
                             #   (the generic TYPE — every shipped source is CONFIG over it;
-                            #   split:'h2' gives each ledger section its own entry + timestamp)
+                            #   split:'h2' gives each ledger section its own entry + timestamp;
+                            #   skipThinPreamble drops boilerplate-only preamble entries)
       kb.js                 # THE FACADE — every adapter binds here; nothing reaches past it
     .mcp.json               # wires the MCP server on plugin install; alwaysLoad:true keeps
                             #   tool schemas in context EVERY turn (never deferred behind tool
@@ -224,7 +227,7 @@ plugins/
                             #   steward-MODEL changes route to .steward/inbox/ instead (recompute
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 166 checks, own temp fixtures (never reads the host repo)
+    tests/kb.test.js        # 198 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 32 checks — tool contract + handlers + live stdio e2e
 ```
 
@@ -269,7 +272,7 @@ State is artifacts-authoritative: `.pipeline/state.yaml` is a derived cache. `st
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first) |
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first). Silent in repos that never ran the pipeline (no `.pipeline/`); parse-corrupt state.yaml renders a VISIBLE degraded banner |
 | next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml |
 
 ## Session Lifecycle

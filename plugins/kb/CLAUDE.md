@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.3.0)
+.claude-plugin/plugin.json   # metadata (v0.4.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -25,7 +25,10 @@ lib/
   engine.js                  # filter -> rank -> narrowing hints. PURE: no disk/net/clock
   rankers/
     index.js                 # ranker registry (scoring extension surface)
-    term-overlap.js          # default: deterministic lexical, title/theme weighted
+    term-overlap.js          # default: deterministic lexical, title/theme weighted; 0.4.0
+                             #   adds light stemming (both sides), edit-distance-1 typo tier
+                             #   (0.7x weight), and alias-group support via score(entry,
+                             #   terms, {aliases}) — aliases are config, built in query.js
   sources/
     index.js                 # source-type registry + collectAll (isolates + reports errors)
     markdown-dir.js          # the generic source TYPE; every shipped source is config over it
@@ -42,7 +45,7 @@ skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 166 checks, no framework, own temp fixtures
+tests/kb.test.js             # 198 checks, no framework, own temp fixtures
 tests/kb-mcp.test.js         # 32 checks — handler layer + stdio e2e
 ```
 
@@ -116,6 +119,11 @@ run the loop, and a false empty reads as "we know nothing about that."
   time, steward-routing rule enforced) + frontmatter in `markdown-dir` (per-file
   kind/caste/title/when/themes; the mixed-kind-store enabler) + `kb-extracted` /
   `kb-captures` shipped sources. 166 + 32 tests; live capture e2e verified in this repo.
+- ✅ v0.4.0: retrieval rung 1 (owner-directed 2026-07-25, cheapest substrate first) — light
+  stemming in `tokenize()`, edit-distance-1 typo tier at 0.7× weight, config alias groups
+  (`aliases: [[...]]`, replace-wholesale, built into the query by `buildAliasLookup`), and
+  `skipThinPreamble` on h2 sources (boilerplate-only preambles dropped; ON for shipped
+  steward-model/log + project-instructions). 198 + 32 tests.
 - later (each behind its own gate, in this order):
   1. **Dogfood** — does Claude call the MCP tools mid-work? Does /kb-seed produce entries
      worth querying on a real foreign project (crowd-game is the natural pilot)? Do the two
@@ -124,6 +132,9 @@ run the loop, and a false empty reads as "we know nothing about that."
      (LLM once at index time, cached in `.claude/kb/enrichment.json` by entry id + content
      hash, incremental); ranker reads it as a high-weight field. Query time stays
      deterministic. Embeddings later as a drop-in ranker only if this underperforms.
+     Owner direction 2026-07-25: retrieval improvement is WANTED (Q9 answered, not
+     parked) — rung 1 (deterministic, v0.4.0) shipped first; this pass is rung 2, still
+     behind the crowd-game-seed evidence gate showing where lexical matching fails.
   3. **MCP write tool** (`kb_capture`) — the capture skill's discipline, callable without a
      skill invocation; episodic only, same steward-routing rule in the tool description.
   4. **Session journal + hook fire-points** — a live journal fills the `session` caste during

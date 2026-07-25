@@ -43,6 +43,24 @@ const H2_RX = /^##\s+(.+?)\s*$/;
 // a purpose block), so it becomes its own entry rather than being dropped.
 const PREAMBLE_KEY = 'preamble';
 
+// With `skipThinPreamble: true` on a source spec, a preamble whose body is
+// mostly boilerplate — headings and blockquote lines (the repeated instruction
+// blocks these stores carry) — is dropped unless it has at least this many
+// substantive lines. Boilerplate preambles dilute ranking: they make every
+// ledger file match queries its sections have nothing to do with.
+const MIN_PREAMBLE_SUBSTANCE_LINES = 2;
+
+/** Non-empty lines that are neither headings nor blockquote boilerplate. */
+function substanceLineCount(body) {
+  return body
+    .split(/\r?\n/)
+    .filter((line) => {
+      const t = line.trim();
+      return t && !t.startsWith('#') && !t.startsWith('>');
+    })
+    .length;
+}
+
 /**
  * Parse a minimal frontmatter block: `---` ... `---` at the very top, `key: value`
  * lines only. Deliberately NOT a YAML parser (no dependency, no surprises):
@@ -204,6 +222,13 @@ function collect(spec, ctx) {
     }
 
     for (const section of splitByH2(text)) {
+      if (
+        section.key === PREAMBLE_KEY &&
+        spec.skipThinPreamble &&
+        substanceLineCount(section.body) < MIN_PREAMBLE_SUBSTANCE_LINES
+      ) {
+        continue;
+      }
       // A dated section heading ('## 2026-07-22 · ...') is a better timestamp than
       // the file's, because one ledger holds many days.
       const sectionWhen = whenFromName(section.title) || fileWhen;
@@ -237,5 +262,6 @@ module.exports = {
   describe: () => 'a directory of .md files; one entry per file or per ## section',
   collect,
   // exported for tests
-  splitByH2, patternToRegex, listMarkdown, parseFrontmatter, SPLIT_FILE, SPLIT_H2,
+  splitByH2, patternToRegex, listMarkdown, parseFrontmatter, substanceLineCount,
+  SPLIT_FILE, SPLIT_H2, MIN_PREAMBLE_SUBSTANCE_LINES,
 };

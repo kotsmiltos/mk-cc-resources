@@ -26,7 +26,7 @@ const { whenFromName, whenForFile } = require('../lib/dates');
 const termOverlap = require('../lib/rankers/term-overlap');
 const rankers = require('../lib/rankers');
 const engine = require('../lib/engine');
-const { makeQuery, clampLimit, MAX_LIMIT } = require('../lib/query');
+const { makeQuery, clampLimit, buildAliasLookup, MAX_LIMIT } = require('../lib/query');
 const markdownDir = require('../lib/sources/markdown-dir');
 const sources = require('../lib/sources');
 const { mergeSources, loadConfig } = require('../lib/config');
@@ -117,16 +117,19 @@ check('short digit run not mistaken for a date', whenFromName('v1.2.3.md') === n
 
 const mkEntry = (over) => makeEntry({ ...goodFields, ...over }, reg);
 {
+  // score()'s contract takes ALREADY-TOKENIZED terms — run raw words through
+  // tokenize() exactly as the query layer does (lowercase + stopwords + stem).
+  const T = (text) => termOverlap.tokenize(text);
   const inTitle = mkEntry({ id: 'a', title: 'caste routing', body: 'unrelated' });
   const inBody = mkEntry({ id: 'b', title: 'unrelated', body: 'caste routing' });
-  check('title hit outscores body hit', termOverlap.score(inTitle, ['caste']) > termOverlap.score(inBody, ['caste']));
+  check('title hit outscores body hit', termOverlap.score(inTitle, T('caste')) > termOverlap.score(inBody, T('caste')));
 
   const inTheme = mkEntry({ id: 'c', title: 'unrelated', body: 'unrelated', themes: ['caste'] });
-  check('theme hit outscores body hit', termOverlap.score(inTheme, ['caste']) > termOverlap.score(inBody, ['caste']));
+  check('theme hit outscores body hit', termOverlap.score(inTheme, T('caste')) > termOverlap.score(inBody, T('caste')));
 
   const bothTerms = mkEntry({ id: 'd', title: 'unrelated', body: 'caste routing here' });
   const oneTermRepeated = mkEntry({ id: 'e', title: 'unrelated', body: 'caste caste caste caste caste' });
-  check('coverage beats repetition', termOverlap.score(bothTerms, ['caste', 'routing']) > termOverlap.score(oneTermRepeated, ['caste', 'routing']));
+  check('coverage beats repetition', termOverlap.score(bothTerms, T('caste routing')) > termOverlap.score(oneTermRepeated, T('caste routing')));
 
   check('no match scores zero', termOverlap.score(inBody, ['helicopter']) === 0);
   check('empty terms score zero', termOverlap.score(inBody, []) === 0);
@@ -136,6 +139,34 @@ const mkEntry = (over) => makeEntry({ ...goodFields, ...over }, reg);
   const shortTerm = mkEntry({ id: 'g', title: 'unrelated', body: 'onward' });
   check('short term does not prefix-match', termOverlap.score(shortTerm, ['on']) === 0);
   check('stopwords tokenize away', termOverlap.tokenize('the a of and').length === 0);
+
+  // --- stemming: both directions of inflection meet at the same stem ---
+  check('stem: plural s', termOverlap.stemToken('hooks') === 'hook');
+  check('stem: ies to y', termOverlap.stemToken('stories') === 'story');
+  check('stem: ing with undouble', termOverlap.stemToken('running') === 'run');
+  check('stem: ing keeps double l', termOverlap.stemToken('falling') === 'fall');
+  check('stem: ed + e meet', termOverlap.stemToken('decided') === termOverlap.stemToken('decide'));
+  check('stem: too-short result falls back', termOverlap.stemToken('is') === 'is');
+  check('stem is idempotent on its own output', termOverlap.stemToken(termOverlap.stemToken('running')) === termOverlap.stemToken('running'));
+  const inflected = mkEntry({ id: 'st1', title: 'unrelated', body: 'we decide the shape here' });
+  check('inflected query finds base form', termOverlap.score(inflected, T('decided')) > 0);
+
+  // --- fuzzy: one typo still lands, at a discount; short words never fuzz ---
+  const glossary = mkEntry({ id: 'fz1', title: 'glossary engine', body: 'unrelated' });
+  check('typo within distance 1 matches', termOverlap.score(glossary, ['glosary']) > 0);
+  check('typo scores below the exact word', termOverlap.score(glossary, ['glosary']) < termOverlap.score(glossary, T('glossary')));
+  const cat = mkEntry({ id: 'fz2', title: 'unrelated', body: 'cot bed' });
+  check('short words never fuzzy-match', termOverlap.score(cat, ['cat']) === 0);
+  check('edit distance: substitution', termOverlap.withinEditDistance1('glossary', 'glossbry'));
+  check('edit distance: transposition', termOverlap.withinEditDistance1('glossary', 'glossray'));
+  check('edit distance: insertion', termOverlap.withinEditDistance1('glossary', 'glosssary'));
+  check('edit distance: two edits rejected', !termOverlap.withinEditDistance1('glossary', 'glassbry'));
+
+  // --- aliases: owner-declared equivalents count as the term itself ---
+  const loginEntry = mkEntry({ id: 'al1', title: 'login flow', body: 'unrelated' });
+  check('alias variant matches for the term', termOverlap.score(loginEntry, ['auth'], { aliases: { auth: ['login'] } }) > 0);
+  check('alias hit carries full field weight', termOverlap.score(loginEntry, ['auth'], { aliases: { auth: ['login'] } }) === termOverlap.score(loginEntry, T('login')));
+  check('no aliases opts behaves as before', termOverlap.score(loginEntry, ['auth']) === 0);
 }
 check('ranker registry exposes the default', rankers.list().includes(rankers.DEFAULT_RANKER_ID));
 throws('unknown ranker is loud', () => rankers.get('nope'), /unknown ranker/);
@@ -147,7 +178,8 @@ throws('query rejects unknown kind', () => makeQuery({ kind: 'bogus' }, reg), /u
 throws('query rejects unknown caste', () => makeQuery({ caste: 'bogus' }, reg), /unknown caste/);
 {
   const q = makeQuery({ text: 'The Caste Routing', caste: 'project', wider: true }, reg, { limit: 5 });
-  check('query tokenizes and drops stopwords', JSON.stringify(q.terms) === JSON.stringify(['caste', 'routing']));
+  // Terms arrive stemmed — the same normalization entry tokens get.
+  check('query tokenizes and drops stopwords', JSON.stringify(q.terms) === JSON.stringify(['cast', 'routing'].map((w) => termOverlap.stemToken(w))));
   check('query widening produces the outward tiers', JSON.stringify(q.castes) === JSON.stringify(['project', 'fleet', 'owner']));
   check('query without wider pins one tier', JSON.stringify(makeQuery({ caste: 'project' }, reg).castes) === JSON.stringify(['project']));
   check('query with no caste means all tiers', makeQuery({}, reg).castes === null);
@@ -354,6 +386,56 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   fs.mkdirSync(path.join(badRoot, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(badRoot, '.claude', 'kb.json'), '{ not json');
   throws('malformed project config throws instead of silently reverting', () => loadConfig(badRoot), /cannot read config/);
+
+  // --- alias config plumbing ---
+  const aliasRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-alias-'));
+  fs.mkdirSync(path.join(aliasRoot, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(aliasRoot, '.claude', 'kb.json'),
+    JSON.stringify({ aliases: [['auth', 'login']] }));
+  const aliasCfg = loadConfig(aliasRoot);
+  check('project config carries alias groups', JSON.stringify(aliasCfg.aliases) === JSON.stringify([['auth', 'login']]));
+  check('defaults ship an empty alias list', JSON.stringify(loadConfig(fixtureRoot).aliases) === JSON.stringify([]));
+}
+
+// --------------------------------------------------- thin preamble skip ---
+
+{
+  const thinRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-thin-'));
+  fs.mkdirSync(path.join(thinRoot, 'docs'), { recursive: true });
+  // Boilerplate-only preamble: h1 + blockquote block, zero substance lines.
+  fs.writeFileSync(path.join(thinRoot, 'docs', 'boiler.md'),
+    '# Ledger\n\n> Read this before doing anything:\n> - rule one\n> - rule two\n\n## 2026-07-01 · Real section\nreal body\n');
+  // Substantive preamble: same shape plus two real lines.
+  fs.writeFileSync(path.join(thinRoot, 'docs', 'meaty.md'),
+    '# Ledger\n\n> boilerplate quote\n\nIntro line of real substance.\nSecond real line.\n\n## 2026-07-01 · Real section\nreal body\n');
+  const thinCtx = { root: thinRoot, registry: reg };
+  const baseSpec = { id: 'thin', type: 'markdown-dir', kind: 'episodic', caste: 'project', dir: 'docs', split: 'h2' };
+
+  const kept = markdownDir.collect({ ...baseSpec, include: ['boiler.md'] }, thinCtx);
+  check('without the flag the boilerplate preamble is kept', kept.length === 2);
+
+  const skipped = markdownDir.collect({ ...baseSpec, include: ['boiler.md'], skipThinPreamble: true }, thinCtx);
+  check('skipThinPreamble drops the boilerplate-only preamble', skipped.length === 1 && skipped[0].title.includes('Real section'));
+
+  const meaty = markdownDir.collect({ ...baseSpec, include: ['meaty.md'], skipThinPreamble: true }, thinCtx);
+  check('skipThinPreamble keeps a preamble with real substance', meaty.length === 2);
+
+  check('substance count ignores headings and blockquotes', markdownDir.substanceLineCount('# H\n> q\n> q2\n\nreal\n') === 1);
+  check('sections are never skipped, only preambles', skipped.every((e) => e.title !== 'preamble'));
+}
+
+// --------------------------------------------------------- alias lookup ---
+
+{
+  const lookup = buildAliasLookup([['auth', 'login', 'authentication']]);
+  check('alias lookup maps each member to the others', lookup.auth.includes('login'));
+  check('alias lookup is symmetric', lookup.login.includes('auth'));
+  check('alias lookup stems its members', lookup.auth.includes(termOverlap.stemToken('authentication')));
+  check('empty alias groups yield null', buildAliasLookup([]) === null);
+  check('single-member group is ignored', buildAliasLookup([['solo']]) === null);
+  const q = makeQuery({ text: 'auth flow' }, reg, { aliases: [['auth', 'login']] });
+  check('query carries the alias lookup', q.aliases && q.aliases.auth.includes('login'));
+  check('query without aliases carries null', makeQuery({ text: 'auth' }, reg).aliases === null);
 }
 
 // ------------------------------------------------------------- kb facade ---

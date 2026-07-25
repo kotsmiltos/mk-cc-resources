@@ -1,5 +1,29 @@
 # Release notes — essense-flow
 
+## 0.26.1 — Context-inject economics inversion fixed (loud where it should be silent, silent where it should be loud)
+
+The injection layer was inverted both ways (code-verified 2026-07-22, shipped now):
+
+- **Never-initialized repos go silent.** A repo with no `.pipeline/` directory at all never
+  ran the pipeline — yet both hooks bannered `DEGRADED (missing)` on every single prompt
+  (~40×/session in non-pipeline repos). `readState` now returns `pipeline_present` alongside
+  the `missing` marker (`lib/state.js`); `context-inject.js` and `next-step.js` emit NOTHING
+  when the pipeline never existed. A `.pipeline/` dir whose `state.yaml` was LOST still
+  banners — that is a real degradation. CLI consumers are untouched: the marker stays
+  `degraded: 'missing'` either way.
+- **Parse-corrupt state.yaml becomes visible.** `readState` throws `ShapeValidationError`
+  for yaml parse failures (duplicate keys — the Diploma case) and empty/non-object roots;
+  both hooks caught that throw as "lib unavailable" and wrote it to stderr only — the
+  session saw NOTHING while inheriting a corrupt state file. Both hooks now catch
+  `ShapeValidationError` specifically and render the full visible `DEGRADED (corrupt)`
+  block with the parse diagnostic. The throw contract itself is unchanged — CLI tools keep
+  their strict exit behavior.
+
+Tests: `tests/hooks.test.js` 7 → 11 (never-initialized silence ×2, state-lost banner ×2,
+duplicate-key visibility ×2, non-object-root visibility assertions added to the fail-soft
+test). `test/run-all.cjs` 54 files green; the one red (`ledger-compaction` T-ENF-3) is
+pre-existing calendar drift, confirmed on a clean tree, untouched by this change.
+
 ## 0.26.0 — Generativity protocol: design forks resolve to the open model, instructed where they fire
 
 Criterion 9 (0.24.0) is the rung-4 backstop — it catches a closed dispatch on a declared growth axis at design-REVIEW time. This ships the rung-2 layer: the protocol as an explicit, referenced step at the moments a fork is actually decided, so criterion 9 finds nothing to flag. An abstract "be generic" principle predictably under-fires; an instruction placed at the design moment does not.

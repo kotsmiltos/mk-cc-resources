@@ -3,6 +3,7 @@
   "castes": ["session", "thread", "project", "fleet", "owner"],
   "limit": 8,
   "ranker": "term-overlap",
+  "aliases": [],
   "sources": [
     {
       "id": "steward-vision",
@@ -22,6 +23,7 @@
       "dir": ".steward",
       "include": ["parts.md", "state.md", "tasks.md", "questions.md"],
       "split": "h2",
+      "skipThinPreamble": true,
       "themes": ["model", "plan"]
     },
     {
@@ -32,6 +34,7 @@
       "dir": ".steward",
       "include": ["log.md"],
       "split": "h2",
+      "skipThinPreamble": true,
       "themes": ["outcome", "history"]
     },
     {
@@ -92,6 +95,7 @@
       "dir": ".",
       "include": ["CLAUDE.md"],
       "split": "h2",
+      "skipThinPreamble": true,
       "themes": ["convention", "instruction"]
     }
   ]

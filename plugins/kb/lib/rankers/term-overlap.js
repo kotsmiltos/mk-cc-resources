@@ -41,6 +41,17 @@ const COVERAGE_FLOOR = 0.5;
 // characters would make almost everything match almost everything.
 const MIN_PREFIX_LEN = 3;
 
+// Typo tolerance: a term and a token within edit distance 1 still count, at a
+// discount — a fuzzy hit is a guess about intent, an exact hit is not. Both
+// sides must be long enough that one edit can't turn a word into another word
+// ("cat"→"cot" is a different word; "glosary"→"glossary" is a typo).
+const MIN_FUZZY_LEN = 5;
+const FUZZY_WEIGHT = 0.7;
+
+// A stemmed form shorter than this is too ambiguous to keep — fall back to the
+// original token rather than matching almost everything.
+const MIN_STEM_LEN = 3;
+
 // Words carrying no retrieval signal in this domain.
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'of', 'to', 'in', 'on', 'at',
@@ -50,32 +61,132 @@ const STOPWORDS = new Set([
 
 const TOKEN_SPLIT_RX = /[^a-z0-9_]+/;
 
-/** Lowercase, split, drop stopwords and empties. Shared by query + entry sides. */
+// Consonants Porter never undoubles — stripping one of these changes the word
+// ("passing"→"pass" must keep its double s).
+const NO_UNDOUBLE = new Set(['l', 's', 'z']);
+
+/**
+ * Light deterministic stemmer — a fixed suffix chain, NOT Porter. Prefix
+ * matching already catches "decid|es|ing" when the QUERY term is the shorter
+ * form; stemming closes the opposite direction ("decided" must find "decide").
+ * Both query and entry sides run through tokenize(), so the mapping only has
+ * to be consistent, not linguistically perfect.
+ */
+function stemToken(token) {
+  let t = token;
+  // plural family
+  if (t.length >= 5 && t.endsWith('ies')) t = t.slice(0, -3) + 'y';
+  else if (t.endsWith('sses')) t = t.slice(0, -2);
+  else if (t.length >= 4 && t.endsWith('s') && !t.endsWith('ss') && !t.endsWith('us') && !t.endsWith('is')) {
+    t = t.slice(0, -1);
+  }
+  // verb endings, with undoubling (running→runn→run) except l/s/z (falling→fall)
+  if (t.length >= 6 && t.endsWith('ing')) t = undouble(t.slice(0, -3));
+  else if (t.length >= 5 && t.endsWith('ed')) t = undouble(t.slice(0, -2));
+  // trailing e so "decide" and "decided" meet at "decid"
+  if (t.length >= 5 && t.endsWith('e')) t = t.slice(0, -1);
+  return t.length >= MIN_STEM_LEN ? t : token;
+}
+
+function undouble(t) {
+  const last = t[t.length - 1];
+  if (t.length >= 2 && last === t[t.length - 2] && !NO_UNDOUBLE.has(last)) return t.slice(0, -1);
+  return t;
+}
+
+/** Lowercase, split, drop stopwords and empties, stem. Shared by query + entry sides. */
 function tokenize(text) {
   if (typeof text !== 'string' || !text) return [];
   return text
     .toLowerCase()
     .split(TOKEN_SPLIT_RX)
-    .filter((t) => t && !STOPWORDS.has(t));
+    .filter((t) => t && !STOPWORDS.has(t))
+    .map(stemToken);
 }
 
-/** How many tokens the term hits — exact, or prefix once the term is long enough. */
-function countHits(tokens, term) {
-  let hits = 0;
-  const allowPrefix = term.length >= MIN_PREFIX_LEN;
-  for (const token of tokens) {
-    if (token === term || (allowPrefix && token.startsWith(term))) hits += 1;
+/** True when a and b are within Damerau-Levenshtein distance 1 (typo shapes). */
+function withinEditDistance1(a, b) {
+  if (a === b) return true;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  // find first mismatch
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i += 1;
+  if (la === lb) {
+    // substitution: rest must match beyond the mismatch...
+    if (a.slice(i + 1) === b.slice(i + 1)) return true;
+    // ...or transposition of the two chars at the mismatch
+    return (
+      i + 1 < la &&
+      a[i] === b[i + 1] &&
+      a[i + 1] === b[i] &&
+      a.slice(i + 2) === b.slice(i + 2)
+    );
   }
-  return hits;
+  // insertion/deletion: skip one char on the longer side
+  const [shorter, longer] = la < lb ? [a, b] : [b, a];
+  return shorter.slice(i) === longer.slice(i + 1);
+}
+
+/**
+ * How the term hits these tokens.
+ * @returns {{full: number, fuzzy: number}} full = exact or prefix hits;
+ *          fuzzy = edit-distance-1 hits (counted only when no full hit exists,
+ *          discounted by FUZZY_WEIGHT at scoring time).
+ */
+function countHits(tokens, term) {
+  let full = 0;
+  let fuzzy = 0;
+  const allowPrefix = term.length >= MIN_PREFIX_LEN;
+  const allowFuzzy = term.length >= MIN_FUZZY_LEN;
+  for (const token of tokens) {
+    if (token === term || (allowPrefix && token.startsWith(term))) full += 1;
+    else if (allowFuzzy && token.length >= MIN_FUZZY_LEN && withinEditDistance1(token, term)) fuzzy += 1;
+  }
+  return { full, fuzzy };
+}
+
+/**
+ * Score one surface form against the three fields. Returns 0 when it misses,
+ * else field weight × match quality (1 for exact/prefix, FUZZY_WEIGHT for a
+ * distance-1 hit), plus the capped body-repeat bonus for full hits.
+ */
+function scoreVariant(term, titleTokens, themeTokens, bodyTokens) {
+  const inTitle = countHits(titleTokens, term);
+  const inThemes = countHits(themeTokens, term);
+  const inBody = countHits(bodyTokens, term);
+
+  // Best field wins — a term is not worth more for appearing everywhere.
+  // A full hit in ANY field beats a fuzzy hit in the strongest field: quality
+  // outranks placement, otherwise a typo in a title would outscore the real
+  // word in a body.
+  let value = 0;
+  if (inTitle.full) value = TITLE_WEIGHT;
+  else if (inThemes.full) value = THEME_WEIGHT;
+  else if (inBody.full) value = BODY_WEIGHT;
+  else if (inTitle.fuzzy) value = TITLE_WEIGHT * FUZZY_WEIGHT;
+  else if (inThemes.fuzzy) value = THEME_WEIGHT * FUZZY_WEIGHT;
+  else if (inBody.fuzzy) value = BODY_WEIGHT * FUZZY_WEIGHT;
+  else return 0;
+
+  if (inBody.full > 1) value += BODY_REPEAT_WEIGHT * Math.min(inBody.full - 1, MAX_REPEAT_BONUS);
+  return value;
 }
 
 /**
  * @param {object} entry - a KB entry.
  * @param {string[]} terms - already-tokenized query terms.
+ * @param {object} [opts] - {aliases: {term: [variant, ...]}} — owner-declared
+ *        equivalent surface forms (already tokenized/stemmed by the query
+ *        layer). A term counts as matched when itself OR any alias hits; the
+ *        best-scoring surface form wins. Aliases are trusted equivalences, so
+ *        an alias hit carries full weight.
  * @returns {number} score; 0 means "does not answer this query".
  */
-function score(entry, terms) {
+function score(entry, terms, opts) {
   if (!Array.isArray(terms) || !terms.length) return 0;
+  const aliases = opts && opts.aliases && typeof opts.aliases === 'object' ? opts.aliases : null;
 
   const fields = entryFields(entry);
   const titleTokens = tokenize(fields.title);
@@ -86,18 +197,17 @@ function score(entry, terms) {
   let matched = 0;
 
   for (const term of terms) {
-    const inTitle = countHits(titleTokens, term);
-    const inThemes = countHits(themeTokens, term);
-    const inBody = countHits(bodyTokens, term);
-    if (!inTitle && !inThemes && !inBody) continue;
-
+    let best = scoreVariant(term, titleTokens, themeTokens, bodyTokens);
+    const variants = aliases && Array.isArray(aliases[term]) ? aliases[term] : null;
+    if (variants) {
+      for (const variant of variants) {
+        const v = scoreVariant(variant, titleTokens, themeTokens, bodyTokens);
+        if (v > best) best = v;
+      }
+    }
+    if (best <= 0) continue;
     matched += 1;
-    // Best field wins — a term is not worth more for appearing everywhere.
-    if (inTitle) raw += TITLE_WEIGHT;
-    else if (inThemes) raw += THEME_WEIGHT;
-    else raw += BODY_WEIGHT;
-
-    if (inBody > 1) raw += BODY_REPEAT_WEIGHT * Math.min(inBody - 1, MAX_REPEAT_BONUS);
+    raw += best;
   }
 
   if (!matched) return 0;
@@ -107,9 +217,12 @@ function score(entry, terms) {
 
 module.exports = {
   id: 'term-overlap',
-  describe: () => 'deterministic lexical overlap; title/theme weighted, coverage-scaled',
+  describe: () => 'deterministic lexical overlap; stemmed + typo-tolerant, title/theme weighted, coverage-scaled',
   score,
   tokenize,
+  stemToken,
+  withinEditDistance1,
   // exported for tests — the constants ARE the behaviour
   TITLE_WEIGHT, THEME_WEIGHT, BODY_WEIGHT, COVERAGE_FLOOR, MIN_PREFIX_LEN,
+  MIN_FUZZY_LEN, FUZZY_WEIGHT, MIN_STEM_LEN,
 };
