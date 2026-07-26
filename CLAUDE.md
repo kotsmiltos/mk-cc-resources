@@ -252,7 +252,7 @@ plugins/
     tests/kb-footprint.test.js # 33 checks — fs-import + write-site audit, no-write-in-unseeded
     tests/kb-pull.test.js   # 37 checks — hook guards, score floor, digest, trace
     tests/kb-session.test.js # 56 checks — presence, rotation + loss-safety, seed cue
-    tests/kb-scribe.test.js # 40 checks — the enforced write side (block, fire-once, turn)
+    tests/kb-scribe.test.js # 42 checks — the enforced write side (block, fire-once, turn)
 ```
 
 **kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions

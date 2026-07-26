@@ -147,7 +147,10 @@ claims a project is unseeded when its entries simply predate the convention.
 
 All three hooks AND the MCP tools trace their fires to `.claude/kb/trace.jsonl` (in projects
 that keep a memory), so "is this actually wired in a live session?" is answerable from disk
-rather than from memory.
+rather than from memory. The scribe's trace was the last one added, and only because the
+steward caught the gap: without it, the ONE surface whose firing leaves no artifact a person
+keeps — a Stop-block — would have been unverifiable, and the post-install check everyone had
+agreed on ("all three hooks visible in the trace") was quietly impossible to satisfy.
 
 **The footprint rule now has a suite of its own** (`tests/kb-footprint.test.js`). Three rounds
 of review each found a NEW write path that no per-surface test could see — the scribe's state
@@ -167,8 +170,8 @@ entry points (pull hook, scribe, session-start, MCP trace) are driven against a 
 substrate-but-no-memory and asserted to leave the directory untouched — then the same project
 gets a seed and every one of them starts working.
 
-Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 56 (kb-session)
-+ 38 (kb-mcp) + **33 (kb-footprint, new invariant suite)** = 460. kb now carries three hooks.
+Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 42 (kb-scribe) + 56 (kb-session)
++ 38 (kb-mcp) + **33 (kb-footprint, new invariant suite)** = 462. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·

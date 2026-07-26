@@ -6,6 +6,46 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-26 · SHIPPED: 19 commits pushed (71a0b0a) + kb 0.7.0 self-running · model reconciled
+Third wave of the same session, then the push, then this integration (5 inbox items).
+- **kb 0.7.0 — self-running** (owner: "run seed… regardless of if I've run it again… then it
+  uses and maintains itself"): `kb coverage` reads the mandatory `Extracted-from:` citations
+  into a top-up map, so a re-seed is incremental BY MECHANISM, not by the seeder's memory;
+  `lib/presence.js` self-activation — a project that keeps no curated memory is never touched
+  (not even by telemetry; `writeTrace` holds the gate for every caller), so seeding IS the
+  on-switch and there is no per-project wiring to remember; SessionStart digest rotation to
+  `.claude/kb/digests/` (archive verified on disk BEFORE the live file is deleted; only
+  startup/clear rotate, resume/compact/fork keep it) so "now" never carries yesterday;
+  one-time seed cue in `~/.claude/kb/cued.json` (HOME, never the project); ranker `scan` mode
+  + ubiquity rule; a footprint invariant suite (fs-import + write-site audit,
+  negative-controlled) — the suite exists because three review rounds each missed a write path.
+- **PUSHED**: local main == origin/main == 71a0b0a (refs read from
+  `.git/refs/{heads,remotes/origin}/main` at reconcile). 19 commits. Versions node-verified
+  equal across plugin.json / marketplace row / README: kb 0.7.0 · essense-flow 0.26.1 ·
+  bundle 2.26.0 · marketplace 2.37.0.
+- Checks: kb 460 across SIX suites (256 · 37 · 40 · 56 · 38 · 33), documented command now a
+  GLOB — naming files is how the footprint suite silently dropped out of it; essense-flow
+  hooks 11/11 + `test/run-all` 54/0; regression green: steward 17 · statusline 16 ·
+  thorough-mode 21 · reuse-gate 21 · lens 39.
+- **Six lens rounds** over this work; defect severity fell monotonically to meta-level only.
+  Two recurring CLASSES named in the model rather than fixed one instance at a time:
+  hand-written counts in prose (4/4 doc defects were stale numbers; a 5th found at this
+  reconcile — root CLAUDE.md says statusline 12, the suite runs 16) and tests that lie (4
+  occasions, **always** in the flattering direction).
+- **The honest position: NOTHING IS LIVE.** Installed kb = 0.3.0; hooks + the traced MCP
+  server register at INSTALL time. Pre-live baseline captured for an unfakeable check —
+  `.claude/kb/trace.jsonl` 21 lines, all `kb-pull-hook` from piped runs, all `"digest":false`,
+  zero `kb-session-start`, zero MCP lines. Update + restart + prove = tasks #1.
+- **Integration corrections (both disk-verified, both against a claim in our own capture or
+  brief):** (1) the steward briefing does NOT truncate silently — a marker exists at
+  `steward-brief.js:70-72` and is asserted at `steward-brief.test.js:68`; the real defect is
+  no WRITE-time budget, no dropped-char count, and an owner who never sees injected text.
+  (2) kb-scribe writes NO trace line, so "all three hooks visible in trace.jsonl" is not an
+  achievable done-check — its evidence is the block + a digest gaining content.
+- Q10 OPENED: who forces the recompute? (crowd-game's model went a full session stale;
+  captures land, integration doesn't). Recommended default: narrow enforced sync reusing
+  kb-scribe's contract, fired only on a staleness signal.
+
 ## 2026-07-25 · kb 0.6.0 BUILT — the ENFORCED write side (owner: "a nudge… not gonna be enough")
 Owner rejected the nudge-only write path and asked whether a lens-like agent should pick up
 the important parts. Decision taken (technical side on the session, per owner): same

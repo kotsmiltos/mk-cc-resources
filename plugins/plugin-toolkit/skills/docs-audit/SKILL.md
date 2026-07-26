@@ -11,11 +11,11 @@ Detect drift between repo docs (CLAUDE.md, README.md, marketplace.json) and actu
 ## Disk state
 
 ```!
-ls -d C:/Users/mkots/mk-cc-resources/plugins/*/ 2>/dev/null | xargs -n1 basename
+ls -d ${CLAUDE_PROJECT_DIR}/plugins/*/ 2>/dev/null | xargs -n1 basename
 ```
 
 ```!
-grep -E '"name"|"version"' C:/Users/mkots/mk-cc-resources/.claude-plugin/marketplace.json | paste - - | head -20
+grep -E '"name"|"version"' ${CLAUDE_PROJECT_DIR}/.claude-plugin/marketplace.json | paste - - | head -20
 ```
 
 <instructions>

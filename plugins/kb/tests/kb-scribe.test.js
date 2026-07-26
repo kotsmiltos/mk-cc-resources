@@ -154,6 +154,14 @@ function seedMemory(root) {
   check('e2e block reason is the scribe instruction', /\[kb-scribe\]/.test(JSON.parse(r.stdout).reason));
   check('e2e state file written', fs.existsSync(path.join(root, scribe.STATE_REL)));
 
+  // The block must leave disk evidence: it is the only surface whose firing cannot
+  // otherwise be checked after the fact (it writes no output a person keeps).
+  const traceFile = path.join(root, '.claude', 'kb', 'trace.jsonl');
+  const scribeTraces = fs.readFileSync(traceFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    .filter((t) => t.tool === 'kb-scribe-hook');
+  check('e2e the block is traced', scribeTraces.length === 1 && scribeTraces[0].blocked === true);
+  check('e2e the trace records what the turn did', Array.isArray(scribeTraces[0].tools) && scribeTraces[0].tools.includes('Write'));
+
   const r2 = runHook(root, { transcript_path: p });
   check('e2e second fire releases (no infinite block)', r2.stdout === '');
 

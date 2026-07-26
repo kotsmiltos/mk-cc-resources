@@ -12,7 +12,7 @@ Bump a plugin's version consistently across all 4 touch points (plugin.json, mar
 ## Current state
 
 ```!
-cat C:/Users/mkots/mk-cc-resources/.claude-plugin/marketplace.json 2>/dev/null | grep -E '"name"|"version"' | head -30
+cat ${CLAUDE_PROJECT_DIR}/.claude-plugin/marketplace.json 2>/dev/null | grep -E '"name"|"version"' | head -30
 ```
 
 <instructions>

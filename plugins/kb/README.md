@@ -22,7 +22,10 @@ Everything is filed on two axes that never collapse into one another.
 - **episodic** — what happened, in context: log entries, captures, handoffs, dead ends.
 - **semantic** — settled facts about the project: vision, parts, current state.
 - **procedural** — how things are done here: conventions, instructions.
-- **working** — the current context (reserved; nothing writes it yet).
+- **working** — what is in play right now. Since 0.5.0 the session digest lives here
+  (`.claude/kb/session-digest.md`): the current sitting's rolling distillation, written by the
+  session and injected into every prompt, archived to the `episodic` catalog when the next
+  sitting begins.
 
 Kinds follow the [CoALA taxonomy](https://arxiv.org/abs/2309.02427), the vocabulary Letta,
 Mem0 and LangChain also use — so the catalogs mean the same thing here as elsewhere.
@@ -159,6 +162,8 @@ exist is simply empty — no configuration needed to run in a project that lacks
 | `steward-inbox` | episodic / project | `.steward/inbox/**` |
 | `handoffs` | episodic / session | `.claude/handoffs/` |
 | `kickoff-prompts` | episodic / session | `.claude/prompts/` |
+| `session-digest` | **working** / session | `.claude/kb/session-digest.md` — the live sitting's rolling distillation, injected into every prompt |
+| `session-digests` | episodic / session | `.claude/kb/digests/**` — previous sittings, archived at session start and still queryable |
 | `project-instructions` | procedural / project | `CLAUDE.md`, per `##` section |
 
 An append-only ledger is not one memory — it is dozens, each under its own heading with

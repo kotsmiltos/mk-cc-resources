@@ -241,6 +241,22 @@ async function main() {
   const turn = extractTurn(payload.transcript_path);
   const state = readState(cwd);
   const { action, newState, reason } = decide({ enabled, turn, state, focus });
+
+  // Trace the block, like the other two hooks do. Without this, "did the scribe fire in a
+  // real session?" is answerable only by remembering, and the ONE surface whose firing
+  // cannot be checked from disk is the one that blocks turns. writeTrace holds the
+  // presence gate, so an unseeded project is still never written into.
+  if (action === 'block') {
+    try {
+      const { writeTrace } = require('../../mcp/kb-mcp-server');
+      writeTrace(cwd, {
+        t: new Date().toISOString(),
+        tool: 'kb-scribe-hook',
+        blocked: true,
+        tools: Array.from(new Set(turn.toolNames || [])).slice(0, 8),
+      });
+    } catch (_e) { /* telemetry never blocks the block */ }
+  }
   // Only a project this hook actually serves gets a state file. Writing state while
   // disabled would create .claude/kb/ in every directory a session happens to end in
   // — a footprint in unrelated repos, and a contradiction of the presence rule that
