@@ -27,7 +27,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { hasCuratedMemory, hasSeedableSubstrate, memoryProblems } = require('../../lib/presence');
+const { hasSeedableSubstrate, inspect, MEMORY_MARKERS } = require('../../lib/presence');
 
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const ARCHIVE_DIR_REL = path.join('.claude', 'kb', 'digests');
@@ -167,20 +167,24 @@ async function main() {
     }
   }
 
-  // The one visible channel kb has per session. A hook's stderr goes to the debug log,
-  // so an obstruction found while checking for memory markers would otherwise disable
-  // upkeep silently; SessionStart stdout enters the session context, so it gets said
-  // out loud here — once, at the only moment a person is reading.
-  for (const problem of memoryProblems(root)) {
+  // ONE presence pass, used for both answers. Two calls would re-walk the markers and
+  // log the same obstruction twice. A hook's stderr goes to the debug log, so an
+  // obstruction found here would otherwise disable upkeep silently; SessionStart stdout
+  // enters the session context, so it gets said out loud — at the only moment a person
+  // is reading, and only when something genuinely got in the way.
+  const memory = inspect(root, MEMORY_MARKERS);
+  for (const problem of memory.problems) {
     out.push(`<kb-session>Could not read ${problem.path} (${problem.code}) — kb treats this project as keeping no knowledge base, so hints and upkeep stay off. If it does keep one, clear the lock or permission and restart.</kb-session>`);
   }
 
-  if (!hasCuratedMemory(root) && hasSeedableSubstrate(root) && cueOnce(root, payload.home)) {
+  if (!memory.found && hasSeedableSubstrate(root) && cueOnce(root, payload.home)) {
     out.push('<kb-session>This project has no knowledge base yet. Run /kb-seed once to extract what it already knows (decisions, rejected approaches, conventions) — after that the KB maintains itself.</kb-session>');
   }
 
   if (out.length) process.stdout.write(`${out.join('\n')}\n`);
-  trace(root, { source, rotated: out.some((l) => l.includes('archived')) });
+  // writeTrace gates on presence itself, but calling it when this pass already answered
+  // "no memory" re-walks the markers and re-reports the same obstruction. Ask once.
+  if (memory.found) trace(root, { source, rotated: out.some((l) => l.includes('archived')) });
   process.exit(0);
 }
 
