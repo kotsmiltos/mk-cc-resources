@@ -162,6 +162,22 @@ const mkEntry = (over) => makeEntry({ ...goodFields, ...over }, reg);
   check('edit distance: insertion', termOverlap.withinEditDistance1('glossary', 'glosssary'));
   check('edit distance: two edits rejected', !termOverlap.withinEditDistance1('glossary', 'glassbry'));
 
+  // --- scan mode: scoring a whole PROMPT, not chosen search terms ---
+  const subject = mkEntry({ id: 'sc1', title: 'Rejected: the widget cache', body: 'it lost to a plain map' });
+  const longPrompt = T('should we revisit the widget cache decision for performance reasons now');
+  check('coverage scaling sinks a subject match inside a long prompt',
+    termOverlap.score(subject, longPrompt) < 6);
+  check('scan mode surfaces the subject match', termOverlap.score(subject, longPrompt, { scan: true }) >= 6);
+  const bodyBrush = mkEntry({ id: 'sc2', title: 'unrelated notes', body: 'performance reasons revisit decision now widget' });
+  check('scan mode rejects a body-only brush (no title/theme hit)',
+    termOverlap.score(bodyBrush, T('performance reasons decision')) > 0
+      && termOverlap.score(bodyBrush, T('performance reasons decision'), { scan: true }) === 0);
+  const themed = mkEntry({ id: 'sc3', title: 'unrelated', body: 'x', themes: ['cache'] });
+  check('a theme hit counts as being ABOUT the subject', termOverlap.score(themed, T('cache'), { scan: true }) > 0);
+  check('scan mode still scores zero with no match at all', termOverlap.score(subject, T('helicopter'), { scan: true }) === 0);
+  check('query carries the scan flag', makeQuery({ text: 'x', scan: true }, reg).scan === true);
+  check('query defaults scan off', makeQuery({ text: 'x' }, reg).scan === false);
+
   // --- aliases: owner-declared equivalents count as the term itself ---
   const loginEntry = mkEntry({ id: 'al1', title: 'login flow', body: 'unrelated' });
   check('alias variant matches for the term', termOverlap.score(loginEntry, ['auth'], { aliases: { auth: ['login'] } }) > 0);
@@ -412,6 +428,44 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   const aliasCfg = loadConfig(aliasRoot);
   check('project config carries alias groups', JSON.stringify(aliasCfg.aliases) === JSON.stringify([['auth', 'login']]));
   check('defaults ship an empty alias list', JSON.stringify(loadConfig(fixtureRoot).aliases) === JSON.stringify([]));
+}
+
+// -------------------------------------------------------------- coverage ---
+
+{
+  const cov = require('../lib/coverage');
+  check('citation line is read from the body',
+    cov.citationLine('# T\n\nExtracted-from: docs/a.md; commit abc1234\n\nbody') === 'docs/a.md; commit abc1234');
+  check('no citation line yields null', cov.citationLine('# T\n\nbody only') === null);
+  check('citations split on ; and ,',
+    JSON.stringify(cov.citationsFrom('Extracted-from: a.md; b.md, c.md')) === JSON.stringify(['a.md', 'b.md', 'c.md']));
+  check('a comma INSIDE parentheses does not split a citation',
+    JSON.stringify(cov.citationsFrom('Extracted-from: commit 7d92711 ("add v1, deprecate it"); b.md'))
+      === JSON.stringify(['commit 7d92711 ("add v1, deprecate it")', 'b.md']));
+  check('backticked citation keeps its comma',
+    cov.citationsFrom('Extracted-from: `lib/x.js:10,20`').length === 1);
+  check('duplicate citations collapse',
+    JSON.stringify(cov.citationsFrom('Extracted-from: a.md; a.md')) === JSON.stringify(['a.md']));
+
+  const corpus = [
+    mkEntry({ id: 'x1', source: 'kb-extracted', title: 'seeded one', body: 'Extracted-from: docs/a.md', when: '2026-01-02' }),
+    mkEntry({ id: 'x2', source: 'kb-extracted', title: 'seeded two', body: 'Extracted-from: docs/a.md; commit abc', when: '2026-03-04' }),
+    mkEntry({ id: 'x3', source: 'kb-extracted', title: 'uncited', body: 'no citation here', when: '2026-02-02' }),
+    mkEntry({ id: 'p1', source: 'project-instructions', title: 'ambient', body: 'CLAUDE.md content', when: '2026-05-05' }),
+  ];
+  const c = cov.buildCoverage(corpus, { 'kb-extracted': 3, 'project-instructions': 1 });
+  check('coverage counts curated entries only', c.curated === 3 && c.total === 4);
+  check('coverage tallies each cited substrate', c.cited['docs/a.md'] === 2 && c.cited.commit === undefined);
+  check('multi-citation entries count every substrate', c.cited['commit abc'] === 1);
+  check('uncited curated entries are surfaced', c.uncited.length === 1 && c.uncited[0].id === 'x3');
+  check('coverage span brackets the curated entries', c.span.first === '2026-01-02' && c.span.last === '2026-03-04');
+  check('an unseeded corpus reports nothing cited', Object.keys(cov.buildCoverage([], {}).cited).length === 0);
+
+  const kbCov = openKb(fixtureRoot, {
+    sources: [{ id: 'kb-extracted', type: 'markdown-dir', kind: 'semantic', caste: 'project', dir: 'notes', split: 'file', exclude: ['INDEX.md'] }],
+  }).coverage();
+  check('facade exposes coverage', typeof kbCov.curated === 'number' && 'cited' in kbCov);
+  check('facade coverage reports source errors alongside', Array.isArray(kbCov.errors));
 }
 
 // --------------------------------------------------- thin preamble skip ---

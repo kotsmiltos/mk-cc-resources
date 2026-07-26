@@ -131,7 +131,9 @@ async function main() {
 
   const out = [];
 
-  const { result } = kb.query({ text: prompt, limit: cfg.maxHints });
+  // scan: the text is a prompt, not a query — score for "is this entry ABOUT the
+  // subject" instead of "does it cover every word the user typed".
+  const { result } = kb.query({ text: prompt, limit: cfg.maxHints, scan: true });
   const strong = result.returned.filter((h) => h.score >= cfg.minScore);
   if (strong.length) out.push(hintLines(strong));
 

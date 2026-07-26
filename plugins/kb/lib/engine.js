@@ -44,7 +44,7 @@ function run(entries, query, ranker) {
     // No terms = a browse, not a search: everything that passed the filters
     // qualifies and recency alone orders it.
     const value = query.terms.length
-      ? ranker.score(entry, query.terms, { aliases: query.aliases || null })
+      ? ranker.score(entry, query.terms, { aliases: query.aliases || null, scan: !!query.scan })
       : 0;
     if (query.terms.length && value <= 0) continue;
     scored.push({ entry, score: value });

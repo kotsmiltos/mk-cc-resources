@@ -1,4 +1,5 @@
 {
+  "description": "kb ambient surfaces. UserPromptSubmit (kb-pull): score-floored hints naming what the KB holds about this prompt + the rolling session digest. Stop (kb-scribe): on a producing turn, block the yield until the session distills it into the digest and graduates durable items — active only in projects that keep a curated memory. SessionStart (kb-session-start): archive the previous sitting's digest so 'now' stays honest, and cue an unseeded project once. All fail-open; none blocks a tool call.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -16,6 +17,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/kb-scribe-stop.js\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/kb-session-start.js\""
           }
         ]
       }

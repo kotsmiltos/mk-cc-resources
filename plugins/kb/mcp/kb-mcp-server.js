@@ -72,7 +72,7 @@ function traceFor(tool, args, payload) {
 // something newer, otherwise we accept the client's (older) revision.
 const PROTOCOL_VERSION = '2025-06-18';
 
-const SERVER_INFO = { name: 'kb', version: '0.6.0' };
+const SERVER_INFO = { name: 'kb', version: '0.7.0' };
 
 // JSON-RPC 2.0 error codes (spec constants, not magic numbers).
 const PARSE_ERROR = -32700;

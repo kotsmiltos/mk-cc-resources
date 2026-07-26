@@ -33,6 +33,7 @@ const USAGE = `kb — query the project knowledge base (kind x caste)
 USAGE
   kb query <terms...> [options]   search entries; returns hits + how to narrow
   kb stat [options]               what the knowledge base holds, by axis and source
+  kb coverage [options]           what has ALREADY been mined (run before a re-seed)
   kb axes [options]               list the configured kinds and castes
   kb sources [options]            list configured sources and registered source types
 
@@ -167,6 +168,30 @@ function renderStat(stat) {
   return lines.join('\n');
 }
 
+/** The top-up map: what has been mined, what is missing a citation, where coverage stops. */
+function renderCoverage(cov) {
+  const lines = [];
+  lines.push(`${cov.curated} curated entries of ${cov.total} indexed`);
+  lines.push(`coverage span: ${cov.span.first || '(none)'} -> ${cov.span.last || '(none)'}`);
+  lines.push('');
+  lines.push(`by source: ${formatCounts(cov.bySource)}`);
+  lines.push('');
+  const cited = Object.entries(cov.cited);
+  if (!cited.length) {
+    lines.push('already mined: (nothing cited yet — this project has not been seeded)');
+  } else {
+    lines.push(`already mined (${cited.length} substrates cited — a re-seed should target what is NOT here):`);
+    for (const [substrate, n] of cited) lines.push(`  ${n}x  ${substrate}`);
+  }
+  if (cov.uncited.length) {
+    lines.push('');
+    lines.push(`WARNING: ${cov.uncited.length} curated entr(ies) carry no Extracted-from citation:`);
+    for (const u of cov.uncited) lines.push(`  ${u.source}: ${u.title} (${u.path})`);
+  }
+  appendErrors(lines, cov.errors);
+  return lines.join('\n');
+}
+
 function formatCounts(counts) {
   const entries = Object.entries(counts);
   if (!entries.length) return '(none)';
@@ -218,6 +243,12 @@ function main(argv) {
     if (command === 'stat') {
       const stat = kb.stat();
       process.stdout.write(opts.json ? `${JSON.stringify(stat, null, 2)}\n` : `${renderStat(stat)}\n`);
+      return EXIT_OK;
+    }
+
+    if (command === 'coverage') {
+      const cov = kb.coverage();
+      process.stdout.write(opts.json ? `${JSON.stringify(cov, null, 2)}\n` : `${renderCoverage(cov)}\n`);
       return EXIT_OK;
     }
 

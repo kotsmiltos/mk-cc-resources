@@ -120,14 +120,32 @@ function runHook(cwd, payload) {
   return spawnSync('node', [HOOK], { cwd, input: JSON.stringify(payload), encoding: 'utf8', timeout: 15000 });
 }
 
+function seedMemory(root) {
+  // Presence gate: the scribe maintains a memory only where one exists.
+  fs.mkdirSync(path.join(root, '.claude', 'kb', 'extracted'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'extracted', 'seed.md'), '# seeded\n');
+}
+
 {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-e2e-'));
-  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  seedMemory(root);
   const { p } = transcript([
     { message: { role: 'user', content: 'build it' } },
     { message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'x.js' } }] } },
     { message: { role: 'assistant', content: [{ type: 'text', text: 'shipped the module' }] } },
   ]);
+
+  // --- the self-activation rule ---
+  const unseeded = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-unseeded-'));
+  fs.writeFileSync(path.join(unseeded, 'CLAUDE.md'), '# a project with no KB\n');
+  const rUnseeded = runHook(unseeded, { transcript_path: p });
+  check('e2e project WITHOUT curated memory is never blocked', rUnseeded.status === 0 && rUnseeded.stdout === '');
+
+  const stewarded = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-steward-'));
+  fs.mkdirSync(path.join(stewarded, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(stewarded, '.steward', 'vision.md'), '# v\n');
+  check('e2e steward project activates the scribe',
+    JSON.parse(runHook(stewarded, { transcript_path: p }).stdout).decision === 'block');
 
   const r = runHook(root, { transcript_path: p });
   check('e2e work turn returns decision:block', r.status === 0 && JSON.parse(r.stdout).decision === 'block');
@@ -139,14 +157,14 @@ function runHook(cwd, payload) {
 
   // off-switch
   const root2 = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-off-'));
-  fs.mkdirSync(path.join(root2, '.claude'), { recursive: true });
+  seedMemory(root2);
   fs.writeFileSync(path.join(root2, '.claude', 'kb.json'), JSON.stringify({ scribe: { enabled: false } }));
   const r3 = runHook(root2, { transcript_path: p });
   check('e2e scribe.enabled:false never blocks', r3.stdout === '');
 
   // focus reaches the injected reason
   const root3 = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-focus-'));
-  fs.mkdirSync(path.join(root3, '.claude'), { recursive: true });
+  seedMemory(root3);
   fs.writeFileSync(path.join(root3, '.claude', 'kb.json'), JSON.stringify({ scribe: { focus: ['extension seams'] } }));
   const r4 = runHook(root3, { transcript_path: p });
   check('e2e project focus rides the block reason', JSON.parse(r4.stdout).reason.includes('- extension seams'));

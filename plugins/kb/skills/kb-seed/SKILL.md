@@ -35,6 +35,21 @@ Each extracted file declares itself via frontmatter (kind / caste / themes / whe
 
 <instructions>
 
+**0. Read what is already covered — ALWAYS, first, on every run.**
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/kb.js" coverage
+```
+
+This prints the top-up map: how many curated entries exist, **which substrate they
+already cite** (the `Extracted-from:` lines, machine-read), where coverage stops in time,
+and any curated entry missing its citation. A first run reports "nothing cited yet — this
+project has not been seeded"; a re-run hands you the exact list to skip.
+
+**Re-runs are therefore normal and safe**: target what the map does NOT list — commits after
+the last covered date, documents no entry cites, ledgers and addenda the first pass thinned
+out. Never re-extract a substrate that already appears there, and never overwrite a file.
+
 **1. Inventory the substrate — ALL of it, not just the top layer.**
 
 Sweep EVERY row; each names what knowledge it tends to hold. A seed that stops at the
@@ -96,7 +111,15 @@ Extracted-from: docs/adr/0007-auth.md; commit a1b2c3d
 written, `kb-extracted` source shows them. Then one probe query on a seeded topic; the new
 entry should rank. Report both results to the owner.
 
-**Re-runs top up:** never overwrite an existing extracted file; check `stat` + query for
-coverage first, extract only what is missing.
+**Re-runs top up:** never overwrite an existing extracted file; step 0's coverage map is the
+authority on what to skip, so running this skill again in an already-seeded project is always
+safe — it extends the store, never rewrites it.
+
+**After the first successful run the project maintains itself:** the presence of
+`.claude/kb/extracted/` switches the kb-scribe Stop hook on, so every producing turn from
+then on distills itself into the session digest and graduates durable items to
+`.claude/kb/captures/` (or `.steward/inbox/` for model changes). The owner does not have to
+run anything per session — only re-run this skill when a big new stretch of history deserves
+mining.
 
 </instructions>

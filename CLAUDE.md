@@ -184,7 +184,7 @@ plugins/
                             #   injection, machine-text guarded, fail-open, config
                             #   off-switch), per-call JSONL traces (.claude/kb/trace.jsonl),
                             #   pattern split mode for non-heading ledgers, seed
-                            #   depth+autonomy. kb now CARRIES TWO HOOKS (kb-pull UserPromptSubmit +
+                            #   depth+autonomy. kb now CARRIES THREE HOOKS (kb-pull UserPromptSubmit +
                             #   kb-scribe Stop — the enforced write side: a producing turn
                             #   cannot yield until the session distills it into the digest and
                             #   graduates durable items to captures/ or .steward/inbox/) —
@@ -239,10 +239,11 @@ plugins/
                             #   steward-MODEL changes route to .steward/inbox/ instead (recompute
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 219 checks, own temp fixtures (never reads the host repo)
+    tests/kb.test.js        # 240 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
-    tests/kb-pull.test.js   # 23 checks — hook guards, score floor, digest, trace
-    tests/kb-scribe.test.js # 37 checks — the enforced write side (block, fire-once, turn)
+    tests/kb-pull.test.js   # 25 checks — hook guards, score floor, digest, trace
+    tests/kb-session.test.js # 29 checks — presence, digest rotation, seed cue
+    tests/kb-scribe.test.js # 39 checks — the enforced write side (block, fire-once, turn)
 ```
 
 **kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions

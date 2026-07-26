@@ -90,6 +90,16 @@
       "themes": ["digest", "now"]
     },
     {
+      "id": "session-digests",
+      "type": "markdown-dir",
+      "kind": "episodic",
+      "caste": "session",
+      "dir": ".claude/kb/digests",
+      "recursive": true,
+      "split": "file",
+      "themes": ["digest", "past-session"]
+    },
+    {
       "id": "kb-captures",
       "type": "markdown-dir",
       "kind": "episodic",

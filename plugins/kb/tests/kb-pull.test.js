@@ -81,6 +81,19 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('fire is traced', last.tool === 'kb-pull-hook' && last.fired === true && last.hints.length >= 1);
 }
 
+// ---- e2e: a natural prompt (not a query) surfaces its subject ----
+
+{
+  const root = fixture();
+  // The real failure this closes: a conversational prompt whose SUBJECT the KB
+  // holds, wrapped in enough other words that coverage scaling sank it.
+  const r = runHook(root, JSON.stringify({ prompt: 'i was thinking about performance again — should we revisit that porter ferry idea for moving things around?' }));
+  check('long natural prompt still surfaces the subject entry', r.stdout.includes('<kb-hints>') && r.stdout.includes('porter'));
+
+  const r2 = runHook(root, JSON.stringify({ prompt: 'the transfers here are unrelated to anything we have on file, just checking in on general progress' }));
+  check('an off-topic prompt of the same length stays silent', r2.stdout === '');
+}
+
 // ---- e2e: digest bootstrap line ----
 
 {

@@ -20,6 +20,7 @@ const { makeQuery } = require('./query');
 const rankers = require('./rankers');
 const sources = require('./sources');
 const engine = require('./engine');
+const { buildCoverage } = require('./coverage');
 
 /**
  * Open a knowledge base rooted at a project directory.
@@ -79,6 +80,16 @@ function openKb(root, overrides) {
         errors,
         sourceCounts: perSource,
       };
+    },
+
+    /**
+     * What has ALREADY been mined — the top-up map a re-seed reads before working:
+     * which substrate is cited by existing entries, which curated entries lack a
+     * citation, and where the coverage stops in time.
+     */
+    coverage() {
+      const { entries, errors, perSource } = collect();
+      return { ...buildCoverage(entries, perSource), errors };
     },
 
     /** What the KB holds, by axis and by source — the "what do you even know" call. */

@@ -177,16 +177,24 @@ function scoreVariant(term, titleTokens, themeTokens, bodyTokens) {
 /**
  * @param {object} entry - a KB entry.
  * @param {string[]} terms - already-tokenized query terms.
- * @param {object} [opts] - {aliases: {term: [variant, ...]}} — owner-declared
- *        equivalent surface forms (already tokenized/stemmed by the query
- *        layer). A term counts as matched when itself OR any alias hits; the
- *        best-scoring surface form wins. Aliases are trusted equivalences, so
- *        an alias hit carries full weight.
+ * @param {object} [opts] - {aliases, scan}
+ *        aliases: {term: [variant, ...]} — owner-declared equivalent surface forms
+ *          (already tokenized/stemmed by the query layer). A term counts as matched
+ *          when itself OR any alias hits; the best-scoring surface form wins.
+ *          Aliases are trusted equivalences, so an alias hit carries full weight.
+ *        scan: true when the "query" is a whole user PROMPT rather than chosen search
+ *          terms. A prompt is mostly noise around one subject, so coverage scaling —
+ *          right for a deliberate query, where matching every term you asked for is
+ *          the signal — would punish exactly the entry that names the subject. Scan
+ *          mode drops the coverage multiplier and instead demands PRECISION: the
+ *          entry must be ABOUT something in the prompt (a full title or theme hit),
+ *          or it scores zero however many body words brush past.
  * @returns {number} score; 0 means "does not answer this query".
  */
 function score(entry, terms, opts) {
   if (!Array.isArray(terms) || !terms.length) return 0;
   const aliases = opts && opts.aliases && typeof opts.aliases === 'object' ? opts.aliases : null;
+  const scan = !!(opts && opts.scan);
 
   const fields = entryFields(entry);
   const titleTokens = tokenize(fields.title);
@@ -195,14 +203,19 @@ function score(entry, terms, opts) {
 
   let raw = 0;
   let matched = 0;
+  let subjectHit = false;
 
   for (const term of terms) {
-    let best = scoreVariant(term, titleTokens, themeTokens, bodyTokens);
+    const forms = [term];
     const variants = aliases && Array.isArray(aliases[term]) ? aliases[term] : null;
-    if (variants) {
-      for (const variant of variants) {
-        const v = scoreVariant(variant, titleTokens, themeTokens, bodyTokens);
-        if (v > best) best = v;
+    if (variants) forms.push(...variants);
+
+    let best = 0;
+    for (const form of forms) {
+      const v = scoreVariant(form, titleTokens, themeTokens, bodyTokens);
+      if (v > best) best = v;
+      if (!subjectHit && (countHits(titleTokens, form).full || countHits(themeTokens, form).full)) {
+        subjectHit = true;
       }
     }
     if (best <= 0) continue;
@@ -211,6 +224,7 @@ function score(entry, terms, opts) {
   }
 
   if (!matched) return 0;
+  if (scan) return subjectHit ? raw : 0;
   const coverage = matched / terms.length;
   return raw * (COVERAGE_FLOOR + (1 - COVERAGE_FLOOR) * coverage);
 }

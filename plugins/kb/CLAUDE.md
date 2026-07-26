@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.6.0)
+.claude-plugin/plugin.json   # metadata (v0.7.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -22,13 +22,19 @@ lib/
   dates.js                   # timestamp recovery (filename first, mtime fallback)
   config.js                  # defaults + .claude/kb.json merge (sources merge BY ID)
   query.js                   # caller request -> normalised Query (validates, throws)
+  coverage.js                # what has ALREADY been mined (Extracted-from citations ->
+                             #   the top-up map a re-seed reads first)
+  presence.js                # the self-activation rule: does this project keep curated
+                             #   memory? (empty dirs and ambient files do NOT count)
   engine.js                  # filter -> rank -> narrowing hints. PURE: no disk/net/clock
   rankers/
     index.js                 # ranker registry (scoring extension surface)
     term-overlap.js          # default: deterministic lexical, title/theme weighted; 0.4.0
                              #   adds light stemming (both sides), edit-distance-1 typo tier
                              #   (0.7x weight), and alias-group support via score(entry,
-                             #   terms, {aliases}) — aliases are config, built in query.js
+                             #   terms, {aliases}) — aliases are config, built in query.js;
+                             #   0.7.0 adds scan mode: scoring a PROMPT drops coverage
+                             #   scaling and demands a title/theme (subject) hit instead
   sources/
     index.js                 # source-type registry + collectAll (isolates + reports errors)
     markdown-dir.js          # the generic source TYPE; every shipped source is config over it
@@ -44,7 +50,8 @@ skills/kb-seed/SKILL.md      # CREATE: extract an existing project's knowledge -
                              #   re-runs top up)
 skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .claude/kb/captures/
                              #   (steward-MODEL changes route to .steward/inbox/ instead — recompute rule)
-hooks/hooks.json             # UserPromptSubmit (kb-pull) + Stop (kb-scribe) registration
+hooks/hooks.json             # UserPromptSubmit (kb-pull) + Stop (kb-scribe) + SessionStart
+                             #   (kb-session-start) registration
 hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over the prompt ->
                              #   score-floored hint lines (title+id, kb_read to pull) +
                              #   session-digest injection; machine-text guard; fail-open;
@@ -53,13 +60,19 @@ hooks/scripts/kb-scribe-stop.js # the ENFORCED write side: on a producing turn, 
                              #   yield until the session distills the turn into the digest +
                              #   graduates durable items (captures/ or .steward/inbox/).
                              #   Fire-once + hash-skip + fail-open (lens contract); IMPORTANT
-                             #   defined inline, sharpened per project by scribe.focus
+                             #   defined inline, sharpened per project by scribe.focus;
+                             #   PRESENCE-gated — silent where no curated memory exists
+hooks/scripts/kb-session-start.js # keeps "now" honest: archives the previous sitting's
+                             #   digest to .claude/kb/digests/ (still indexed, honestly
+                             #   dated) on startup/clear — resume/compact keep it; plus a
+                             #   ONE-time /kb-seed cue in a seedable-but-unseeded project
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 219 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 23 checks — hook guards, floor, digest, traces
-tests/kb-scribe.test.js      # 37 checks — worthiness, fire-once, transcript turn, e2e block
+tests/kb.test.js             # 240 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 25 checks — hook guards, floor, digest, traces
+tests/kb-session.test.js     # 29 checks — presence rule, digest rotation, one-time cue
+tests/kb-scribe.test.js      # 39 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
 
@@ -138,6 +151,14 @@ run the loop, and a false empty reads as "we know nothing about that."
   (`aliases: [[...]]`, replace-wholesale, built into the query by `buildAliasLookup`), and
   `skipThinPreamble` on h2 sources (boilerplate-only preambles dropped; ON for shipped
   steward-model/log + project-instructions). 198 + 32 tests.
+- ✅ v0.7.0: SELF-RUNNING (owner: "run seed… regardless of if I've run it again… then it uses
+  and maintains itself") — `coverage()` + `kb coverage` turn the mandatory `Extracted-from:`
+  citations into a machine-read top-up map (kb-seed step 0: target what is NOT listed), so a
+  re-seed is incremental by mechanism; `lib/presence.js` self-activates upkeep (the scribe is
+  silent until a project keeps curated memory — seeding IS the on-switch, empty dirs and
+  ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
+  (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
+  resume/compact, and cues an unseeded project exactly once. 240 + 25 + 39 + 29 + 35 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for

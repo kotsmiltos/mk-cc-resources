@@ -179,16 +179,31 @@ function readPayload() {
   });
 }
 
-/** Scribe settings via the kb config; malformed/absent config -> defaults (enabled, no focus). */
+/**
+ * Scribe settings. Two gates, both cheap:
+ *   - config off-switch ({"scribe":{"enabled":false}})
+ *   - PRESENCE: a project that keeps no curated memory has nothing to maintain, so
+ *     the scribe stays silent there. Seeding (or capturing, or a steward model) is
+ *     what turns upkeep on — self-activation, no per-project wiring.
+ * Malformed/absent config -> shipped defaults.
+ */
 function scribeSettings(cwd) {
+  let enabled = true;
+  let focus = null;
   try {
     const { loadConfig } = require('../../lib/config');
     const cfg = loadConfig(cwd);
     const s = cfg.scribe && typeof cfg.scribe === 'object' ? cfg.scribe : {};
-    return { enabled: s.enabled !== false, focus: Array.isArray(s.focus) ? s.focus : null };
-  } catch (_e) {
-    return { enabled: true, focus: null };
+    enabled = s.enabled !== false;
+    focus = Array.isArray(s.focus) ? s.focus : null;
+  } catch (_e) { /* defaults */ }
+  if (enabled) {
+    try {
+      const { hasCuratedMemory } = require('../../lib/presence');
+      enabled = hasCuratedMemory(cwd);
+    } catch (_e) { /* presence unknown -> leave enabled (fail toward maintaining) */ }
   }
+  return { enabled, focus };
 }
 
 function readState(cwd) {

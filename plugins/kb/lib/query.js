@@ -94,6 +94,9 @@ function makeQuery(raw, registry, defaults) {
     limit,
     ranker: typeof r.ranker === 'string' && r.ranker ? r.ranker : (d.ranker || null),
     aliases: buildAliasLookup(d.aliases),
+    // The text is a whole user PROMPT, not chosen search terms — rankers that care
+    // (term-overlap does) trade coverage scaling for a subject-precision rule.
+    scan: !!r.scan,
   };
 }
 
