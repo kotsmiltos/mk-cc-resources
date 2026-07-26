@@ -46,7 +46,16 @@ function existsAny(root, markers) {
       } else if (st.size > 0) {
         return true;
       }
-    } catch (_e) { /* absent — keep looking */ }
+    } catch (err) {
+      // ENOENT is the expected case (this marker simply is not here) and stays silent.
+      // Anything else — a lock, a permission denial, an antivirus or sync tool holding
+      // the path — would otherwise read as "this project keeps no memory" and quietly
+      // switch upkeep off in a project that HAS one. That is the plugin's own
+      // "nothing fails silently" rule, and a swallowed EPERM breaks it invisibly.
+      if (err && err.code !== 'ENOENT') {
+        process.stderr.write(`[kb] presence check could not read ${p}: ${err.code || err.message}\n`);
+      }
+    }
   }
   return false;
 }

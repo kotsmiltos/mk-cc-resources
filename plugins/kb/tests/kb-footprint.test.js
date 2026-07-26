@@ -64,7 +64,10 @@ const WRITE_RX = /\bfs\.(mkdirSync|writeFileSync|appendFileSync|unlinkSync|renam
 // entirely — so the audit ALSO tracks which files import a filesystem module at all.
 // A new file that can touch disk must be listed here before its writes are counted,
 // which closes the hole rather than trusting the call shape.
-const FS_IMPORT_RX = /require\(\s*['"](?:node:)?fs(?:\/promises)?['"]\s*\)/;
+// `child_process` is included deliberately: an `execSync('echo x > f')` writes to disk while
+// being invisible to BOTH regexes below — the same shape of hole the fs check just closed.
+// Shipped source uses none today, so any appearance must be justified in the list.
+const FS_IMPORT_RX = /require\(\s*['"](?:node:)?(?:fs(?:\/promises)?|child_process)['"]\s*\)/;
 
 // Files allowed to import fs at all, with what they use it for. Read-only importers are
 // listed too: the point is that NOTHING touches disk without an explicit entry.
@@ -121,6 +124,31 @@ function sourceFiles(dir) {
     check(`${rel}: has a recorded reason it cannot touch an unseeded project`,
       typeof spec.why === 'string' && spec.why.length > 20);
   }
+}
+
+// ---------- 1b. the detectors must actually detect ----------
+//
+// An audit is only worth its detector. These feed synthetic source to the SAME regexes the
+// audit uses, so a future loosening of either pattern fails here instead of silently
+// switching the invariant off — the failure mode this whole suite exists to prevent.
+
+{
+  const smuggles = [
+    ['a destructured fs import', "const { writeFileSync } = require('fs');\nwriteFileSync('x','y');\n", FS_IMPORT_RX],
+    ['the promises API', "const fsp = require('fs/promises');\nawait fsp.writeFile('x','y');\n", FS_IMPORT_RX],
+    ['a node:-prefixed import', "const fs = require('node:fs');\n", FS_IMPORT_RX],
+    ['a shell-out that could write', "const { execSync } = require('child_process');\nexecSync('touch f');\n", FS_IMPORT_RX],
+  ];
+  for (const [label, src, rx] of smuggles) {
+    check(`detector catches ${label}`, rx.test(src));
+  }
+  check('the write-call detector catches a plain fs write',
+    (("fs.writeFileSync('a','b')").match(WRITE_RX) || []).length === 1);
+  check('the write-call detector counts every write kind',
+    (("fs.mkdirSync(d); fs.appendFileSync(f,x); fs.unlinkSync(f); fs.rmSync(p)").match(WRITE_RX) || []).length === 4);
+  check('ordinary code is not flagged as a write',
+    (("const x = fs.readFileSync(f); if (fs.existsSync(p)) {}").match(WRITE_RX) || []).length === 0);
+  check('ordinary code is not flagged as an fs import', !FS_IMPORT_RX.test("const path = require('path');"));
 }
 
 // ---------- 2. the behaviour ----------

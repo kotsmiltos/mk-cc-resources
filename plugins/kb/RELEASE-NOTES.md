@@ -133,8 +133,11 @@ the server is not a hook. Per-surface tests cannot catch "some other surface wri
 invariant is now enforced by ENUMERATION at two levels: every file that IMPORTS a filesystem
 module must be listed with what it uses it for (which catches a destructured import or the
 promises API that a call-shape regex would miss), and every disk-write call site must appear
-in an audit table with a stated reason it cannot touch an unseeded project. The guard was
-negative-controlled — smuggling in a destructured , an  import,
+in an audit table with a stated reason it cannot touch an unseeded project. The detectors are themselves under test (feed them a smuggled import or write, assert they
+fire), so a future loosening of either pattern fails the suite instead of silently switching
+the invariant off; the import check covers `child_process` too, since a shell-out write is
+invisible to both regexes. The guard was also manually
+negative-controlled — smuggling in a destructured `writeFileSync`, an `fs/promises` import,
 and an extra write inside an already-audited file each made the suite fail, and its own
 staleness check caught a wrong entry in the first draft of the list. Behaviourally, all four
 entry points (pull hook, scribe, session-start, MCP trace) are driven against a project with
@@ -142,7 +145,7 @@ substrate-but-no-memory and asserted to leave the directory untouched — then t
 gets a seed and every one of them starts working.
 
 Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session)
-+ 38 (kb-mcp) + **18 (kb-footprint, new invariant suite)** = 435. kb now carries three hooks.
++ 38 (kb-mcp) + **26 (kb-footprint, new invariant suite)** = 443. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·
