@@ -38,11 +38,29 @@ to prevent.
 ## Install
 
 ```bash
-claude plugin install kb            # or install the mk-cc-all bundle, which includes it
+claude plugin install kb            # the plugin itself: MCP server + the three hooks
+                                    # (the mk-cc-all bundle carries only the SKILLS)
 ```
 
-No dependencies — Node.js only, nothing to build. No hooks, so it changes nothing about how a
-session behaves until something asks it a question.
+No dependencies — Node.js only, nothing to build.
+
+> **Updating from an earlier install matters.** Since 0.5.0 kb carries hooks, and they are
+> registered at install time: an existing 0.3.0/0.4.0 install keeps behaving like the version
+> it was installed at, no matter how current this repository is. After pulling a new version:
+>
+> ```bash
+> claude plugin update kb@mk-cc-resources   # a bare `kb` does not resolve ("Plugin kb not found")
+> ```
+>
+> then RESTART Claude Code — hooks register at startup.
+>
+> **How to check it actually took** (rather than assuming): open a session in a project that
+> keeps a knowledge base and look for a `kb-session-start` line in `.claude/kb/trace.jsonl`.
+> Every hook fire is traced there, so "is this wired?" is answerable from disk.
+
+Once installed, kb is quiet by default: in a project with no knowledge base it does nothing
+but offer, once, to seed one. Everything ambient — hint injection, the session digest, the
+upkeep prompt — switches on when the project has a memory to work with.
 
 ## Four ways in, one facade
 

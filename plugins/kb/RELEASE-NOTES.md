@@ -8,6 +8,18 @@
 
 ## 0.7.0 — 2026-07-26
 
+> **Upgrade note — the hooks live in the INSTALL, not in this repo.** kb has carried hooks
+> since 0.5.0, and they register when the plugin is installed or updated. An older install
+> (0.3.0/0.4.0) therefore keeps its old behaviour no matter how current this checkout is —
+> nothing ambient happens until you update and restart:
+>
+> ```
+> claude plugin update kb@mk-cc-resources     # a bare `kb` does not resolve: "Plugin kb not found"
+> ```
+>
+> then RESTART Claude Code (hooks register at startup). Confirm from disk rather than assuming:
+> a `kb-session-start` line in `.claude/kb/trace.jsonl` proves the hooks fired in a real session.
+
 **Self-running.** The owner's expectation, verbatim: *"run seed in a project (regardless of if
 I've run it again) and it picks it up and then it uses and maintains itself."* Three gaps stood
 between 0.6.0 and that sentence; all three are closed.
