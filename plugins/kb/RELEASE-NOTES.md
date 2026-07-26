@@ -38,8 +38,32 @@ between 0.6.0 and that sentence; all three are closed.
   something in the prompt (a full title/theme hit) or it scores zero however many body words
   brush past. Query path unchanged; the pull hook asks for scan.
 
+**Contract verified against the hooks reference, not assumed** (code.claude.com/docs/en/hooks):
+`SessionStart` really does carry `source`, and its values are `startup | resume | clear |
+compact | **fork**` — the fifth one was missing from the first cut, and a fork *inherits* the
+current context, so rotating there would have destroyed a live sitting's digest. `fork` now
+joins `resume`/`compact` as continuing; only `startup`/`clear` rotate. Also confirmed: plain
+stdout from SessionStart enters the session context (no JSON wrapper needed), and Stop's
+`{"decision":"block","reason":…}` is the documented "keep working, here's why" contract the
+scribe relies on. The reference also notes the transcript is written asynchronously and may
+lag — recorded in `extractTurn`'s comment, and the cost is bounded (one missed distillation;
+the next producing turn blocks again).
+
+**Rotation is never lossy.** The archive is written, then **read back and compared** before
+the live digest is deleted; a failed verification keeps the original and says so on stderr, a
+failed archive path leaves the digest untouched, and an undeletable live file still reports
+the archive (the next start retries). Three new tests drive those paths with a genuinely
+unwritable archive location.
+
+**Hint precision, measured on this repo's 81-entry corpus** (8 representative prompts): fires
+on 3 — both on-topic prompts hit their subject, all unrelated/chat prompts stay quiet, one
+generic-word prompt ("check the session again") produces 3 borderline lines. The trade is
+deliberate: a hint costs three lines, a miss costs the knowledge; `pull.minScore` /
+`pull.maxHints` are per-project knobs if a corpus wants it tighter.
+
 Tests: 240 (kb, +14 coverage, +7 scan) + 25 (kb-pull, +2 natural-prompt) + 39 (kb-scribe, +2
-presence-gate) + **29 (kb-session, new suite)** + 35 (kb-mcp) = 368. kb now carries three hooks.
+presence-gate) + **39 (kb-session, new suite: presence, rotation, loss-safety, cue)** + 35
+(kb-mcp) = 378. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project** (one run, six stages): unseeded → one cue, scribe
 silent · seeded → scribe fires, cue never repeats · natural prompt → hint fires + digest

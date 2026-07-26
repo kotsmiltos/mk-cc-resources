@@ -32,8 +32,13 @@ const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const ARCHIVE_DIR_REL = path.join('.claude', 'kb', 'digests');
 const CUE_MARKER_REL = path.join('.claude', 'kb', '.seed-cued');
 
-// SessionStart sources that mean "the same sitting continues" — the digest stays.
-const CONTINUING_SOURCES = new Set(['resume', 'compact']);
+// SessionStart `source` values, per the hooks reference (code.claude.com/docs/en/hooks —
+// SessionStart): startup | resume | clear | compact | fork. These three mean THE SAME
+// SITTING CONTINUES, so the live digest stays: `resume` picks a conversation back up,
+// `compact` is the same conversation after compaction (exactly when a distilled digest
+// matters most), and `fork` branches from the current context and inherits it. Only
+// `startup` and `clear` begin a genuinely new sitting, and only those rotate.
+const CONTINUING_SOURCES = new Set(['resume', 'compact', 'fork']);
 
 function readPayload() {
   return new Promise((resolve) => {
@@ -78,8 +83,28 @@ function rotateDigest(root) {
   let n = 2;
   while (fs.existsSync(target)) target = path.join(dir, `digest-${stamp}-${n++}.md`);
   // Archive carries a title so the indexed entry reads as a past session, not as now.
-  fs.writeFileSync(target, `# Session digest — ${stamp}\n\n${body.trim()}\n`);
-  fs.unlinkSync(live);
+  const archived = `# Session digest — ${stamp}\n\n${body.trim()}\n`;
+  fs.writeFileSync(target, archived);
+
+  // Never delete the only copy on trust: confirm the archive is on disk and whole
+  // before removing the live file. A half-written archive plus a deleted original
+  // would silently destroy the sitting this hook exists to preserve.
+  let verified = false;
+  try {
+    verified = fs.readFileSync(target, 'utf8') === archived;
+  } catch (_e) { /* unreadable -> not verified */ }
+  if (!verified) {
+    process.stderr.write('[kb-session] archive did not verify — keeping the live digest\n');
+    return null;
+  }
+
+  // The archive exists; a locked/undeletable live file is a nuisance, not a loss.
+  // Report the archive either way and let the next start retry the delete.
+  try {
+    fs.unlinkSync(live);
+  } catch (_e) {
+    process.stderr.write('[kb-session] archived, but could not remove the live digest\n');
+  }
   return path.relative(root, target).split(path.sep).join('/');
 }
 

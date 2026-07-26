@@ -132,6 +132,10 @@ function parseMessage(line) {
   return { role, text: text.trim(), tools, targets, hasToolResult };
 }
 
+// NOTE (documented in the hooks reference): the transcript file is written
+// ASYNCHRONOUSLY and can lag the in-memory conversation when a hook fires. A lagging
+// tail costs at most one missed distillation — the next producing turn blocks again —
+// which is why every uncertain path here allows the stop instead of guessing.
 function extractTurn(transcriptPath) {
   if (!transcriptPath) return null;
   let raw;

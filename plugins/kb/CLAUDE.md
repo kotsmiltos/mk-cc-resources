@@ -71,7 +71,7 @@ commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
 tests/kb.test.js             # 240 checks, no framework, own temp fixtures
 tests/kb-pull.test.js        # 25 checks — hook guards, floor, digest, traces
-tests/kb-session.test.js     # 29 checks — presence rule, digest rotation, one-time cue
+tests/kb-session.test.js     # 39 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 39 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
@@ -158,7 +158,8 @@ run the loop, and a false empty reads as "we know nothing about that."
   silent until a project keeps curated memory — seeding IS the on-switch, empty dirs and
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
-  resume/compact, and cues an unseeded project exactly once. 240 + 25 + 39 + 29 + 35 tests.
+  resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 240 + 25 + 39 + 39 + 35 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for

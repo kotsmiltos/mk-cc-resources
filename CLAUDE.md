@@ -242,7 +242,7 @@ plugins/
     tests/kb.test.js        # 240 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
     tests/kb-pull.test.js   # 25 checks — hook guards, score floor, digest, trace
-    tests/kb-session.test.js # 29 checks — presence, digest rotation, seed cue
+    tests/kb-session.test.js # 39 checks — presence, rotation + loss-safety, seed cue
     tests/kb-scribe.test.js # 39 checks — the enforced write side (block, fire-once, turn)
 ```
 

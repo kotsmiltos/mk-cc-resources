@@ -92,6 +92,33 @@ function runHook(cwd, payload) {
   check('empty digest is cleaned up', !fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
 }
 
+// ---------- rotation is never lossy ----------
+
+{
+  const root = tmp('kb-rotate-safe-');
+  writeDigest(root, '## Session\n- irreplaceable line\n');
+  const live = path.join(root, '.claude', 'kb', 'session-digest.md');
+
+  // The archive directory is occupied by a FILE, so mkdir/write must fail.
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'digests'), 'not a directory');
+  let threw = false;
+  try { session.rotateDigest(root); } catch (_e) { threw = true; }
+  check('an unwritable archive throws rather than proceeding', threw);
+  check('the live digest SURVIVES a failed archive', fs.existsSync(live));
+  check('nothing was lost', fs.readFileSync(live, 'utf8').includes('irreplaceable line'));
+
+  // The hook process must swallow that same failure and still exit 0.
+  const r = runHook(root, { source: 'startup' });
+  check('hook fails open on a broken archive path', r.status === 0);
+  check('hook kept the digest when it could not archive', fs.existsSync(live));
+
+  fs.unlinkSync(path.join(root, '.claude', 'kb', 'digests'));
+  const ok = session.rotateDigest(root);
+  check('rotation succeeds once the path is usable again', typeof ok === 'string');
+  check('the content made it into the archive', fs.readFileSync(path.join(root, ok), 'utf8').includes('irreplaceable line'));
+  check('only then is the live digest removed', !fs.existsSync(live));
+}
+
 // ---------- archived digests stay queryable (session caste) ----------
 
 {
@@ -116,8 +143,14 @@ function runHook(cwd, payload) {
     resumed.status === 0 && fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
   check('resume says nothing', resumed.stdout === '');
 
-  const compacted = runHook(root, { source: 'compact' });
+  runHook(root, { source: 'compact' });
   check('compact keeps the digest', fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
+
+  runHook(root, { source: 'fork' });
+  check('fork keeps the digest (it inherits the context)', fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
+  check('every documented continuing source is handled',
+    ['resume', 'compact', 'fork'].every((s) => session.CONTINUING_SOURCES.has(s))
+      && !session.CONTINUING_SOURCES.has('startup') && !session.CONTINUING_SOURCES.has('clear'));
 
   const started = runHook(root, { source: 'startup' });
   check('startup rotates the digest', !fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
