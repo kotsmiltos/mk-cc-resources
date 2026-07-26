@@ -11,7 +11,7 @@ Audit a plugin's skill set against the rubric proven on essense-flow (2026-05). 
 ## Target plugin discovery
 
 ```!
-ls -d ${CLAUDE_PROJECT_DIR}/plugins/*/ 2>/dev/null | xargs -n1 basename
+ls -d plugins/*/ 2>/dev/null | xargs -n1 basename
 ```
 
 <instructions>
