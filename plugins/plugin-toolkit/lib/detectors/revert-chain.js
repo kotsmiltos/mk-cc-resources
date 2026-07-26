@@ -22,18 +22,25 @@
  *                       slower loop still trips it and separate work sessions do not
  *   subjectPattern    — the phenomenon is FIX-THE-FIX, so the default matches fix/revert
  *                       subjects. Set it to '.*' to catch feature-shaped circling too.
- *   ubiquityRatio .25 — a file touched by a quarter or more of ALL commits in the window
- *                       is part of the repo's routine cascade (marketplace.json, README,
- *                       version files), not a target being re-attempted. Measured per run
- *                       rather than hardcoded as a filename list, so a repo whose cascade
- *                       files differ needs no code change.
+ *   ubiquityRatio .20 — a file touched by this share of ALL commits in the window is part
+ *                       of the repo's routine cascade, not a target being re-attempted.
+ *                       MEASURED, not guessed: over this repo's last 40 commits the cascade
+ *                       files run 25%-65% (CLAUDE.md 26/40, marketplace.json 22/40,
+ *                       README.md 17/40, plugin.json 13/40, .steward/log.md 10/40) while
+ *                       every file that was genuinely being re-attempted tops out at 6/40
+ *                       (15%). 0.20 is the midpoint of that gap. Applied by measuring each
+ *                       run rather than hardcoding a filename list, so a repo whose cascade
+ *                       files differ needs no code change — but re-measure before trusting
+ *                       the default on a repo with a very different rhythm.
+ * windowMinutes 60 is the one EXTRAPOLATION here — the incident spanned 14 and an hour is a
+ * generous margin. It is not a measurement; treat it as a tunable default.
  * Raise them in config when a repo's rhythm differs; do not silently special-case a path.
  */
 
 const DEFAULT_MIN_RUN_LENGTH = 3;
 const DEFAULT_WINDOW_MINUTES = 60;
 const DEFAULT_SUBJECT_PATTERN = '^(fix|revert)';
-const DEFAULT_UBIQUITY_RATIO = 0.25;
+const DEFAULT_UBIQUITY_RATIO = 0.20;
 const MS_PER_MINUTE = 60 * 1000;
 
 /** Commits are newest-first out of `git log`; work forward in time for readable ranges. */

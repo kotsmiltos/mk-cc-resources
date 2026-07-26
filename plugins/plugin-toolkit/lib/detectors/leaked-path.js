@@ -41,20 +41,45 @@ const GENERIC_SEGMENTS = [
 // this class without needing to know the language the file is written in.
 const ESCAPE_AFTER_DRIVE = /^[A-Za-z]:\\[nrtvfb0\\'"]/;
 
-// A drive plus ONE segment is a root-level location every machine shares (C:\Windows,
-// C:\Program Files) — it identifies no one. A path that points at somebody's work has at
-// least two segments below the drive.
-const MIN_SEPARATORS = 2;
+// A drive plus one NAMED SYSTEM segment is a location every Windows machine shares, so it
+// identifies no one. Treating every one-segment drive path that way would be wrong — `D:\
+// crowd-game` is a project root, not a system folder — so the exemption is a list of the
+// system roots, never a segment count.
+const SYSTEM_ROOTS = [
+  'windows', 'program files', 'program files (x86)', 'programdata', 'users', 'temp', 'tmp'
+];
+const DRIVE_ROOT = /^[A-Za-z]:[\\/]([^\\/]*)[\\/]?$/;
+// The rejoined word arrives carrying whatever prose punctuation followed it (a closing
+// backtick, quote, comma, period), which must not defeat the comparison.
+const NEXT_WORD = /^\s+([^\s`'"“”,;)\]]+)/;
 
-function separatorCount(match) {
-  return (match.match(/[\\/]/g) || []).length;
+/**
+ * Windows system folders contain spaces ("Program Files") but the path pattern stops at
+ * whitespace, so a bare `C:\Program` reaches here with its second half still on the line.
+ * Re-join one following word before testing, or every mention of Program Files reads as a leak.
+ */
+function isSystemRoot(match, restOfLine = '') {
+  const m = DRIVE_ROOT.exec(match);
+  if (!m) return false;
+  const segment = m[1].toLowerCase();
+  if (SYSTEM_ROOTS.includes(segment)) return true;
+  const next = NEXT_WORD.exec(restOfLine);
+  if (!next) return false;
+  // The rejoined word carries whatever followed it ("Files\..."), so compare by prefix:
+  // a system root followed by a separator is still that system root.
+  const candidate = `${segment} ${next[1]}`.toLowerCase();
+  return SYSTEM_ROOTS.some((root) => {
+    if (candidate === root) return true;
+    if (!candidate.startsWith(root)) return false;
+    return /^[\\/]/.test(candidate.slice(root.length));
+  });
 }
 
-function isPlaceholder(match) {
+function isPlaceholder(match, restOfLine = '') {
   if (PLACEHOLDER.test(match)) return true;
   if (match.includes(ELISION)) return true;
   if (ESCAPE_AFTER_DRIVE.test(match)) return true;
-  if (separatorCount(match) < MIN_SEPARATORS) return true;
+  if (isSystemRoot(match, restOfLine)) return true;
   const lower = match.toLowerCase();
   return GENERIC_SEGMENTS.some((seg) => lower.includes(seg));
 }
@@ -71,7 +96,7 @@ function run(ctx, options = {}) {
         re.lastIndex = 0; // module-level regexes carry state between files
         let m;
         while ((m = re.exec(line)) !== null) {
-          if (isPlaceholder(m[0])) continue;
+          if (isPlaceholder(m[0], line.slice(m.index + m[0].length))) continue;
           findings.push({
             detector: 'leaked-path',
             severity: 'block',

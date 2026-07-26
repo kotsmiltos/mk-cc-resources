@@ -1,5 +1,18 @@
 # Release notes — thorough-mode
 
+## 1.11.0 — `@ship` gains the one pre-push check that is not a memory exercise
+
+`@ship`'s checklist covered README, RELEASE-NOTES, versions, CLAUDE.md and cross-doc drift —
+every item something a person verifies by reading. It now also names
+`node plugins/plugin-toolkit/bin/repo-guard.js` (plugin-toolkit 1.8.0+), which blocks on
+machine-specific absolute paths and on injected shell whose failure is indistinguishable from
+empty success, and warns on fix-the-fix commit chains. Exit 1 means do not push.
+
+The reason it belongs here rather than in a doc: plugin-toolkit 1.8.0 shipped that guard with
+no trigger at all — no hook, no command, no CI step — so its substrate was "remember to type
+it," which is the same substrate that let one path-leak class ship three times in a row. `@ship`
+is the only pre-push moment that fires deterministically, so that is where the gate goes.
+
 ## 1.10.0 — Machine-text guard (misfire class fixed) + steward-aware `@prompt`
 
 - **Machine-text guard, all 8 modifiers + hints.** Trigger keywords quoted inside

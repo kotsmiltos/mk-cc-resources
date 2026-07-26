@@ -34,6 +34,11 @@ function guard(ctx, config = DEFAULT_CONFIG) {
     const options = perDetector[detector.id] || {};
     if (options.enabled === false) { skipped.push(detector.id); continue; }
 
+    // `surface` is dispatch, not decoration: a detector whose half of the context is empty
+    // did not pass, it did not run — and the report must say so rather than imply clean.
+    const surfaceData = ctx[detector.surface];
+    if (!surfaceData || surfaceData.length === 0) { skipped.push(detector.id); continue; }
+
     try {
       const produced = detector.run(ctx, options) || [];
       // A detector may not silently downgrade itself; severity is the registry's word.
@@ -79,7 +84,7 @@ function format(result) {
 
   if (!result.findings.length) lines.push(`clean — ${result.ran.length} detector(s) ran`);
   lines.push(`ran: ${result.ran.join(', ') || 'none'}`);
-  if (result.skipped.length) lines.push(`skipped (disabled in config): ${result.skipped.join(', ')}`);
+  if (result.skipped.length) lines.push(`skipped (disabled, or its surface was empty): ${result.skipped.join(', ')}`);
   if (result.errored.length) lines.push(`ERRORED: ${result.errored.join(', ')}`);
   return lines.join('\n');
 }

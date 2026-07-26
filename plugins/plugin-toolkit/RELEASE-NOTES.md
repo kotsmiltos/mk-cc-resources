@@ -28,13 +28,16 @@ Three starters, each one a defect this repo actually shipped:
 | `silenced-failure` | block | `2>/dev/null` with no `\|\|` fallback in a skill's injected shell — *both* the ` ```! ` fence and the inline `` !`cmd` `` form |
 | `revert-chain` | warn | the same file rewritten by a run of fix-shaped commits inside a window — circling |
 
-Thresholds are the measured incident, not taste, and all are config: `minRunLength` 3 (the
-incident ran exactly three), `windowMinutes` 60 (it spanned fourteen), `subjectPattern`
-`^(fix|revert)` (the phenomenon is fix-the-fix; set `.*` to include feature-shaped circling),
-and `ubiquityRatio` 0.25 — a file touched by a quarter of all commits in the window is part
-of the repo's routine cascade (marketplace.json, README), measured per run rather than
-hardcoded as a filename list. Ubiquity stands down when a quarter of the history is not more
-than a qualifying run, or it would suppress exactly what the detector exists to find.
+Thresholds are config, and each one says honestly what it rests on. `minRunLength` 3 — the
+incident ran exactly three. `subjectPattern` `^(fix|revert)` — the phenomenon is fix-the-fix;
+set `.*` to include feature-shaped circling. `ubiquityRatio` 0.20 — **measured**: across this
+repo's last 40 commits the cascade files run 25%–65% (CLAUDE.md 26/40, marketplace.json 22/40,
+README.md 17/40, plugin.json 13/40, `.steward/log.md` 10/40) while every file genuinely being
+re-attempted tops out at 6/40, so 0.20 is the midpoint of a real gap, applied by measuring each
+run rather than hardcoding a filename list. `windowMinutes` 60 is the one **extrapolation** —
+the incident spanned fourteen and an hour is a generous margin, not a measurement. Ubiquity
+stands down when the ratio times the history is not more than a qualifying run, or it would
+suppress exactly what the detector exists to find.
 
 Config merges **by detector id** over `defaults/repo-guard.json`, so a project tunes one
 detector without restating the rest; a malformed config throws rather than reverting to
@@ -51,8 +54,46 @@ as an argument or `GLOSSARY_LABEL_COUNTS`, and `version-bump`'s context block no
 in `head -30` against a file with 31 matching lines — it was truncating a marketplace version
 row, the exact field the skill's own equality check exists to catch.
 
-`73/73` checks in `tests/repo-guard.test.js`, on in-memory fixtures only — a guard whose tests
+**What it does NOT cover** — stated because "circling detection" otherwise reads as complete:
+`revert-chain` sees *committed* circling only, so the failure that prompted this work — a run
+of review rounds that produce no commits — remains structurally invisible to it. Circling that
+migrates across files (each touched fewer than `minRunLength` times) is missed too. And
+`| head -N` truncating a context block, a defect fixed by hand in this very release, has no
+detector although it is the same false-clean shape. Each is a detector someone can add without
+touching the runner; none is written yet.
+
+`92/92` checks in `tests/repo-guard.test.js`, on in-memory fixtures only — a guard whose tests
 read the tree it guards passes for the wrong reason the day that tree changes.
+
+### The detectors model their subject; they do not enumerate spellings
+
+`silenced-failure` first shipped in review as a list of literal strings — `'2>/dev/null'`,
+`'2> /dev/null'`, `'2>$null'`, `'2>NUL'` — which would have missed `2>&-`, `2>>/dev/null`,
+`>/dev/null 2>&1` and any unusual spacing. That is the same wrongly-shaped-sweep failure the
+detector exists to prevent, committed inside the detector. It now models the redirect
+(`[fd] > | >> | >& → sink`) and keeps a list only for the null **sinks** — `/dev/null`, `NUL`,
+`$null`, `&-` — because the operating system defines that set, not the author's style. The
+"handled" test moved the same way: not "does the line contain `||`" but *does anything
+guarantee output*, so `|| true` and `|| :` are correctly still findings. Six spellings are
+covered by regression tests, each one the literal-string version would have let through.
+
+`leaked-path` got the same treatment. It had exempted every one-segment drive path as "a
+root-level location every machine shares" — true of `C:\Windows`, false of `<drive>:\<a
+project checkout>`, which is somebody's working root and precisely the shape that leaked here
+before. The exemption is now a named list of Windows system roots, and it rejoins the
+following word before testing so a system folder whose name contains a space is not read as a
+leak merely because the tokenizer stops at that space.
+
+(Both example paths in the paragraph above are placeholders on purpose: running the new guard
+over this file flagged the drafts of these very sentences, because quoting a real personal
+path in a release note re-ships the class the note is about. `817b472` made the same mistake
+by hand and caught it on a re-read; this time a detector caught it.)
+
+Also from that review: `commands/*.md` is scanned alongside `SKILL.md` (the docs state both
+create the same slash command and behave identically); the inline form is anchored to
+line-start-or-whitespace per the documented rule that ``KEY=!`cmd` `` does not execute; and
+`surface` became real dispatch — a detector whose half of the context is empty is reported as
+**skipped**, never counted as having run and passed.
 
 ### Correction to 1.7.2
 

@@ -76,7 +76,17 @@ const lookalikes = leakedPath.run(ctxOf([
   { path: 'b.py', text: 'return "A:\\n\\n" + body' },
   { path: 'c.md', text: 'installed under C:\\Windows' }
 ]));
-check('a root-level location with one segment is not a leak', lookalikes.length === 0);
+check('a named system root is not a leak', lookalikes.length === 0);
+// The exemption is a list of SYSTEM roots, not a segment count — a one-segment drive path
+// can be somebody's project root, and that is exactly the shape that leaked before.
+check('a one-segment drive path that is NOT a system root IS a leak',
+  leakedPath.run(ctxOf([{ path: 'a.md', text: 'the checkout lives at D:\\crowd-game' }])).length === 1);
+check('C:\\Program Files survives the tokenizer stopping at the space',
+  leakedPath.run(ctxOf([{ path: 'a.md', text: 'installed into C:\\Program Files then run it' }])).length === 0);
+check('trailing prose punctuation does not defeat the system-root rejoin',
+  leakedPath.run(ctxOf([{ path: 'a.md', text: 'see `C:\\Program Files`, then stop' }])).length === 0);
+check('a system root with a trailing separator is still exempt',
+  leakedPath.run(ctxOf([{ path: 'a.md', text: 'under C:\\Program Files\\ lives it' }])).length === 0);
 check('a string escape (A:\\n) is not a drive path',
   leakedPath.run(ctxOf([{ path: 'b.py', text: 'x = "B:\\n\\nmore\\ntext"' }])).length === 0);
 
@@ -137,6 +147,40 @@ check('inline finding reports its line',
   silencedFailure.run(ctxOf([{ path: 'a/SKILL.md', text: `x\n${INLINE_SILENCED}` }]))[0].where === 'a/SKILL.md:2');
 check('backticked prose without the ! prefix is not an injection',
   silencedFailure.run(ctxOf([{ path: 'a/SKILL.md', text: 'run `ls 2>/dev/null` yourself\n' }])).length === 0);
+check('inline ! must start a line or follow whitespace (KEY=!`cmd` does not run)',
+  silencedFailure.run(ctxOf([{ path: 'a/SKILL.md', text: 'KEY=!`ls 2>/dev/null`\n' }])).length === 0);
+
+// Commands and skills are the same injection surface per the docs.
+check('commands/*.md is scanned too',
+  silencedFailure.run(ctxOf([{ path: 'plugins/x/commands/go.md', text: SILENCED_SKILL }])).length === 1);
+
+// The reason this detector models redirects instead of listing spellings: each of these
+// would have slipped past the literal-string version, and a miss in a BLOCKING detector
+// is a false clean.
+const skillWith = (cmd) => ({ path: 'a/SKILL.md', text: `# S\n\n\`\`\`!\n${cmd}\n\`\`\`\n` });
+const spellings = [
+  'ls 2> /dev/null',            // space after the fd
+  'ls 2>>/dev/null',            // append rather than truncate
+  'ls 2>&-',                    // descriptor closed outright
+  'ls >/dev/null 2>&1',         // both streams gone
+  'ls 2>NUL',                   // cmd.exe
+  'ls 2>$null'                  // PowerShell
+];
+for (const cmd of spellings) {
+  check(`silencer spelling caught: ${cmd}`, silencedFailure.run(ctxOf([skillWith(cmd)])).length === 1);
+}
+check('a fallback that produces no output (|| true) is not handling',
+  silencedFailure.run(ctxOf([skillWith('ls 2>/dev/null || true')])).length === 1);
+check('|| : is likewise not handling',
+  silencedFailure.run(ctxOf([skillWith('ls 2>/dev/null || :')])).length === 1);
+check('the || true finding says WHY it still counts',
+  silencedFailure.run(ctxOf([skillWith('ls 2>/dev/null || true')]))[0].why.includes('produces no output'));
+check('a fallback that speaks is handling',
+  silencedFailure.run(ctxOf([skillWith('ls 2>/dev/null || echo none')])).length === 0);
+check('an explicit if-guard is handling',
+  silencedFailure.run(ctxOf([skillWith('if ls 2>/dev/null; then echo yes; else echo no; fi')])).length === 0);
+check('a command with no redirect at all is fine',
+  silencedFailure.run(ctxOf([skillWith('git log --oneline -5')])).length === 0);
 
 // ---------------------------------------------------------------- revert-chain
 // git log order is newest-first; the incident shape: 3 commits, same file, 14 minutes.
@@ -185,8 +229,10 @@ check('a run mixing fix and feature commits is not a fix-the-fix chain',
   ])).length === 0);
 
 // Cascade files (marketplace.json, README) move on every ship — routine, not circling.
+// Built NEWEST-FIRST to match what `git log` actually hands the detector; an oldest-first
+// fixture would compute a negative span and still pass, which is a test lying quietly.
 const shipHistory = [];
-for (let i = 0; i < 20; i += 1) {
+for (let i = 19; i >= 0; i -= 1) {
   shipHistory.push({
     hash: `c${i}`,
     timestamp: base + i * MINUTE,
@@ -222,7 +268,18 @@ check('runner collects findings from every surface', result.findings.length === 
 check('runner separates blocking from warnings',
   result.blocking.length === 2 && result.warnings.length === 1);
 check('runner reports which detectors ran', result.ran.length === 3);
-check('clean context yields no findings', guard(ctxOf([], [])).findings.length === 0);
+check('clean context yields no findings',
+  guard(ctxOf([{ path: 'ok.md', text: 'nothing wrong' }], incident.slice(0, 1))).findings.length === 0);
+
+// `surface` is dispatch, not decoration: an empty half of the context means a detector did
+// not RUN. Reporting it as ran would be a false clean.
+const noHistory = guard(ctxOf([{ path: 'a.md', text: 'fine' }], []));
+check('a detector whose surface is empty is skipped, not counted as ran',
+  noHistory.skipped.includes('revert-chain') && !noHistory.ran.includes('revert-chain'));
+check('file detectors still run when history is empty',
+  noHistory.ran.includes('leaked-path') && noHistory.ran.includes('silenced-failure'));
+check('an empty-surface skip is visible in the report',
+  format(noHistory).includes('revert-chain'));
 
 const disabled = guard(dirty, { detectors: { 'leaked-path': { enabled: false } } });
 check('config can disable a detector', disabled.skipped.includes('leaked-path'));
@@ -241,7 +298,7 @@ const exploding = {
 };
 const originalAll = registry.all;
 registry.all = () => [exploding];
-const crashed = guard(ctxOf([]));
+const crashed = guard(ctxOf([{ path: 'any.md', text: 'content' }]));
 registry.all = originalAll;
 check('a crashed detector becomes a BLOCKING finding', crashed.blocking.length === 1);
 check('crash finding names the detector', crashed.errored.includes('boom'));
@@ -255,7 +312,7 @@ check('report lists warnings', report.includes('warnings (1)'));
 check('report names which detectors ran', report.includes('ran: '));
 check('clean report says clean', format(guard(ctxOf([], []))).includes('clean'));
 check('report names skipped detectors so absence is visible',
-  format(disabled).includes('skipped (disabled in config): leaked-path'));
+  format(disabled).includes('skipped') && format(disabled).includes('leaked-path'));
 check('report flags errored detectors', format(crashed).includes('ERRORED: boom'));
 
 console.log(`\n${total - failures}/${total} checks passed`);

@@ -93,19 +93,29 @@ plugins/
                             #   pathology. Contract: {id, title, surface:'files'|'history',
                             #   severity:'block'|'warn', run(ctx, options) -> Finding[]} where a
                             #   Finding carries where (openable) + evidence (verbatim) + why.
-                            #   Shipped: leaked-path (machine-specific absolute paths, every
-                            #   drive letter + both separators + POSIX homes, fed from git
-                            #   ls-files so dot-dirs cannot hide), silenced-failure (2>/dev/null
-                            #   with no fallback in injected shell — BOTH the ```! fence and the
-                            #   inline !`cmd` form), revert-chain (same file rewritten by a run
-                            #   of fix-shaped commits in a window = circling; thresholds are the
-                            #   measured incident, ubiquity excludes cascade files by measurement
-                            #   not by filename list). Add one = one require, no runner change
+                            #   Detectors MODEL their subject, never enumerate spellings — the
+                            #   first draft listed literal silencer strings and would have
+                            #   missed 2>&- and >/dev/null 2>&1, i.e. the wrongly-shaped sweep
+                            #   committed inside the detector. Shipped: leaked-path (every drive
+                            #   letter + both separators + POSIX homes, fed from git ls-files so
+                            #   dot-dirs cannot hide; exemption is a NAMED system-root list, not
+                            #   a segment count — a one-segment drive path can be a project
+                            #   root), silenced-failure (models the redirect [fd]>|>>|>& -> null
+                            #   sink; the only list is the OS-defined sink set /dev/null NUL
+                            #   $null &-; "handled" means output is GUARANTEED, so `|| true` is
+                            #   still a finding; scans SKILL.md AND commands/*.md, fence AND
+                            #   inline !`cmd`), revert-chain (same file rewritten by a run of
+                            #   fix-shaped commits in a window = circling; minRunLength 3 and
+                            #   ubiquityRatio 0.20 are measured, windowMinutes 60 is flagged in
+                            #   source as an extrapolation). Does NOT cover: uncommitted
+                            #   circling (review rounds leave no commits), circling that
+                            #   migrates across files, `| head -N` truncation.
+                            #   Add one = one require, no runner change
     bin/repo-guard.js       # CLI adapter: gathers tracked files + git history, prints, exits
                             #   0 clean / 1 blocking / 2 cannot-run. Skips vendored trees.
                             #   Config .claude/repo-guard.json merges BY DETECTOR ID over
                             #   defaults/repo-guard.json; malformed config THROWS
-    tests/repo-guard.test.js # 73 checks, in-memory fixtures only — a guard whose tests read the
+    tests/repo-guard.test.js # 94 checks, in-memory fixtures only — a guard whose tests read the
                             #   tree it guards passes for the wrong reason the day it changes
 
   schema-scout/             # Data file schema exploration CLI
@@ -150,7 +160,7 @@ plugins/
                             #   extend = drop a function into SEGMENTS
     .claude-plugin/plugin.json
     bin/mk-statusline.js
-    tests/mk-statusline.test.js  # 12 checks incl. normalization math
+    tests/mk-statusline.test.js  # 16 checks incl. normalization math
 
   verifiability-lens/       # Auto-classifier: sorts work A (verifiable) / B (guess) / U (can't-tell),
                             #   surfaces only important + actionable + fully-contextualized decisions

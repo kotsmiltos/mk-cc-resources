@@ -69,6 +69,7 @@ EXIT CHECK: for every enumerated item you can name what was done + the evidence.
 - Cross-doc consistency — if this is an mk-cc-resources plugin repo, consider invoking /docs-audit (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state.
 - New skills/commands/hooks — are they listed and described in the appropriate docs?
 - Marketplace versions — if this is a plugin repo, does marketplace.json match the plugin version?
+- Repo pathologies — if plugin-toolkit is present, run \`node plugins/plugin-toolkit/bin/repo-guard.js\` and paste its output. It blocks on machine-specific absolute paths and on injected shell whose failure is indistinguishable from empty success, and warns on fix-the-fix commit chains. Exit 1 means do not push. A checklist item you have to remember is the same substrate that let one path-leak class ship three times.
 - DO NOT push until every applicable item is verified or confirmed not applicable.
 - Report what you checked and what you updated before executing the push.`,
   },
