@@ -86,17 +86,28 @@ unwritable archive location.
   Fixture proof: a prompt of pure corpus vocabulary goes quiet, while the same prompt with one
   discriminative word still finds its entry and does not drag the generic ones along.
 
-Measured on this repo's 81-entry corpus (7 prompts): 3 fire — both on-topic prompts hit their
-subject, chat and both unrelated prompts stay quiet, and "can you check the session again"
+**Re-measured against the final code** on this repo's 82-entry corpus (8 prompts): 3 fire —
+two of the three on-topic prompts hit their subject, chat and both unrelated prompts stay
+quiet, "what is the state of things" stays quiet, and "can you check the session again"
 returns three session-scope entries (defensible for an ambiguous prompt rather than clearly
-wrong). The prompt shapes are now a **fixture test**, not a note — precision is a
-regression gate. `pull.minScore` / `pull.maxHints` remain per-project knobs.
+wrong). One on-topic prompt asks about a decision this repo's KB does not hold (it lives in
+crowd-game's), so silence there is correct. The floors do not change these numbers — no word
+dominates this corpus's titles — which is the point: they alter behaviour only where one
+does, and the fixture proves that case. The prompt shapes are a **fixture test**, not a note,
+so precision is a regression gate. `pull.minScore` / `pull.maxHints` stay per-project knobs.
 
-**Footprint: every side effect is presence-gated.** This took two rounds — the first fixed only
-the scribe and was reported as complete, which was wrong. Three paths were leaving files in
-projects that keep no knowledge base: the scribe persisted state before checking whether it was
-enabled; kb-pull traced its fires wherever it hinted (and it can hint from ambient sources like
-`CLAUDE.md`); and the one-time seed cue dropped a marker into any repo carrying a README. Now:
+**Footprint: every side effect is presence-gated.** This took THREE rounds, and the first two
+reported it closed while it was not — each round fixed the paths it knew about and missed the
+next one. Four paths were leaving files in projects that keep no knowledge base: the scribe
+persisted state before checking whether it was enabled; kb-pull traced its fires wherever it
+hinted (and it can hint from ambient sources like `CLAUDE.md`); the one-time seed cue dropped a
+marker into any repo carrying a README; and — the one that survived two reviews — the **MCP
+server** traced every `kb_query`/`kb_read`/`kb_overview` call, which fires in *every* session
+regardless of seeding and which no hook-level test could ever reach. The gate now lives at the
+single place all of them pass through (`writeTrace`), and the duplicated caller-side checks
+were removed so the copies cannot drift. Also unified: presence being *unknowable* (a broken
+install) now means silence everywhere — the scribe used to fail the other way, toward writing
+and blocking. Now:
 the scribe writes state only where it is active, kb-pull traces only where a curated memory
 exists, and the cue is remembered in a HOME registry (`~/.claude/kb/cued.json`, keyed by project
 path — the steward-fleet pattern) so a project that declined a knowledge base is never written
@@ -111,11 +122,23 @@ seeder to go edit files the steward owns. Citation warnings now scope to the sto
 under the `Extracted-from:` contract (`CITING_SOURCES`), and the zero-citation message no longer
 claims a project is unseeded when its entries simply predate the convention.
 
-All three hooks trace their fires to `.claude/kb/trace.jsonl`, so "is this actually wired in a
-live session?" is answerable from disk rather than from memory.
+All three hooks AND the MCP tools trace their fires to `.claude/kb/trace.jsonl` (in projects
+that keep a memory), so "is this actually wired in a live session?" is answerable from disk
+rather than from memory.
 
-Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session,
-new suite) + 35 (kb-mcp) = 414. kb now carries three hooks.
+**The footprint rule now has a suite of its own** (`tests/kb-footprint.test.js`). Three rounds
+of review each found a NEW write path that no per-surface test could see — the scribe's state
+file, then kb-pull's trace, then the MCP server's trace, which no hook test can reach because
+the server is not a hook. Per-surface tests cannot catch "some other surface writes", so the
+invariant is now enforced by ENUMERATION: every disk-write call site in shipped source must
+appear in an audit table with a stated reason it cannot touch an unseeded project, and a new
+write anywhere fails the suite until someone writes that reason down. Behaviourally, all four
+entry points (pull hook, scribe, session-start, MCP trace) are driven against a project with
+substrate-but-no-memory and asserted to leave the directory untouched — then the same project
+gets a seed and every one of them starts working.
+
+Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session)
++ 38 (kb-mcp) + **16 (kb-footprint, new invariant suite)** = 433. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·

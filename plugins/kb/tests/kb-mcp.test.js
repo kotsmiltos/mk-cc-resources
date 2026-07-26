@@ -44,7 +44,11 @@ function makeFixture() {
     '# Caste decision\n\nWe chose caste as a query argument, not a second tool.\n');
   fs.writeFileSync(path.join(root, 'notes', '20260702-1000-finding.md'),
     '# Ranker finding\n\nCoverage beats repetition for caste ranking.\n');
-  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  // A curated-memory marker: traces are presence-gated at writeTrace, so a fixture
+  // without one would (correctly) produce no trace file at all.
+  fs.mkdirSync(path.join(root, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'captures', '20260701-1200-note.md'),
+    '# A captured note\n\nProves this project keeps a memory.\n');
   fs.writeFileSync(path.join(root, '.claude', 'kb.json'), JSON.stringify({
     sources: [
       { id: 'notes', type: 'markdown-dir', kind: 'episodic', caste: 'project', dir: 'notes', split: 'file' },
@@ -92,7 +96,10 @@ check('instructions stay under the 2KB truncation cap', Buffer.byteLength(server
   check('read of unknown id is isError with guidance', missing.isError === true && /kb_query/.test(missing.message));
 
   const stat = server.handleOverview(kb);
-  check('overview counts entries', stat.total === 2);
+  // 2 notes + the capture that marks this fixture as a project keeping a memory
+  // (without it, traces are correctly gated off and the trace assertions below vanish).
+  check('overview counts entries', stat.total === 3);
+  check('the capture is what makes traces possible here', stat.bySource['kb-captures'] === 1);
   check('overview lists axes', stat.kinds.includes('episodic') && stat.castes.includes('project'));
 
   const none = server.handleQuery(kb, { text: 'helicopter' });
@@ -175,6 +182,21 @@ e2e().then((responses) => {
     queryTrace && queryTrace.text !== undefined && Array.isArray(queryTrace.returned));
   const errTrace = traceLines.find((r) => r.error);
   check('trace records isError calls too', !!errTrace);
+
+  // The footprint rule at its SOURCE. The MCP tools load in every session regardless of
+  // seeding, so an ungated trace here would leave a file in every repo the owner opens —
+  // the exact hole the hook-level tests could not see, because the server is not a hook.
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-mcp-bare-'));
+  fs.writeFileSync(path.join(bare, 'CLAUDE.md'), '# a project that keeps no knowledge base\n');
+  server.writeTrace(bare, { t: 'now', tool: 'kb_query', text: 'anything' });
+  check('an MCP call in a project with NO curated memory writes nothing',
+    !fs.existsSync(path.join(bare, '.claude', 'kb')));
+
+  fs.mkdirSync(path.join(bare, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(bare, '.claude', 'kb', 'captures', 'c.md'), '# a memory\n');
+  server.writeTrace(bare, { t: 'now', tool: 'kb_query', text: 'anything' });
+  check('…and starts tracing the moment that project keeps one',
+    fs.existsSync(path.join(bare, '.claude', 'kb', 'trace.jsonl')));
 
   console.log(`\n${total - failures}/${total} checks passed`);
   if (failures) { console.error(`${failures} FAILURE(S)`); process.exit(1); }

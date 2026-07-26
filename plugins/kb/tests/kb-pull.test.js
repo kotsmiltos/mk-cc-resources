@@ -156,7 +156,10 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
     '# Project\n\n## Porter ferry caste\n\nThe porter ferry caste was rejected for transfers.\n');
 
   const r = runHook(root, JSON.stringify({ prompt: 'what happened with the porter ferry caste for transfers?' }));
-  check('unseeded project: hints may still fire (read-only)', r.status === 0);
+  // Pin the precondition: if hints ever stop firing here, the two assertions below would
+  // pass vacuously and the loophole could reopen unnoticed.
+  check('unseeded project: hints DO fire from ambient sources (precondition)',
+    r.status === 0 && r.stdout.includes('<kb-hints>'));
   check('unseeded project: NO bootstrap nudge (it would switch upkeep on)',
     !r.stdout.includes('no session digest yet'));
   check('unseeded project: nothing is written to disk',

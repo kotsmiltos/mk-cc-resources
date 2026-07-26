@@ -46,6 +46,13 @@ const TRACE_REL = path.join('.claude', 'kb', 'trace.jsonl');
 
 function writeTrace(root, record) {
   try {
+    // THE gate, for every caller (this server's tool calls and both hooks): a project
+    // that keeps no curated memory is never written into — not even by telemetry. The
+    // MCP tools load in every session regardless of seeding, so this is the surface
+    // that would otherwise leave a file in every repo the owner ever opens. Losing
+    // telemetry there costs nothing: there is no retrieval to measure without a KB.
+    const { hasCuratedMemory } = require('../lib/presence');
+    if (!hasCuratedMemory(root)) return;
     const file = path.join(root, TRACE_REL);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.appendFileSync(file, `${JSON.stringify(record)}\n`);

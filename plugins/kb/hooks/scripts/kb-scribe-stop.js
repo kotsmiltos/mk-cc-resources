@@ -205,7 +205,13 @@ function scribeSettings(cwd) {
     try {
       const { hasCuratedMemory } = require('../../lib/presence');
       enabled = hasCuratedMemory(cwd);
-    } catch (_e) { /* presence unknown -> leave enabled (fail toward maintaining) */ }
+    } catch (_e) {
+      // Presence unknowable (a broken install). Fail SILENT, matching kb-pull: the
+      // cost of staying quiet is one missed distillation, while the cost of guessing
+      // "enabled" is blocking turns and writing state in a stranger's repo. Every
+      // surface answers "am I wanted here?" the same way — no, unless it can tell.
+      enabled = false;
+    }
   }
   return { enabled, focus };
 }

@@ -115,14 +115,12 @@ function digestBlock(root) {
 }
 
 /**
- * Append a fire-record to the same trace the MCP server writes. Best-effort, and only
- * where the project keeps a curated memory: a hook that leaves files behind in every
- * repo a session happens to visit is a footprint, not telemetry.
+ * Append a fire-record to the same trace the MCP server writes. `writeTrace` owns the
+ * presence gate for every caller, so there is deliberately no second check here — one
+ * rule, one place, no chance of the copies drifting apart.
  */
 function trace(root, record) {
   try {
-    const { hasCuratedMemory } = require('../../lib/presence');
-    if (!hasCuratedMemory(root)) return;
     const { writeTrace } = require('../../mcp/kb-mcp-server');
     writeTrace(root, { t: new Date().toISOString(), tool: 'kb-pull-hook', ...record });
   } catch (_e) { /* telemetry never blocks */ }

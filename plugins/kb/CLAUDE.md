@@ -77,7 +77,9 @@ tests/kb.test.js             # 256 checks, no framework, own temp fixtures
 tests/kb-pull.test.js        # 37 checks — guards, floor, digest, traces, precision fixture
 tests/kb-session.test.js     # 46 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 40 checks — worthiness, fire-once, transcript turn, e2e block
-tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
+tests/kb-mcp.test.js         # 38 checks — handler layer + stdio e2e + gated traces
+tests/kb-footprint.test.js   # 16 checks — THE footprint invariant: write-site audit +
+                             #   all four entry points silent in an unseeded project
 ```
 
 **Write model (0.3.0):** the ENGINE stays read-only permanently. Skills write markdown files
@@ -168,7 +170,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
   resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
-  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 35 tests.
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 38 + 16 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for
@@ -211,6 +213,7 @@ run the loop, and a false empty reads as "we know nothing about that."
 - **steward** is a *writer* and a *caller* of the KB, not its owner — which is exactly why
   the KB is its own plugin. The lens, hooks and any cli-agent wrapper are peers.
 - **Bundle vs standalone:** the `mk-cc-all` bundle carries only the skills (its `skills` array
-  pulls `plugins/kb/skills/`); the MCP server AND the kb-pull hook ship with installing the
-  `kb` plugin itself (`.mcp.json` + `hooks/hooks.json` at plugin root). Since 0.5.0 kb is a
-  hooks-carrying plugin — standalone install required for the ambient surfaces.
+  pulls `plugins/kb/skills/`); the MCP server AND all THREE hooks ship with installing the
+  `kb` plugin itself (`.mcp.json` + `hooks/hooks.json` at plugin root). Since 0.7.0 kb is a
+  hooks-carrying plugin — standalone install required for the ambient surfaces, and hooks
+  register at INSTALL time, so an older install keeps its old behaviour until updated.
