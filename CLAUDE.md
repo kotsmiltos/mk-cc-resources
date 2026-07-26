@@ -205,7 +205,7 @@ plugins/
       hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
       scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
                             #   silent without .steward/; fail-open
-    tests/steward-brief.test.js  # 17 checks, isolated fake home, no framework
+    tests/steward-brief.test.js  # 25 checks, isolated fake home, no framework
 
   kb/                       # The project's queryable knowledge base — the PULL side of the
                             #   long-lens tools (steward + lens PUSH a fixed briefing at open;
@@ -280,7 +280,7 @@ plugins/
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
     tests/kb.test.js        # 256 checks, own temp fixtures (never reads the host repo)
-    tests/kb-mcp.test.js    # 38 checks — tool contract + handlers + stdio e2e + traces
+    tests/kb-mcp.test.js    # 44 checks — tool contract + handlers + stdio e2e + traces
     tests/kb-footprint.test.js # 33 checks — fs-import + write-site audit, no-write-in-unseeded
     tests/kb-pull.test.js   # 37 checks — hook guards, score floor, digest, trace
     tests/kb-session.test.js # 56 checks — presence, rotation + loss-safety, seed cue

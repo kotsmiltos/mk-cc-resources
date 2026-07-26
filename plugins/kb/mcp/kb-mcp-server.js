@@ -79,7 +79,10 @@ function traceFor(tool, args, payload) {
 // something newer, otherwise we accept the client's (older) revision.
 const PROTOCOL_VERSION = '2025-06-18';
 
-const SERVER_INFO = { name: 'kb', version: '0.7.0' };
+const SERVER_INFO = { name: 'kb', version: '0.8.0' };
+// Stamped once at launch: the one fact that separates a fresh process from one still
+// running pre-change code. Read by kb_overview so staleness is visible in a tool result.
+const STARTED_AT = new Date().toISOString();
 
 // JSON-RPC 2.0 error codes (spec constants, not magic numbers).
 const PARSE_ERROR = -32700;
@@ -210,7 +213,25 @@ function handleRead(kb, args) {
 }
 
 function handleOverview(kb) {
-  return kb.stat();
+  // The running build identifies ITSELF, because a stdio MCP server outlives the edit
+  // that changed it. These processes are long-lived: they keep whatever code they were
+  // launched with, and neither editing the file nor reloading plugins restarts them.
+  // On 2026-07-27 that cost an investigation — two servers begun 2026-07-25 03:15 kept
+  // answering queries correctly while writing no call traces, because the trace code
+  // landed a day after they started, and nothing in any response said so. An absent or
+  // stale `server` block here IS the signal that the process needs a real restart.
+  return { ...kb.stat(), server: serverIdentity() };
+}
+
+/** Build identity + uptime for the process actually answering, not the file on disk. */
+function serverIdentity() {
+  return {
+    version: SERVER_INFO.version,
+    startedAt: STARTED_AT,
+    // Node has no portable "when was this module written" — the launch time is what
+    // distinguishes a fresh process from one that predates the code on disk.
+    note: 'compare startedAt against the last change to the plugin; an older process runs older code'
+  };
 }
 
 const HANDLERS = {
@@ -318,4 +339,5 @@ module.exports = {
   TOOLS, INSTRUCTIONS, PROTOCOL_VERSION, toSnippet,
   handleQuery, handleRead, handleOverview,
   writeTrace, traceFor, TRACE_REL,
+  SERVER_INFO, serverIdentity,
 };

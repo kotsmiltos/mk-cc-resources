@@ -18,6 +18,37 @@ const fs = require('fs');
 const path = require('path');
 
 const BRIEFING_MAX_CHARS = 2000; // hard cap: briefing.md is spec'd ≤10 lines; cap guards a rotten file from flooding context
+const BRIEFING_MAX_LINES = 12;   // the spec is ≤10; two lines of slack before the cut, so a
+                                 // briefing that is merely a little long is not mangled
+
+/**
+ * Trim an over-budget briefing so the OWNER can see it happened and by how much.
+ *
+ * The old cap sliced mid-word and said only "truncated" — a reader could not tell whether
+ * one line or half the file went missing, and the steward agent (which regenerates the
+ * file) got no number to aim at. Both budgets are the spec: ≤10 lines is the real rule,
+ * the char cap guards a single monster line. Cuts land on line boundaries, and the marker
+ * always names what was dropped, in the same shape kb's digest injection uses.
+ */
+function capBriefing(text) {
+  const lines = text.split('\n');
+  const overLines = lines.length > BRIEFING_MAX_LINES;
+  const overChars = text.length > BRIEFING_MAX_CHARS;
+  if (!overLines && !overChars) return text;
+
+  const kept = overLines ? lines.slice(0, BRIEFING_MAX_LINES) : lines.slice();
+  // Drop whole trailing lines until the char budget is met — never a partial line.
+  while (kept.join('\n').length > BRIEFING_MAX_CHARS && kept.length > 1) kept.pop();
+
+  // One line can exceed the whole budget by itself, and dropping lines cannot fix that.
+  // This is the case the char cap exists for, so here — and only here — cut mid-line.
+  let keptText = kept.join('\n');
+  if (keptText.length > BRIEFING_MAX_CHARS) keptText = keptText.slice(0, BRIEFING_MAX_CHARS);
+  const droppedLines = lines.length - kept.length;
+  const droppedChars = text.length - keptText.length;
+  return `${keptText}\n… (briefing over budget — dropped ${droppedLines} line(s) / ${droppedChars} chars; ` +
+    `spec is ≤10 lines and ${BRIEFING_MAX_CHARS} chars. Steward: regenerate it shorter.)`;
+}
 const PROTOCOL = [
   '<steward-protocol>',
   'This project runs the steward loop (plugin: steward — see its steward skill for the full protocol).',
@@ -67,9 +98,7 @@ function main() {
   } catch (_) {
     briefing = '(briefing.md missing — ask the steward agent for a fresh brief)';
   }
-  if (briefing.length > BRIEFING_MAX_CHARS) {
-    briefing = briefing.slice(0, BRIEFING_MAX_CHARS) + '\n… (briefing truncated — it exceeds its ≤10-line spec; steward should regenerate it)';
-  }
+  briefing = capBriefing(briefing);
 
   let pendingNote = 'inbox: empty';
   try {

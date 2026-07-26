@@ -62,10 +62,35 @@ fs.mkdirSync(path.join(proj2, '.steward'), { recursive: true });
 const out3 = JSON.parse(runHook(proj2));
 check('missing briefing handled', out3.hookSpecificOutput.additionalContext.includes('briefing.md missing'));
 
-// 5. Oversized briefing → truncated with regenerate note
+// 5. Oversized briefing → capped, and the owner is told HOW MUCH went missing.
+// "truncated" alone left nobody able to tell whether one line or half the file was lost,
+// and gave the steward agent no number to regenerate against.
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), 'x'.repeat(5000));
 const out4 = JSON.parse(runHook(proj2));
-check('oversized briefing truncated', out4.hookSpecificOutput.additionalContext.includes('briefing truncated'));
+const ctx4 = out4.hookSpecificOutput.additionalContext;
+check('oversized briefing capped', ctx4.includes('briefing over budget'));
+check('cap names the dropped char count', /dropped \d+ line\(s\) \/ \d+ chars/.test(ctx4));
+check('cap names a real, non-zero overage', Number(/\/ (\d+) chars/.exec(ctx4)[1]) > 0);
+check('cap tells the steward what to do', /regenerate it shorter/.test(ctx4));
+check('capped briefing is actually shorter than the input', ctx4.length < 5000);
+
+// A single monster line must still be cut, and a merely-long briefing must not be mangled.
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), `${'y'.repeat(4000)}\ntail`);
+const oneLine = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
+check('a single over-cap line is still trimmed', oneLine.includes('briefing over budget'));
+
+const okBriefing = Array.from({ length: 9 }, (_, i) => `line ${i}`).join('\n');
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), okBriefing);
+const within = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
+check('a within-spec briefing is untouched',
+  within.includes(okBriefing) && !within.includes('over budget'));
+
+// Cuts land on line boundaries — a half-sentence reads as content, not as a cut.
+const many = Array.from({ length: 40 }, (_, i) => `line ${i} of the briefing`).join('\n');
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), many);
+const capped = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
+check('line-count overage is reported', /dropped (?:2[0-9]|3[0-9]) line\(s\)/.test(capped));
+check('the cut lands on a line boundary', capped.includes('line 11 of the briefing'));
 
 // 6. Garbage stdin → fail-open (falls back to process.cwd(); from this test dir there is no .steward/, so silence)
 const garbage = execFileSync(process.execPath, [SCRIPT], { input: 'not json', encoding: 'utf8', cwd: bare });

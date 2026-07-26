@@ -1,5 +1,26 @@
 # steward — Release Notes
 
+## 0.2.1 — An over-budget briefing now says how much of it you are not seeing
+
+The SessionStart hook capped the injected briefing at 2000 chars and appended the word
+"truncated." That left the two people who need the number without it: the owner could not
+tell whether one line or half the file had gone missing, and the steward agent — which
+regenerates `briefing.md` — got no target to aim at. The cut also landed mid-word, so the
+last thing on screen read like content rather than like a cut.
+
+- The marker now names the loss: `dropped N line(s) / M chars`, plus the budget and an
+  instruction to regenerate shorter. Same shape kb's digest injection already used.
+- **≤10 lines is the actual spec**, so lines are now a budget in their own right (capped at
+  12 — two lines of slack, so a briefing that is merely a little long is not mangled)
+  rather than being enforced only indirectly through a character count.
+- Cuts land on line boundaries. The one exception is a single line that exceeds the whole
+  character budget by itself, which dropping lines cannot fix — that is precisely what the
+  char cap is for, and it is the only place a mid-line cut remains. A test drove this out:
+  the first implementation dropped whole lines only and let a 5000-character single-line
+  briefing through completely uncut.
+
+Checks: `tests/steward-brief.test.js` 25 (was 17).
+
 ## 0.2.0 — Fleet briefing (owner-routed via model Q8)
 
 - **/steward:fleet** — every steward project's ship position, top task, and inbox count in one

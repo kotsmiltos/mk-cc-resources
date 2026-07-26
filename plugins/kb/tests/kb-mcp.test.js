@@ -102,6 +102,19 @@ check('instructions stay under the 2KB truncation cap', Buffer.byteLength(server
   check('the capture is what makes traces possible here', stat.bySource['kb-captures'] === 1);
   check('overview lists axes', stat.kinds.includes('episodic') && stat.castes.includes('project'));
 
+  // A stdio MCP server outlives the edit that changed it: the process keeps the code it
+  // was launched with, and neither editing the file nor reloading plugins restarts it.
+  // Two servers begun 2026-07-25 answered queries correctly while writing no traces,
+  // because the trace code landed a day later — and nothing in any response said so.
+  check('overview reports the RUNNING build, not the file on disk', !!stat.server);
+  check('server block carries a version', stat.server.version === server.SERVER_INFO.version);
+  check('server block carries a launch timestamp',
+    !Number.isNaN(Date.parse(stat.server.startedAt)));
+  check('launch timestamp is what exposes a stale process',
+    Date.parse(stat.server.startedAt) <= Date.now());
+  check('server block says how to read it', /older process runs older code/.test(stat.server.note));
+  check('identity does not displace the corpus stats', stat.total === 3 && !!stat.bySource);
+
   const none = server.handleQuery(kb, { text: 'helicopter' });
   check('zero-match still reports what is available', none.matched === 0 &&
     Object.keys(none.hint.available).length > 0);
