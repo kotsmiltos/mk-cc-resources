@@ -6,6 +6,43 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-27 · Fact-correction at 817b472 — the previous pass had read a MOVING tree
+- Three facts were stale by TIMING, not carelessness (the recompute ran while `817b472` was
+  being made): HEAD `ab1ba82` → **817b472**; plugin-toolkit "1.7.1, bump in flight" → **1.7.2
+  landed** (plugin.json · marketplace row · metadata **2.38.0** · RELEASE-NOTES head, all read
+  on disk); skill blocks bare-relative → **`"${CLAUDE_PROJECT_DIR:-.}/plugins/"*/`**, the only
+  form surviving both undocumented cases, executed in 4 scenarios (subdirectory/env-unset FAILS
+  — what bare-relative would have shipped). Plus `.planning/rebuild` scrubbed; the 7
+  essense-flow test leaks filed as tasks #17. **Q10 evidence from inside the loop:** an
+  integration is a snapshot, and a snapshot of a moving tree goes stale with nobody at fault —
+  whatever forces the recompute must fire after the work SETTLES, not just before a session ends.
+
+## 2026-07-27 · Post-ship fixes pushed (616a42f, ab1ba82) + model CORRECTED (the last reconcile's own finding was fixed, not filed)
+Same sitting as the 07-26 ship, minutes past midnight. What the ship left behind got fixed
+rather than documented, which INVERTED two facts in this model.
+- **616a42f** — portability in 4 SKILL.md files · kb README false claims removed · **kb-scribe
+  now writes a trace line** (`hooks/scripts/kb-scribe-stop.js:249-259`: `writeTrace(cwd,
+  {tool:'kb-scribe-hook', blocked:true, tools:[…]})` on every block, presence-gated,
+  try/catch so telemetry never breaks the block) · prior steward reconcile.
+  It was added BECAUSE the last reconcile showed done-check item 4 was unsatisfiable — the
+  model's correction became a code change the same day.
+- **ab1ba82** — the portability fix corrected: skill shell blocks use RELATIVE paths after the
+  first attempt reached for an env var that had not been verified. A portability fix needing a
+  fix is the substrate-verify rule failing on path syntax.
+- **Model corrections (all disk-verified at this pass):** tasks #1 done-check 4 now EXPECTS a
+  `kb-scribe-hook` line with `"blocked":true` — all three hooks are traced; kb tests 460 → **462**
+  (kb-scribe 40 → 42, `tests/kb-scribe.test.js:162-163`); ship position 71a0b0a → **ab1ba82**
+  (`.git/refs/heads/main` == `.git/refs/remotes/origin/main`); an absolute drive path to the
+  crowd-game checkout REMOVED from tasks.md — `.steward/` is committed to a public repo, so the
+  no-personal-paths rule now sits in vision.md + the steward contract in parts.md, where a
+  recompute must read it.
+- **Baseline re-verified, not remembered:** `.claude/kb/trace.jsonl` still 21 lines, every one
+  `kb-pull-hook` / `"digest":false`, zero `kb-session-start`, zero MCP, **zero `kb-scribe-hook`** —
+  so all four live checks in tasks #1 remain unfakeable. Inbox re-globbed: empty (stubs deleted).
+- **Not on disk, deliberately not recorded as done:** plugin-toolkit 1.7.2. plugin.json,
+  marketplace row and RELEASE-NOTES all still read 1.7.1 at this pass; the bump is in flight.
+  Same for kb — the scribe trace shipped under 0.7.0 with no bump.
+
 ## 2026-07-26 · SHIPPED: 19 commits pushed (71a0b0a) + kb 0.7.0 self-running · model reconciled
 Third wave of the same session, then the push, then this integration (5 inbox items).
 - **kb 0.7.0 — self-running** (owner: "run seed… regardless of if I've run it again… then it

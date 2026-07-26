@@ -12,7 +12,7 @@ Bump a plugin's version consistently across all 4 touch points (plugin.json, mar
 ## Current state
 
 ```!
-cat "${CLAUDE_PROJECT_DIR:-.}/.claude-plugin/marketplace.json" 2>/dev/null | grep -E '"name"|"version"' | head -30
+ROOT="${CLAUDE_PROJECT_DIR}"; [ -d "$ROOT/plugins" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"; grep -E '"name"|"version"' "$ROOT/.claude-plugin/marketplace.json"
 ```
 
 <instructions>

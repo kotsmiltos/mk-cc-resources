@@ -17,7 +17,7 @@ git log --oneline --since="7 days ago" 2>/dev/null || git log --oneline -30 2>/d
 
 ## Branch info
 
-- **Branch:** !`git branch --show-current 2>/dev/null`
+- **Branch:** !`git branch --show-current 2>/dev/null || echo "(not a git repo)"`
 - **Commits in last 7 days:** !`git rev-list --count --since="7 days ago" HEAD 2>/dev/null || echo "unknown"`
 
 <instructions>

@@ -11,7 +11,7 @@ Audit a plugin's skill set against the rubric proven on essense-flow (2026-05). 
 ## Target plugin discovery
 
 ```!
-ls -d "${CLAUDE_PROJECT_DIR:-.}/plugins/"*/ 2>/dev/null | xargs -n1 basename
+ROOT="${CLAUDE_PROJECT_DIR}"; [ -d "$ROOT/plugins" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"; ls -d "$ROOT/plugins/"*/ | xargs -n1 basename
 ```
 
 <instructions>

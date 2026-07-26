@@ -1,5 +1,17 @@
 # Release notes — session-lifecycle
 
+## 1.3.1 — /resume and /retro no longer report a blank branch as if it were the truth
+
+Both skills opened their state block with `git branch --show-current 2>/dev/null` and
+`git log --oneline -5 2>/dev/null`, with nothing to catch the failure. Outside a git
+repository — or in one with no commits — the injected block rendered **empty**, so the skill
+reasoned from a blank branch and a blank history that looked exactly like a clean repo on
+`main`. The same silence-as-success shape that plugin-toolkit 1.7.x kept re-fixing.
+
+Each now carries an explicit fallback (`|| echo "(not a git repo)"`), so a missing repo is a
+statement rather than an absence. Found by plugin-toolkit 1.8.0's `repo-guard` — the `retro`
+one only after the detector learned the inline `` !`cmd` `` form, not just fenced blocks.
+
 ## 1.3.0 — Handoff: Critical Context gets a quality gate (no more empty raison-d'être)
 
 A protocol-shape sweep (same lesson as thorough-mode 1.9.0: flat imperatives detached from the work moment under-fire) surveyed all five skills. Four are already step-sequenced with concrete gates — untouched, over-applying the shape is itself a defect. One real gap: `/handoff`'s **Critical Context** section — the reason the skill exists (a next session that repeats a rejected approach or re-hits a solved gotcha lost exactly what belonged there) — was descriptive template text with no anti-signal, and the step-5 exit check counted accomplishments/remaining items but never verified Critical Context was substantive. An empty section passed clean.

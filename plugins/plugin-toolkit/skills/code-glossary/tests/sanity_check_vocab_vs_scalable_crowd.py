@@ -3,7 +3,11 @@
 NOT a regular test (not picked up by pytest config — different filename).
 Run manually with:
 
-    uv run python tests/sanity_check_vocab_vs_scalable_crowd.py
+    uv run python tests/sanity_check_vocab_vs_scalable_crowd.py <label-counts.txt>
+
+The corpus lives outside this repo, so the path is an argument (or the
+GLOSSARY_LABEL_COUNTS env var) — never a hardcoded absolute path, which
+only ever resolves on one machine.
 
 Loads each label from the v1 dogfood label-counts.txt and runs it
 through normalize_label. Reports pass/fail counts + which verbs are
@@ -12,6 +16,7 @@ missing from the shipped vocab.
 
 from __future__ import annotations
 
+import os
 import sys
 from collections import Counter
 from pathlib import Path
@@ -25,21 +30,37 @@ from code_glossary.vocab import (
 )
 
 
-LABEL_COUNTS_PATH = Path(
-    r"D:/Diploma/Unity/Scalable Crowd/artifacts/glossary-tmp/label-counts.txt"
+LABEL_COUNTS_ENV_VAR = "GLOSSARY_LABEL_COUNTS"
+USAGE = (
+    "usage: sanity_check_vocab_vs_scalable_crowd.py <label-counts.txt>\n"
+    f"   or: {LABEL_COUNTS_ENV_VAR}=<label-counts.txt> "
+    "uv run python tests/sanity_check_vocab_vs_scalable_crowd.py"
 )
 
 
+def resolve_label_counts_path(argv: list[str]) -> Path | None:
+    """Corpus path from argv[1], else the env var. None means neither was given."""
+    if len(argv) > 1:
+        return Path(argv[1])
+    from_env = os.environ.get(LABEL_COUNTS_ENV_VAR)
+    return Path(from_env) if from_env else None
+
+
 def main() -> int:
-    if not LABEL_COUNTS_PATH.exists():
-        print(f"label-counts.txt not found at {LABEL_COUNTS_PATH}", file=sys.stderr)
+    label_counts_path = resolve_label_counts_path(sys.argv)
+    if label_counts_path is None:
+        print(USAGE, file=sys.stderr)
+        return 2
+
+    if not label_counts_path.exists():
+        print(f"label-counts.txt not found at {label_counts_path}", file=sys.stderr)
         return 1
 
     vocab = load_vocab()
     print(f"loaded vocab v{vocab.version} with {len(vocab.verbs)} verbs")
 
     labels: list[tuple[int, str]] = []
-    for raw in LABEL_COUNTS_PATH.read_text(encoding="utf-8").splitlines():
+    for raw in label_counts_path.read_text(encoding="utf-8").splitlines():
         raw = raw.strip()
         if not raw:
             continue
@@ -53,7 +74,7 @@ def main() -> int:
             continue
         labels.append((count, label))
 
-    print(f"loaded {len(labels)} labels from {LABEL_COUNTS_PATH.name}")
+    print(f"loaded {len(labels)} labels from {label_counts_path.name}")
     print()
 
     passed: list[tuple[int, str]] = []

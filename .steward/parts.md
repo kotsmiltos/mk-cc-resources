@@ -21,7 +21,11 @@ hook-carrying plugins excluded, installed standalone).
   bin/steward-fleet.js, skills/steward/, commands/}` · **Tests:**
   `node plugins/steward/tests/*.test.js` (brief 9 + fleet suite, 17/17 total).
 - **Contract:** steward agent is the ONLY writer of model files; session writes inbox +
-  log appends only; no Stop/per-turn hook, by design (under review — Q10). `.steward/`
+  log appends only; no Stop/per-turn hook, by design (under review — Q10).
+  **Model files are COMMITTED to a public repo** (`.gitignore` ignores `.steward/inbox/*`
+  only) — so no absolute path, username, drive letter or machine-specific detail may enter
+  vision/state/parts/questions/tasks/log/briefing. Name the project, not its checkout.
+  Raw captures in `inbox/` are local and may carry anything; the recompute launders them. `.steward/`
   is consumed DOWNSTREAM by kb as a read-only knowledge source (model/log/inbox-done);
   since kb 0.6.0 the kb-scribe Stop hook ROUTES model-changing knowledge back into
   `.steward/inbox/` — the session still does the writing, so the writer rule holds, and
@@ -77,12 +81,15 @@ hook-carrying plugins excluded, installed standalone).
     restart. Bundle carries the SKILLS only; hooks + MCP need the standalone install.
 - **Files:** `plugins/kb/{lib/, mcp/, bin/, hooks/, skills/, commands/, .mcp.json}` ·
   **Tests: run them ALL by glob** — `for f in tests/*.test.js; do node "$f" || exit 1;
-  done` (460: kb 256 · kb-pull 37 · kb-scribe 40 · kb-session 56 · kb-mcp 38 ·
+  done` (462: kb 256 · kb-pull 37 · kb-scribe 42 · kb-session 56 · kb-mcp 38 ·
   footprint 33). Naming individual files is how the footprint suite once fell out of
   the documented command.
-- **Known measurement gap:** kb-scribe writes NO trace line (the other two hooks do).
-  Its firing is observable only as the block itself + a digest gaining content — never
-  claim it from `trace.jsonl`.
+- **Measurement contract (gap CLOSED 616a42f):** ALL THREE hooks write to
+  `.claude/kb/trace.jsonl`. kb-scribe emits `{"tool":"kb-scribe-hook","blocked":true,
+  "tools":[…]}` on each block (`hooks/scripts/kb-scribe-stop.js:249-259`), behind the same
+  presence gate, in a try/catch so telemetry can never break the block; asserted at
+  `tests/kb-scribe.test.js:162-163`. Its firing is now readable after the fact, not only
+  from the observed block + a digest gaining content. Shipped under 0.7.0 — no bump yet.
 - **Retrieval roadmap (Q9 ANSWERED 2026-07-25 — 3-rung ladder, cheapest substrate
   first):** rung 1 deterministic upgrades SHIPPED (0.4.0). Rungs 2 (characterization
   pass, cached by content hash) and 3 (embeddings as a drop-in ranker) stay
@@ -112,13 +119,21 @@ hook-carrying plugins excluded, installed standalone).
   diagnostics. **Consumes:** `.pipeline/state.yaml` + config opt-in.
 - **Files:** `plugins/essense-autopilot/hooks/autopilot.js`.
 
-## plugin-toolkit (1.7.1) — dev/maintenance + the measurement engine
+## plugin-toolkit (1.7.2) — dev/maintenance + measurement engine
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit,
   /code-glossary (deterministic `code_glossary/` Python engine: glossary, MAP.md,
   `runner diff|coupling|extensibility`), /dry-refactor (preflight + dry-run, zero
   source writes). Engine powers essense-flow /organize + /glossary.
 - **Consumes:** Python ≥3.11 via uv; pyyaml, tree-sitter (+ts, +c-sharp).
 - **Tests:** `uv run pytest tests/` from the code-glossary skill folder.
+- **Portability fix LANDED as 1.7.2 (616a42f → ab1ba82 → 817b472), cascade complete**
+  (plugin.json · marketplace row · RELEASE-NOTES head, all read on disk). The four skill
+  shell blocks now open with `"${CLAUDE_PROJECT_DIR:-.}/plugins/"*/` — the docs confirm
+  `${CLAUDE_PROJECT_DIR}` substitution in skill markdown (v2.1.196+) but leave BOTH the
+  inside-a-` ```! `-block case and that block's working directory undocumented, so the
+  `:-.}` form is the only one that survives either unknown. Executed in four scenarios;
+  subdirectory-with-variable-unset is the row that failed and killed the bare-relative
+  attempt. Keep the reasoning with the code: it is the template for every injected block.
 - **v3 role:** gates finally get WIRED into executor steps (Phase A).
 
 ## verifiability-lens (0.4.0)

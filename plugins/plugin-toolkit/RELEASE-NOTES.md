@@ -1,5 +1,77 @@
 # Release notes — plugin-toolkit
 
+## 1.8.0 — repo-guard: the loop that produced 1.7.0–1.7.2 is now a detector
+
+Three commits in fourteen minutes rewrote the same five lines — `616a42f` (bare
+`${CLAUDE_PROJECT_DIR}`) → `ab1ba82` (bare relative) → `817b472` (`${CLAUDE_PROJECT_DIR:-.}`)
+— each reverting the last, and one defect class (machine-specific paths) survived three
+hand-written sweeps because each sweep was shaped wrong: a forward-slash-only grep missed
+backslash forms, a `C:`-anchored grep missed `D:`, and ripgrep skips dot-directories by
+default so `.steward/` and `.planning/` were never scanned. None of that is visible from
+inside a round. It is only visible in aggregate, which is what this ships.
+
+**`bin/repo-guard.js`** — one runner over a registry of drop-in detectors. Each detector
+declares `{ id, title, surface: 'files'|'history', severity: 'block'|'warn', run(ctx, options) }`
+and returns findings carrying `where` (openable path:line or commit range), `evidence`
+(verbatim, never a paraphrase) and `why`. Adding a detector is one `require` in
+`lib/detectors/index.js` — no runner, CLI, or config-schema change. The runner is pure and
+builds the context **once**, so no detector can see a tree that moved under a sibling — the
+failure that put three inverted facts in the steward model on 2026-07-27. A crashed detector
+becomes a *blocking finding*, never a silent skip, and the report always names which
+detectors ran and which were disabled: an unmentioned detector would otherwise read as passing.
+
+Three starters, each one a defect this repo actually shipped:
+
+| detector | severity | catches |
+|---|---|---|
+| `leaked-path` | block | machine-specific absolute paths — every drive letter, both separators, both POSIX home shapes, fed from `git ls-files` so dot-directories cannot hide |
+| `silenced-failure` | block | `2>/dev/null` with no `\|\|` fallback in a skill's injected shell — *both* the ` ```! ` fence and the inline `` !`cmd` `` form |
+| `revert-chain` | warn | the same file rewritten by a run of fix-shaped commits inside a window — circling |
+
+Thresholds are the measured incident, not taste, and all are config: `minRunLength` 3 (the
+incident ran exactly three), `windowMinutes` 60 (it spanned fourteen), `subjectPattern`
+`^(fix|revert)` (the phenomenon is fix-the-fix; set `.*` to include feature-shaped circling),
+and `ubiquityRatio` 0.25 — a file touched by a quarter of all commits in the window is part
+of the repo's routine cascade (marketplace.json, README), measured per run rather than
+hardcoded as a filename list. Ubiquity stands down when a quarter of the history is not more
+than a qualifying run, or it would suppress exactly what the detector exists to find.
+
+Config merges **by detector id** over `defaults/repo-guard.json`, so a project tunes one
+detector without restating the rest; a malformed config throws rather than reverting to
+defaults, because a guard that silently loosens itself is worse than no guard. Exit 0 clean,
+1 blocking, 2 cannot-run. `--warn-only` for advisory use, `--json` for CI.
+
+**What it found on its first real run**, beyond the incident it was built from: an unhandled
+`2>/dev/null` in `resume/SKILL.md` and another in `retro/SKILL.md` (the second surfaced only
+after inline-form coverage was added — one syntax of two is a false clean); the `D:` paths
+still tracked in `essense-flow/RELEASE-NOTES.md` and code-glossary's vocab sanity script; and
+three kb files that circled through the 0.7.0 review rounds, `kb-session.test.js` across four
+commits in fifty-seven minutes. Also fixed here: the sanity script now takes its corpus path
+as an argument or `GLOSSARY_LABEL_COUNTS`, and `version-bump`'s context block no longer ends
+in `head -30` against a file with 31 matching lines — it was truncating a marketplace version
+row, the exact field the skill's own equality check exists to catch.
+
+`73/73` checks in `tests/repo-guard.test.js`, on in-memory fixtures only — a guard whose tests
+read the tree it guards passes for the wrong reason the day that tree changes.
+
+### Correction to 1.7.2
+
+That entry claimed `"${CLAUDE_PROJECT_DIR:-.}"` "survives every case the documentation leaves
+open." The four-scenario table proved shell *expansion*; it never exercised Claude Code's own
+variable substitution, which is the case the sentence was about. `CLAUDE_PROJECT_DIR` is not
+set in the tool environment, so if the substituter matches the exact token
+`${CLAUDE_PROJECT_DIR}`, the `:-.}` form silently collapses to `.` — identical to the
+`ab1ba82` revert it was written to replace. The five injection lines now resolve explicitly:
+
+```sh
+ROOT="${CLAUDE_PROJECT_DIR}"; [ -d "$ROOT/plugins" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+```
+
+Substituted → absolute. Not substituted but the variable is exported → absolute. Neither →
+the repo root from any subdirectory. Outside a repo → `.`, and the command **fails audibly**
+because the trailing `2>/dev/null` is gone. Verified by executing all six worlds; the
+subdirectory-with-unset-variable case, which returned nothing before, now lists all 13 plugins.
+
 ## 1.7.2 — four skills stop depending on one machine's directory layout
 
 `docs-audit`, `plugin-scaffold`, `skill-heal` and `version-bump` opened with a shell-injection

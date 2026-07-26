@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-07-26 · correction pass at ab1ba82)
+# Tasks — ordered, executor-ready (recomputed 2026-07-27 · fact-correction pass at 817b472)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,8 +6,8 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Ordering rationale: the batch is SHIPPED and pushed (71a0b0a, plus two post-ship fix
-commits — HEAD is **ab1ba82**), so every "push the batch" and "build it" task is deleted.
+Ordering rationale: the batch is SHIPPED and pushed (71a0b0a, plus three post-ship fix
+commits — HEAD is **817b472**), so every "push the batch" and "build it" task is deleted.
 What replaces them is the gap the ship created — **three hooks, an MCP server and a
 self-running loop that are all still theoretical on this machine** (installed kb = 0.3.0).
 Nothing below can be judged until #1 proves the mechanisms fire in a real session, so #1
@@ -18,15 +18,17 @@ front the moment Q10 is answered.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
-detail here — name projects, not drives. (One slipped into task #2 on 2026-07-26 and was
-removed; the rule now lives in vision.md "Who it serves" + parts.md steward contract.)
+detail here — name projects, not drives. (One slipped into task #2 and was removed at the
+07-27 pass; the rule now lives in vision.md "Who it serves" + parts.md steward contract.)
+The same class survives in 7 essense-flow test files — **task #17**, numbered last only to
+keep the references above stable; by urgency it belongs with the chores (#6/#7).
 
 ## 1. Make it LIVE, then prove it fired (the whole batch is unproven until this)
 - **What:** `claude plugin update kb@mk-cc-resources`, then RESTART Claude Code (hooks and
   the MCP server register at INSTALL time — this checkout is inert until then; the
   installed build is 0.3.0). Then work one ordinary turn in this repo and read the
   evidence off disk rather than off the transcript.
-- **Baseline to diff against (re-read line by line 2026-07-26 after the fix commits,
+- **Baseline to diff against (re-read line by line at the 07-27 correction pass,
   `.claude/kb/trace.jsonl`, 21 lines):** every line `"tool":"kb-pull-hook"` from piped
   runs · every line `"digest":false` · ZERO `kb-session-start` lines · ZERO MCP lines
   (0.3.0's server predates `writeTrace`) · ZERO `kb-scribe-hook` lines. Every one of the
@@ -39,7 +41,7 @@ removed; the rule now lives in vision.md "Who it serves" + parts.md steward cont
   3. a line whose `tool` is `kb_query`/`kb_overview`/`kb_read` (proves the 0.7.0 traced
      MCP server is the one running, not the old install);
   4. a `{"tool":"kb-scribe-hook","blocked":true,"tools":[…]}` line after a PRODUCING turn,
-     naming that turn's tools. **CORRECTED 2026-07-26** — the scribe used to write no
+     naming that turn's tools. **CORRECTED at the 07-27 pass** — the scribe used to write no
      trace, which made this check unsatisfiable; `hooks/scripts/kb-scribe-stop.js:249-259`
      now calls `writeTrace` on every block (under the presence gate), asserted at
      `tests/kb-scribe.test.js:162-163`. **All three hooks ARE traced.** Pair it with the
@@ -207,3 +209,16 @@ removed; the rule now lives in vision.md "Who it serves" + parts.md steward cont
   model=project / CLAUDE.md=code / kb=queryable everything.
 - **Done-check:** a new toy project goes idea → running slice through the steward loop
   only, in one evening.
+
+## 17. Scrub the last absolute-path leaks (7 essense-flow test files) — chore, ranks with #6/#7
+- **What:** 817b472 scrubbed `.planning/rebuild/*.md`; the remaining leaks are in
+  `plugins/essense-flow/test/*.cjs` — 7 files: `arch-alignment-check`, `cursor-init`,
+  `test-mode-guard`, `task-spec-write-section`, `project-dir`,
+  `state-yaml-malformed-shapes`, `next-step`. These paths are **load-bearing literals**
+  (fixture roots and assertion strings), not prose: a blanket replace was tried, broke 4
+  suites, and was reverted. So this needs a per-file pass — read what each literal is FOR,
+  replace with a tmpdir/`__dirname`-derived path or a placeholder the assertion still
+  matches, and run that suite before moving to the next file.
+- **Done-check:** `rg 'C:\\\\Users|/home/[a-z]+/' plugins/essense-flow/test` returns zero
+  hits AND `node test/run-all.cjs` still reports 54 files / 0 failures — both, or the pass
+  is not done. (`tree.json` is gitignored and is not part of this.)

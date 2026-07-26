@@ -45,7 +45,10 @@ Pull remains the permanent core; push is what makes pull reachable.
 
 - The owner, primarily — real projects (crowd-game, EMDE, psience, Binance tooling…).
 - Public marketplace users, secondarily — plugins must stay portable, no personal setup
-  details in shipped files.
+  details in shipped files. **"Shipped" includes every committed file: skills, docs and
+  the `.steward/` model itself** (only `inbox/` stays local). Absolute paths, usernames
+  and drive letters are leaks, not conveniences — the class has bitten twice (4 SKILL.md
+  files, and this model's own tasks.md).
 
 ## Invariants (must stay true)
 

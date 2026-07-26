@@ -1,4 +1,4 @@
-# State — current truth (2026-07-26 · post-ship fixes, HEAD ab1ba82)
+# State — current truth (2026-07-27 fact-correction pass · HEAD 817b472, shipped 07-26)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,16 +8,26 @@
 
 ## Ship position
 
-**local main == origin/main == 71a0b0a — PUSHED.** 19 commits in this batch (the largest
-single wave since the seed). Refs disk-verified at reconcile:
-`.git/refs/heads/main` == `.git/refs/remotes/origin/main` == `71a0b0a`.
+**local main == origin/main == 817b472 — PUSHED.** The 19-commit batch (71a0b0a) plus three
+post-ship fix commits:
+- `616a42f` — portability in 4 SKILL.md files, kb README false claims removed, **kb-scribe
+  gained its trace line**, prior steward reconcile;
+- `ab1ba82` — first correction of the portability fix (bare relative paths);
+- `817b472` — **the shipped answer: `"${CLAUDE_PROJECT_DIR:-.}/plugins/"*/`** in all four
+  skill blocks, plus `.planning/rebuild/*.md` (5 files) scrubbed to `<repo>`/`<workspace>`/
+  `<home>`/`<crowd-game>` placeholders, plus the plugin-toolkit 1.7.2 cascade.
+Refs disk-verified: `.git/refs/heads/main` == `.git/refs/remotes/origin/main` == `817b472`.
 
-Versions, all node-verified equal across plugin.json / marketplace row / README:
-**kb 0.7.0 · essense-flow 0.26.1 · mk-cc-all 2.26.0 · marketplace 2.37.0**;
-unchanged: essense-autopilot 0.4.0 · session-lifecycle 1.3.0 · plugin-toolkit 1.7.1 ·
+Versions on disk (plugin.json / marketplace row / README):
+**kb 0.7.0 · essense-flow 0.26.1 · plugin-toolkit 1.7.2 · mk-cc-all 2.26.0 ·
+marketplace 2.38.0**; unchanged: essense-autopilot 0.4.0 · session-lifecycle 1.3.0 ·
 schema-scout 1.2.1 · thorough-mode 1.10.0 · project-note-tracker 1.8.0 ·
 alert-sounds 1.1.1 · verifiability-lens 0.4.0 · reuse-gate 0.1.0 · steward 0.2.0 ·
 statusline 0.1.0.
+**One shipped behaviour change still carries no version bump:** kb's scribe trace landed
+under 0.7.0. plugin-toolkit's skill-path fix is fully cascaded (plugin.json 1.7.2 ·
+marketplace row 1.7.2 · RELEASE-NOTES head "1.7.2 — four skills stop depending on one
+machine's directory layout" — all three read at this pass, never from a brief).
 
 ## What exists and works (proven in tests + piped runs)
 
@@ -44,9 +54,14 @@ statusline 0.1.0.
     one-time seed cue held in a HOME registry (`~/.claude/kb/cued.json`, never in the
     project); ranker `scan` mode + ubiquity rule for hint precision; a **footprint
     invariant suite** (fs-import + write-site audit, negative-controlled).
-  - Tests: **460 across six suites** (kb 256 · kb-pull 37 · kb-scribe 40 · kb-session 56 ·
-    kb-mcp 38 · kb-footprint 33). The documented run command is now a GLOB — naming files
-    is exactly how the footprint suite once dropped out of the documented command.
+  - **Post-ship (616a42f): all THREE hooks are now readable from `trace.jsonl`.**
+    kb-scribe writes `{"tool":"kb-scribe-hook","blocked":true,"tools":[…]}` on every block
+    (`hooks/scripts/kb-scribe-stop.js:249-259`, behind the same presence gate), so the one
+    surface whose firing left no artifact is now checkable after the fact.
+  - Tests: **462 across six suites** (kb 256 · kb-pull 37 · kb-scribe 42 · kb-session 56 ·
+    kb-mcp 38 · kb-footprint 33) — kb-scribe 40 → 42 for the two trace assertions
+    (`tests/kb-scribe.test.js:162-163`). The documented run command is a GLOB — naming
+    files is exactly how the footprint suite once dropped out of the documented command.
 - **essense-flow 0.26.1** — context-inject inversion fixed both ways (never-initialized
   repos silent via the `pipeline_present` probe; parse-corrupt now VISIBLE as a DEGRADED
   banner). hooks.test.js 11/11; `test/run-all` 54 files / 0 failures.
@@ -68,19 +83,34 @@ statusline 0.1.0.
 **The installed kb is 0.3.0. Hooks and the traced MCP server register at INSTALL time**,
 so this checkout changes nothing until `claude plugin update kb@mk-cc-resources` + a
 RESTART. Until that happens, every "it maintains itself" claim is proven only by tests and
-piped runs. Disk evidence of the pre-live baseline (`.claude/kb/trace.jsonl`, 21 lines):
+piped runs. Disk evidence of the pre-live baseline (`.claude/kb/trace.jsonl`, re-read line
+by line at the 07-27 correction pass, after the fix commits — still 21 lines):
 - every line is `tool:"kb-pull-hook"` from piped/local runs (07-25 build, 07-26 verify);
 - every line reads `"digest":false` — no session digest has ever existed here;
-- **zero** `kb-session-start` lines and **zero** MCP tool lines (0.3.0's server predates
-  `writeTrace`, so live MCP calls this batch left no record either).
-This baseline is what makes the live check unfakeable — see tasks #1.
+- **zero** `kb-session-start` lines, **zero** MCP tool lines (0.3.0's server predates
+  `writeTrace`), **zero** `kb-scribe-hook` lines.
+This baseline is what makes all four live checks unfakeable — see tasks #1.
 
 ## Known-broken / known-gaps
 
-- **kb-scribe leaves NO trace line** (verified: no `writeTrace` call in
-  `kb-scribe-stop.js`, unlike the other two hooks). Its firing therefore cannot be read
-  from `trace.jsonl`; the only evidence is the observed block + a digest that gains
-  content. Any live check that claims "all three hooks traced" would be a false pass.
+- ~~kb-scribe leaves no trace line~~ **CLOSED 2026-07-26 (616a42f)** — the gap the last
+  reconcile found is fixed rather than documented: the scribe now traces every block. Kept
+  here as provenance because the correction changed a done-check, not just a fact.
+- **Recurring defect class 3 — machine-specific paths in committed files.** 616a42f fixed
+  4 SKILL.md files, 817b472 fixed them properly and scrubbed `.planning/rebuild/*.md`; our
+  own `.steward/tasks.md` leak is fixed. `.steward/` is committed and the repo is public —
+  only `inbox/` is gitignored.
+  **Reusable lesson from the three-attempt fix (worth keeping):** the docs
+  (code.claude.com/docs/en/skills) confirm `${CLAUDE_PROJECT_DIR}` substitution in skill
+  markdown at v2.1.196+, but say nothing about whether it applies inside a ` ```! ` block,
+  nor what that block's working directory is. A bare variable bets on the first unknown; a
+  bare relative path bets on the second. `"${CLAUDE_PROJECT_DIR:-.}/…"` survives both — and
+  it was EXECUTED in four scenarios, not reasoned: root/unset OK · root/set OK ·
+  **subdirectory/unset FAILS with 0 results (exactly what bare-relative would have
+  shipped)** · subdirectory/set OK. Substrate-verify applies to path syntax too.
+  **Remaining known leak:** 7 `plugins/essense-flow/test/*.cjs` files still carry absolute
+  paths as load-bearing literals — a blanket replace broke 4 suites and was reverted, so it
+  needs its own careful pass (tasks #17).
 - **steward briefing over-cap — real defect, PREMISE CORRECTED at integration.** The
   capture (inbox 1335) said the injection truncates *silently*; disk says otherwise —
   `steward-brief.js:70-72` appends "… (briefing truncated — it exceeds its ≤10-line spec;
@@ -130,10 +160,11 @@ This baseline is what makes the live check unfakeable — see tasks #1.
 
 ## Working tree
 
-71a0b0a pushed; tracked tree clean apart from `.steward/` model files rewritten by this
-reconcile (commit as the chore batch). `inbox/` gitignored; five DELETE-ME stubs await
-session deletion. Local, gitignored: `.claude/kb/` (6 extracted + 1 capture + trace.jsonl)
-and `.claude/kb.json` (this repo's scribe focus).
+817b472 pushed (1.7.2 cascade included); the tracked tree carries ONLY the `.steward/`
+model files rewritten by this correction pass — that is the next and last commit. `inbox/` gitignored and **empty — the DELETE-ME stubs were deleted** (glob over
+`.steward/inbox/*.md` returns nothing, so the brief hook's inbox counter is honest again).
+Local, gitignored: `.claude/kb/` (6 extracted + 1 capture + trace.jsonl) and
+`.claude/kb.json` (this repo's scribe focus).
 
 ## Outside-repo (log-only context)
 

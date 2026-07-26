@@ -85,6 +85,28 @@ plugins/
       dry-refactor/         # /dry-refactor v3 MVP: preflight (7 Appendix-A gates) + dry-run
                             #   refactor plans from GLOSSARY.yaml. Zero source writes; live
                             #   execution deferred. Engine lives in the code-glossary package.
+    lib/repo-guard.js       # PURE runner over the detector registry — builds the context ONCE
+                            #   and hands the same frozen object to every detector, so none can
+                            #   see a tree that moved under a sibling. A crashed detector becomes
+                            #   a BLOCKING finding; the report always names what did not run
+    lib/detectors/          # the extension surface: index.js registry + one module per
+                            #   pathology. Contract: {id, title, surface:'files'|'history',
+                            #   severity:'block'|'warn', run(ctx, options) -> Finding[]} where a
+                            #   Finding carries where (openable) + evidence (verbatim) + why.
+                            #   Shipped: leaked-path (machine-specific absolute paths, every
+                            #   drive letter + both separators + POSIX homes, fed from git
+                            #   ls-files so dot-dirs cannot hide), silenced-failure (2>/dev/null
+                            #   with no fallback in injected shell — BOTH the ```! fence and the
+                            #   inline !`cmd` form), revert-chain (same file rewritten by a run
+                            #   of fix-shaped commits in a window = circling; thresholds are the
+                            #   measured incident, ubiquity excludes cascade files by measurement
+                            #   not by filename list). Add one = one require, no runner change
+    bin/repo-guard.js       # CLI adapter: gathers tracked files + git history, prints, exits
+                            #   0 clean / 1 blocking / 2 cannot-run. Skips vendored trees.
+                            #   Config .claude/repo-guard.json merges BY DETECTOR ID over
+                            #   defaults/repo-guard.json; malformed config THROWS
+    tests/repo-guard.test.js # 73 checks, in-memory fixtures only — a guard whose tests read the
+                            #   tree it guards passes for the wrong reason the day it changes
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -322,6 +344,7 @@ Six composable skills for working ON plugins (and the codebases they ship in).
 | `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
 | `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
 | `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 147-verb vocab, Pass B cluster review with composite verdicts from deterministic `composed_of_candidates`, deterministic judge candidates via `runner near-misses`, Pass C substrate-verify). Optional `--scan-blocks` surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md; `runner diff --old --new` tracks duplication drift between runs ({(file, function)} identity, 6 classes); `runner map` renders MAP.md — mermaid module graph + lossless machine index, the consult-before-designing artifact essense-flow /architect + /build inject into briefs; `runner coupling` (engine 2.4.0) enforces DECOUPLED by measuring coupling — scope-aware call graph from records (a call binds to a same-module definition when one exists, so duplicated private names don't fabricate phantom edges), threshold-free binary violations (cross-module dependency cycles + reach-ins into a module's internal surface), writes COUPLING.yaml (each violation named file:function), `--fail-on-violation` CI gate; `runner extensibility` (engine 2.5.0, C#-only MVP) enforces OPEN-FOR-EXTENSION by measuring dispatch — per axis (an enum, or a declared growth axis from /elicit's ledger) it counts the add-one-instance edit-sites (`switch`/switch-expression/if-ladder/dict that enumerate the axis's instances; sites bind by ≥2 case-label overlap, no type inference), writes EXTENSIBILITY.yaml (each site named file:line), edit-count is a measurement while a declared-OPEN axis carrying a dispatch site is the binary gate (`--fail-on-violation`); intrinsic enums are advisory. Pure model `extensibility.py` + impure `indexer/dispatch_scanner.py`; design source `EXTENSIBILITY-MEASURE-DESIGN.md`. Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. |
+| `node bin/repo-guard.js` | Before a push, or when a defect class keeps coming back | Runs every registered detector over the tracked files + git history in ONE context snapshot. Catches what is invisible from inside a round: machine-specific absolute paths, injected shell whose failure is indistinguishable from empty success, and fix-the-fix commit chains (the same file rewritten by a run of fix commits in a short window). Exit 1 on blocking findings — usable as a pre-push gate. Extend by dropping a module into `lib/detectors/`. |
 | `/dry-refactor <glossary.yaml> <gloss-id>` | Planning an extraction the glossary proposed | v3 MVP: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) via `python -m code_glossary.dry_refactor.runner`, then a dry-run plan — synthesized helper + per-site edit list. **Zero source writes**; live execution ships later behind its own gate. |
 
 Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract `/dry-refactor` consumes (Appendix A of DESIGN-V2.md; MVP = preflight + dry-run, built in v2.2).

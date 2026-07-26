@@ -14,10 +14,10 @@ Restore context from `.claude/handoff.md` so work continues without information 
 
 ## Current state
 
-- **Branch:** !`git branch --show-current 2>/dev/null`
+- **Branch:** !`git branch --show-current 2>/dev/null || echo "(not a git repo)"`
 - **Recent commits (last 5):**
 ```!
-git log --oneline -5 2>/dev/null
+git log --oneline -5 2>/dev/null || echo "(no commits, or not a git repo)"
 ```
 - **Uncommitted changes:**
 ```!
