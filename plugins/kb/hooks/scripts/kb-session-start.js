@@ -27,7 +27,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { hasCuratedMemory, hasSeedableSubstrate } = require('../../lib/presence');
+const { hasCuratedMemory, hasSeedableSubstrate, memoryProblems } = require('../../lib/presence');
 
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const ARCHIVE_DIR_REL = path.join('.claude', 'kb', 'digests');
@@ -165,6 +165,14 @@ async function main() {
     if (archived) {
       out.push(`<kb-session>previous session digest archived -> ${archived} (still queryable; this session starts a fresh one)</kb-session>`);
     }
+  }
+
+  // The one visible channel kb has per session. A hook's stderr goes to the debug log,
+  // so an obstruction found while checking for memory markers would otherwise disable
+  // upkeep silently; SessionStart stdout enters the session context, so it gets said
+  // out loud here — once, at the only moment a person is reading.
+  for (const problem of memoryProblems(root)) {
+    out.push(`<kb-session>Could not read ${problem.path} (${problem.code}) — kb treats this project as keeping no knowledge base, so hints and upkeep stay off. If it does keep one, clear the lock or permission and restart.</kb-session>`);
   }
 
   if (!hasCuratedMemory(root) && hasSeedableSubstrate(root) && cueOnce(root, payload.home)) {

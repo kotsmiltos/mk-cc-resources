@@ -75,7 +75,7 @@ commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
 tests/kb.test.js             # 256 checks, no framework, own temp fixtures
 tests/kb-pull.test.js        # 37 checks — guards, floor, digest, traces, precision fixture
-tests/kb-session.test.js     # 46 checks — presence rule, rotation + loss-safety, cue
+tests/kb-session.test.js     # 54 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 40 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 38 checks — handler layer + stdio e2e + gated traces
 tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
@@ -90,7 +90,15 @@ and `captures/` (one-at-a-time, append-only, timestamped). Per-file frontmatter
 themes EXTEND spec themes. Semantic knowledge that changes a steward project's model NEVER
 lands in these stores — it stages to `.steward/inbox/` for recompute.
 
-Tests: `node tests/kb.test.js && node tests/kb-mcp.test.js`. No dependencies; Node only.
+Tests — run them ALL; naming individual files here is how the footprint suite (the one that
+exists because three review rounds each missed a write path) silently dropped out of the
+documented command:
+
+```bash
+for f in tests/*.test.js; do node "$f" || exit 1; done
+```
+
+No dependencies; Node only.
 
 ## Reach-surfaces
 
@@ -171,7 +179,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
   resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
-  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 38 + 33 tests.
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 54 + 38 + 33 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for

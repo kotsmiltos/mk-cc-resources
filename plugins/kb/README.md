@@ -218,8 +218,16 @@ engine or the sources.
 ## Tests
 
 ```bash
-node tests/kb.test.js    # 148 checks, no framework
+for f in tests/*.test.js; do node "$f" || exit 1; done
 ```
+
+Six suites, no framework, no dependencies: the engine and adapters (`kb`), each of the three
+hooks (`kb-pull`, `kb-scribe`, `kb-session`), the MCP contract (`kb-mcp`), and the footprint
+invariant (`kb-footprint` — kb must never write into a project that keeps no knowledge base,
+enforced by auditing every write site in shipped source, not by testing each surface).
+
+Run them as a glob rather than by name: listing files is how a suite quietly drops out of the
+command it is supposed to be guarded by.
 
 Every test builds its own fixture project in a temp dir — nothing reads the host repo, so
 the suite gives the same answer on a fresh clone.

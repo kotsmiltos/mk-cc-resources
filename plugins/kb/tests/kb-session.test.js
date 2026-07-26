@@ -69,6 +69,64 @@ function runHook(cwd, payload) {
   check('a capture counts as curated memory', presence.hasCuratedMemory(captured));
 }
 
+// ---------- presence: an obstruction must never pass as "no memory" ----------
+//
+// The failure this guards: a lock, a permission denial, or a sync tool holding a marker
+// path reads exactly like an unseeded project, so upkeep switches itself off in a project
+// that HAS a knowledge base. Silence there is invisible, which is why it is tested rather
+// than trusted.
+
+{
+  const probe = (code) => {
+    const script = `
+      const fs = require('fs');
+      fs.statSync = () => { const e = new Error('x'); e.code = ${JSON.stringify(code)}; throw e; };
+      const p = require(${JSON.stringify(path.join(__dirname, '..', 'lib', 'presence.js').split(path.sep).join('/'))});
+      // ONE call — inspect() answers both questions, so the warning count below measures
+      // warnings-per-call rather than warnings-per-probe.
+      const { found, problems } = p.inspect(process.cwd(), p.MEMORY_MARKERS);
+      console.log(JSON.stringify({ present: found, problems }));
+    `;
+    const r = spawnSync('node', ['-e', script], { encoding: 'utf8', cwd: tmp('kb-presence-probe-') });
+    return { out: JSON.parse(r.stdout.trim().split('\n').pop()), warnings: (r.stderr.match(/presence check could not read/g) || []).length };
+  };
+
+  const eperm = probe('EPERM');
+  check('an unreadable marker does not become a false "has memory"', eperm.out.present === false);
+  check('an unreadable marker is REPORTED, not swallowed', eperm.out.problems.length === 1);
+  check('the report names the path and the error code',
+    typeof eperm.out.problems[0].path === 'string' && eperm.out.problems[0].code === 'EPERM');
+  check('exactly one warning per check, never one per marker', eperm.warnings === 1);
+
+  const enoent = probe('ENOENT');
+  check('an absent marker is silent — the ordinary case', enoent.out.problems.length === 0 && enoent.warnings === 0);
+  check('and still answers "no memory"', enoent.out.present === false);
+
+  // The visibility half: a hook's stderr goes to the debug log, so the obstruction must
+  // also reach the ONE channel a person reads — SessionStart stdout, which is injected
+  // into the session. Driven through the real hook process, not the library.
+  const visRoot = tmp('kb-presence-visible-');
+  fs.writeFileSync(path.join(visRoot, 'CLAUDE.md'), '# a project\n');
+  // Preload the fs patch so the hook still runs as the MAIN module (its main() is behind
+  // a require.main guard, so requiring it from a wrapper would silently do nothing).
+  const preload = path.join(visRoot, 'lock.js');
+  fs.writeFileSync(preload, `
+    const fs = require('fs');
+    const realStat = fs.statSync;
+    fs.statSync = (p) => {
+      if (String(p).includes('.claude')) { const e = new Error('locked'); e.code = 'EBUSY'; throw e; }
+      return realStat(p);
+    };
+  `);
+  const vis = spawnSync('node', ['-r', preload, HOOK], {
+    cwd: visRoot, input: JSON.stringify({ source: 'startup', home: tmp('kb-vis-home-') }), encoding: 'utf8',
+  });
+  check('an obstruction is SAID OUT LOUD in the session, not just logged',
+    vis.stdout.includes('Could not read') && vis.stdout.includes('EBUSY'));
+  check('and it explains the consequence (upkeep stays off)',
+    /hints and upkeep stay off/.test(vis.stdout));
+}
+
 // ---------- rotation ----------
 
 {

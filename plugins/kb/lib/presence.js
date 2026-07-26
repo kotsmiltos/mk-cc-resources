@@ -34,10 +34,21 @@ const MEMORY_MARKERS = [
 // Substrate that makes a project WORTH seeding (used only for the one-time cue).
 const SUBSTRATE_MARKERS = [['.git'], ['CLAUDE.md'], ['README.md'], ['docs'], ['design']];
 
-function existsAny(root, markers) {
-  // One warning per call, not one per marker: these run inside hooks that fire on every
-  // prompt, so a persistently locked path must not turn into five lines of noise a turn.
-  let warned = false;
+/**
+ * The full answer: was a marker found, and did anything get in the way of looking?
+ *
+ * `problems` exists because stderr is not a user-visible channel from a hook — Claude
+ * Code routes a hook's stderr to the debug log on exit 0. A lock or permission denial
+ * on a marker reads exactly like "this project keeps no memory", so upkeep would switch
+ * itself off in a project that HAS one; returning the obstruction lets a caller that
+ * DOES have a visible channel say so out loud. ENOENT is not a problem — it is the
+ * ordinary answer that this marker is not here.
+ *
+ * At most one problem is reported per call: these run in hooks that fire every prompt,
+ * and a persistently locked path must not become five lines of noise a turn.
+ */
+function inspect(root, markers) {
+  const problems = [];
   for (const parts of markers) {
     const p = path.join(root, ...parts);
     try {
@@ -45,23 +56,28 @@ function existsAny(root, markers) {
       // A directory counts only when it actually holds something — an empty
       // extracted/ left behind by a cleared store is not a memory.
       if (st.isDirectory()) {
-        if (fs.readdirSync(p).length > 0) return true;
+        if (fs.readdirSync(p).length > 0) return { found: true, problems };
       } else if (st.size > 0) {
-        return true;
+        return { found: true, problems };
       }
     } catch (err) {
-      // ENOENT is the expected case (this marker simply is not here) and stays silent.
-      // Anything else — a lock, a permission denial, an antivirus or sync tool holding
-      // the path — would otherwise read as "this project keeps no memory" and quietly
-      // switch upkeep off in a project that HAS one. That is the plugin's own
-      // "nothing fails silently" rule, and a swallowed EPERM breaks it invisibly.
-      if (err && err.code !== 'ENOENT' && !warned) {
-        warned = true;
-        process.stderr.write(`[kb] presence check could not read ${p}: ${err.code || err.message}\n`);
+      if (err && err.code !== 'ENOENT' && !problems.length) {
+        const detail = { path: p, code: err.code || err.message };
+        problems.push(detail);
+        process.stderr.write(`[kb] presence check could not read ${detail.path}: ${detail.code}\n`);
       }
     }
   }
-  return false;
+  return { found: false, problems };
+}
+
+function existsAny(root, markers) {
+  return inspect(root, markers).found;
+}
+
+/** Obstructions hit while looking for memory markers — for callers with a visible channel. */
+function memoryProblems(root) {
+  return inspect(root, MEMORY_MARKERS).problems;
 }
 
 /** True when the project keeps curated memory (seeded, captured, or steward-modelled). */
@@ -74,4 +90,7 @@ function hasSeedableSubstrate(root) {
   return existsAny(root, SUBSTRATE_MARKERS);
 }
 
-module.exports = { hasCuratedMemory, hasSeedableSubstrate, MEMORY_MARKERS, SUBSTRATE_MARKERS };
+module.exports = {
+  hasCuratedMemory, hasSeedableSubstrate, memoryProblems, inspect,
+  MEMORY_MARKERS, SUBSTRATE_MARKERS,
+};
