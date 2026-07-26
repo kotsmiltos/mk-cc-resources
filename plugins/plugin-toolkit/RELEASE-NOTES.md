@@ -1,5 +1,31 @@
 # Release notes — plugin-toolkit
 
+## 1.7.2 — four skills stop depending on one machine's directory layout
+
+`docs-audit`, `plugin-scaffold`, `skill-heal` and `version-bump` opened with a shell-injection
+block that hardcoded the author's own absolute repo path and ended in `2>/dev/null`. On anyone else's machine those lines returned nothing **silently**, so
+the skill loaded with an empty context block and reasoned from no disk state at all — the
+worst shape of failure, because it looks like success.
+
+The lines now read `"${CLAUDE_PROJECT_DIR:-.}/plugins/"*/`, which survives every case the
+documentation leaves open. `${CLAUDE_PROJECT_DIR}` substitution in skill markdown is
+documented (Claude Code v2.1.196+), but whether it applies *inside* a ` ```! ` block is not
+stated, and the working directory of such a block is undocumented. So: if Claude Code
+substitutes it, the path is absolute and correct from anywhere; if not, the shell expands the
+environment variable when present; if neither, it falls back to `.`, which is correct at the
+project root. No path is ever left unexpanded.
+
+Executed rather than assumed — the injected commands were run in four scenarios:
+
+| scenario | result |
+|---|---|
+| project root, variable unset | 13 plugins, 31 marketplace lines |
+| project root, variable set | 13 plugins, 31 marketplace lines |
+| **subdirectory, variable unset** | **fails — this is what a bare relative path would have shipped** |
+| subdirectory, variable set | 13 plugins, 31 marketplace lines |
+
+That third row is why the first attempt at this fix (bare relative paths) was itself wrong.
+
 ## 1.7.1 — /version-bump: the bundle version is TWO writes, each verified
 
 Observed failure (drifted 2 versions before caught): step 5 packed both bundle-version writes into one bullet ("Update both ..."), and real ships bumped the root `.claude-plugin/plugin.json` while the `mk-cc-all` entry in `marketplace.json` silently lagged (2.18.0 vs 2.20.0). One-bullet-two-actions is the classic under-fire shape.

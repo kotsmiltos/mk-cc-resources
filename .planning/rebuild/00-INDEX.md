@@ -3,7 +3,7 @@
 > Quality bar for all rebuild artifacts: verify by reading actual source lines, not summaries;
 > preserve specifics; every gap solvable by careful work; descendant artifacts carry these same standards.
 
-Decision corpus mined from `C:\Users\mkots\essense-flow-re-imagined` for the 7-phase essense-flow rebuild.
+Decision corpus mined from `<workspace>` for the 7-phase essense-flow rebuild.
 Locked decisions: see memory `essense-flow-vision-and-rebuild` (artifacts-authoritative state, schema
 single-source, librarian unknowns-ledger, M-2 existing-substrate-only, codenames inlined, public audience).
 

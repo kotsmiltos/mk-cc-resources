@@ -3,7 +3,7 @@
 > **Quality bar (carried from caller):** verify by reading actual source lines, not by existence;
 > preserve specifics; every gap solvable by careful work; descendant artifacts carry these same standards.
 
-**Canonical source** (`DEC` below): `C:\Users\mkots\essense-flow-re-imagined\tmp-spike-CLOSURE\.pipeline\architecture\decisions.yaml`
+**Canonical source** (`DEC` below): `<workspace>\tmp-spike-CLOSURE\.pipeline\architecture\decisions.yaml`
 (5599 lines; the dogfood pipeline's decision corpus — the redesign/ docs cite these IDs but do not define them).
 All line numbers verbatim-verified by reading the cited lines on 2026-06-11.
 Secondary corroboration where noted: `redesign/cli-spec.md`, `redesign/cli-spec/ops/*.md`, `redesign/06-decisions.md`, `redesign/SURPRISES.md`.

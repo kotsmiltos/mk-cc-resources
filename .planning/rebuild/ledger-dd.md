@@ -2,7 +2,7 @@
 
 > **Quality bar (carried forward):** verify by reading actual source lines, not summaries of summaries; preserve specifics; every gap solvable by careful work; this artifact feeds a multi-phase rebuild — descendant artifacts carry these same standards.
 >
-> **Sources read verbatim:** `C:\Users\mkots\essense-flow-re-imagined\redesign\06-decisions.md` (DD-2, DD-7 at the 2026-05-10 closure-plan authorization entry, which records SPEC DD-1..DD-7 verbatim) and `C:\Users\mkots\essense-flow-re-imagined\tmp-spike-CLOSURE\.pipeline\elicitation\SPEC.md` (DD-8..DD-12 round-7 section; DD-15..DD-21 round-9 section). All cited lines were read in this session, not inferred.
+> **Sources read verbatim:** `<workspace>\redesign\06-decisions.md` (DD-2, DD-7 at the 2026-05-10 closure-plan authorization entry, which records SPEC DD-1..DD-7 verbatim) and `<workspace>\tmp-spike-CLOSURE\.pipeline\elicitation\SPEC.md` (DD-8..DD-12 round-7 section; DD-15..DD-21 round-9 section). All cited lines were read in this session, not inferred.
 >
 > **ID-collision warning:** SPEC.md contains a SECOND set of decisions numbered DD-15..DD-18 in the "post-ship hotfix v0.13.1" addendum (SPEC.md:467-494: `sprint_iteration` field, sprint shape type-check, `<n>` substitution diagnostic, version source-of-record). Those are DIFFERENT decisions that reused the same IDs. This ledger covers the round-9 elicit set (SPEC.md:350-430), which is what cli-spec.v2 and the agent registry cite (the prompt's "DD-20 has (a)(b)(e)" matches the round-9 set). Any rebuild citation of "DD-15"–"DD-18" from old material must disambiguate which set it means.
 

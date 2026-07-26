@@ -8,7 +8,7 @@
 
 > **Rebuild context for verdicts:** (1) task-spec schema becomes single-source generated; (2) state.yaml becomes derived artifact cache; (3) agents get research-first discipline + structured `unknowns[]` ledger surfaced to user; (4) public audience — all rules self-contained, no codenames.
 
-Source corpus: `C:\Users\mkots\essense-flow-re-imagined\` — `redesign/`, `round-loop-closure/`, `tmp-spike-CLOSURE/.pipeline/` (referenced from redesign docs). Paths below abbreviated to repo-relative.
+Source corpus: `<workspace>\` — `redesign/`, `round-loop-closure/`, `tmp-spike-CLOSURE/.pipeline/` (referenced from redesign docs). Paths below abbreviated to repo-relative.
 
 ---
 
@@ -50,7 +50,7 @@ Source corpus: `C:\Users\mkots\essense-flow-re-imagined\` — `redesign/`, `roun
 ## M-6 — Verification-rules propagation to design phases (substrate-verify)
 - **content:** New always-on verification bullet: "Before encoding library behavior, engine output, or tool-scanner rules in prescribed-pseudocode at design phases (architect, sub-architect, research), read the actual source code at the named file:line. Speculation from upstream docs is not sufficient. If you cannot read the source, downgrade agency_level to `guided` and surface the unknown as an OF entry." Propagates the existing "verify by reading code, not by checking a file exists" rule from retrospective questions to forward design. Landed verbatim into the user-global CLAUDE.md + architect SKILL.md + sub-architect agent definition (Sprint 10 T-1001).
 - **why:** Closes RC-ε — the verification discipline applied only to retrospective claims ("is this done?"); forward design escaped because "there's no code yet to read" — but the *cited substrate* (libraries, engines, scanners) does exist and was never read. Same incident base as M-2.
-- **source:** `redesign/META-GAP-ROUND-LOOP.md:117-125`; RC-ε at `:66`; T-1001 landing at `redesign/SPRINT-10-CLOSURE-FINAL-PLAN.md:89`. (The bullet is live today in `C:\Users\mkots\.claude\CLAUDE.md` "Verification Discipline" — substrate-verify before prescribing.)
+- **source:** `redesign/META-GAP-ROUND-LOOP.md:117-125`; RC-ε at `:66`; T-1001 landing at `redesign/SPRINT-10-CLOSURE-FINAL-PLAN.md:89`. (The bullet is live today in `<user-claude-dir>\CLAUDE.md` "Verification Discipline" — substrate-verify before prescribing.)
 - **proposed inline principle:** Verification discipline applies at design time, not just review time: before a plan asserts how existing code, a library, or a tool behaves, the planner reads that source. What cannot be read becomes a declared unknown with the executor given judgment latitude — never an unverified assertion shipped as fact.
 - **keep/fold/drop:** **FOLD into rebuild mechanism (3)** — per the rebuild's own note, substrate-verify becomes the core of research-first + `unknowns[]`. The fold is clean because M-6 already contains the two halves: (a) read-before-prescribe = research-first; (b) can't-read → declared unknown + agency downgrade = the unknowns ledger with a defined consequence. Preserve the *consequence* half in the fold: an unknown must change the executor's contract (more latitude, explicit surfacing), not just be logged.
 

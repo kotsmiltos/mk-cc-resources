@@ -1,4 +1,4 @@
-# State — current truth (2026-07-26, post 19-commit ship)
+# State — current truth (2026-07-26 · post-ship fixes, HEAD ab1ba82)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.

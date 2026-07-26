@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-07-26, post 19-commit ship)
+# Tasks — ordered, executor-ready (recomputed 2026-07-26 · correction pass at ab1ba82)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,40 +6,51 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Ordering rationale: the batch is SHIPPED and pushed (71a0b0a), so every "push the batch"
-and "build it" task is deleted. What replaces them is the gap the ship created —
-**three hooks, an MCP server and a self-running loop that are all still theoretical on
-this machine** (installed kb = 0.3.0). Nothing below can be judged until #1 proves the
-mechanisms fire in a real session, so #1 is first and everything measurement-shaped
-(#4, #5) waits behind it. #2 is the first foreign corpus AND the evidence source for #4.
-#3 is a defect in our own delivery channel — small, and it corrupts the one artifact the
-owner reads first. #9 jumps to the front the moment Q10 is answered.
+Ordering rationale: the batch is SHIPPED and pushed (71a0b0a, plus two post-ship fix
+commits — HEAD is **ab1ba82**), so every "push the batch" and "build it" task is deleted.
+What replaces them is the gap the ship created — **three hooks, an MCP server and a
+self-running loop that are all still theoretical on this machine** (installed kb = 0.3.0).
+Nothing below can be judged until #1 proves the mechanisms fire in a real session, so #1
+is first and everything measurement-shaped (#4, #5) waits behind it. #2 is the first
+foreign corpus AND the evidence source for #4. #3 is a defect in our own delivery
+channel — small, and it corrupts the one artifact the owner reads first. #9 jumps to the
+front the moment Q10 is answered.
+
+**Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
+(only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
+detail here — name projects, not drives. (One slipped into task #2 on 2026-07-26 and was
+removed; the rule now lives in vision.md "Who it serves" + parts.md steward contract.)
 
 ## 1. Make it LIVE, then prove it fired (the whole batch is unproven until this)
 - **What:** `claude plugin update kb@mk-cc-resources`, then RESTART Claude Code (hooks and
   the MCP server register at INSTALL time — this checkout is inert until then; the
   installed build is 0.3.0). Then work one ordinary turn in this repo and read the
   evidence off disk rather than off the transcript.
-- **Baseline to diff against (disk-verified 2026-07-26, `.claude/kb/trace.jsonl`,
-  21 lines):** every line `"tool":"kb-pull-hook"` from piped runs · every line
-  `"digest":false` · ZERO `kb-session-start` lines · ZERO MCP lines (0.3.0's server
-  predates `writeTrace`, so even live MCP calls left nothing).
+- **Baseline to diff against (re-read line by line 2026-07-26 after the fix commits,
+  `.claude/kb/trace.jsonl`, 21 lines):** every line `"tool":"kb-pull-hook"` from piped
+  runs · every line `"digest":false` · ZERO `kb-session-start` lines · ZERO MCP lines
+  (0.3.0's server predates `writeTrace`) · ZERO `kb-scribe-hook` lines. Every one of the
+  four checks below is therefore unfakeable — nothing of that shape has ever been written
+  here.
 - **Done-check** (each item separately, no batching):
   1. a NEW `{"tool":"kb-session-start",…}` line with a timestamp after the restart;
   2. a `kb-pull-hook` line reading `"digest":true` (proves the digest exists AND is being
      injected — the whole short-term-memory claim);
   3. a line whose `tool` is `kb_query`/`kb_overview`/`kb_read` (proves the 0.7.0 traced
      MCP server is the one running, not the old install);
-  4. kb-scribe: **expect NO trace line — it writes none by design.** Its evidence is the
-     block landing at the end of a producing turn + `.claude/kb/session-digest.md`
-     gaining that turn's content. A check that claims "all three hooks traced" is a lie.
+  4. a `{"tool":"kb-scribe-hook","blocked":true,"tools":[…]}` line after a PRODUCING turn,
+     naming that turn's tools. **CORRECTED 2026-07-26** — the scribe used to write no
+     trace, which made this check unsatisfiable; `hooks/scripts/kb-scribe-stop.js:249-259`
+     now calls `writeTrace` on every block (under the presence gate), asserted at
+     `tests/kb-scribe.test.js:162-163`. **All three hooks ARE traced.** Pair it with the
+     block's other evidence: `.claude/kb/session-digest.md` gains that turn's content.
   5. second sitting only: `.claude/kb/digests/` holds the previous digest, honestly dated.
 - **If a step fails:** suspect the install version first (`claude plugin` list), then the
   presence gate (`lib/presence.js` — this repo passes: 6 extracted + 1 capture), then the
   hook script's own fail-open swallow. Fix + patch-ship; do not soften the check.
 
 ## 2. Crowd-game: commit its config, then run the DEEP seed (first foreign corpus)
-- **What:** in `D:\crowd-game\crowd-game`: (a) commit the written-but-UNCOMMITTED
+- **What:** in the crowd-game project (its own checkout): (a) commit the written-but-UNCOMMITTED
   `.claude/kb.json` (splitter override + scribe focus) — a config that lives only on one
   machine is a footgun for the pilot; (b) update the kb plugin there too and restart;
   (c) re-run `/kb-seed` under the 0.5.0 depth mandate + judge-then-report autonomy, with

@@ -6,7 +6,7 @@
 > 3. **Quality ownership** — this work matters. Take ownership.
 > 4. **Propagation requirement** — every descendant artifact must carry these same four instructions.
 >
-> Verification discipline applied here: every claim below verified by reading actual source (workspace `C:\Users\mkots\essense-flow-re-imagined\redesign\` + shipped plugin `C:\Users\mkots\mk-cc-resources\plugins\essense-flow\`), not summaries. Hashes computed, code traced caller→callee, file:line cited.
+> Verification discipline applied here: every claim below verified by reading actual source (workspace `<workspace>\redesign\` + shipped plugin `<repo>\plugins\essense-flow\`), not summaries. Hashes computed, code traced caller→callee, file:line cited.
 
 Mined: 2026-06-11. Sources: `00-START-HERE.md`, `01-the-real-constraint.md`, `02-history-of-failure-modes.md`, `03-gsd-comparison.md`, `04-open-questions.md`, `PLAN.md`, `STATE.md` (step table), `06-decisions.md` (2026-05-16 closing decisions), `SURPRISES.md`, `containment-map.md`, `cli-spec.md` §1, `skill-substance/*` both sides, plugin `bin/essense-flow-tools.cjs` + `tests/` + `agents/` + `references/transitions.yaml`.
 

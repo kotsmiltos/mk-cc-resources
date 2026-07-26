@@ -12,7 +12,7 @@ Create a new mk-cc-resources plugin with full directory structure + all cross-re
 ## Repo state check
 
 ```!
-ls -d plugins/*/ 2>/dev/null | xargs -n1 basename
+ls -d "${CLAUDE_PROJECT_DIR:-.}/plugins/"*/ 2>/dev/null | xargs -n1 basename
 ```
 
 <instructions>
