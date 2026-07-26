@@ -115,6 +115,14 @@ into at all. The digest bootstrap nudge is gated for a subtler reason: a digest 
 presence marker, so nudging an unseeded project to create one would have switched the blocking
 scribe on without a seed — breaking the "seeding is the on-switch" promise from the inside.
 
+**A silent-disable path closed in `presence.js`.** Its marker check swallowed every errno, so a
+lock, a permission denial, or an antivirus/sync tool holding `.claude/kb/extracted` read as
+"this project keeps no memory" — switching upkeep off in a project that HAS one, with no
+warning anywhere. That contradicted the plugin's own "nothing fails silently" rule from the
+inside. `ENOENT` stays silent (the marker simply is not there); anything else now writes one
+stderr line naming the path and the error code. Verified by forcing an `EPERM`: the verdict is
+unchanged and the warning appears.
+
 **`kb coverage` no longer warns about entries that were never under the citation rule.** It
 counted steward sections and archived digests as "uncited", which on this repo would have
 printed a ~55-line unfixable warning at the top of every seed run — and invited an obedient
