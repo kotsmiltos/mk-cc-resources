@@ -75,10 +75,11 @@ function existsAny(root, markers) {
   return inspect(root, markers).found;
 }
 
-/** Obstructions hit while looking for memory markers — for callers with a visible channel. */
-function memoryProblems(root) {
-  return inspect(root, MEMORY_MARKERS).problems;
-}
+// NOTE: there is deliberately no `memoryProblems(root)` helper returning problems alone.
+// A caller holding the problems WITHOUT `found` cannot tell whether the obstruction cost
+// anything — an unreadable marker beside a readable one means memory was still found —
+// and a found-blind view is exactly how a "your upkeep is off" message ends up printed at
+// a project whose upkeep is on. Callers take `inspect()` and get both, or neither.
 
 /** True when the project keeps curated memory (seeded, captured, or steward-modelled). */
 function hasCuratedMemory(root) {
@@ -91,6 +92,6 @@ function hasSeedableSubstrate(root) {
 }
 
 module.exports = {
-  hasCuratedMemory, hasSeedableSubstrate, memoryProblems, inspect,
+  hasCuratedMemory, hasSeedableSubstrate, inspect,
   MEMORY_MARKERS, SUBSTRATE_MARKERS,
 };

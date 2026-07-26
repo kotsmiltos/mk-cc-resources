@@ -173,8 +173,15 @@ async function main() {
   // enters the session context, so it gets said out loud — at the only moment a person
   // is reading, and only when something genuinely got in the way.
   const memory = inspect(root, MEMORY_MARKERS);
-  for (const problem of memory.problems) {
-    out.push(`<kb-session>Could not read ${problem.path} (${problem.code}) — kb treats this project as keeping no knowledge base, so hints and upkeep stay off. If it does keep one, clear the lock or permission and restart.</kb-session>`);
+  // Announce ONLY when the obstruction actually cost something. inspect() keeps looking
+  // after an unreadable marker, so a project whose extracted/ is locked but whose
+  // captures/ or .steward/ is readable still has its memory found — upkeep is ON, and
+  // saying "upkeep stays off" there would be loudly wrong. The stderr line still records
+  // the obstruction for anyone reading the debug log.
+  if (!memory.found) {
+    for (const problem of memory.problems) {
+      out.push(`<kb-session>Could not read ${problem.path} (${problem.code}) — kb treats this project as keeping no knowledge base, so hints and upkeep stay off. If it does keep one, clear the lock or permission and restart.</kb-session>`);
+    }
   }
 
   if (!memory.found && hasSeedableSubstrate(root) && cueOnce(root, payload.home)) {

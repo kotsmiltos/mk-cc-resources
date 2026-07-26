@@ -125,6 +125,36 @@ function runHook(cwd, payload) {
     vis.stdout.includes('Could not read') && vis.stdout.includes('EBUSY'));
   check('and it explains the consequence (upkeep stays off)',
     /hints and upkeep stay off/.test(vis.stdout));
+
+  // The combination branch: an unreadable marker BESIDE a readable one. inspect() keeps
+  // looking, so memory is still found and upkeep is genuinely ON — announcing "upkeep
+  // stays off" here would be loudly wrong, which is worse than the silence it replaced.
+  const bothRoot = tmp('kb-presence-both-');
+  fs.writeFileSync(path.join(bothRoot, 'CLAUDE.md'), '# a project\n');
+  fs.mkdirSync(path.join(bothRoot, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(bothRoot, '.steward', 'vision.md'), '# a real memory\n');
+  const lockFirst = path.join(bothRoot, 'lock.js');
+  fs.writeFileSync(lockFirst, `
+    const fs = require('fs');
+    const realStat = fs.statSync;
+    fs.statSync = (p) => {
+      // Only the .claude/kb markers are obstructed; .steward stays readable. Matching on
+      // the full marker path, not a substring like 'kb', which also appears in the temp
+      // directory's own name — an earlier version of this fixture locked everything and
+      // "proved" the opposite of what it claimed.
+      if (String(p).replace(/\\\\/g, '/').includes('/.claude/kb')) {
+        const e = new Error('locked'); e.code = 'EBUSY'; throw e;
+      }
+      return realStat(p);
+    };
+  `);
+  const both = spawnSync('node', ['-r', lockFirst, HOOK], {
+    cwd: bothRoot, input: JSON.stringify({ source: 'startup', home: tmp('kb-both-home-') }), encoding: 'utf8',
+  });
+  check('a locked marker beside a readable one does NOT announce "upkeep off"',
+    !both.stdout.includes('hints and upkeep stay off'));
+  check('…and that project is still treated as keeping a memory (no seed cue)',
+    !both.stdout.includes('/kb-seed'));
 }
 
 // ---------- rotation ----------

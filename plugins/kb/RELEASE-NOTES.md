@@ -130,10 +130,13 @@ debug-only for Stop, UserPromptSubmit and SessionStart alike). A warning nobody 
 same silent disable wearing a badge. So `inspect()` now *returns* the obstruction, and
 kb-session-start says it on the one channel a person actually reads — SessionStart stdout,
 which enters the session — naming the path, the error code, and the consequence ("hints and
-upkeep stay off"). Six standing tests pin the whole branch: unreadable marker never passes as
-"no memory", the problem is reported not swallowed, exactly one warning per check, ENOENT
-stays silent, and — driven through the real hook process with a locked path — the message
-reaches stdout.
+upkeep stay off"). Ten standing tests pin the branch: an unreadable marker never passes as "no
+memory"; the problem is reported rather than swallowed, with its path and code; exactly one
+warning per check; `ENOENT` stays silent; the message reaches stdout when driven through the
+real hook process with a locked path; and — the case that nearly shipped backwards — a marker
+locked *beside a readable one* announces NOTHING, because memory was still found and upkeep is
+genuinely on. Announcing there would have replaced a silent wrong state with a loud one, which
+is worse; the gate is negative-controlled (remove it and the suite fails).
 
 **`kb coverage` no longer warns about entries that were never under the citation rule.** It
 counted steward sections and archived digests as "uncited", which on this repo would have
@@ -164,8 +167,8 @@ entry points (pull hook, scribe, session-start, MCP trace) are driven against a 
 substrate-but-no-memory and asserted to leave the directory untouched — then the same project
 gets a seed and every one of them starts working.
 
-Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 54 (kb-session)
-+ 38 (kb-mcp) + **33 (kb-footprint, new invariant suite)** = 458. kb now carries three hooks.
+Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 56 (kb-session)
++ 38 (kb-mcp) + **33 (kb-footprint, new invariant suite)** = 460. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·
