@@ -130,15 +130,19 @@ rather than from memory.
 of review each found a NEW write path that no per-surface test could see — the scribe's state
 file, then kb-pull's trace, then the MCP server's trace, which no hook test can reach because
 the server is not a hook. Per-surface tests cannot catch "some other surface writes", so the
-invariant is now enforced by ENUMERATION: every disk-write call site in shipped source must
-appear in an audit table with a stated reason it cannot touch an unseeded project, and a new
-write anywhere fails the suite until someone writes that reason down. Behaviourally, all four
+invariant is now enforced by ENUMERATION at two levels: every file that IMPORTS a filesystem
+module must be listed with what it uses it for (which catches a destructured import or the
+promises API that a call-shape regex would miss), and every disk-write call site must appear
+in an audit table with a stated reason it cannot touch an unseeded project. The guard was
+negative-controlled — smuggling in a destructured , an  import,
+and an extra write inside an already-audited file each made the suite fail, and its own
+staleness check caught a wrong entry in the first draft of the list. Behaviourally, all four
 entry points (pull hook, scribe, session-start, MCP trace) are driven against a project with
 substrate-but-no-memory and asserted to leave the directory untouched — then the same project
 gets a seed and every one of them starts working.
 
 Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session)
-+ 38 (kb-mcp) + **16 (kb-footprint, new invariant suite)** = 433. kb now carries three hooks.
++ 38 (kb-mcp) + **18 (kb-footprint, new invariant suite)** = 435. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·

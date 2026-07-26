@@ -59,6 +59,25 @@ const AUDITED = {
 
 const WRITE_RX = /\bfs\.(mkdirSync|writeFileSync|appendFileSync|unlinkSync|renameSync|copyFileSync|rmSync|createWriteStream)\b/g;
 
+// The call-site regex only sees `fs.writeX(...)`. A destructured import
+// (`const { writeFileSync } = require('fs')`) or the promises API would slip past it
+// entirely — so the audit ALSO tracks which files import a filesystem module at all.
+// A new file that can touch disk must be listed here before its writes are counted,
+// which closes the hole rather than trusting the call shape.
+const FS_IMPORT_RX = /require\(\s*['"](?:node:)?fs(?:\/promises)?['"]\s*\)/;
+
+// Files allowed to import fs at all, with what they use it for. Read-only importers are
+// listed too: the point is that NOTHING touches disk without an explicit entry.
+const FS_IMPORTERS = {
+  'mcp/kb-mcp-server.js': 'writeTrace (gated) — the only writer here',
+  'hooks/scripts/kb-scribe-stop.js': 'state read/write (gated) + transcript read',
+  'hooks/scripts/kb-session-start.js': 'digest rotation (marker-implied) + home-side cue registry',
+  'hooks/scripts/kb-pull.js': 'reads the session digest only',
+  'lib/config.js': 'reads shipped defaults + project config',
+  'lib/sources/markdown-dir.js': 'reads markdown stores',
+  'lib/presence.js': 'stats marker paths — reads only',
+};
+
 function sourceFiles(dir) {
   const out = [];
   for (const dirent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -72,14 +91,26 @@ function sourceFiles(dir) {
 
 {
   const unexplained = [];
+  const unlistedImporters = [];
   const counts = {};
   for (const file of sourceFiles(PLUGIN)) {
     const rel = path.relative(PLUGIN, file).split(path.sep).join('/');
-    const hits = (fs.readFileSync(file, 'utf8').match(WRITE_RX) || []).length;
+    const src = fs.readFileSync(file, 'utf8');
+
+    if (FS_IMPORT_RX.test(src) && !FS_IMPORTERS[rel]) unlistedImporters.push(rel);
+
+    const hits = (src.match(WRITE_RX) || []).length;
     if (!hits) continue;
     counts[rel] = hits;
     if (!AUDITED[rel]) unexplained.push(`${rel} (${hits} write call(s))`);
   }
+
+  check(`every file importing fs is listed${unlistedImporters.length ? ` — UNLISTED: ${unlistedImporters.join(', ')}` : ''}`,
+    unlistedImporters.length === 0);
+  check('the fs-importer list is not stale (every listed file still exists and imports fs)',
+    Object.keys(FS_IMPORTERS).every((rel) => {
+      try { return FS_IMPORT_RX.test(fs.readFileSync(path.join(PLUGIN, rel), 'utf8')); } catch (_e) { return false; }
+    }));
 
   check(`every writing file is audited${unexplained.length ? ` — UNAUDITED: ${unexplained.join(', ')}` : ''}`,
     unexplained.length === 0);
