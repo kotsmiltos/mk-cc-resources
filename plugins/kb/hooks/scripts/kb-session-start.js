@@ -25,12 +25,19 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { hasCuratedMemory, hasSeedableSubstrate } = require('../../lib/presence');
 
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const ARCHIVE_DIR_REL = path.join('.claude', 'kb', 'digests');
-const CUE_MARKER_REL = path.join('.claude', 'kb', '.seed-cued');
+
+// The "already offered" record lives in the USER's home, keyed by project path — not
+// in the project. A cue is a fact about this machine's owner ("you have been asked
+// about that repo"), and writing a marker into a project that declined to keep a
+// knowledge base would be the very footprint the presence rule exists to prevent.
+// Same shape as the steward's fleet registry.
+const CUE_REGISTRY_REL = path.join('.claude', 'kb', 'cued.json');
 
 // SessionStart `source` values, per the hooks reference (code.claude.com/docs/en/hooks —
 // SessionStart): startup | resume | clear | compact | fork. These three mean THE SAME
@@ -108,11 +115,32 @@ function rotateDigest(root) {
   return path.relative(root, target).split(path.sep).join('/');
 }
 
-function cueOnce(root) {
-  const marker = path.join(root, CUE_MARKER_REL);
-  if (fs.existsSync(marker)) return false;
-  fs.mkdirSync(path.dirname(marker), { recursive: true });
-  fs.writeFileSync(marker, `cued ${new Date().toISOString()}\n`);
+/** Path of the home-side registry of projects already offered a seed. */
+function cueRegistryPath(home) {
+  return path.join(home || os.homedir(), CUE_REGISTRY_REL);
+}
+
+/**
+ * Offer the seed cue at most once per project, recording it in the home registry.
+ * Returns true the first time only. A registry that cannot be read is treated as
+ * empty (offer again) but a registry that cannot be WRITTEN suppresses the cue —
+ * better silent than repeating every session forever.
+ */
+function cueOnce(root, home) {
+  const file = cueRegistryPath(home);
+  let seen = {};
+  try {
+    seen = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!seen || typeof seen !== 'object') seen = {};
+  } catch (_e) { /* absent or malformed -> treat as empty */ }
+  if (seen[root]) return false;
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    seen[root] = new Date().toISOString();
+    fs.writeFileSync(file, `${JSON.stringify(seen, null, 2)}\n`);
+  } catch (_e) {
+    return false; // cannot remember the offer -> do not make it
+  }
   return true;
 }
 
@@ -138,7 +166,7 @@ async function main() {
     }
   }
 
-  if (!hasCuratedMemory(root) && hasSeedableSubstrate(root) && cueOnce(root)) {
+  if (!hasCuratedMemory(root) && hasSeedableSubstrate(root) && cueOnce(root, payload.home)) {
     out.push('<kb-session>This project has no knowledge base yet. Run /kb-seed once to extract what it already knows (decisions, rejected approaches, conventions) — after that the KB maintains itself.</kb-session>');
   }
 
@@ -155,4 +183,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { rotateDigest, cueOnce, stampFor, CONTINUING_SOURCES, DIGEST_REL, ARCHIVE_DIR_REL, CUE_MARKER_REL };
+module.exports = {
+  rotateDigest, cueOnce, cueRegistryPath, stampFor,
+  CONTINUING_SOURCES, DIGEST_REL, ARCHIVE_DIR_REL, CUE_REGISTRY_REL,
+};

@@ -65,6 +65,15 @@ function isMachineText(prompt) {
   return MACHINE_PREFIXES.some((p) => prompt.startsWith(p));
 }
 
+/** Does this project keep a curated memory? Gates every side effect this hook has. */
+function hasMemory(root) {
+  try {
+    return require('../../lib/presence').hasCuratedMemory(root);
+  } catch (_e) {
+    return false; // unknown -> behave as the quiet, footprint-free case
+  }
+}
+
 /** Pull config knobs from the merged kb config; absent/broken -> defaults. */
 function pullConfig(config) {
   const p = config && typeof config.pull === 'object' && config.pull ? config.pull : {};
@@ -105,9 +114,15 @@ function digestBlock(root) {
   ].join('\n');
 }
 
-/** Append a fire-record to the same trace the MCP server writes. Best-effort. */
+/**
+ * Append a fire-record to the same trace the MCP server writes. Best-effort, and only
+ * where the project keeps a curated memory: a hook that leaves files behind in every
+ * repo a session happens to visit is a footprint, not telemetry.
+ */
 function trace(root, record) {
   try {
+    const { hasCuratedMemory } = require('../../lib/presence');
+    if (!hasCuratedMemory(root)) return;
     const { writeTrace } = require('../../mcp/kb-mcp-server');
     writeTrace(root, { t: new Date().toISOString(), tool: 'kb-pull-hook', ...record });
   } catch (_e) { /* telemetry never blocks */ }
@@ -139,11 +154,15 @@ async function main() {
 
   const digest = digestBlock(root);
   if (digest) out.push(digest);
-  else if (strong.length) {
-    // Bootstrap: without this line the digest can never come into existence —
-    // the maintenance nudge lives INSIDE the injected digest, which requires a
-    // digest. Ride the hint injection (never a standalone fire) so it costs no
-    // extra injections and stops appearing the moment the file exists.
+  else if (strong.length && hasMemory(root)) {
+    // Bootstrap: without this line the digest can never come into existence — the
+    // maintenance nudge lives INSIDE the injected digest, which requires a digest.
+    // Ride the hint injection (never a standalone fire) so it costs no extra
+    // injections and stops appearing the moment the file exists.
+    //
+    // Gated on presence: a digest is itself a memory marker, so nudging an UNSEEDED
+    // project to create one would switch the blocking scribe on without a seed —
+    // exactly the "seeding is the on-switch" rule this plugin promises.
     out.push(`(no session digest yet — create ${DIGEST_REL} at the first significant decision; it becomes this session's rolling short-term memory, injected every prompt)`);
   }
 

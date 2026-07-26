@@ -38,8 +38,8 @@ to prevent.
 ## Install
 
 ```bash
-claude plugin install kb            # the plugin itself: MCP server + the three hooks
-                                    # (the mk-cc-all bundle carries only the SKILLS)
+claude plugin install kb@mk-cc-resources   # the plugin itself: MCP server + three hooks
+                                           # (the mk-cc-all bundle carries only the SKILLS)
 ```
 
 No dependencies — Node.js only, nothing to build.

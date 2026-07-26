@@ -67,14 +67,15 @@ hooks/scripts/kb-scribe-stop.js # the ENFORCED write side: on a producing turn, 
                              #   PRESENCE-gated — silent where no curated memory exists
 hooks/scripts/kb-session-start.js # keeps "now" honest: archives the previous sitting's
                              #   digest to .claude/kb/digests/ (still indexed, honestly
-                             #   dated) on startup/clear — resume/compact keep it; plus a
-                             #   ONE-time /kb-seed cue in a seedable-but-unseeded project
+                             #   dated) on startup/clear — resume/compact/fork keep it; plus a
+                             #   ONE-time /kb-seed cue (remembered in ~/.claude/kb/cued.json,
+                             #   never in the project). Presence-gated like the others.
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 254 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 34 checks — guards, floor, digest, traces, precision fixture
-tests/kb-session.test.js     # 42 checks — presence rule, rotation + loss-safety, cue
+tests/kb.test.js             # 256 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 37 checks — guards, floor, digest, traces, precision fixture
+tests/kb-session.test.js     # 46 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 40 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
@@ -104,7 +105,12 @@ Both markdown surfaces teach the **narrowing loop** (re-query on the hint before
 the **citation rule** (name the `path`). If they ever diverge, the skill wins — it is the one
 that fires unprompted.
 
-Since 0.5.0 kb CARRIES A HOOK (kb-pull) — standalone install required for hook+MCP; the bundle ships only the skills.
+Since 0.7.0 kb CARRIES THREE HOOKS — kb-pull (UserPromptSubmit), kb-scribe (Stop),
+kb-session-start (SessionStart) — so a standalone install is required for the hooks + MCP
+server; the bundle ships only the skills. **Hooks register at install time**, so an older
+install keeps its old behaviour regardless of this checkout: `claude plugin update
+kb@mk-cc-resources`, restart, then confirm a `kb-session-start` line in
+`.claude/kb/trace.jsonl`.
 
 ## Conventions
 
@@ -162,7 +168,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
   resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
-  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 254 + 34 + 40 + 42 + 35 tests.
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 35 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for

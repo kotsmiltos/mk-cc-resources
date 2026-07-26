@@ -174,24 +174,36 @@ function runHook(cwd, payload) {
 // ---------- e2e: the one-time seed cue ----------
 
 {
+  // A fake home keeps the registry out of the real one — the cue must be remembered
+  // per machine-owner, never by leaving a file in the project.
+  const home = tmp('kb-cue-home-');
   const root = tmp('kb-cue-');
   fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# a real project\n');
 
-  const first = runHook(root, { source: 'startup' });
+  const first = runHook(root, { source: 'startup', home });
   check('unseeded project with substrate gets the cue', first.stdout.includes('/kb-seed'));
+  check('the cue leaves NO file in the project', !fs.existsSync(path.join(root, '.claude')));
+  check('the cue is remembered in the home registry', fs.existsSync(session.cueRegistryPath(home)));
+  check('the registry records the project path',
+    JSON.parse(fs.readFileSync(session.cueRegistryPath(home), 'utf8'))[root] !== undefined);
 
-  const second = runHook(root, { source: 'startup' });
+  const second = runHook(root, { source: 'startup', home });
   check('the cue fires ONCE, not every session', second.stdout === '');
 
+  const other = tmp('kb-cue-other-');
+  fs.writeFileSync(path.join(other, 'README.md'), '# another project\n');
+  check('a DIFFERENT project still gets its own cue',
+    runHook(other, { source: 'startup', home }).stdout.includes('/kb-seed'));
+
   const bare = tmp('kb-cue-bare-');
-  const r = runHook(bare, { source: 'startup' });
+  const r = runHook(bare, { source: 'startup', home });
   check('a project with no substrate gets no cue', r.stdout === '');
 
   const seeded = tmp('kb-cue-seeded-');
   fs.writeFileSync(path.join(seeded, 'CLAUDE.md'), '# p\n');
   fs.mkdirSync(path.join(seeded, '.claude', 'kb', 'extracted'), { recursive: true });
   fs.writeFileSync(path.join(seeded, '.claude', 'kb', 'extracted', 'e.md'), '# e\n');
-  const r2 = runHook(seeded, { source: 'startup' });
+  const r2 = runHook(seeded, { source: 'startup', home });
   check('an already-seeded project is never cued', r2.stdout === '');
 
   const noPayload = runHook(root, {});

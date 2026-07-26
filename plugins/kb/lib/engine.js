@@ -37,6 +37,12 @@ const MIN_DISTINCT_TO_SUGGEST = 2;
 // entries the statistic is meaningless, so the rule simply does not apply.
 const GENERIC_MIN_ENTRIES = 8;
 const GENERIC_DF_FRACTION = 0.2;
+// …and an ABSOLUTE floor beside the fraction. In a small knowledge base a fifth of
+// the corpus is two or three entries, which is what a genuinely shared SUBJECT looks
+// like ("the ranker" in an 11-entry KB) — calling that vocabulary would silence the
+// topic, and silence is the invisible failure. A word has to be common in both senses
+// before it loses the power to say what an entry is about.
+const GENERIC_MIN_DF = 4;
 
 /**
  * Which of the query's terms are so common in this corpus's titles/themes that they
@@ -58,7 +64,7 @@ function genericSubjectTerms(entries, terms, ranker) {
   }
   const limit = entries.length * GENERIC_DF_FRACTION;
   const generic = new Set();
-  for (const [term, n] of df) if (n > limit) generic.add(term);
+  for (const [term, n] of df) if (n >= GENERIC_MIN_DF && n > limit) generic.add(term);
   return generic.size ? generic : null;
 }
 
@@ -196,5 +202,5 @@ function facetCounts(entries) {
 
 module.exports = {
   run, facetCounts, compareHits, genericSubjectTerms,
-  NARROWABLE_FACETS, MAX_HINT_VALUES, GENERIC_MIN_ENTRIES, GENERIC_DF_FRACTION,
+  NARROWABLE_FACETS, MAX_HINT_VALUES, GENERIC_MIN_ENTRIES, GENERIC_DF_FRACTION, GENERIC_MIN_DF,
 };

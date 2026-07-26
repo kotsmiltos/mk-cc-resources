@@ -40,7 +40,8 @@ between 0.6.0 and that sentence; all three are closed.
   digest to `.claude/kb/digests/digest-<stamp>.md` (a new shipped source: episodic/session, so
   past sittings stay queryable) and starts the new one clean. `resume`, `compact` and `fork` are the
   same sitting continuing, so they keep the live digest. A seedable-but-unseeded project also
-  gets exactly ONE cue to run /kb-seed (a marker file stops it repeating).
+  gets exactly ONE cue to run /kb-seed, remembered in a home-side registry so the project
+  itself stays untouched.
 
 - **Scan mode for the hint path** (found by walking the lifecycle end-to-end, not by a test):
   a conversational prompt whose SUBJECT the KB held scored *below* the hint floor, because
@@ -76,11 +77,14 @@ unwritable archive location.
 - *A corpus's own vocabulary could pose as a subject.* A project whose entries are mostly
   "Session notes …" would surface all of them for any prompt containing "session". The engine
   now computes, per query, which of the prompt's terms appear in more than a fifth of the
-  corpus's titles/themes (`genericSubjectTerms`, needs ≥8 entries for the statistic to mean
-  anything) and tells the ranker those words may still score but may not establish aboutness.
-  Deliberate queries are untouched — a query means what it says. Fixture proof: a prompt of
-  pure corpus vocabulary goes quiet, while the same prompt with one discriminative word still
-  finds its entry and does not drag the generic ones along.
+  corpus's titles/themes (`genericSubjectTerms`) and tells the ranker those words may still
+  score but may not establish aboutness. Deliberate queries are untouched — a query means what
+  it says. Two floors keep the rule from eating real topics: the statistic needs ≥8 entries at
+  all, and a term must appear in at least 4 of them *as well as* clearing the fifth-of-corpus
+  fraction. That second floor came from a boundary test that caught the rule silencing a
+  genuine subject shared by 3 entries in an 11-entry KB — silence being the invisible failure.
+  Fixture proof: a prompt of pure corpus vocabulary goes quiet, while the same prompt with one
+  discriminative word still finds its entry and does not drag the generic ones along.
 
 Measured on this repo's 81-entry corpus (7 prompts): 3 fire — both on-topic prompts hit their
 subject, chat and both unrelated prompts stay quiet, and "can you check the session again"
@@ -88,24 +92,37 @@ returns three session-scope entries (defensible for an ambiguous prompt rather t
 wrong). The prompt shapes are now a **fixture test**, not a note — precision is a
 regression gate. `pull.minScore` / `pull.maxHints` remain per-project knobs.
 
-**Two footprint/ergonomics defects fixed** (both found by the lens, both invisible to stdout
-assertions): the scribe wrote `.claude/kb/scribe-state.json` into *every* directory a session
-ended in — including projects it is meant to stay silent in — because state was persisted
-before the enabled check; and `kb coverage` treated steward sections and archived digests as
-"uncited", which would have printed a ~55-line unfixable warning on this repo and invited a
-seeder to edit files the steward owns. Citation warnings are now scoped to the stores actually
-under the `Extracted-from:` contract (`CITING_SOURCES`), and the zero-citation message no
-longer claims a project is unseeded when its entries simply predate the convention. The
-SessionStart hook also traces its fires to `.claude/kb/trace.jsonl` — so "is this actually
-wired in a live session?" is answerable from disk.
+**Footprint: every side effect is presence-gated.** This took two rounds — the first fixed only
+the scribe and was reported as complete, which was wrong. Three paths were leaving files in
+projects that keep no knowledge base: the scribe persisted state before checking whether it was
+enabled; kb-pull traced its fires wherever it hinted (and it can hint from ambient sources like
+`CLAUDE.md`); and the one-time seed cue dropped a marker into any repo carrying a README. Now:
+the scribe writes state only where it is active, kb-pull traces only where a curated memory
+exists, and the cue is remembered in a HOME registry (`~/.claude/kb/cued.json`, keyed by project
+path — the steward-fleet pattern) so a project that declined a knowledge base is never written
+into at all. The digest bootstrap nudge is gated for a subtler reason: a digest is itself a
+presence marker, so nudging an unseeded project to create one would have switched the blocking
+scribe on without a seed — breaking the "seeding is the on-switch" promise from the inside.
 
-Tests: 254 (kb) + 34 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 42 (kb-session,
-new suite) + 35 (kb-mcp) = 405. kb now carries three hooks.
+**`kb coverage` no longer warns about entries that were never under the citation rule.** It
+counted steward sections and archived digests as "uncited", which on this repo would have
+printed a ~55-line unfixable warning at the top of every seed run — and invited an obedient
+seeder to go edit files the steward owns. Citation warnings now scope to the stores actually
+under the `Extracted-from:` contract (`CITING_SOURCES`), and the zero-citation message no longer
+claims a project is unseeded when its entries simply predate the convention.
 
-**Verified end-to-end in a throwaway project** (one run, six stages): unseeded → one cue, scribe
-silent · seeded → scribe fires, cue never repeats · natural prompt → hint fires + digest
-bootstrap nudge · digest written → injected with its content · next session → rotated, and the
-past sitting still answers a query · coverage reports the mined substrate.
+All three hooks trace their fires to `.claude/kb/trace.jsonl`, so "is this actually wired in a
+live session?" is answerable from disk rather than from memory.
+
+Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session,
+new suite) + 35 (kb-mcp) = 414. kb now carries three hooks.
+
+**Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
+stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·
+seeded → scribe blocks, cue never repeats · natural prompt → hint fires + digest bootstrap
+nudge · digest written → injected with its content · next session → rotated, and the past
+sitting still answers a query · coverage reports the mined substrate, trace.jsonl records the
+fires.
 
 ## 0.6.0 — 2026-07-25
 

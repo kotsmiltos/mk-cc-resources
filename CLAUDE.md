@@ -184,20 +184,26 @@ plugins/
                             #   injection, machine-text guarded, fail-open, config
                             #   off-switch), per-call JSONL traces (.claude/kb/trace.jsonl),
                             #   pattern split mode for non-heading ledgers, seed
-                            #   depth+autonomy. kb now CARRIES THREE HOOKS (kb-pull UserPromptSubmit +
-                            #   kb-scribe Stop — the enforced write side: a producing turn
-                            #   cannot yield until the session distills it into the digest and
-                            #   graduates durable items to captures/ or .steward/inbox/) —
-                            #   standalone install
-                            #   for hook+MCP; bundle ships only its skills.
+                            #   depth+autonomy. kb CARRIES THREE HOOKS: kb-pull (UserPromptSubmit
+                            #   — subject-matched hints + session-digest injection), kb-scribe
+                            #   (Stop — the enforced write side: a producing turn cannot yield
+                            #   until the session distills it into the digest and graduates
+                            #   durable items to captures/ or .steward/inbox/), and
+                            #   kb-session-start (SessionStart — archives the previous sitting's
+                            #   digest, one-time seed cue). All three are PRESENCE-gated: a
+                            #   project keeping no curated memory is never blocked and never
+                            #   written into. Hooks register at INSTALL time — update the plugin
+                            #   + restart, then check .claude/kb/trace.jsonl. Standalone install
+                            #   for hooks+MCP; bundle ships only its skills.
                             #   Two ORTHOGONAL axes, never collapsed into one enum:
                             #   KIND (which catalog — episodic/semantic/procedural/working, the
                             #   CoALA taxonomy, arXiv 2309.02427) x CASTE (which scope tier,
                             #   ORDERED narrow->wide — session/thread/project/fleet/owner; the
                             #   ordering is the only thing engine logic knows, which is what makes
                             #   `--caste X --wider` work without naming a tier in code).
-                            #   Read-only in 0.1.0 — no writes, no hooks, no MCP, no protocol
-                            #   commitment until retrieval quality is proven by hand.
+                            #   The ENGINE stays read-only permanently; writes come from the
+                            #   skills + hooks (extracted/, captures/, session digest) and are
+                            #   indexed like any other markdown store.
     .claude-plugin/plugin.json
     defaults/config.json    # shipped axes + the source set for this ecosystem (steward
                             #   model/log/inbox, handoffs, kickoff prompts, CLAUDE.md).
@@ -239,10 +245,10 @@ plugins/
                             #   steward-MODEL changes route to .steward/inbox/ instead (recompute
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 254 checks, own temp fixtures (never reads the host repo)
+    tests/kb.test.js        # 256 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
-    tests/kb-pull.test.js   # 34 checks — hook guards, score floor, digest, trace
-    tests/kb-session.test.js # 42 checks — presence, rotation + loss-safety, seed cue
+    tests/kb-pull.test.js   # 37 checks — hook guards, score floor, digest, trace
+    tests/kb-session.test.js # 46 checks — presence, rotation + loss-safety, seed cue
     tests/kb-scribe.test.js # 40 checks — the enforced write side (block, fire-once, turn)
 ```
 

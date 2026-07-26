@@ -144,6 +144,25 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('and the generic entries do not ride along', !mixed.includes('Session notes and checks'));
 }
 
+// ---- an unseeded project is never written into ----
+
+{
+  // Sources like CLAUDE.md and .claude/prompts exist in projects that keep NO curated
+  // memory, so hints can fire there. Nothing about that may leave a file behind, and the
+  // digest nudge must not appear — creating a digest would switch the blocking scribe on
+  // in a project that was never seeded.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-unseeded-'));
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'),
+    '# Project\n\n## Porter ferry caste\n\nThe porter ferry caste was rejected for transfers.\n');
+
+  const r = runHook(root, JSON.stringify({ prompt: 'what happened with the porter ferry caste for transfers?' }));
+  check('unseeded project: hints may still fire (read-only)', r.status === 0);
+  check('unseeded project: NO bootstrap nudge (it would switch upkeep on)',
+    !r.stdout.includes('no session digest yet'));
+  check('unseeded project: nothing is written to disk',
+    !fs.existsSync(path.join(root, '.claude', 'kb')));
+}
+
 // ---- e2e: digest bootstrap line ----
 
 {

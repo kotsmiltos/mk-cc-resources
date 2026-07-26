@@ -238,6 +238,20 @@ check('limit falls back to default when absent', clampLimit(undefined, undefined
   check('below the entry floor the statistic does not apply',
     engine.genericSubjectTerms(many.slice(0, 3), termOverlap.tokenize('session'), termOverlap) === null);
   check('no terms means no rule', engine.genericSubjectTerms(many, [], termOverlap) === null);
+
+  // BOUNDARY: a small KB where several entries genuinely share the subject. At N=11 the
+  // 20%-of-titles rule alone would call a 3-entry topic "vocabulary" and go silent —
+  // silence being the invisible failure. The absolute floor keeps a real topic findable.
+  const smallKb = [];
+  for (let i = 0; i < 8; i += 1) smallKb.push(mkT(i, `Sprint note ${i}`));
+  for (let i = 0; i < 3; i += 1) smallKb.push(mkT(20 + i, `Ranker scoring change ${i}`));
+  const smallGeneric = engine.genericSubjectTerms(smallKb, termOverlap.tokenize('ranker'), termOverlap);
+  check('a real subject shared by 3 of 11 entries is NOT called vocabulary',
+    !smallGeneric || !smallGeneric.has(termOverlap.stemToken('ranker')));
+  check('and such a query still scores in scan mode',
+    termOverlap.score(smallKb[8], termOverlap.tokenize('ranker scoring'), {
+      scan: true, genericSubjectTerms: smallGeneric,
+    }) > 0);
   check('themes count as subject text for the statistic',
     engine.genericSubjectTerms(
       [...Array(10)].map((_, i) => mkT(i, `entry ${i}`, ['digest'])),
