@@ -144,8 +144,14 @@ function sourceFiles(dir) {
   }
   check('the write-call detector catches a plain fs write',
     (("fs.writeFileSync('a','b')").match(WRITE_RX) || []).length === 1);
-  check('the write-call detector counts every write kind',
-    (("fs.mkdirSync(d); fs.appendFileSync(f,x); fs.unlinkSync(f); fs.rmSync(p)").match(WRITE_RX) || []).length === 4);
+  // Every alternative in WRITE_RX gets its own probe: without this, dropping (say)
+  // `renameSync` from the pattern would still pass a coarse "counts 4 writes" check —
+  // the comfort-blanket failure this block exists to avoid.
+  for (const kind of ['mkdirSync', 'writeFileSync', 'appendFileSync', 'unlinkSync',
+    'renameSync', 'copyFileSync', 'rmSync', 'createWriteStream']) {
+    check(`the write-call detector still knows about fs.${kind}`,
+      ((`fs.${kind}(a, b)`).match(WRITE_RX) || []).length === 1);
+  }
   check('ordinary code is not flagged as a write',
     (("const x = fs.readFileSync(f); if (fs.existsSync(p)) {}").match(WRITE_RX) || []).length === 0);
   check('ordinary code is not flagged as an fs import', !FS_IMPORT_RX.test("const path = require('path');"));

@@ -35,6 +35,9 @@ const MEMORY_MARKERS = [
 const SUBSTRATE_MARKERS = [['.git'], ['CLAUDE.md'], ['README.md'], ['docs'], ['design']];
 
 function existsAny(root, markers) {
+  // One warning per call, not one per marker: these run inside hooks that fire on every
+  // prompt, so a persistently locked path must not turn into five lines of noise a turn.
+  let warned = false;
   for (const parts of markers) {
     const p = path.join(root, ...parts);
     try {
@@ -52,7 +55,8 @@ function existsAny(root, markers) {
       // the path — would otherwise read as "this project keeps no memory" and quietly
       // switch upkeep off in a project that HAS one. That is the plugin's own
       // "nothing fails silently" rule, and a swallowed EPERM breaks it invisibly.
-      if (err && err.code !== 'ENOENT') {
+      if (err && err.code !== 'ENOENT' && !warned) {
+        warned = true;
         process.stderr.write(`[kb] presence check could not read ${p}: ${err.code || err.message}\n`);
       }
     }

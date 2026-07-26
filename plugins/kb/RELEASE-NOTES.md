@@ -120,8 +120,10 @@ lock, a permission denial, or an antivirus/sync tool holding `.claude/kb/extract
 "this project keeps no memory" — switching upkeep off in a project that HAS one, with no
 warning anywhere. That contradicted the plugin's own "nothing fails silently" rule from the
 inside. `ENOENT` stays silent (the marker simply is not there); anything else now writes one
-stderr line naming the path and the error code. Verified by forcing an `EPERM`: the verdict is
-unchanged and the warning appears.
+stderr line naming the path and the error code — **one per check, not one per marker**, since
+this runs inside hooks that fire on every prompt and a persistently locked path must not become
+five lines of noise a turn. Verified by forcing an `EPERM`: the verdict is unchanged, exactly
+one warning appears.
 
 **`kb coverage` no longer warns about entries that were never under the citation rule.** It
 counted steward sections and archived digests as "uncited", which on this repo would have
@@ -153,7 +155,7 @@ substrate-but-no-memory and asserted to leave the directory untouched — then t
 gets a seed and every one of them starts working.
 
 Tests: 256 (kb) + 37 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 46 (kb-session)
-+ 38 (kb-mcp) + **26 (kb-footprint, new invariant suite)** = 443. kb now carries three hooks.
++ 38 (kb-mcp) + **33 (kb-footprint, new invariant suite)** = 450. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project, re-run against the final code** (one run, six
 stages): unseeded → one cue, scribe silent, AND no file written anywhere in the project ·

@@ -78,7 +78,7 @@ tests/kb-pull.test.js        # 37 checks — guards, floor, digest, traces, prec
 tests/kb-session.test.js     # 46 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 40 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 38 checks — handler layer + stdio e2e + gated traces
-tests/kb-footprint.test.js   # 26 checks — THE footprint invariant: fs-import + write-site
+tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
                              #   audit (negative-controlled) +
                              #   all four entry points silent in an unseeded project
 ```
@@ -171,7 +171,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
   resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
-  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 38 + 26 tests.
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 256 + 37 + 40 + 46 + 38 + 33 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for
