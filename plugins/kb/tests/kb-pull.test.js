@@ -94,6 +94,56 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('an off-topic prompt of the same length stays silent', r2.stdout === '');
 }
 
+// ---- precision fixture: the measurement, as a regression gate ----
+//
+// A one-off measurement whose inputs are gone cannot be re-run. This pins the prompt
+// shapes that matter — on-topic fires, chat/unrelated stay quiet — and records the
+// KNOWN limit of a lexical ranker: a prompt built from words the corpus uses in its
+// titles will fire. That is not a bug to hide; it is the evidence the characterization
+// pass (rung 2) is gated on, so the test asserts it explicitly rather than pretending.
+
+{
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-precision-'));
+  const dir = path.join(root, '.claude', 'kb', 'extracted');
+  fs.mkdirSync(dir, { recursive: true });
+  const put = (name, body) => fs.writeFileSync(path.join(dir, name), body);
+  put('20260701-rejected-porter-ferry.md',
+    '---\nkind: semantic\ncaste: project\nthemes: [rejected]\n---\n# Rejected: a porter ferry caste for transfers\n\nSuperseded by the handoff layer.\n');
+  put('20260702-test-convention.md',
+    '---\nkind: procedural\ncaste: project\n---\n# Test convention: bare node, no framework\n\nEvery suite runs with plain node and its own fixtures.\n');
+  // A realistic corpus shape: many entries sharing the project's own vocabulary in
+  // their titles ("session", "notes", "checks"). That vocabulary must NOT be what
+  // makes an entry count as the subject of a prompt — and the ubiquity rule needs a
+  // corpus large enough for the statistic to mean something.
+  for (let i = 1; i <= 9; i += 1) {
+    put(`2026070${i > 9 ? 9 : 3}-session-notes-${i}.md`,
+      `---\nkind: episodic\ncaste: project\n---\n# Session notes and checks ${i}\n\n${'progress general things checking decision reasons performance again '.repeat(20)}\n`);
+  }
+
+  const cases = [
+    ['on-topic: a past decision', 'why did we reject the porter ferry caste for transfers?', true],
+    ['on-topic: a convention', 'what is the test convention for js plugins here', true],
+    ['chat', 'ok thanks, that looks good to me', false],
+    ['unrelated tech', 'how do i center a div in css', false],
+    ['unrelated life', 'remind me to buy milk on the way home', false],
+    ['long body words only (no subject)', 'checking in on general progress and performance things', false],
+  ];
+  for (const [label, prompt, expectFire] of cases) {
+    const out = runHook(root, JSON.stringify({ prompt })).stdout;
+    check(`precision: ${label} -> ${expectFire ? 'fires' : 'quiet'}`, out.includes('<kb-hints>') === expectFire);
+  }
+
+  // The case the ubiquity rule exists for: a prompt made of the corpus's OWN title
+  // vocabulary ("session", "notes", "checks") must not drag in every entry that uses it.
+  const generic = runHook(root, JSON.stringify({ prompt: 'can you check the session notes again for me' })).stdout;
+  check('a prompt of corpus-vocabulary words stays quiet (ubiquity rule)', generic === '');
+
+  // A discriminative word still fires even though it sits beside generic ones.
+  const mixed = runHook(root, JSON.stringify({ prompt: 'check the session notes about that porter ferry idea' })).stdout;
+  check('a real subject beside generic words still fires', mixed.includes('porter ferry'));
+  check('and the generic entries do not ride along', !mixed.includes('Session notes and checks'));
+}
+
 // ---- e2e: digest bootstrap line ----
 
 {

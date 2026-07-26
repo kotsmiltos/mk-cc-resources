@@ -239,11 +239,11 @@ plugins/
                             #   steward-MODEL changes route to .steward/inbox/ instead (recompute
                             #   rule — a record of deciding is a capture; the new plan is steward's)
     commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 240 checks, own temp fixtures (never reads the host repo)
+    tests/kb.test.js        # 254 checks, own temp fixtures (never reads the host repo)
     tests/kb-mcp.test.js    # 35 checks — tool contract + handlers + stdio e2e + traces
-    tests/kb-pull.test.js   # 25 checks — hook guards, score floor, digest, trace
-    tests/kb-session.test.js # 39 checks — presence, rotation + loss-safety, seed cue
-    tests/kb-scribe.test.js # 39 checks — the enforced write side (block, fire-once, turn)
+    tests/kb-pull.test.js   # 34 checks — hook guards, score floor, digest, trace
+    tests/kb-session.test.js # 42 checks — presence, rotation + loss-safety, seed cue
+    tests/kb-scribe.test.js # 40 checks — the enforced write side (block, fire-once, turn)
 ```
 
 **kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions

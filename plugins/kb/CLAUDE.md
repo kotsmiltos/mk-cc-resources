@@ -26,7 +26,10 @@ lib/
                              #   the top-up map a re-seed reads first)
   presence.js                # the self-activation rule: does this project keep curated
                              #   memory? (empty dirs and ambient files do NOT count)
-  engine.js                  # filter -> rank -> narrowing hints. PURE: no disk/net/clock
+  engine.js                  # filter -> rank -> narrowing hints. PURE: no disk/net/clock.
+                             #   Owns the scan-mode UBIQUITY rule: per query it computes which
+                             #   prompt words are this corpus's own title vocabulary (>1/5 of
+                             #   entries, needs >=8) so they cannot pose as a subject
   rankers/
     index.js                 # ranker registry (scoring extension surface)
     term-overlap.js          # default: deterministic lexical, title/theme weighted; 0.4.0
@@ -69,10 +72,10 @@ hooks/scripts/kb-session-start.js # keeps "now" honest: archives the previous si
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 240 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 25 checks — hook guards, floor, digest, traces
-tests/kb-session.test.js     # 39 checks — presence rule, rotation + loss-safety, cue
-tests/kb-scribe.test.js      # 39 checks — worthiness, fire-once, transcript turn, e2e block
+tests/kb.test.js             # 254 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 34 checks — guards, floor, digest, traces, precision fixture
+tests/kb-session.test.js     # 42 checks — presence rule, rotation + loss-safety, cue
+tests/kb-scribe.test.js      # 40 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 35 checks — handler layer + stdio e2e + traces
 ```
 
@@ -159,7 +162,7 @@ run the loop, and a false empty reads as "we know nothing about that."
   ambient files excluded); a SessionStart hook rotates the digest into `.claude/kb/digests/`
   (new episodic/session source) so a new sitting never inherits yesterday's "now", keeps it on
   resume/compact/FORK (the documented continuing sources — only startup/clear rotate), verifies
-  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 240 + 25 + 39 + 39 + 35 tests.
+  the archive on disk before deleting the live file, and cues an unseeded project exactly once. 254 + 34 + 40 + 42 + 35 tests.
 - ✅ v0.6.0: the ENFORCED write side (owner: "a nudge to update it… not gonna be enough") —
   kb-scribe **Stop hook** blocks a producing turn's yield until the session distills it into
   the digest AND graduates durable items (captures/ for project-length, `.steward/inbox/` for

@@ -16,8 +16,8 @@ between 0.6.0 and that sentence; all three are closed.
   (facade `coverage()`, CLI command, JSON mode) reads the `Extracted-from:` line every seeded
   entry already carries and prints the top-up map: which substrate has been mined and how
   often, where coverage stops in time, and any curated entry missing a citation. kb-seed step 0
-  is now "run coverage first, target what is NOT listed". A first run says plainly "nothing
-  cited yet — this project has not been seeded". Citation parsing is paren/backtick aware, so
+  is now "run coverage first, target what is NOT listed". A first run says plainly that no
+  citations were found — either unseeded, or its entries predate the convention. Citation parsing is paren/backtick aware, so
   `commit abc ("add X, deprecate Y")` stays one citation.
 - **Upkeep self-activates on PRESENCE** (`lib/presence.js`) — the scribe fires only where the
   project keeps a curated memory (`.claude/kb/extracted|captures|digests`, a live digest, or a
@@ -26,7 +26,7 @@ between 0.6.0 and that sentence; all three are closed.
   maintenance on** — no per-project configuration, no switch to remember.
 - **"Now" stays honest across sessions** — a SessionStart hook archives the previous sitting's
   digest to `.claude/kb/digests/digest-<stamp>.md` (a new shipped source: episodic/session, so
-  past sittings stay queryable) and starts the new one clean. `resume` and `compact` are the
+  past sittings stay queryable) and starts the new one clean. `resume`, `compact` and `fork` are the
   same sitting continuing, so they keep the live digest. A seedable-but-unseeded project also
   gets exactly ONE cue to run /kb-seed (a marker file stops it repeating).
 
@@ -55,15 +55,40 @@ failed archive path leaves the digest untouched, and an undeletable live file st
 the archive (the next start retries). Three new tests drive those paths with a genuinely
 unwritable archive location.
 
-**Hint precision, measured on this repo's 81-entry corpus** (8 representative prompts): fires
-on 3 — both on-topic prompts hit their subject, all unrelated/chat prompts stay quiet, one
-generic-word prompt ("check the session again") produces 3 borderline lines. The trade is
-deliberate: a hint costs three lines, a miss costs the knowledge; `pull.minScore` /
-`pull.maxHints` are per-project knobs if a corpus wants it tighter.
+**Hint precision — two real defects found by measuring instead of asserting**, both fixed:
 
-Tests: 240 (kb, +14 coverage, +7 scan) + 25 (kb-pull, +2 natural-prompt) + 39 (kb-scribe, +2
-presence-gate) + **39 (kb-session, new suite: presence, rotation, loss-safety, cue)** + 35
-(kb-mcp) = 378. kb now carries three hooks.
+- *Length could substitute for relevance.* Scan mode drops coverage scaling, which was also
+  the defence against long entries winning on bulk. Body contribution is now capped
+  (`SCAN_BODY_CAP`), so clearing the hint floor requires the entry to be genuinely ABOUT the
+  subject; a wall of ordinary words cannot accumulate its way there.
+- *A corpus's own vocabulary could pose as a subject.* A project whose entries are mostly
+  "Session notes …" would surface all of them for any prompt containing "session". The engine
+  now computes, per query, which of the prompt's terms appear in more than a fifth of the
+  corpus's titles/themes (`genericSubjectTerms`, needs ≥8 entries for the statistic to mean
+  anything) and tells the ranker those words may still score but may not establish aboutness.
+  Deliberate queries are untouched — a query means what it says. Fixture proof: a prompt of
+  pure corpus vocabulary goes quiet, while the same prompt with one discriminative word still
+  finds its entry and does not drag the generic ones along.
+
+Measured on this repo's 81-entry corpus (7 prompts): 3 fire — both on-topic prompts hit their
+subject, chat and both unrelated prompts stay quiet, and "can you check the session again"
+returns three session-scope entries (defensible for an ambiguous prompt rather than clearly
+wrong). The prompt shapes are now a **fixture test**, not a note — precision is a
+regression gate. `pull.minScore` / `pull.maxHints` remain per-project knobs.
+
+**Two footprint/ergonomics defects fixed** (both found by the lens, both invisible to stdout
+assertions): the scribe wrote `.claude/kb/scribe-state.json` into *every* directory a session
+ended in — including projects it is meant to stay silent in — because state was persisted
+before the enabled check; and `kb coverage` treated steward sections and archived digests as
+"uncited", which would have printed a ~55-line unfixable warning on this repo and invited a
+seeder to edit files the steward owns. Citation warnings are now scoped to the stores actually
+under the `Extracted-from:` contract (`CITING_SOURCES`), and the zero-citation message no
+longer claims a project is unseeded when its entries simply predate the convention. The
+SessionStart hook also traces its fires to `.claude/kb/trace.jsonl` — so "is this actually
+wired in a live session?" is answerable from disk.
+
+Tests: 254 (kb) + 34 (kb-pull, incl. the precision fixture) + 40 (kb-scribe) + 42 (kb-session,
+new suite) + 35 (kb-mcp) = 405. kb now carries three hooks.
 
 **Verified end-to-end in a throwaway project** (one run, six stages): unseeded → one cue, scribe
 silent · seeded → scribe fires, cue never repeats · natural prompt → hint fires + digest

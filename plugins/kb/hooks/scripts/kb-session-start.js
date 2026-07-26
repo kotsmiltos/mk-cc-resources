@@ -116,6 +116,15 @@ function cueOnce(root) {
   return true;
 }
 
+/** Same JSONL the MCP server and kb-pull write — so "did this fire in a REAL session?"
+ *  is answerable from disk instead of from memory. Best-effort; never blocks. */
+function trace(root, record) {
+  try {
+    const { writeTrace } = require('../../mcp/kb-mcp-server');
+    writeTrace(root, { t: new Date().toISOString(), tool: 'kb-session-start', ...record });
+  } catch (_e) { /* telemetry never blocks */ }
+}
+
 async function main() {
   const payload = await readPayload();
   const root = process.cwd();
@@ -134,6 +143,8 @@ async function main() {
   }
 
   if (out.length) process.stdout.write(`${out.join('\n')}\n`);
+  // Only trace where the project keeps a memory — a bare directory must stay footprint-free.
+  if (hasCuratedMemory(root)) trace(root, { source, rotated: out.some((l) => l.includes('archived')) });
   process.exit(0);
 }
 

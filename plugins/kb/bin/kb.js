@@ -178,7 +178,7 @@ function renderCoverage(cov) {
   lines.push('');
   const cited = Object.entries(cov.cited);
   if (!cited.length) {
-    lines.push('already mined: (nothing cited yet — this project has not been seeded)');
+    lines.push('already mined: (no citations found — either this project has not been seeded, or its entries predate the citation convention)');
   } else {
     lines.push(`already mined (${cited.length} substrates cited — a re-seed should target what is NOT here):`);
     for (const [substrate, n] of cited) lines.push(`  ${n}x  ${substrate}`);

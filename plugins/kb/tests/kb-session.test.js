@@ -158,6 +158,17 @@ function runHook(cwd, payload) {
 
   const cleared = runHook(root, { source: 'clear' });
   check('clear with no digest says nothing', cleared.stdout === '');
+
+  // A live-session fire must leave disk evidence (the "is it actually wired?" question).
+  const traceFile = path.join(root, '.claude', 'kb', 'trace.jsonl');
+  const traces = fs.readFileSync(traceFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  check('session-start fires are traced', traces.some((t) => t.tool === 'kb-session-start'));
+  check('the trace records the source and whether it rotated',
+    traces.some((t) => t.tool === 'kb-session-start' && t.source === 'startup' && t.rotated === true));
+
+  const bareTrace = tmp('kb-session-bare-');
+  runHook(bareTrace, { source: 'startup' });
+  check('a memory-less directory is never traced into', !fs.existsSync(path.join(bareTrace, '.claude', 'kb')));
 }
 
 // ---------- e2e: the one-time seed cue ----------

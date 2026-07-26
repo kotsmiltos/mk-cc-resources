@@ -235,7 +235,13 @@ async function main() {
   const turn = extractTurn(payload.transcript_path);
   const state = readState(cwd);
   const { action, newState, reason } = decide({ enabled, turn, state, focus });
-  if (newState && JSON.stringify(newState) !== JSON.stringify(state)) writeState(cwd, newState);
+  // Only a project this hook actually serves gets a state file. Writing state while
+  // disabled would create .claude/kb/ in every directory a session happens to end in
+  // — a footprint in unrelated repos, and a contradiction of the presence rule that
+  // exists to keep this silent where there is no memory to maintain.
+  if (enabled && newState && JSON.stringify(newState) !== JSON.stringify(state)) {
+    writeState(cwd, newState);
+  }
   if (action === 'block') {
     process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   }

@@ -140,6 +140,8 @@ function seedMemory(root) {
   fs.writeFileSync(path.join(unseeded, 'CLAUDE.md'), '# a project with no KB\n');
   const rUnseeded = runHook(unseeded, { transcript_path: p });
   check('e2e project WITHOUT curated memory is never blocked', rUnseeded.status === 0 && rUnseeded.stdout === '');
+  check('e2e unseeded project gets NO files written (silent on disk, not just stdout)',
+    !fs.existsSync(path.join(unseeded, '.claude', 'kb')));
 
   const stewarded = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-scribe-steward-'));
   fs.mkdirSync(path.join(stewarded, '.steward'), { recursive: true });

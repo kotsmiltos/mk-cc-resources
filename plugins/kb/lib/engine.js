@@ -29,6 +29,39 @@ const MAX_HINT_VALUES = 5;
 // A facet only helps if the held-back entries actually disagree on it.
 const MIN_DISTINCT_TO_SUGGEST = 2;
 
+// --- scan-mode ubiquity rule (see genericSubjectTerms) ---
+// A word appearing in a large share of the corpus's TITLES is that corpus's
+// vocabulary — "session", "state", "notes", "check" in a project whose entries are
+// mostly session records. Such a word says nothing about which entry is relevant, so
+// it must not be what makes an entry count as "about" a prompt. Below a handful of
+// entries the statistic is meaningless, so the rule simply does not apply.
+const GENERIC_MIN_ENTRIES = 8;
+const GENERIC_DF_FRACTION = 0.2;
+
+/**
+ * Which of the query's terms are so common in this corpus's titles/themes that they
+ * cannot establish what an entry is ABOUT. Computed per query (cheap: one pass over
+ * entries, only the query's own terms are counted) and handed to the ranker, so the
+ * ranker stays a pure per-entry function and the corpus statistic lives here.
+ */
+function genericSubjectTerms(entries, terms, ranker) {
+  if (entries.length < GENERIC_MIN_ENTRIES || !terms.length) return null;
+  const tokenize = ranker && typeof ranker.tokenize === 'function' ? ranker.tokenize : null;
+  if (!tokenize) return null;
+
+  const df = new Map();
+  for (const e of entries) {
+    const subjectTokens = new Set(tokenize(`${e.title || ''} ${(e.themes || []).join(' ')}`));
+    for (const term of terms) {
+      if (subjectTokens.has(term)) df.set(term, (df.get(term) || 0) + 1);
+    }
+  }
+  const limit = entries.length * GENERIC_DF_FRACTION;
+  const generic = new Set();
+  for (const [term, n] of df) if (n > limit) generic.add(term);
+  return generic.size ? generic : null;
+}
+
 /**
  * @param {object[]} entries - the corpus (already collected by sources).
  * @param {object} query - from query.makeQuery.
@@ -39,12 +72,20 @@ function run(entries, query, ranker) {
   const corpus = Array.isArray(entries) ? entries : [];
   const candidates = corpus.filter((e) => passesFilters(e, query));
 
+  // Only scan mode needs the corpus-vocabulary statistic; a deliberate query means
+  // what it says, even when it uses a common word.
+  const generic = query.scan ? genericSubjectTerms(candidates, query.terms, ranker) : null;
+
   const scored = [];
   for (const entry of candidates) {
     // No terms = a browse, not a search: everything that passed the filters
     // qualifies and recency alone orders it.
     const value = query.terms.length
-      ? ranker.score(entry, query.terms, { aliases: query.aliases || null, scan: !!query.scan })
+      ? ranker.score(entry, query.terms, {
+        aliases: query.aliases || null,
+        scan: !!query.scan,
+        genericSubjectTerms: generic,
+      })
       : 0;
     if (query.terms.length && value <= 0) continue;
     scored.push({ entry, score: value });
@@ -153,4 +194,7 @@ function facetCounts(entries) {
   return out;
 }
 
-module.exports = { run, facetCounts, compareHits, NARROWABLE_FACETS, MAX_HINT_VALUES };
+module.exports = {
+  run, facetCounts, compareHits, genericSubjectTerms,
+  NARROWABLE_FACETS, MAX_HINT_VALUES, GENERIC_MIN_ENTRIES, GENERIC_DF_FRACTION,
+};

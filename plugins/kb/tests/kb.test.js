@@ -175,6 +175,25 @@ const mkEntry = (over) => makeEntry({ ...goodFields, ...over }, reg);
   const themed = mkEntry({ id: 'sc3', title: 'unrelated', body: 'x', themes: ['cache'] });
   check('a theme hit counts as being ABOUT the subject', termOverlap.score(themed, T('cache'), { scan: true }) > 0);
   check('scan mode still scores zero with no match at all', termOverlap.score(subject, T('helicopter'), { scan: true }) === 0);
+
+  // Scan mode drops coverage scaling, which is ALSO the defence against long entries
+  // winning on length. The body cap has to restore it, or a generic title word plus a
+  // wall of ordinary words clears the hint floor.
+  const generic = mkEntry({
+    id: 'sc4',
+    title: 'Session notes',
+    body: ('performance decision revisit widget cache reasons progress checking general things ').repeat(40),
+  });
+  const chatty = T('checking in on general progress and performance things, any decision to revisit?');
+  check('a long entry cannot accumulate past the floor on body words alone',
+    termOverlap.score(generic, chatty, { scan: true }) <= TITLE_ONLY_CEILING());
+  function TITLE_ONLY_CEILING() {
+    // one title hit + the capped body contribution — the most a generic entry can earn
+    return termOverlap.TITLE_WEIGHT + termOverlap.SCAN_BODY_CAP;
+  }
+  check('the cap leaves a real subject match ahead of a generic one',
+    termOverlap.score(subject, longPrompt, { scan: true }) > termOverlap.score(generic, chatty, { scan: true }));
+  check('body cap is a named constant, not a magic number', termOverlap.SCAN_BODY_CAP > 0);
   check('query carries the scan flag', makeQuery({ text: 'x', scan: true }, reg).scan === true);
   check('query defaults scan off', makeQuery({ text: 'x' }, reg).scan === false);
 
@@ -204,6 +223,36 @@ throws('query rejects unknown caste', () => makeQuery({ caste: 'bogus' }, reg), 
 check('limit clamps above max', clampLimit(99999, 8) === MAX_LIMIT);
 check('limit clamps below min', clampLimit(0, 8) === 8);
 check('limit falls back to default when absent', clampLimit(undefined, undefined) === 8);
+
+// --------------------------------------- scan ubiquity rule (engine-level) ---
+
+{
+  const mkT = (i, title, themes) => mkEntry({ id: `u${i}`, title, themes: themes || [], body: 'filler text' });
+  const many = [];
+  for (let i = 0; i < 12; i += 1) many.push(mkT(i, `Session notes ${i}`));
+  many.push(mkT(99, 'Rejected: the porter ferry caste'));
+
+  const generic = engine.genericSubjectTerms(many, termOverlap.tokenize('session porter'), termOverlap);
+  check('a word in most titles is flagged as corpus vocabulary', generic.has(termOverlap.stemToken('session')));
+  check('a discriminative word is NOT flagged', !generic.has(termOverlap.stemToken('porter')));
+  check('below the entry floor the statistic does not apply',
+    engine.genericSubjectTerms(many.slice(0, 3), termOverlap.tokenize('session'), termOverlap) === null);
+  check('no terms means no rule', engine.genericSubjectTerms(many, [], termOverlap) === null);
+  check('themes count as subject text for the statistic',
+    engine.genericSubjectTerms(
+      [...Array(10)].map((_, i) => mkT(i, `entry ${i}`, ['digest'])),
+      termOverlap.tokenize('digest'), termOverlap,
+    ).has(termOverlap.stemToken('digest')));
+
+  const genericEntry = mkT(1, 'Session notes 1');
+  const gset = new Set(termOverlap.tokenize('session'));
+  check('a generic-only title hit cannot establish aboutness',
+    termOverlap.score(genericEntry, termOverlap.tokenize('session'), { scan: true, genericSubjectTerms: gset }) === 0);
+  check('without the rule the same hit would count',
+    termOverlap.score(genericEntry, termOverlap.tokenize('session'), { scan: true }) > 0);
+  check('a deliberate QUERY is unaffected by the rule (no scan)',
+    termOverlap.score(genericEntry, termOverlap.tokenize('session')) > 0);
+}
 
 // ----------------------------------------------------------------- engine ---
 
@@ -458,6 +507,21 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   check('coverage tallies each cited substrate', c.cited['docs/a.md'] === 2 && c.cited.commit === undefined);
   check('multi-citation entries count every substrate', c.cited['commit abc'] === 1);
   check('uncited curated entries are surfaced', c.uncited.length === 1 && c.uncited[0].id === 'x3');
+
+  // Only stores under the Extracted-from contract can be "uncited" — steward sections
+  // and archived digests never carried citations, so warning about them would print an
+  // unfixable flood and invite a seeder to edit files it must not touch.
+  const mixed = cov.buildCoverage([
+    mkEntry({ id: 'sm1', source: 'steward-model', title: 'Parts', body: 'no citation, never had one' }),
+    mkEntry({ id: 'sl1', source: 'steward-log', title: '2026-07-25 · outcome', body: 'no citation' }),
+    mkEntry({ id: 'sd1', source: 'session-digests', title: 'Session digest — 20260726-1200', body: 'no citation' }),
+    mkEntry({ id: 'ke1', source: 'kb-extracted', title: 'seeded, sloppy', body: 'no citation' }),
+  ], {});
+  check('steward + digest entries are counted as curated', mixed.curated === 4);
+  check('but only citing-store entries can be uncited',
+    mixed.uncited.length === 1 && mixed.uncited[0].source === 'kb-extracted');
+  check('CITING_SOURCES is narrower than CURATED_SOURCES',
+    cov.CITING_SOURCES.size < cov.CURATED_SOURCES.size && cov.CITING_SOURCES.has('kb-extracted'));
   check('coverage span brackets the curated entries', c.span.first === '2026-01-02' && c.span.last === '2026-03-04');
   check('an unseeded corpus reports nothing cited', Object.keys(cov.buildCoverage([], {}).cited).length === 0);
 

@@ -29,6 +29,13 @@ const OPENERS = { '(': ')', '[': ']', '{': '}' };
 // about what has been deliberately recorded.
 const CURATED_SOURCES = new Set(['kb-extracted', 'kb-captures', 'session-digests', 'steward-model', 'steward-log', 'steward-inbox', 'steward-vision']);
 
+// …but only THESE are under the `Extracted-from:` contract (kb-seed step 4, and the
+// capture skill by convention). A steward section or an archived session digest was
+// never supposed to carry a citation, so counting them as "uncited" would print a
+// warning nobody can ever fix — and would invite an obedient seeder to go edit files
+// the steward owns.
+const CITING_SOURCES = new Set(['kb-extracted', 'kb-captures']);
+
 /** The raw citation text of an entry, or null when it carries none. */
 function citationLine(body) {
   const m = CITATION_RX.exec(String(body || ''));
@@ -83,7 +90,9 @@ function buildCoverage(entries, perSource) {
   for (const e of curated) {
     const cites = citationsFrom(e.body);
     if (!cites.length) {
-      uncited.push({ id: e.id, title: e.title, path: e.path, source: e.source });
+      if (CITING_SOURCES.has(e.source)) {
+        uncited.push({ id: e.id, title: e.title, path: e.path, source: e.source });
+      }
       continue;
     }
     for (const c of cites) cited.set(c, (cited.get(c) || 0) + 1);
@@ -100,4 +109,4 @@ function buildCoverage(entries, perSource) {
   };
 }
 
-module.exports = { buildCoverage, citationsFrom, citationLine, splitCitations, CURATED_SOURCES };
+module.exports = { buildCoverage, citationsFrom, citationLine, splitCitations, CURATED_SOURCES, CITING_SOURCES };

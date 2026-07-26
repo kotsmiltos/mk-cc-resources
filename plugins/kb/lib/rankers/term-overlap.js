@@ -52,6 +52,13 @@ const FUZZY_WEIGHT = 0.7;
 // original token rather than matching almost everything.
 const MIN_STEM_LEN = 3;
 
+// Scan mode drops coverage scaling (see score()), which is also the defence against
+// long entries winning on length alone. This cap restores it: body hits contribute at
+// most this much, so an entry cannot accumulate its way over the hint floor by being
+// long — clearing the floor requires the entry to be genuinely ABOUT the subject
+// (title/theme weight), not merely to contain many of the prompt's ordinary words.
+const SCAN_BODY_CAP = 2;
+
 // Words carrying no retrieval signal in this domain.
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'of', 'to', 'in', 'on', 'at',
@@ -152,26 +159,31 @@ function countHits(tokens, term) {
  * else field weight × match quality (1 for exact/prefix, FUZZY_WEIGHT for a
  * distance-1 hit), plus the capped body-repeat bonus for full hits.
  */
-function scoreVariant(term, titleTokens, themeTokens, bodyTokens) {
+function scoreVariant(term, titleTokens, themeTokens, bodyTokens, genericTerms) {
   const inTitle = countHits(titleTokens, term);
   const inThemes = countHits(themeTokens, term);
   const inBody = countHits(bodyTokens, term);
+  // A word this corpus uses in many of its titles is vocabulary, not topic: it still
+  // earns its field weight, but it cannot be what makes an entry count as ABOUT the
+  // prompt (see engine.genericSubjectTerms).
+  const canBeSubject = !(genericTerms && genericTerms.has(term));
 
   // Best field wins — a term is not worth more for appearing everywhere.
   // A full hit in ANY field beats a fuzzy hit in the strongest field: quality
   // outranks placement, otherwise a typo in a title would outscore the real
   // word in a body.
   let value = 0;
-  if (inTitle.full) value = TITLE_WEIGHT;
-  else if (inThemes.full) value = THEME_WEIGHT;
+  let subject = false; // did this term land where the entry declares its topic?
+  if (inTitle.full) { value = TITLE_WEIGHT; subject = canBeSubject; }
+  else if (inThemes.full) { value = THEME_WEIGHT; subject = canBeSubject; }
   else if (inBody.full) value = BODY_WEIGHT;
   else if (inTitle.fuzzy) value = TITLE_WEIGHT * FUZZY_WEIGHT;
   else if (inThemes.fuzzy) value = THEME_WEIGHT * FUZZY_WEIGHT;
   else if (inBody.fuzzy) value = BODY_WEIGHT * FUZZY_WEIGHT;
-  else return 0;
+  else return { value: 0, subject: false };
 
   if (inBody.full > 1) value += BODY_REPEAT_WEIGHT * Math.min(inBody.full - 1, MAX_REPEAT_BONUS);
-  return value;
+  return { value, subject };
 }
 
 /**
@@ -195,6 +207,7 @@ function score(entry, terms, opts) {
   if (!Array.isArray(terms) || !terms.length) return 0;
   const aliases = opts && opts.aliases && typeof opts.aliases === 'object' ? opts.aliases : null;
   const scan = !!(opts && opts.scan);
+  const genericTerms = opts && opts.genericSubjectTerms instanceof Set ? opts.genericSubjectTerms : null;
 
   const fields = entryFields(entry);
   const titleTokens = tokenize(fields.title);
@@ -203,28 +216,33 @@ function score(entry, terms, opts) {
 
   let raw = 0;
   let matched = 0;
-  let subjectHit = false;
+  let subjectRaw = 0; // weight earned where the entry declares its topic
+  let bodyRaw = 0;    // weight earned by ordinary words appearing in the text
 
   for (const term of terms) {
     const forms = [term];
     const variants = aliases && Array.isArray(aliases[term]) ? aliases[term] : null;
     if (variants) forms.push(...variants);
 
-    let best = 0;
+    let best = { value: 0, subject: false };
     for (const form of forms) {
-      const v = scoreVariant(form, titleTokens, themeTokens, bodyTokens);
-      if (v > best) best = v;
-      if (!subjectHit && (countHits(titleTokens, form).full || countHits(themeTokens, form).full)) {
-        subjectHit = true;
-      }
+      const v = scoreVariant(form, titleTokens, themeTokens, bodyTokens, genericTerms);
+      if (v.value > best.value) best = v;
     }
-    if (best <= 0) continue;
+    if (best.value <= 0) continue;
     matched += 1;
-    raw += best;
+    raw += best.value;
+    if (best.subject) subjectRaw += best.value;
+    else bodyRaw += best.value;
   }
 
   if (!matched) return 0;
-  if (scan) return subjectHit ? raw : 0;
+  if (scan) {
+    // No subject hit = the entry is not ABOUT anything the prompt mentions.
+    if (subjectRaw <= 0) return 0;
+    // Body contribution is capped so length cannot substitute for aboutness.
+    return subjectRaw + Math.min(bodyRaw, SCAN_BODY_CAP);
+  }
   const coverage = matched / terms.length;
   return raw * (COVERAGE_FLOOR + (1 - COVERAGE_FLOOR) * coverage);
 }
@@ -238,5 +256,5 @@ module.exports = {
   withinEditDistance1,
   // exported for tests — the constants ARE the behaviour
   TITLE_WEIGHT, THEME_WEIGHT, BODY_WEIGHT, COVERAGE_FLOOR, MIN_PREFIX_LEN,
-  MIN_FUZZY_LEN, FUZZY_WEIGHT, MIN_STEM_LEN,
+  MIN_FUZZY_LEN, FUZZY_WEIGHT, MIN_STEM_LEN, SCAN_BODY_CAP,
 };
