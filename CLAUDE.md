@@ -230,7 +230,9 @@ plugins/
     .mcp.json               # wires the MCP server on plugin install; alwaysLoad:true keeps
                             #   tool schemas in context EVERY turn (never deferred behind tool
                             #   search) — the property that makes kb self-serve, ReAct-style
-    bin/kb.js               # CLI adapter — a PEER of the MCP adapter, not its parent;
+    bin/kb.js               # CLI adapter (query | stat | coverage | axes | sources) —
+                            #   `coverage` prints the top-up map a re-seed reads first;
+                            #   a PEER of the MCP adapter, not its parent;
                             #   both hold zero retrieval logic so they cannot drift
     mcp/kb-mcp-server.js    # MCP stdio adapter: kb_query (hints ride in the tool result) /
                             #   kb_read (full entry by id) / kb_overview. Hand-rolled JSON-RPC

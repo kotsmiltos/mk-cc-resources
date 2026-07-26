@@ -101,9 +101,15 @@ with installing the `kb` plugin itself.
 ```bash
 kb query <terms...> [options]   # search; returns hits + how to narrow
 kb stat                         # what the KB holds, by axis and source
+kb coverage                     # what has ALREADY been mined — run before a re-seed
 kb axes                         # the configured kinds and castes
 kb sources                      # configured sources + registered source types
 ```
+
+`kb coverage` is the top-up map: it reads the `Extracted-from:` line every seeded entry
+carries and reports which substrate has been mined and how often, where coverage stops in
+time, and any seeded entry missing its citation. `/kb-seed` runs it first and targets only
+what is *not* listed, which is what makes re-seeding an already-seeded project safe.
 
 Options: `--kind` `--caste` `--wider` `--theme` (repeatable) `--since` `--until`
 `--limit` `--ranker` `--root` `--json`.
