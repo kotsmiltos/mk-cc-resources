@@ -706,6 +706,48 @@ check('markdown-dir is registered by default', sources.types().includes('markdow
   check('CLI exits non-zero on an unknown kind', errorExit === 1);
 }
 
+// ------------------------------------------------------------- capBlock ---
+// Every surface that injects a file into context must bound it, and a silent or
+// half-described cut is the same defect in all of them.
+{
+  const { capBlock } = require('../lib/cap-block');
+  const OPTS = { maxChars: 100, maxLines: 5, label: 'digest', remedy: 'compress it' };
+  const cap = (text, over = {}) => capBlock(text, { ...OPTS, ...over });
+
+  check('within budget is returned untouched', cap('short\ntext') === 'short\ntext');
+  check('empty string is returned as-is', cap('') === '');
+  check('non-string is returned as-is', cap(null) === null);
+  check('exactly at the char budget is not cut', cap('x'.repeat(100)) === 'x'.repeat(100));
+  check('one char over the budget IS cut', cap('x'.repeat(101)).includes('over budget'));
+  check('exactly at the line budget is not cut',
+    cap(['a', 'b', 'c', 'd', 'e'].join('\n')).includes('over budget') === false);
+
+  const long = Array.from({ length: 12 }, (_, i) => `line ${i}`).join('\n');
+  const capped = cap(long);
+  check('line overage is cut on a line boundary', capped.includes('line 4') && !capped.includes('line 5'));
+  check('marker names both units', /dropped 7 line\(s\) \/ \d+ chars/.test(capped));
+  check('marker carries the remedy', capped.includes('compress it'));
+  check('marker carries the label', capped.includes('[digest over budget'));
+
+  // CRLF: this repo's working tree is CRLF, so lines carry a trailing \r. Splitting and
+  // rejoining on \n must preserve them exactly rather than mangling line endings.
+  const crlf = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'].join('\r\n');
+  const crlfCapped = cap(crlf);
+  check('CRLF input is capped', crlfCapped.includes('over budget'));
+  check('CRLF line endings survive the round trip', crlfCapped.includes('alpha\r\nbeta'));
+  check('CRLF cut still lands on a line boundary', !crlfCapped.includes('zeta'));
+
+  // One line can exceed the whole budget by itself; dropping lines cannot fix that, so this
+  // is the single place a mid-line cut is correct.
+  const monster = 'y'.repeat(500);
+  const monsterCapped = cap(monster);
+  check('a single over-budget line is still trimmed', monsterCapped.includes('over budget'));
+  check('the monster line is actually shortened', monsterCapped.length < 500);
+  check('mid-line cut reports the real char loss', /\/ 400 chars/.test(monsterCapped));
+
+  check('maxLines is optional', cap('a\nb\nc\nd\ne\nf\ng', { maxLines: undefined }) === 'a\nb\nc\nd\ne\nf\ng');
+}
+
 // ---------------------------------------------------------------- report ---
 
 console.log(`\n${total - failures}/${total} checks passed`);

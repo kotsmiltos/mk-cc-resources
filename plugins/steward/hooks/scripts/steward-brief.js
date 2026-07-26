@@ -28,7 +28,14 @@ const BRIEFING_MAX_LINES = 12;   // the spec is ≤10; two lines of slack before
  * one line or half the file went missing, and the steward agent (which regenerates the
  * file) got no number to aim at. Both budgets are the spec: ≤10 lines is the real rule,
  * the char cap guards a single monster line. Cuts land on line boundaries, and the marker
- * always names what was dropped, in the same shape kb's digest injection uses.
+ * always names what was dropped.
+ *
+ * kb carries the same logic in its own `lib/cap-block.js` for the session digest. That
+ * duplication is deliberate: plugins must install standalone, so a shared module across
+ * plugin boundaries would make one plugin's install a dependency of another's. Duplication
+ * INSIDE a plugin is a defect; across plugins it is the price of independence. Keep the two
+ * in step by hand, and keep both suites asserting the same edges (empty, exactly-at-budget,
+ * CRLF, single-monster-line).
  */
 function capBriefing(text) {
   const lines = text.split('\n');

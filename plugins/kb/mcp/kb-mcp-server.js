@@ -79,7 +79,10 @@ function traceFor(tool, args, payload) {
 // something newer, otherwise we accept the client's (older) revision.
 const PROTOCOL_VERSION = '2025-06-18';
 
-const SERVER_INFO = { name: 'kb', version: '0.8.0' };
+// Version is DERIVED, never retyped. A hand-kept literal here would be one more stale
+// number to forget on a bump — and this particular number exists to expose staleness, so
+// letting it drift would break the very diagnostic it serves.
+const SERVER_INFO = { name: 'kb', version: require('../.claude-plugin/plugin.json').version };
 // Stamped once at launch: the one fact that separates a fresh process from one still
 // running pre-change code. Read by kb_overview so staleness is visible in a tool result.
 const STARTED_AT = new Date().toISOString();
@@ -158,7 +161,11 @@ const TOOLS = [
     description:
       'What the knowledge base holds: entry counts by kind, caste, and source, the configured ' +
       'axes, and any sources that failed to collect. Call when unsure whether a question is even ' +
-      'answerable from the KB, or to discover which catalogs exist in this project.',
+      'answerable from the KB, or to discover which catalogs exist in this project. ' +
+      'The result also carries a `server` block naming the build actually answering. If that ' +
+      'block is MISSING, or its `startedAt` predates the plugin install, say so to the user: ' +
+      'the running server is stale, its newer behaviour is not in effect, and only updating ' +
+      'the plugin and restarting replaces it.',
     inputSchema: { type: 'object', properties: {} },
   },
 ];
@@ -230,7 +237,9 @@ function serverIdentity() {
     startedAt: STARTED_AT,
     // Node has no portable "when was this module written" — the launch time is what
     // distinguishes a fresh process from one that predates the code on disk.
-    note: 'compare startedAt against the last change to the plugin; an older process runs older code'
+    // Name the right comparand: the server loads from the INSTALL directory, so the
+    // checkout's mtime is never what is running. installed_plugins.json is.
+    note: 'compare startedAt against this plugin\'s lastUpdated in ~/.claude/plugins/installed_plugins.json; an older process runs older code'
   };
 }
 

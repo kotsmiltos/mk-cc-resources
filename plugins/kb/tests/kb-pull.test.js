@@ -201,10 +201,30 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('digest carries its content', r.stdout.includes('porter caste stays rejected'));
   check('digest carries the maintenance line', r.stdout.includes('session-digest.md'));
 
+  // A single over-budget line cannot be trimmed by dropping lines — this is exactly the case
+  // the character budget exists for, and the only place a mid-line cut is allowed.
   const big = 'x'.repeat(hook.DIGEST_MAX_CHARS + 500);
   fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), big);
   const r2 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
-  check('oversized digest truncates LOUDLY', r2.stdout.includes('[digest truncated —') && r2.stdout.includes('500 chars dropped'));
+  check('oversized digest truncates LOUDLY',
+    r2.stdout.includes('[digest over budget —') && r2.stdout.includes('500 chars'));
+  check('digest cap names dropped lines as well as chars',
+    /dropped \d+ line\(s\) \/ \d+ chars/.test(r2.stdout));
+  check('digest cap still says how to fix it', /compress .*session-digest\.md/.test(r2.stdout));
+
+  // Many short lines: the cut must land on a line boundary, not mid-sentence.
+  const many = Array.from({ length: 60 }, (_, i) => `- bullet ${i} of the digest`).join('\n');
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), many);
+  const r3 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
+  check('digest line budget fires on a long-but-thin digest', r3.stdout.includes('[digest over budget —'));
+  check('digest cut lands on a line boundary', r3.stdout.includes('- bullet 29 of the digest'));
+
+  // A within-budget digest must arrive untouched — no marker, no loss.
+  const small = ['- one', '- two', '- three'].join('\n');
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), small);
+  const r4 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
+  check('within-budget digest is untouched',
+    r4.stdout.includes('- three') && !r4.stdout.includes('over budget'));
 }
 
 // ---- e2e: digest is indexed as working/session ----

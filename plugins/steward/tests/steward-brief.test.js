@@ -85,6 +85,18 @@ const within = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
 check('a within-spec briefing is untouched',
   within.includes(okBriefing) && !within.includes('over budget'));
 
+// Edges that were correct but unasserted: an exactly-at-budget briefing must pass through,
+// and CRLF (this repo's working-tree line ending) must survive split/join intact.
+const exact = 'z'.repeat(2000);
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), exact);
+check('exactly at the char budget is not cut',
+  !JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext.includes('over budget'));
+
+const crlf = ['alpha', 'beta', 'gamma'].join('\r\n');
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), crlf);
+const crlfOut = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
+check('CRLF briefing within budget is untouched', crlfOut.includes('alpha\r\nbeta\r\ngamma'));
+
 // Cuts land on line boundaries — a half-sentence reads as content, not as a cut.
 const many = Array.from({ length: 40 }, (_, i) => `line ${i} of the briefing`).join('\n');
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), many);

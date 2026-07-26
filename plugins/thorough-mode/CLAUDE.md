@@ -23,6 +23,7 @@ Enforces documentation and versioning hygiene before pushing:
 - Version numbers are bumped (package.json, plugin.json, marketplace.json). In mk-cc-resources plugin repo, invoke `/version-bump` (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES in one go.
 - CLAUDE.md reflects new patterns or conventions
 - Cross-doc consistency: in mk-cc-resources plugin repo, consider `/docs-audit` (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state
+- Repo pathologies: PROBE for `plugins/plugin-toolkit/bin/repo-guard.js` first, and run it only if present — repo-guard lives in the plugin-toolkit source tree, never in an install (the bundle ships `skills` only), so naming its path unconditionally would point every other project at a file that is not there. Exit 1 means do not push
 - New skills/commands/hooks are documented
 - Reports what was checked and updated before pushing
 

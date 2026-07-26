@@ -31,6 +31,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { capBlock } = require('../../lib/cap-block');
 
 // Hints fire only when an entry REALLY matches the prompt: a floor of 6 needs
 // roughly a title-level hit with decent coverage — body-only brushes stay quiet.
@@ -42,6 +43,9 @@ const MIN_PROMPT_CHARS = 15;
 // owner sees it needs compressing — never a silent drop (the steward briefing
 // truncation bug is the counterexample this refuses to repeat).
 const DIGEST_MAX_CHARS = 1500;
+// The digest is spec'd as one compact bullet per item; a line budget keeps a runaway file
+// from arriving as a wall of text even when it fits the character budget.
+const DIGEST_MAX_LINES = 30;
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 
 // Prompts opening with machine markers are not the owner talking.
@@ -101,11 +105,12 @@ function digestBlock(root) {
     return null; // no digest — the session has not started one; say nothing.
   }
   if (!raw) return null;
-  let body = raw;
-  if (body.length > DIGEST_MAX_CHARS) {
-    const dropped = body.length - DIGEST_MAX_CHARS;
-    body = `${body.slice(0, DIGEST_MAX_CHARS)}\n[digest truncated — ${dropped} chars dropped; compress ${DIGEST_REL}]`;
-  }
+  const body = capBlock(raw, {
+    maxChars: DIGEST_MAX_CHARS,
+    maxLines: DIGEST_MAX_LINES,
+    label: 'digest',
+    remedy: `compress ${DIGEST_REL}`,
+  });
   return [
     '<session-digest>',
     body,

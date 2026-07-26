@@ -12,24 +12,50 @@
 
 The reason is a defect that cost an investigation. kb's MCP tools were answering queries
 correctly all session while writing **no call traces at all**, and the trace file is the
-evidence the whole "does Claude reach for the KB unprompted?" question rests on. The code
-was fine — piping the same request to the same file on disk wrote a trace immediately.
+evidence the whole "does Claude reach for the KB unprompted?" question rests on.
+
+The proof is self-contained, inside `trace.jsonl` itself. One `kb-scribe-hook` line records
+which tools a turn used:
+
+```json
+{"t":"2026-07-26T23:01:38.984Z","tool":"kb-scribe-hook","blocked":true,
+ "tools":["mcp__plugin_kb_kb__kb_read","Bash","AskUserQuestion","mcp__plugin_kb_kb__kb_overview",…]}
+```
+
+Live `kb_read` and `kb_overview` calls, both recorded by a hook. The same file contains
+**zero** `kb_read` lines, and its only two `kb_overview` lines came from piping requests
+straight at the file on disk — which wrote a trace immediately. So the code works and the
+process serving the session is not running it.
 
 The cause is a property of stdio MCP servers that nothing in this plugin acknowledged: **a
-running server keeps the code it was launched with.** Two of the three live `kb-mcp-server`
-processes had started at 2026-07-25 03:15 and 03:24; `writeTrace` reached that file at
-2026-07-26 22:57 (`7657f00`). They had been serving a day and a half of sessions from
-pre-trace code. Editing the file does nothing. `/reload-plugins` does nothing. Only a real
-restart replaces the process — the same lesson as "hooks register at INSTALL time," one
-layer down, and with no visible symptom: retrieval keeps working, so nothing looks broken.
+running server keeps the code it was launched with.** The docs are explicit that stdio
+servers "are not reconnected automatically" and that they connect *at session startup* for
+enabled plugins — a plugin update is not a connect point. Two of the three live
+`kb-mcp-server` processes had started 2026-07-25 03:15 and 03:24, while the install cache
+they load from was refreshed at 2026-07-26 20:53 (`installed_plugins.json`, `lastUpdated`).
+Those processes are ~41h older than the code they are supposed to be running.
+
+Editing the checkout does nothing, because `${CLAUDE_PLUGIN_ROOT}` resolves to the
+*install* directory. A session restart is the ordinary fix; per the docs, toggling the
+plugin off and on with `/reload-plugins` also disconnects and reconnects its MCP servers,
+though that path is untested here. The lesson is the same as "hooks register at INSTALL
+time," one layer down, and it has no visible symptom: retrieval keeps working, so nothing
+looks broken.
 
 So the process now identifies itself in a tool result. `startedAt` is stamped once at
-launch; compare it against the last change to the plugin and a stale server is obvious.
-On an old build the `server` block is simply **absent**, which is itself the signal.
+launch; compare it against `lastUpdated` for the plugin in
+`~/.claude/plugins/installed_plugins.json` — the install is what executes, never the
+checkout — and a stale server is obvious. On an old build the `server` block is simply
+**absent**, which is itself the signal.
 
-This does not fix the current session — a server started before this release cannot report
-a version it does not have. It makes the next one diagnosable in one call instead of an
-investigation. Checks: `tests/kb-mcp.test.js` 44 (was 38), 468 across six suites.
+**This cannot help the session that found it, and needs more than a restart.** The
+installed build is 0.7.0; because the server loads from the install directory, a restart
+alone yields a 0.7.0 process with no `server` block at all. `claude plugin update
+kb@mk-cc-resources` **and** a restart are both required before this diagnostic exists
+anywhere but in this checkout — so treat it as unproven end-to-end: the piped run shows the
+code executes, not that it has been delivered.
+
+Checks: `tests/kb-mcp.test.js` 44 (was 38), 468 across six suites.
 
 ## 0.7.0 — 2026-07-26
 

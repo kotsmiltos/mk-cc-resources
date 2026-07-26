@@ -1,5 +1,9 @@
 # Release notes — thorough-mode
 
+## 1.11.1 — the repo-guard line now probes before it points
+
+As shipped, that checklist item told every project to run `node plugins/plugin-toolkit/bin/repo-guard.js` — a path that resolves only inside a checkout of this repo, because the bundle ships plugin-toolkit's `skills` and never its `bin/`. A review caught the irony: the sentence directly after it advertises that the guard "blocks on machine-specific absolute paths." It now probes for the file first and says "not present — skipping" when absent, instead of naming a path that is not there.
+
 ## 1.11.0 — `@ship` gains the one pre-push check that is not a memory exercise
 
 `@ship`'s checklist covered README, RELEASE-NOTES, versions, CLAUDE.md and cross-doc drift —

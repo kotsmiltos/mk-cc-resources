@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.7.0)
+.claude-plugin/plugin.json   # metadata (v0.8.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -26,6 +26,12 @@ lib/
                              #   the top-up map a re-seed reads first)
   presence.js                # the self-activation rule: does this project keep curated
                              #   memory? (empty dirs and ambient files do NOT count)
+  cap-block.js               # bound injected text so the READER learns what went missing:
+                             #   line + char budgets, cuts on line boundaries (a single
+                             #   over-budget line is the one mid-line cut), marker names the
+                             #   loss in BOTH units plus the remedy. steward keeps its own
+                             #   copy on purpose — plugins install standalone, so a shared
+                             #   module across plugin boundaries would couple their installs
   engine.js                  # filter -> rank -> narrowing hints. PURE: no disk/net/clock.
                              #   Owns the scan-mode UBIQUITY rule: per query it computes which
                              #   prompt words are this corpus's own title vocabulary (>1/5 of
@@ -73,11 +79,11 @@ hooks/scripts/kb-session-start.js # keeps "now" honest: archives the previous si
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 256 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 37 checks — guards, floor, digest, traces, precision fixture
+tests/kb.test.js             # 273 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 42 checks — guards, floor, digest, traces, precision fixture
 tests/kb-session.test.js     # 56 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 42 checks — worthiness, fire-once, transcript turn, e2e block
-tests/kb-mcp.test.js         # 38 checks — handler layer + stdio e2e + gated traces
+tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
 tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
                              #   audit (negative-controlled) +
                              #   all four entry points silent in an unseeded project
@@ -171,6 +177,15 @@ run the loop, and a false empty reads as "we know nothing about that."
   (`aliases: [[...]]`, replace-wholesale, built into the query by `buildAliasLookup`), and
   `skipThinPreamble` on h2 sources (boilerplate-only preambles dropped; ON for shipped
   steward-model/log + project-instructions). 198 + 32 tests.
+- ✅ v0.8.0: the running server SAYS WHICH BUILD IT IS — `kb_overview` returns
+  `{version, startedAt, note}`, because a stdio MCP server keeps the code it was launched
+  with and nothing showed it. kb's tools answered correctly for ~41h while writing no traces;
+  the proof is inside `trace.jsonl` itself (a `kb-scribe-hook` line records live
+  `mcp__plugin_kb_kb__kb_read` + `kb_overview` calls, while the file holds zero `kb_read`
+  lines). `SERVER_INFO.version` is DERIVED from plugin.json so the staleness diagnostic cannot
+  itself go stale. Also `lib/cap-block.js`: one budget-with-a-visible-marker used by the digest
+  injection (line + char budgets, cuts on line boundaries, names the loss in both units).
+  273 + 42 + 42 + 56 + 44 + 33 tests.
 - ✅ v0.7.0: SELF-RUNNING (owner: "run seed… regardless of if I've run it again… then it uses
   and maintains itself") — `coverage()` + `kb coverage` turn the mandatory `Extracted-from:`
   citations into a machine-read top-up map (kb-seed step 0: target what is NOT listed), so a
