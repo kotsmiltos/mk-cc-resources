@@ -1,5 +1,50 @@
 # turn-end — release notes
 
+## 0.2.2 — 2026-07-27 — a duty that spawns an agent must not be scoped to the prompt
+
+Reported from another project: six lens dispatches back to back, the owner typing nothing.
+Diagnosed from that project's own `trace.jsonl`, not from the transcript:
+
+```
+02:05:27 pid=271fdc3c fires=0 unmet=[quality-lens]
+02:13:01 pid=6dca19d8 fires=0 unmet=[quality-lens]   <- new prompt_id
+02:17:11 pid=dab5e557 fires=0 unmet=[quality-lens]   <- new prompt_id
+02:21:51 pid=b447d0f8 fires=0 unmet=[quality-lens]   <- new prompt_id
+02:24:59 pid=e39019fd fires=0 unmet=[quality-lens]   <- new prompt_id
+```
+
+**Seven distinct `prompt_id`s in 24 minutes with no user input.** Each arrived just after a
+backgrounded lens agent finished.
+
+**A background-agent completion wakes the session as a NEW prompt.** So `quality-lens` asked
+for a dispatch → the agent finished → that wake-up was a new `prompt_id` → fresh ledger → duty
+unsatisfied → asked again. The duty's own mandated output manufactured the request that
+re-armed it. `satisfied()`'s other arm could not save it either: it checks this turn's
+`toolTargets` for the dispatch, and on the wake-up turn the dispatch was a turn ago.
+
+This is the defect the founding capture named — *an actuator that may cause work whose
+completion re-fires it* — rebuilt one layer up, because `prompt_id` was taken to be the
+user-request span. **It is the PROMPT span.**
+
+Fix: the ledger keeps **two independent buckets**.
+
+| bucket | resets on | holds |
+|---|---|---|
+| `asked` + `fires` | new `prompt_id` | prompt-span duties |
+| `sessionAsked` | new `session_id` | duties declaring `span: 'session'` |
+
+`quality-lens` is now `span: 'session'` — one lens pass per sitting, and its own dispatch can no
+longer un-satisfy it. `session-digest` stays prompt-span deliberately: each request *should*
+distil itself. The rule for any future duty: **if its ask can cause the next prompt — above all
+if it asks for a subagent — it belongs in the session span.**
+
+Regression test replays the measured shape: the seven real `prompt_id`s, one sitting, and the
+duty must be asked exactly once. 78 → **84 checks**.
+
+Note what did work: the escalation ladder. `73a35ec3` went advise → block → block and stopped
+at the budget. And the digest-cap thrashing visible in that same transcript is the old kb 1500
+cap, fixed separately in kb 0.10.0.
+
 ## 0.2.1 — 2026-07-27 — find the binary, and never let a broken judge look clean
 
 The first live fire of 0.2.0 wrote `{"id":"context-recall","error":"spawnSync claude ENOENT"}`.

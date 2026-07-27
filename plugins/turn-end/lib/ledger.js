@@ -23,27 +23,48 @@ const path = require('path');
 
 const LEDGER_REL = path.join('.claude', 'turn-end', 'ledger.json');
 
-function emptyLedger(promptId) {
-  return { promptId: promptId || null, fires: 0, asked: [] };
+function emptyLedger(promptId, sessionId) {
+  return { promptId: promptId || null, sessionId: sessionId || null, fires: 0, asked: [], sessionAsked: [] };
 }
 
-/** Read the ledger, scoped to this prompt_id. A different request starts clean. */
-function readLedger(cwd, promptId) {
+const strings = (v) => (Array.isArray(v) ? v.filter((a) => typeof a === 'string') : []);
+
+/**
+ * Read the ledger. TWO independent spans, because a duty's mandated output can itself create
+ * the next prompt:
+ *   - prompt span (`asked`, `fires`) resets on a new prompt_id
+ *   - SESSION span (`sessionAsked`) survives every prompt in the sitting
+ *
+ * MEASURED, and the reason this exists: a backgrounded agent finishing WAKES THE SESSION AS A
+ * NEW PROMPT. So a duty that asks the session to dispatch an agent gets a fresh prompt_id the
+ * moment that agent returns — fresh ledger, duty unsatisfied, asked again, dispatched again.
+ * Seven distinct prompt_ids in 24 minutes with the owner typing nothing. `prompt_id` is the
+ * PROMPT span, not the user-request span; anything whose satisfaction must outlive its own
+ * side effects has to be recorded against the session.
+ */
+function readLedger(cwd, promptId, sessionId) {
   try {
     const p = path.join(cwd, LEDGER_REL);
-    if (!fs.existsSync(p)) return emptyLedger(promptId);
+    if (!fs.existsSync(p)) return emptyLedger(promptId, sessionId);
     const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
-    if (!parsed || typeof parsed !== 'object') return emptyLedger(promptId);
-    if (parsed.promptId !== promptId) return emptyLedger(promptId);
+    if (!parsed || typeof parsed !== 'object') return emptyLedger(promptId, sessionId);
+
+    // The session bucket carries over only while the sitting is the same one.
+    const sessionAsked = parsed.sessionId === sessionId ? strings(parsed.sessionAsked) : [];
+    if (parsed.promptId !== promptId) {
+      return { promptId: promptId || null, sessionId: sessionId || null, fires: 0, asked: [], sessionAsked };
+    }
     return {
       promptId,
+      sessionId: sessionId || null,
       fires: Number.isInteger(parsed.fires) ? parsed.fires : 0,
-      asked: Array.isArray(parsed.asked) ? parsed.asked.filter((a) => typeof a === 'string') : [],
+      asked: strings(parsed.asked),
+      sessionAsked,
     };
   } catch (_e) {
     // A corrupt ledger must not block a turn. Losing the count costs at most one extra
     // nudge; refusing to yield costs the user their session.
-    return emptyLedger(promptId);
+    return emptyLedger(promptId, sessionId);
   }
 }
 
@@ -65,11 +86,26 @@ function writeLedger(cwd, ledger) {
   }
 }
 
-/** Next ledger state after an emission naming `askedIds`. Pure. */
-function advance(ledger, askedIds) {
+/**
+ * Next ledger state after an emission naming `askedIds`. Pure.
+ * `sessionSpanIds` are recorded against the sitting instead of the prompt, so a duty whose own
+ * output spawns the next prompt cannot re-arm itself.
+ */
+function advance(ledger, askedIds, sessionSpanIds) {
   const asked = new Set(ledger.asked || []);
-  for (const id of askedIds || []) asked.add(id);
-  return { promptId: ledger.promptId, fires: (ledger.fires || 0) + 1, asked: Array.from(asked) };
+  const sessionAsked = new Set(ledger.sessionAsked || []);
+  const sessionSpan = new Set(sessionSpanIds || []);
+  for (const id of askedIds || []) {
+    asked.add(id);
+    if (sessionSpan.has(id)) sessionAsked.add(id);
+  }
+  return {
+    promptId: ledger.promptId,
+    sessionId: ledger.sessionId,
+    fires: (ledger.fires || 0) + 1,
+    asked: Array.from(asked),
+    sessionAsked: Array.from(sessionAsked),
+  };
 }
 
 module.exports = { readLedger, writeLedger, advance, emptyLedger, LEDGER_REL };

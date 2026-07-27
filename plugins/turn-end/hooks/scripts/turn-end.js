@@ -84,7 +84,8 @@ async function main() {
   if (config.enabled === false) return process.exit(0);
 
   const promptId = payload.prompt_id || null;
-  const ledger = ledgerStore.readLedger(cwd, promptId);
+  const sessionId = payload.session_id || null;
+  const ledger = ledgerStore.readLedger(cwd, promptId, sessionId);
   const ctx = buildContext(payload, cwd, ledger);
 
   // PASS 1 — pure. Which demands are unmet, and which supply duties are due?
@@ -120,8 +121,12 @@ async function main() {
   // re-pays — on every remaining turn of the same request.
   const toRecord = result.unsatisfied.concat(planned.supplyDue);
 
+  // Duties declaring `span: 'session'` are recorded against the sitting, not the prompt — the
+  // only thing that stops a duty whose own output spawns the next prompt from re-arming.
+  const sessionSpanIds = duties.all().filter((d) => d.span === 'session').map((d) => d.id);
+
   if (result.emission || toRecord.length) {
-    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord));
+    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord, sessionSpanIds));
     writeTrace(cwd, {
       t: new Date().toISOString(),
       hook: 'turn-end',

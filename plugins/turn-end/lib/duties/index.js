@@ -29,7 +29,14 @@
  *   result back to `decide` as `materials`. That keeps the whole policy testable without a
  *   session, which is the property the runner exists to have.
  *
- * Adding one = one require below. The runner never changes.
+ * SPAN — `span: 'prompt'` (default) | `'session'`. Which bucket records "already asked".
+ *
+ *   Use `'session'` for ANY duty whose ask can cause the next prompt — above all one that asks
+ *   for a subagent. Measured: a backgrounded agent finishing WAKES THE SESSION AS A NEW
+ *   PROMPT, so a prompt-span duty goes unsatisfied again the instant its own dispatch pays
+ *   off. Seven prompt_ids in 24 minutes, owner typing nothing, six dispatches, each one
+ *   manufacturing the request that re-armed it. `prompt_id` is the PROMPT span — NOT the
+ *   user-request span, which is what it was mistaken for.
  *
  * Adding one = one require below. The runner never changes.
  *

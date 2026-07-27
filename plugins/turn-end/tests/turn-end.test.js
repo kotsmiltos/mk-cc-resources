@@ -267,6 +267,63 @@ check('advance increments fires and unions asked ids', () => {
   assert.deepStrictEqual(next.asked.sort(), ['a', 'b']);
 });
 
+check('advance files session-span ids in the SESSION bucket only', () => {
+  const next = ledgerStore.advance(ledgerStore.emptyLedger('p', 's'), ['chore', 'lens'], ['lens']);
+  assert.deepStrictEqual(next.asked.sort(), ['chore', 'lens']);
+  assert.deepStrictEqual(next.sessionAsked, ['lens'], 'only the session-span duty carries over');
+});
+
+check('sessionAsked SURVIVES a new prompt_id in the same session', () => {
+  const dir = tmpdir('ledger-span');
+  ledgerStore.writeLedger(dir, ledgerStore.advance(
+    { promptId: 'p1', sessionId: 's1', fires: 0, asked: [], sessionAsked: [] }, ['lens'], ['lens']
+  ));
+  const next = ledgerStore.readLedger(dir, 'p2-DIFFERENT', 's1');
+  assert.deepStrictEqual(next.asked, [], 'prompt bucket resets');
+  assert.strictEqual(next.fires, 0);
+  assert.deepStrictEqual(next.sessionAsked, ['lens'], 'session bucket does NOT');
+});
+
+check('sessionAsked resets when the SITTING changes', () => {
+  const dir = tmpdir('ledger-span-new-session');
+  ledgerStore.writeLedger(dir, ledgerStore.advance(
+    { promptId: 'p1', sessionId: 's1', fires: 0, asked: [], sessionAsked: [] }, ['lens'], ['lens']
+  ));
+  assert.deepStrictEqual(ledgerStore.readLedger(dir, 'p9', 's2-NEW').sessionAsked, []);
+});
+
+check('REGRESSION: an agent-dispatch duty is asked ONCE across many prompt_ids in one session', () => {
+  // MEASURED in a real sitting: the lens is dispatched as a BACKGROUND agent, and its
+  // completion wakes the session as a NEW prompt_id. Prompt-span satisfaction reset the moment
+  // the dispatch paid off, so the duty asked again — 7 prompt_ids in 24 minutes with the owner
+  // typing nothing, 6 dispatches, each manufacturing the request that re-armed it.
+  const dir = tmpdir('regression-agent-wake');
+  const lensCfg = { ...fakeCtx().disk, read: (rel) => (rel === qualityLens.CONFIG_REL ? '{"enabled":true}' : null) };
+  const promptIds = ['271fdc3c', '6dca19d8', 'dab5e557', '73a35ec3', 'b447d0f8', 'e39019fd', 'e30ced36'];
+  let asks = 0;
+  for (const pid of promptIds) {
+    const ledger = ledgerStore.readLedger(dir, pid, 'one-sitting');
+    const ctx = fakeCtx({
+      cwd: dir, disk: lensCfg, ledger,
+      turn: { text: `wake ${pid}`, toolNames: ['Edit'], toolTargets: [] },
+    });
+    const r = decide(ctx, [qualityLens]);
+    if (r.unsatisfied.includes('quality-lens')) asks++;
+    if (r.emission) {
+      ledgerStore.writeLedger(dir, ledgerStore.advance(ledger, r.unsatisfied, ['quality-lens']));
+    }
+  }
+  assert.strictEqual(asks, 1, `lens asked ${asks} times across ${promptIds.length} prompt_ids in ONE session`);
+});
+
+check('quality-lens declares the session span (the fix, asserted at the contract)', () => {
+  assert.strictEqual(qualityLens.span, 'session');
+});
+
+check('session-digest stays PROMPT span — each request should distil itself', () => {
+  assert.notStrictEqual(sessionDigest.span, 'session');
+});
+
 // ---------- context ----------
 
 check('extractTurn reads the WHOLE turn, not just the last message', () => {

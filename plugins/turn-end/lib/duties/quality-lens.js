@@ -119,6 +119,15 @@ module.exports = {
   title: 'Run the verifiability lens over this request',
   severity: 'advise',
   priority: 30,
+  /*
+   * SESSION span, not prompt span — this duty's own output creates the next prompt.
+   * Measured in a real sitting: the lens is dispatched as a BACKGROUND agent, and its
+   * completion wakes the session as a NEW prompt_id. Prompt-span satisfaction therefore reset
+   * the moment the dispatch paid off, and the duty asked again — seven prompt_ids in 24
+   * minutes with the owner typing nothing, six lens dispatches, each one manufacturing the
+   * request that re-armed it. Any duty that asks for a subagent belongs here.
+   */
+  span: 'session',
 
   applies(ctx) {
     if (!lensEnabled(ctx)) return false;
@@ -135,6 +144,8 @@ module.exports = {
    */
   satisfied(ctx) {
     if ((ctx.turn.toolTargets || []).includes(AGENT_TARGET)) return true;
+    // Session bucket first: it is the one that survives the agent-completion wake-up.
+    if ((ctx.ledger.sessionAsked || []).includes('quality-lens')) return true;
     return (ctx.ledger.asked || []).includes('quality-lens');
   },
 
