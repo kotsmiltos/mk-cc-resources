@@ -52,7 +52,9 @@ const AUDITED = {
     why: 'writeState is called only when `enabled`, which requires hasCuratedMemory (fail-closed)',
   },
   'hooks/scripts/kb-session-start.js': {
-    writes: 6, // rotate: unlink/mkdir/write/unlink ; cue registry: mkdir/write
+    writes: 7, // rotate: unlink/mkdir/write/unlink ; cue registry: mkdir/write ;
+               // digest-session marker: write — GATED on the digest existing, so a project
+               // kb does not serve never gets one (writeDigestSession returns early)
     why: 'rotation needs a live session-digest.md (itself a memory marker); the cue registry is HOME-side',
   },
 };

@@ -39,13 +39,66 @@ const ARCHIVE_DIR_REL = path.join('.claude', 'kb', 'digests');
 // Same shape as the steward's fleet registry.
 const CUE_REGISTRY_REL = path.join('.claude', 'kb', 'cued.json');
 
-// SessionStart `source` values, per the hooks reference (code.claude.com/docs/en/hooks —
-// SessionStart): startup | resume | clear | compact | fork. These three mean THE SAME
-// SITTING CONTINUES, so the live digest stays: `resume` picks a conversation back up,
-// `compact` is the same conversation after compaction (exactly when a distilled digest
-// matters most), and `fork` branches from the current context and inherits it. Only
-// `startup` and `clear` begin a genuinely new sitting, and only those rotate.
+/*
+ * WHAT COUNTS AS A NEW SITTING — two guards, because neither is sufficient alone.
+ *
+ * The hooks reference documents the `source` values (startup | resume | clear | compact | fork)
+ * and NOTHING MORE. The previous version of this comment claimed, citing that reference, that
+ * "only `startup` and `clear` begin a genuinely new sitting" — that was Claude's inference
+ * wearing the docs' authority, and it was WRONG: `/reload-plugins` fires SessionStart with
+ * `source: "startup"` MID-SITTING. Measured 2026-07-27 — three reloads, three
+ * `{"source":"startup","rotated":true}` trace lines, and the live session lost its rolling
+ * working memory each time.
+ *
+ * `session_id` is the actual identity of a sitting, so it decides. `source` still covers the
+ * one case session_id cannot: a FORK gets a NEW session_id while genuinely continuing content.
+ *
+ *   rotate  <=>  source is not a continuing one  AND  the session_id changed
+ *
+ * Each guard covers the other's blind spot: source catches fork/resume/compact, session_id
+ * catches every un-enumerated in-session SessionStart — reload-plugins today, whatever the
+ * platform adds tomorrow. Unsure defaults to DO NOT ROTATE on purpose: a stale line costs a
+ * sentence, rotating mid-sitting costs the session its memory.
+ */
 const CONTINUING_SOURCES = new Set(['resume', 'compact', 'fork']);
+const SESSION_MARKER_REL = path.join('.claude', 'kb', 'digest-session.json');
+
+/** The session_id this digest was last seen under, or null when never recorded. */
+function readDigestSession(root) {
+  try {
+    const o = JSON.parse(fs.readFileSync(path.join(root, SESSION_MARKER_REL), 'utf8'));
+    return o && typeof o.sessionId === 'string' ? o.sessionId : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
+ * GATE: only where a digest actually exists. The marker exists solely to answer "is this the
+ * same sitting the digest belongs to?", which is meaningless without one — and writing it
+ * unconditionally would create `.claude/kb/` in every directory a session opens in, breaking
+ * the footprint promise that kb never writes into a project it does not serve.
+ */
+function writeDigestSession(root, sessionId) {
+  try {
+    if (!fs.existsSync(path.join(root, DIGEST_REL))) return;
+    fs.writeFileSync(
+      path.join(root, SESSION_MARKER_REL),
+      JSON.stringify({ sessionId: sessionId || null, at: new Date().toISOString() })
+    );
+  } catch (_e) { /* an unwritable marker must not cost a rotation decision */ }
+}
+
+/** Pure decision, exported for tests. `knownSessionId` null = never recorded. */
+function shouldRotate({ source, sessionId, knownSessionId }) {
+  if (CONTINUING_SOURCES.has(source)) return false;
+  // No session_id at all: the better signal is unavailable, so fall back to `source` alone —
+  // the pre-existing behaviour. Refusing to rotate here would be the OPPOSITE failure, a new
+  // sitting silently inheriting yesterday's "now", which is what rotation exists to prevent.
+  if (!sessionId) return true;
+  if (knownSessionId === null) return true;  // first run under this mechanism
+  return sessionId !== knownSessionId;       // same sitting (e.g. /reload-plugins) -> keep
+}
 
 function readPayload() {
   return new Promise((resolve) => {
@@ -160,12 +213,17 @@ async function main() {
   const source = String(payload.source || 'startup');
   const out = [];
 
-  if (!CONTINUING_SOURCES.has(source)) {
+  const sessionId = payload.session_id || null;
+  const knownSessionId = readDigestSession(root);
+  if (shouldRotate({ source, sessionId, knownSessionId })) {
     const archived = rotateDigest(root);
     if (archived) {
       out.push(`<kb-session>previous session digest archived -> ${archived} (still queryable; this session starts a fresh one)</kb-session>`);
     }
   }
+  // Record the sitting on EVERY fire, rotated or not: the next in-session SessionStart
+  // (a plugin reload, say) must find a matching id and leave the live digest alone.
+  if (sessionId && sessionId !== knownSessionId) writeDigestSession(root, sessionId);
 
   // ONE presence pass, used for both answers. Two calls would re-walk the markers and
   // log the same obstruction twice. A hook's stderr goes to the debug log, so an
@@ -204,5 +262,6 @@ if (require.main === module) {
 
 module.exports = {
   rotateDigest, cueOnce, cueRegistryPath, stampFor,
-  CONTINUING_SOURCES, DIGEST_REL, ARCHIVE_DIR_REL, CUE_REGISTRY_REL,
+  shouldRotate, readDigestSession, writeDigestSession,
+  CONTINUING_SOURCES, DIGEST_REL, ARCHIVE_DIR_REL, CUE_REGISTRY_REL, SESSION_MARKER_REL,
 };

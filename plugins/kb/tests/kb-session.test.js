@@ -298,5 +298,39 @@ function runHook(cwd, payload) {
   check('missing source defaults to startup, still fail-open', noPayload.status === 0);
 }
 
+
+// ---- REGRESSION: an in-session SessionStart must not steal the live digest ----
+// Measured 2026-07-27: /reload-plugins fires SessionStart with source:"startup" MID-SITTING.
+// The old rule ("only startup and clear begin a new sitting") was Claude's inference cited to
+// the hooks reference, which documents no such thing — and three reloads archived the running
+// session's working memory. session_id is the real identity of a sitting.
+{
+  const s = require('../hooks/scripts/kb-session-start');
+  check('reload mid-sitting (same session_id) does NOT rotate',
+    s.shouldRotate({ source: 'startup', sessionId: 'S1', knownSessionId: 'S1' }) === false);
+  check('a genuinely new sitting (different session_id) DOES rotate',
+    s.shouldRotate({ source: 'startup', sessionId: 'S2', knownSessionId: 'S1' }) === true);
+  check('first run under the marker mechanism rotates',
+    s.shouldRotate({ source: 'startup', sessionId: 'S1', knownSessionId: null }) === true);
+  check('no session_id falls back to source, so a new sitting still rotates',
+    s.shouldRotate({ source: 'startup', sessionId: null, knownSessionId: null }) === true);
+  check('fork keeps the digest even though its session_id is new',
+    s.shouldRotate({ source: 'fork', sessionId: 'S9', knownSessionId: 'S1' }) === false);
+  check('clear with the SAME session_id still does not rotate (id is authoritative)',
+    s.shouldRotate({ source: 'clear', sessionId: 'S1', knownSessionId: 'S1' }) === false);
+
+  // The marker is gated on the digest existing — see the footprint invariant.
+  const root = tmp('kb-marker-');
+  writeDigest(root, '# now');
+  s.writeDigestSession(root, 'SESSION-A');
+  check('the session marker round-trips', s.readDigestSession(root) === 'SESSION-A');
+  check('an absent marker reads as null', s.readDigestSession(tmp('kb-marker-none-')) === null);
+  const bare = tmp('kb-marker-bare-');
+  s.writeDigestSession(bare, 'SESSION-B');
+  check('NO marker written where there is no digest (footprint rule)',
+    fs.existsSync(path.join(bare, '.claude', 'kb')) === false);
+}
+
+
 console.log(`\n${total - failures}/${total} checks passed`);
 if (failures) process.exit(1);

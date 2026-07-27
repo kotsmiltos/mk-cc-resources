@@ -6,6 +6,45 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 0.10.1 — 2026-07-27 — /reload-plugins was archiving the LIVE session's digest
+
+`/reload-plugins` fires SessionStart with `source: "startup"` **mid-sitting**. The rotation rule
+treated that as a new sitting, so every plugin reload archived the running session's working
+memory. Measured today: three reloads, three `{"source":"startup","rotated":true}` trace lines,
+and this session's own digest gone from under it.
+
+**The comment that caused it was the deeper fault:**
+
+```
+// SessionStart `source` values, per the hooks reference (…): startup | resume | clear | compact
+// | fork. … Only `startup` and `clear` begin a genuinely new sitting, and only those rotate.
+```
+
+The reference documents the *values* and nothing more — it never mentions `/reload-plugins`, and
+never claims `startup` implies a new sitting. That second sentence was Claude's inference
+**cited to the docs to borrow their authority**, and it was false. Same defect the owner named
+this day: writing one's own conclusions in someone else's voice, where nothing questions them.
+
+Now decided by `session_id`, which *is* a sitting's identity, with `source` retained for the one
+case an id cannot express — a **fork** gets a new session_id while genuinely continuing:
+
+```
+rotate  <=>  source is not a continuing one  AND  the session_id changed
+```
+
+Each guard covers the other's blind spot; `source` catches fork/resume/compact, `session_id`
+catches every un-enumerated in-session SessionStart — reload today, whatever ships tomorrow. A
+missing `session_id` falls back to `source` alone, because refusing to rotate there would be the
+opposite failure (a new sitting inheriting yesterday's "now"). The marker
+(`.claude/kb/digest-session.json`) is **gated on the digest existing**, so kb still never writes
+into a project it does not serve — the footprint suite caught that omission and refused a new
+write site without a stated gate.
+
+Two harness faults surfaced while fixing it, both the "a suite can silently drop a test" class:
+appended checks landed *after* the tally and so were never counted (moved above it), and the
+first draft of those checks called a helper that does not exist in that suite. 56 → **65 checks**
+in kb-session; footprint 33/33 with the new write audited.
+
 ## 0.10.0 — 2026-07-27 — the session digest is UNCAPPED
 
 Owner, on seeing the injection report `dropped 28 line(s) / 2407 chars`: *"WTF IS THIS? i never
