@@ -111,7 +111,9 @@ The hook only delivers it; **the session writes it**. The discipline:
 - **Update it when things land**: a decision made (with its one-line why), a direction change,
   a verified outcome, an open question that must not be lost. One bullet each — this is a
   distillation, not a log.
-- **Compress, don't append forever**: it is capped (~1500 chars, truncates LOUDLY). Fold
+- **Compress, don't append forever**: it is UNCAPPED by default — it is your working memory and
+  gets the room it needs — so keeping it sharp is a judgement, not a limit you are forced into.
+  (A project may set `pull.digest.maxChars`/`maxLines` in `.claude/kb.json`; a cut is loud.) Fold
   superseded bullets away; keep what the next prompt needs.
 - **End of session**: durable items graduate — decisions worth keeping → `/kb-capture`;
   steward-model changes → `.steward/inbox/`; then the digest can be cleared or left for the

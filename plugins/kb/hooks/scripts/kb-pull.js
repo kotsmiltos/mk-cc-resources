@@ -39,13 +39,16 @@ const DEFAULT_MIN_SCORE = 6;
 const DEFAULT_MAX_HINTS = 3;
 // Prompts shorter than this are commands/acks ("push", "do it") — never worth a scan.
 const MIN_PROMPT_CHARS = 15;
-// The digest is a distillation; if it outgrows this, the cap cuts LOUDLY so the
-// owner sees it needs compressing — never a silent drop (the steward briefing
-// truncation bug is the counterexample this refuses to repeat).
-const DIGEST_MAX_CHARS = 1500;
-// The digest is spec'd as one compact bullet per item; a line budget keeps a runaway file
-// from arriving as a wall of text even when it fits the character budget.
-const DIGEST_MAX_LINES = 30;
+// The digest is the SESSION'S OWN MEMORY of the sitting, and it is injected because the
+// session needs it — so it gets whatever size it needs. It ships UNCAPPED.
+//
+// It used to carry a hardcoded 1500-char / 30-line budget. That was a number nobody chose:
+// it cut real working memory every long session, and "compress the file" is the wrong remedy
+// when the file is the thing being remembered with. A budget belongs to a project that wants
+// one, not to the shipped default — set `pull.digest.maxChars` / `maxLines` in .claude/kb.json
+// to impose one, and the cut is still loud when you do.
+const DEFAULT_DIGEST_MAX_CHARS = null;
+const DEFAULT_DIGEST_MAX_LINES = null;
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 
 // Prompts opening with machine markers are not the owner talking.
@@ -85,6 +88,8 @@ function pullConfig(config) {
     enabled: p.enabled !== false,
     minScore: Number.isFinite(p.minScore) ? p.minScore : DEFAULT_MIN_SCORE,
     maxHints: Number.isFinite(p.maxHints) ? p.maxHints : DEFAULT_MAX_HINTS,
+    // Uncapped unless a project asks for a budget. See the DEFAULT_DIGEST_* note.
+    digest: typeof p.digest === 'object' && p.digest ? p.digest : {},
   };
 }
 
@@ -97,7 +102,7 @@ function hintLines(hits) {
   return lines.join('\n');
 }
 
-function digestBlock(root) {
+function digestBlock(root, settings) {
   let raw;
   try {
     raw = fs.readFileSync(path.join(root, DIGEST_REL), 'utf8').trim();
@@ -105,9 +110,10 @@ function digestBlock(root) {
     return null; // no digest — the session has not started one; say nothing.
   }
   if (!raw) return null;
+  const s = (settings && settings.digest) || {};
   const body = capBlock(raw, {
-    maxChars: DIGEST_MAX_CHARS,
-    maxLines: DIGEST_MAX_LINES,
+    maxChars: typeof s.maxChars === 'number' ? s.maxChars : DEFAULT_DIGEST_MAX_CHARS,
+    maxLines: typeof s.maxLines === 'number' ? s.maxLines : DEFAULT_DIGEST_MAX_LINES,
     label: 'digest',
     remedy: `compress ${DIGEST_REL}`,
   });
@@ -155,7 +161,7 @@ async function main() {
   const strong = result.returned.filter((h) => h.score >= cfg.minScore);
   if (strong.length) out.push(hintLines(strong));
 
-  const digest = digestBlock(root);
+  const digest = digestBlock(root, cfg);
   if (digest) out.push(digest);
   else if (strong.length && hasMemory(root)) {
     // Bootstrap: without this line the digest can never come into existence — the
@@ -181,4 +187,8 @@ main().catch((err) => {
   process.exit(0);
 });
 
-module.exports = { pullConfig, isMachineText, hintLines, DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, MIN_PROMPT_CHARS, DIGEST_MAX_CHARS, DIGEST_REL };
+module.exports = {
+  pullConfig, isMachineText, hintLines, digestBlock,
+  DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, MIN_PROMPT_CHARS,
+  DEFAULT_DIGEST_MAX_CHARS, DEFAULT_DIGEST_MAX_LINES, DIGEST_REL,
+};

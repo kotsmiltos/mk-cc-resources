@@ -48,7 +48,7 @@ const BLOCK_REASON =
   'already records. ' +
   `(1) Update ${DIGEST_REL.split(path.sep).join('/')} (create it if absent): ONE compact bullet per ` +
   'important item; compress or fold superseded bullets — the file is a distillation with a ' +
-  '~1500-char cap, not a log. ' +
+  'not a log. ' +
   '(2) Graduate durable PROJECT-length knowledge: a settled decision/dead-end/finding future ' +
   'sessions need -> file via the kb-capture shape into .claude/kb/captures/; anything that ' +
   'changes the steward MODEL (plans, tasks, vision) -> stage to .steward/inbox/ instead. ' +

@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.8.0)
+.claude-plugin/plugin.json   # metadata (v0.10.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -27,7 +27,8 @@ lib/
   presence.js                # the self-activation rule: does this project keep curated
                              #   memory? (empty dirs and ambient files do NOT count)
   cap-block.js               # bound injected text so the READER learns what went missing:
-                             #   line + char budgets, cuts on line boundaries (a single
+                             #   OPTIONAL line + char budgets (no budget = no cap), cuts on
+                             #   line boundaries (a single
                              #   over-budget line is the one mid-line cut), marker names the
                              #   loss in BOTH units plus the remedy. steward keeps its own
                              #   copy on purpose — plugins install standalone, so a shared
@@ -184,7 +185,8 @@ run the loop, and a false empty reads as "we know nothing about that."
   `mcp__plugin_kb_kb__kb_read` + `kb_overview` calls, while the file holds zero `kb_read`
   lines). `SERVER_INFO.version` is DERIVED from plugin.json so the staleness diagnostic cannot
   itself go stale. Also `lib/cap-block.js`: one budget-with-a-visible-marker used by the digest
-  injection (line + char budgets, cuts on line boundaries, names the loss in both units).
+  injection (budgets are OPTIONAL — absent means uncapped; cuts on line boundaries, names the
+  loss in both units).
   273 + 42 + 42 + 56 + 44 + 33 tests.
 - ✅ v0.7.0: SELF-RUNNING (owner: "run seed… regardless of if I've run it again… then it uses
   and maintains itself") — `coverage()` + `kb coverage` turn the mandatory `Extracted-from:`
@@ -208,7 +210,7 @@ run the loop, and a false empty reads as "we know nothing about that."
 - ✅ v0.5.0: the awareness surface (owner build directive 2026-07-25, answering the T13
   missed-moment datum) — kb-pull UserPromptSubmit hook (score-floored hints + session-digest
   injection; the hook makes kb a hooks-carrying plugin), rolling session digest
-  (working/session — first use of the working kind; model-maintained, capped LOUD),
+  (working/session — first use of the working kind; model-maintained, UNCAPPED since 0.10.0),
   per-call JSONL traces (`.claude/kb/trace.jsonl` — MCP calls + hook fires), pattern split
   mode (`split: {type:'pattern', pattern}` for bullet/timestamp ledgers; crowd-game log
   1→45 entries via its project config), seed depth mandate + judge-then-report autonomy.

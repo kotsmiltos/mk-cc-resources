@@ -37,19 +37,26 @@ function capBlock(text, opts) {
   const { maxChars, maxLines, label, remedy } = opts;
   if (typeof text !== 'string' || !text) return text;
 
+  // NO BUDGET = NO CAP, stated explicitly rather than relying on `x > undefined` being false.
+  // Some blocks must be allowed to be whatever size they need to be; a caller says so by
+  // passing no budget, and this must never degrade into a silent zero-length cap.
+  const hasCharBudget = typeof maxChars === 'number' && maxChars > 0;
+  const hasLineBudget = typeof maxLines === 'number' && maxLines > 0;
+  if (!hasCharBudget && !hasLineBudget) return text;
+
   const lines = text.split('\n');
-  const overLines = typeof maxLines === 'number' && lines.length > maxLines;
-  const overChars = text.length > maxChars;
+  const overLines = hasLineBudget && lines.length > maxLines;
+  const overChars = hasCharBudget && text.length > maxChars;
   if (!overLines && !overChars) return text;
 
   const kept = overLines ? lines.slice(0, maxLines) : lines.slice();
   // Drop whole trailing lines until the char budget is met — never a partial line.
-  while (kept.join('\n').length > maxChars && kept.length > 1) kept.pop();
+  if (hasCharBudget) while (kept.join('\n').length > maxChars && kept.length > 1) kept.pop();
 
   // One line can exceed the whole budget by itself, and dropping lines cannot fix that.
   // This is the case the char budget exists for, so here — and only here — cut mid-line.
   let keptText = kept.join('\n');
-  if (keptText.length > maxChars) keptText = keptText.slice(0, maxChars);
+  if (hasCharBudget && keptText.length > maxChars) keptText = keptText.slice(0, maxChars);
 
   const droppedLines = lines.length - kept.length;
   const droppedChars = text.length - keptText.length;

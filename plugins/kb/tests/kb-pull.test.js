@@ -201,30 +201,43 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('digest carries its content', r.stdout.includes('porter caste stays rejected'));
   check('digest carries the maintenance line', r.stdout.includes('session-digest.md'));
 
-  // A single over-budget line cannot be trimmed by dropping lines — this is exactly the case
-  // the character budget exists for, and the only place a mid-line cut is allowed.
-  const big = 'x'.repeat(hook.DIGEST_MAX_CHARS + 500);
-  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), big);
+  // THE DEFAULT IS UNCAPPED. The digest is the session's own working memory; a shipped budget
+  // cut it every long sitting and told the owner to "compress" the very file being remembered
+  // with. A project may still impose one — see below — but nothing ships one.
+  const huge = Array.from({ length: 400 }, (_, i) => `- bullet ${i} carrying real detail about the sitting`).join('\n');
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), huge);
   const r2 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
-  check('oversized digest truncates LOUDLY',
-    r2.stdout.includes('[digest over budget —') && r2.stdout.includes('500 chars'));
-  check('digest cap names dropped lines as well as chars',
-    /dropped \d+ line\(s\) \/ \d+ chars/.test(r2.stdout));
-  check('digest cap still says how to fix it', /compress .*session-digest\.md/.test(r2.stdout));
+  check('a huge digest is injected WHOLE by default', r2.stdout.includes('- bullet 399 carrying real detail'));
+  check('no budget marker when no budget is configured', !r2.stdout.includes('over budget'));
+  check('shipped digest defaults are literally no-budget',
+    hook.DEFAULT_DIGEST_MAX_CHARS === null && hook.DEFAULT_DIGEST_MAX_LINES === null);
 
-  // Many short lines: the cut must land on a line boundary, not mid-sentence.
-  const many = Array.from({ length: 60 }, (_, i) => `- bullet ${i} of the digest`).join('\n');
-  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), many);
+  // A project that WANTS a budget still gets a loud, line-boundary cut naming both units.
+  fs.writeFileSync(path.join(root, '.claude', 'kb.json'),
+    JSON.stringify({ pull: { digest: { maxLines: 30 } } }));
   const r3 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
-  check('digest line budget fires on a long-but-thin digest', r3.stdout.includes('[digest over budget —'));
-  check('digest cut lands on a line boundary', r3.stdout.includes('- bullet 29 of the digest'));
+  check('a CONFIGURED line budget still fires', r3.stdout.includes('[digest over budget —'));
+  check('configured cap names dropped lines as well as chars',
+    /dropped \d+ line\(s\) \/ \d+ chars/.test(r3.stdout));
+  check('configured cap still says how to fix it', /compress .*session-digest\.md/.test(r3.stdout));
+  check('configured cut lands on a line boundary', r3.stdout.includes('- bullet 29 carrying real detail'));
 
-  // A within-budget digest must arrive untouched — no marker, no loss.
+  // A single over-long line cannot be fixed by dropping lines — the one place a mid-line cut
+  // is allowed, and only when a char budget was explicitly asked for.
+  fs.writeFileSync(path.join(root, '.claude', 'kb.json'),
+    JSON.stringify({ pull: { digest: { maxChars: 200 } } }));
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), 'y'.repeat(700));
+  const r4 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
+  check('configured char budget cuts a single over-long line', r4.stdout.includes('[digest over budget —'));
+
+  fs.unlinkSync(path.join(root, '.claude', 'kb.json'));
+
+  // A small digest arrives untouched either way — no marker, no loss.
   const small = ['- one', '- two', '- three'].join('\n');
   fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), small);
-  const r4 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
-  check('within-budget digest is untouched',
-    r4.stdout.includes('- three') && !r4.stdout.includes('over budget'));
+  const r5 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
+  check('small digest is untouched',
+    r5.stdout.includes('- three') && !r5.stdout.includes('over budget'));
 }
 
 // ---- e2e: digest is indexed as working/session ----
