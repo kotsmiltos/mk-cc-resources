@@ -1,5 +1,33 @@
 # turn-end — release notes
 
+## 0.1.1 — 2026-07-27 — the meta-loop guard judged the NAME, not the shape
+
+Found by the **first live fire**, which is the only reason it was found: the runner emitted one
+message naming one duty where a written-down prediction said two. `quality-lens` had silently
+excused itself.
+
+Cause: the guard inherited from the retired hook matched `verifiability[_ -]?(class|lens|pass)`,
+so any turn containing the plain words "verifiability-lens" read as the lens surfacing its own
+rollup. The turn in question was an *answer about which hooks were installed* — it named the
+plugin six times and reported nothing. Enumerating spellings of a name answers "was it
+mentioned?"; the question is "is this a report?"
+
+Fix — discriminate on the rollup's **form**, two signals:
+- a **bracketed tool marker** (`[verifiability-lens]`, `[turn-end]`, `[kb-scribe]`), which the
+  tools emit and prose essentially never contains; or
+- **two co-occurring structural tokens** from a rollup's vocabulary (`escalations`,
+  `auto-resolved`, `suppressed_count`, `unit_type`, `intended_scope`, `context_refs`, `A/B/U`).
+  Any one of them shows up in ordinary writing about the lens, so one hit proves nothing; a real
+  rollup always carries several at once. `rollup` itself was dropped from the list as too common
+  in prose.
+
+Fails closed either way — the old bug skipped the duty rather than looping it — but a guard that
+silently suppresses is exactly the false-clean this toolkit exists to catch.
+
+Same over-broad pattern was in the retired `verifiability-stop.js`, so this bug shipped there
+first and was inherited wholesale. 49 → **53 checks**, including the near-verbatim prose that
+triggered it.
+
 ## 0.1.0 — 2026-07-27
 
 First release. One blocking Stop hook over a duty registry, replacing the two mutually

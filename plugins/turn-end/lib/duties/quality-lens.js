@@ -30,9 +30,34 @@
 const path = require('path');
 const CONFIG_REL = path.join('.claude', 'verifiability-lens.json');
 
-// Turns whose output is the lens reporting — never check the check.
-const LENS_SURFACING_RX =
-  /\[turn-end\]|\[verifiability-lens\]|verifiability[_ -]?(class|lens|pass)|\brollup\b|\bescalations?\b|auto[_-]?resolved|suppressed_count/i;
+/*
+ * Never check the check: a turn whose output IS the lens's rollup must not trigger another
+ * pass. But the discriminator is the ROLLUP'S SHAPE, not the plugin's NAME.
+ *
+ * Measured defect (first live fire, 2026-07-27): the inherited pattern matched
+ * `verifiability[_ -]?(class|lens|pass)`, so a turn that merely *discussed* the lens — release
+ * notes, this very file, an answer about which hooks are installed — read as surfacing and the
+ * duty silently never fired. Enumerating spellings of a name asks "was it mentioned?"; the
+ * question is "is this a report?"
+ *
+ * Two signals, both about form:
+ *  - a BRACKETED TOOL MARKER, which the tools emit and prose essentially never contains; or
+ *  - the rollup's STRUCTURAL VOCABULARY. Any one of these words appears in ordinary writing
+ *    about the lens, so one hit proves nothing — TWO co-occurring is the shape of an actual
+ *    rollup, which always carries several at once.
+ */
+const TOOL_MARKER_RX = /\[turn-end\]|\[verifiability-lens\]|\[kb-scribe\]/i;
+
+const ROLLUP_TOKEN_RXS = [
+  /\bescalations?\b/i,
+  /auto[_ -]?resolved/i,
+  /suppressed[_ -]?count/i,
+  /\bunit_type\b/i,
+  /\bintended_scope\b/i,
+  /\bcontext_refs\b/i,
+  /\bA\/B\/U\b/,
+];
+const ROLLUP_TOKEN_QUORUM = 2;
 
 // Substantive work, i.e. output that can carry an unverifiable claim.
 const WORK_TOOLS = new Set([
@@ -53,6 +78,13 @@ const ASK =
   'ONLY its triaged rollup: headline + escalations (each with why-it-matters, a recommended ' +
   'default, bundled context) + one line on what was auto-resolved and how many were suppressed. ' +
   'Do NOT dump raw classes.';
+
+/** Is this text a lens ROLLUP (not merely text that mentions the lens)? */
+function isLensSurfacing(text) {
+  if (!text) return false;
+  if (TOOL_MARKER_RX.test(text)) return true;
+  return ROLLUP_TOKEN_RXS.filter((rx) => rx.test(text)).length >= ROLLUP_TOKEN_QUORUM;
+}
 
 /** Read {"enabled": bool} from a config file via the shared memoized disk view. */
 function flagFrom(ctx, rel) {
@@ -90,8 +122,8 @@ module.exports = {
 
   applies(ctx) {
     if (!lensEnabled(ctx)) return false;
-    if (LENS_SURFACING_RX.test(ctx.lastAssistantMessage || '')) return false;
-    if (LENS_SURFACING_RX.test(ctx.turn.text || '')) return false;
+    if (isLensSurfacing(ctx.lastAssistantMessage)) return false;
+    if (isLensSurfacing(ctx.turn.text)) return false;
     return (ctx.turn.toolNames || []).some((t) => WORK_TOOLS.has(t) || /^mcp__/.test(t));
   },
 
@@ -112,5 +144,6 @@ module.exports = {
 };
 
 module.exports.lensEnabled = lensEnabled;
+module.exports.isLensSurfacing = isLensSurfacing;
 module.exports.CONFIG_REL = CONFIG_REL;
 module.exports.AGENT_TARGET = AGENT_TARGET;

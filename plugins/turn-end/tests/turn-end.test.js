@@ -411,6 +411,35 @@ check('quality-lens: never checks its own surfaced rollup', () => {
   assert.strictEqual(qualityLens.applies(ctx), false);
 });
 
+check('REGRESSION: prose that merely NAMES the lens is not a rollup', () => {
+  // Measured on the first live fire: the inherited pattern matched the bare plugin name, so a
+  // turn that only DISCUSSED the lens suppressed the duty and it silently never fired. This is
+  // close to the actual text that did it.
+  const prose =
+    'Gone, confirmed on disk: verifiability-lens 0.5.0 registers ZERO hooks. The lens no ' +
+    'longer carries a Stop hook; the trigger is now the quality-lens duty, and it fires at ' +
+    'most once per request. After restart the verifiability lens pass moves to turn-end.';
+  assert.strictEqual(qualityLens.isLensSurfacing(prose), false);
+  const ctx = fakeCtx({ disk: lensDisk('{"enabled":true}'), lastAssistantMessage: prose });
+  assert.strictEqual(qualityLens.applies(ctx), true, 'the duty must still fire on such a turn');
+});
+
+check('quality-lens: ONE structural word alone is not enough to call it a rollup', () => {
+  assert.strictEqual(qualityLens.isLensSurfacing('I will surface its rollup of escalations.'), false);
+});
+
+check('quality-lens: a real rollup (>=2 structural tokens) IS surfacing', () => {
+  const rollup =
+    'Headline: two escalations. 3 items auto-resolved, suppressed_count 5. ' +
+    'unit_type: plan. A/B/U split reported.';
+  assert.strictEqual(qualityLens.isLensSurfacing(rollup), true);
+});
+
+check('quality-lens: a bracketed tool marker alone IS surfacing', () => {
+  assert.strictEqual(qualityLens.isLensSurfacing('[verifiability-lens] dispatching now'), true);
+  assert.strictEqual(qualityLens.isLensSurfacing('[turn-end] before yielding, 1 duty unmet'), true);
+});
+
 // ---------- judge adapter ----------
 
 check('claude-p: stands down when already nested, without spawning', () => {
