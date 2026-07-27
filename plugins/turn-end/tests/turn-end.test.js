@@ -29,6 +29,7 @@ const ledgerStore = require('../lib/ledger');
 const { buildContext, extractTurn, makeDisk } = require('../lib/context');
 const sessionDigest = require('../lib/duties/session-digest');
 const qualityLens = require('../lib/duties/quality-lens');
+const stewardSync = require('../lib/duties/steward-sync');
 const contextRecall = require('../lib/duties/context-recall');
 const claudeP = require('../lib/judges/claude-p');
 const duties = require('../lib/duties');
@@ -80,8 +81,8 @@ function fakeCtx(over = {}) {
     backgroundTasks: [],
     turn: { text: 'did some work', toolNames: ['Edit'], toolTargets: ['/x/y.js'] },
     ledger: { promptId: 'prompt-1', fires: 0, asked: [] },
-    disk: { exists: () => false, read: () => null, mtimeMs: () => null, hasFilesIn: () => false },
-    home: { exists: () => false, read: () => null, mtimeMs: () => null, hasFilesIn: () => false },
+    disk: { exists: () => false, read: () => null, mtimeMs: () => null, list: () => [], hasFilesIn: () => false },
+    home: { exists: () => false, read: () => null, mtimeMs: () => null, list: () => [], hasFilesIn: () => false },
   };
   return { ...base, ...over, turn: { ...base.turn, ...(over.turn || {}) } };
 }
@@ -567,6 +568,146 @@ check('quality-lens: a bracketed tool marker alone IS surfacing', () => {
   assert.strictEqual(qualityLens.isLensSurfacing('[turn-end] before yielding, 1 duty unmet'), true);
 });
 
+// ---------- duty: steward-sync ----------
+
+/** A context whose disk is the real memoized view over a synthetic project root. */
+function stewardCtx(dir, over = {}) {
+  return fakeCtx({ cwd: dir, disk: makeDisk(dir), ...over });
+}
+
+/** Build `<dir>/.steward/inbox` holding the given top-level entries. */
+function seedInbox(name, files = [], { withDone = false, withGitkeep = false } = {}) {
+  const dir = tmpdir(name);
+  const inbox = path.join(dir, '.steward', 'inbox');
+  fs.mkdirSync(inbox, { recursive: true });
+  for (const f of files) fs.writeFileSync(path.join(inbox, f), '# staged thought\n');
+  if (withDone) {
+    fs.mkdirSync(path.join(inbox, 'done'), { recursive: true });
+    fs.writeFileSync(path.join(inbox, 'done', '20260101-0000-already-integrated.md'), '# old\n');
+  }
+  if (withGitkeep) fs.writeFileSync(path.join(inbox, '.gitkeep'), '');
+  return dir;
+}
+
+check('steward-sync: silent in a project that keeps no steward model', () => {
+  const dir = tmpdir('no-steward-at-all');
+  assert.strictEqual(stewardSync.applies(stewardCtx(dir)), false);
+});
+
+check('steward-sync: silent when the inbox exists but nothing is staged', () => {
+  const dir = seedInbox('steward-empty-inbox', [], { withGitkeep: true });
+  assert.strictEqual(stewardSync.applies(stewardCtx(dir)), false);
+});
+
+check('steward-sync: applies once an item is staged', () => {
+  const dir = seedInbox('steward-one-item', ['20260727-0700-a-thought.md']);
+  assert.strictEqual(stewardSync.applies(stewardCtx(dir)), true);
+  assert.strictEqual(stewardSync.satisfied(stewardCtx(dir)), false);
+});
+
+check('REGRESSION: done/ and .gitkeep are NOT inbox items — a naive count reads 4 where truth is 3', () => {
+  // Both exist in the real pilot project. Counting directory entries would make the duty both
+  // over-report and never reach zero, since `.gitkeep` is permanent by design.
+  const dir = seedInbox(
+    'steward-done-and-gitkeep',
+    ['20260727-0035-a.md', '20260727-0300-b.md', '20260727-0700-c.md'],
+    { withDone: true, withGitkeep: true }
+  );
+  const ctx = stewardCtx(dir);
+  assert.strictEqual(ctx.disk.list(stewardSync.INBOX_REL).length, 5, 'raw entries: 3 items + done/ + .gitkeep');
+  assert.deepStrictEqual(stewardSync.pendingItems(ctx), [
+    '20260727-0035-a.md', '20260727-0300-b.md', '20260727-0700-c.md',
+  ]);
+});
+
+check('steward-sync: a non-markdown file staged in the inbox is not an item', () => {
+  const dir = seedInbox('steward-non-md', ['notes.txt', '20260727-0700-real.md']);
+  assert.deepStrictEqual(stewardSync.pendingItems(stewardCtx(dir)), ['20260727-0700-real.md']);
+});
+
+check('steward-sync: satisfied once the steward archived every item', () => {
+  const dir = seedInbox('steward-drained', [], { withDone: true, withGitkeep: true });
+  const ctx = stewardCtx(dir);
+  assert.strictEqual(stewardSync.satisfied(ctx), true);
+  assert.strictEqual(stewardSync.applies(ctx), false, 'and it says nothing at all');
+});
+
+check('steward-sync: satisfied when the turn dispatched the steward, bare or namespaced', () => {
+  const dir = seedInbox('steward-dispatched', ['20260727-0700-a.md']);
+  for (const target of ['agent:steward', 'agent:steward:steward']) {
+    const ctx = stewardCtx(dir, { turn: { toolTargets: [target] } });
+    assert.strictEqual(stewardSync.satisfied(ctx), true, target);
+  }
+});
+
+check('steward-sync: a DIFFERENT steward-plugin agent does not count as the integration', () => {
+  const dir = seedInbox('steward-wrong-agent', ['20260727-0700-a.md']);
+  const ctx = stewardCtx(dir, { turn: { toolTargets: ['agent:steward-fleet', 'agent:general-purpose'] } });
+  assert.strictEqual(stewardSync.satisfied(ctx), false);
+});
+
+check('steward-sync declares the session span — its ask spawns an agent', () => {
+  assert.strictEqual(stewardSync.span, 'session');
+});
+
+check('REGRESSION: steward-sync is asked ONCE across many prompt_ids in one sitting', () => {
+  // The agent it asks for runs in the background, and its completion wakes the session as a NEW
+  // prompt_id. Prompt-span satisfaction would reset exactly when the dispatch paid off. The
+  // inbox stays full throughout here on purpose: only the span can stop the re-arm.
+  const dir = seedInbox('steward-agent-wake', ['20260727-0700-a.md'], { withGitkeep: true });
+  const promptIds = ['p-a', 'p-b', 'p-c', 'p-d', 'p-e', 'p-f', 'p-g'];
+  let asks = 0;
+  for (const pid of promptIds) {
+    const ledger = ledgerStore.readLedger(dir, pid, 'one-sitting');
+    const r = decide(stewardCtx(dir, { ledger, promptId: pid }), [stewardSync]);
+    if (r.unsatisfied.includes('steward-sync')) asks++;
+    if (r.emission) ledgerStore.writeLedger(dir, ledgerStore.advance(ledger, r.unsatisfied, ['steward-sync']));
+  }
+  assert.strictEqual(asks, 1, `steward-sync asked ${asks} times across ${promptIds.length} prompt_ids`);
+});
+
+check('steward-sync: the ask NAMES the staged items and the job', () => {
+  const dir = seedInbox('steward-ask-text', ['20260727-0035-first.md', '20260727-0300-second.md']);
+  const text = stewardSync.ask(stewardCtx(dir));
+  assert.ok(text.includes('20260727-0035-first.md'), 'names the first item');
+  assert.ok(text.includes('20260727-0300-second.md'), 'names the second item');
+  assert.ok(/job:\s*integrate/i.test(text), 'names the job');
+  assert.ok(text.includes('2 unintegrated'), 'states the count');
+});
+
+// ---------- context: the list primitive ----------
+
+check('disk.list returns typed, sorted entries and never throws on a missing dir', () => {
+  const dir = tmpdir('list-typed');
+  fs.mkdirSync(path.join(dir, 'sub'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'b.md'), 'b');
+  fs.writeFileSync(path.join(dir, 'a.md'), 'a');
+  const disk = makeDisk(dir);
+  assert.deepStrictEqual(disk.list('.').map((e) => e.name), ['a.md', 'b.md', 'sub']);
+  assert.deepStrictEqual(
+    disk.list('.').map((e) => [e.isFile, e.isDirectory]),
+    [[true, false], [true, false], [false, true]]
+  );
+  assert.deepStrictEqual(disk.list('nope/at/all'), []);
+});
+
+check('disk.list is MEMOIZED so two duties cannot see different trees', () => {
+  const dir = tmpdir('list-memo');
+  fs.writeFileSync(path.join(dir, 'one.md'), '1');
+  const disk = makeDisk(dir);
+  assert.strictEqual(disk.list('.').length, 1);
+  fs.writeFileSync(path.join(dir, 'two.md'), '2');
+  assert.strictEqual(disk.list('.').length, 1, 'a sibling adding a file must not change this run');
+});
+
+check('hasFilesIn derives from list — a directory holding only a dotfile has no files', () => {
+  const dir = tmpdir('list-derived');
+  fs.writeFileSync(path.join(dir, '.gitkeep'), '');
+  assert.strictEqual(makeDisk(dir).hasFilesIn('.'), false);
+  fs.writeFileSync(path.join(dir, 'real.md'), 'x');
+  assert.strictEqual(makeDisk(dir).hasFilesIn('.'), true);
+});
+
 // ---------- judge adapter ----------
 
 check('claude-p: stands down when already nested, without spawning', () => {
@@ -932,6 +1073,36 @@ check('E2E: the hook emits additionalContext for an unmet duty', () => {
   assert.ok(parsed.hookSpecificOutput, 'emitted additionalContext');
   assert.ok(parsed.hookSpecificOutput.additionalContext.includes('session-digest'));
   assert.ok(fs.existsSync(path.join(dir, ledgerStore.LEDGER_REL)), 'ledger written');
+});
+
+check('E2E: a staged steward inbox is named in the tail, and recorded against the SITTING', () => {
+  // Covers the one seam the unit tests cannot reach: the adapter derives `sessionSpanIds` from
+  // the registry, so a duty declaring `span: 'session'` only actually gets the wider bucket if
+  // that derivation sees it.
+  const dir = tmpdir('e2e-steward-sync');
+  const inbox = path.join(dir, '.steward', 'inbox');
+  fs.mkdirSync(inbox, { recursive: true });
+  fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  fs.writeFileSync(path.join(inbox, '20260727-0700-a-thought.md'), '# staged\n');
+  fs.writeFileSync(path.join(inbox, '.gitkeep'), '');
+  const transcript = path.join(dir, 't.jsonl');
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/a/b.js' } }] } }),
+  ].join('\n'));
+  const payload = JSON.stringify({
+    cwd: dir, prompt_id: 'e2e-steward-1', session_id: 'e2e-sitting', stop_hook_active: false,
+    last_assistant_message: 'changed a file', transcript_path: transcript, hook_event_name: 'Stop',
+  });
+  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js')], {
+    input: payload, encoding: 'utf8',
+  });
+  const parsed = JSON.parse(out);
+  const tail = parsed.hookSpecificOutput.additionalContext;
+  assert.ok(tail.includes('steward-sync'), 'the tail names the duty');
+  assert.ok(tail.includes('20260727-0700-a-thought.md'), 'and names the staged item');
+  const ledger = JSON.parse(fs.readFileSync(path.join(dir, ledgerStore.LEDGER_REL), 'utf8'));
+  assert.ok(ledger.sessionAsked.includes('steward-sync'), 'recorded against the sitting, not the prompt');
 });
 
 check('E2E: the hook escalates to block on the continuation fire', () => {

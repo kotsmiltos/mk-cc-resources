@@ -29,17 +29,37 @@ function makeDisk(cwd) {
   };
   const abs = (rel) => path.resolve(cwd, rel);
 
+  /*
+   * What is in this directory — the GENERIC primitive, deliberately meaningless on its own.
+   * Duties disagree about which entries count: one wants "any real file", another wants
+   * "top-level .md notes, excluding the archive subdir and the .gitkeep placeholder". Those are
+   * the DUTY's rules, so the answer here stays typed and unfiltered and each caller applies its
+   * own meaning. A disk view that knew any duty's rules would grow a branch per duty.
+   *
+   * A missing or unreadable directory is simply empty — callers that need to tell those apart
+   * ask exists(). Sorted so two runs over the same tree render identically.
+   */
+  const list = (rel) => memo(`l:${rel}`, () => {
+    try {
+      return fs.readdirSync(abs(rel), { withFileTypes: true })
+        .map((d) => ({ name: d.name, isFile: d.isFile(), isDirectory: d.isDirectory() }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (_e) {
+      return [];
+    }
+  });
+
   return {
     exists: (rel) => memo(`e:${rel}`, () => { try { return fs.existsSync(abs(rel)); } catch (_e) { return false; } }),
     read: (rel) => memo(`r:${rel}`, () => { try { return fs.readFileSync(abs(rel), 'utf8'); } catch (_e) { return null; } }),
     mtimeMs: (rel) => memo(`m:${rel}`, () => { try { return fs.statSync(abs(rel)).mtimeMs; } catch (_e) { return null; } }),
-    /** Directory holds at least one real file (an empty dir is not curated memory). */
-    hasFilesIn: (rel) => memo(`h:${rel}`, () => {
-      try {
-        return fs.readdirSync(abs(rel), { withFileTypes: true })
-          .some((d) => d.isFile() && !d.name.startsWith('.'));
-      } catch (_e) { return false; }
-    }),
+    list,
+    /**
+     * Directory holds at least one real file (an empty dir is not curated memory).
+     * Derived from `list` rather than its own readdir, so the two can never disagree about a
+     * tree and one syscall serves both.
+     */
+    hasFilesIn: (rel) => list(rel).some((e) => e.isFile && !e.name.startsWith('.')),
   };
 }
 

@@ -231,7 +231,10 @@ plugins/
                             #   unmet after that nudge
     lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the life of a
                             #   fire, so a duty cannot see a tree a sibling moved. Whole-turn
-                            #   transcript extraction (last-message-only silently never fires)
+                            #   transcript extraction (last-message-only silently never fires).
+                            #   list(rel) is the generic tree primitive — typed, sorted, and
+                            #   deliberately UNFILTERED, since duties disagree about which
+                            #   entries count; hasFilesIn derives from it, one readdir for both
     lib/ledger.js           # per-`prompt_id` state — THE unit. The hooks this replaces keyed
                             #   on a hash of the TURN's text, so every correction looked new
                             #   and the guard never matched; prompt_id is the user-request span
@@ -254,7 +257,13 @@ plugins/
                             #   request; `advise` because it cannot yet tell advancing from
                             #   oscillating; its meta-loop guard judges the ROLLUP'S SHAPE, not
                             #   the plugin's NAME — matching the bare name made a turn that
-                            #   merely DISCUSSED the lens suppress the duty).
+                            #   merely DISCUSSED the lens suppress the duty),
+                            #   steward-sync (from steward — a staged .steward/inbox/ note must
+                            #   be RECOMPUTED into the model, not merely written; `advise`,
+                            #   SESSION span because its ask spawns the steward agent. An item
+                            #   is a top-level non-dot `.md` file, so done/ and .gitkeep stay
+                            #   out of a count that would read 4 against a real inbox of 3 and
+                            #   never reach zero).
                             #   Add one = one require, no runner change
     lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
                             #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
@@ -278,8 +287,9 @@ plugins/
                             #   tiny experiment prompt suggested
     hooks/                  # the one Stop registration; the adapter holds ZERO policy beyond
                             #   executing due supply duties
-    tests/turn-end.test.js  # 72 checks, own temp fixtures. Two replay the measured failures
-                            #   (ten work turns do not oscillate; lens asked once per request);
+    tests/turn-end.test.js  # 110 checks, own temp fixtures. Three replay measured failures
+                            #   (ten work turns do not oscillate; lens asked once per request;
+                            #   done/ + .gitkeep are not inbox items);
                             #   one asserts a VERBATIM marker from a note body survives into
                             #   the injected material. check() REJECTS a promise-returning body
                             #   — a sync harness counted three async tests as passing before

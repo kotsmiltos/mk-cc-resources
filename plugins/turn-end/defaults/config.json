@@ -2,6 +2,7 @@
   "enabled": true,
   "duties": {
     "session-digest": { "enabled": true, "severity": "block" },
+    "steward-sync": { "enabled": true, "severity": "advise" },
     "quality-lens": { "enabled": true, "severity": "advise" }
   }
 }

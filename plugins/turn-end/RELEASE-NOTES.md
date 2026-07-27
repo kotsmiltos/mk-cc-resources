@@ -1,5 +1,44 @@
 # turn-end — release notes
 
+## 0.3.0 — 2026-07-27 — a third duty: the model gets recomputed, not just written to
+
+`steward-sync`. A living model is only worth what its last recompute was worth. Captures land in
+`.steward/inbox/` mid-conversation and cost nothing to write; the RECOMPUTE is the expensive
+half, and nothing forced it — a pilot model went a full session stale, its state front asserting
+one thing while the tree said another, with every capture present and correct. Staging a capture
+is not recomputing a model, and the stale front is exactly the part staging does not touch.
+
+**Shape set by the owner:** `severity: advise`, **session** span, silent on an empty inbox,
+applies on `.steward/inbox/*.md` count > 0, satisfied on count == 0. **Chosen by Claude, not
+requested:** the priority (25, between the digest and the lens), the wording of the ask, and the
+definition of an item.
+
+**Session span is load-bearing here.** The ask is *dispatch the steward agent*, and a
+backgrounded agent's completion wakes the session as a new `prompt_id` — so a prompt-span record
+would reset at the exact moment the dispatch paid off. This is the same defect that produced the
+span axis in 0.2.x, and the duty that would have re-triggered it.
+
+**What counts as an item is modelled, not enumerated.** The inbox also holds `done/` (the archive
+of integrated items) and `.gitkeep` (present only so a directory whose contents are gitignored
+survives a clone). Counting directory entries reads **4** against a real inbox of **3**, and
+never reaches zero, because the placeholder is permanent. An item is therefore a top-level FILE
+whose name ends in `.md` and does not begin with a dot — which excludes both without naming
+either, and excludes the next placeholder some tool drops in.
+
+**New disk primitive:** `ctx.disk.list(rel)` returns typed, sorted directory entries — memoized
+with every other read, so two duties can never see different trees. It is deliberately
+meaningless on its own: duties disagree about which entries count, so filtering is the duty's
+job. `hasFilesIn` is now derived from it rather than doing its own `readdir`, so the two cannot
+disagree about a tree and one syscall serves both.
+
+95 → **110 checks**. Beyond the duty's own behaviour: the `done/`+`.gitkeep` count is a named
+regression, the span is asserted at the contract, seven `prompt_id`s in one sitting must produce
+exactly one ask, and an end-to-end fire proves the adapter's `sessionSpanIds` derivation
+actually files this duty in the session bucket (the one seam unit tests cannot reach).
+
+Also corrected here: this README claimed **72 checks** when the suite ran 95 — a hand-written
+count going stale, the defect class the project already has on its own task list.
+
 ## 0.2.4 — 2026-07-27 — satisfaction must be a DISK fact, not a tool-call fact
 
 Found by the duty refusing to clear while the file it demanded already existed and had just been

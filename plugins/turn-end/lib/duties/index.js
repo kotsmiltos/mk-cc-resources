@@ -51,9 +51,10 @@
 
 const contextRecall = require('./context-recall');
 const sessionDigest = require('./session-digest');
+const stewardSync = require('./steward-sync');
 const qualityLens = require('./quality-lens');
 
-const DUTIES = [contextRecall, sessionDigest, qualityLens];
+const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens];
 
 function all() {
   return DUTIES.slice();

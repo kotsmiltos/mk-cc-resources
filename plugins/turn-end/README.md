@@ -62,7 +62,7 @@ project already had**.
 
 | kind | shape | ships |
 |---|---|---|
-| **demand** | `ask() -> string` — asks the session to do something | `session-digest`, `quality-lens` |
+| **demand** | `ask() -> string` — asks the session to do something | `session-digest`, `steward-sync`, `quality-lens` |
 | **supply** | `supply() -> {material}` — hands the session material | `context-recall` |
 
 ### `context-recall` — the reason this plugin exists
@@ -131,7 +131,19 @@ consolidated message describe a turn that never happened.
 | id | severity | applies when | satisfied when |
 |---|---|---|---|
 | `session-digest` | `block` | the project curates memory (`.claude/kb/*` or `.steward/` hold real files) **and** the turn used Write/Edit/NotebookEdit/Bash | the turn wrote `.claude/kb/session-digest.md` |
+| `steward-sync` | `advise` | `.steward/inbox/` holds at least one staged `*.md` note | the inbox is empty, **or** the steward agent was dispatched, **or** it was already asked this **sitting** |
 | `quality-lens` | `advise` | `.claude/verifiability-lens.json` `{"enabled": true}` (project beats global; off by default) **and** the turn did substantive work | the lens was dispatched, **or** it was already asked this `prompt_id` |
+
+`steward-sync` closes the gap between capturing a thought and recomputing the model it changes.
+Captures are cheap and land mid-conversation; the recompute is the expensive half, and nothing
+forced it — a pilot model went a full session stale with every capture present and correct.
+An **item** is a top-level non-dot `*.md` file, which is how the archive subdirectory `done/`
+and the `.gitkeep` placeholder stay out of the count without either being named in the code
+(a naive entry count reads 4 where the truth is 3, and never reaches zero).
+
+The owner set this duty's shape — `advise`, session span, silent on an empty inbox. Its
+priority, the wording of its ask, and that definition of an item were chosen by Claude and are
+revisable.
 
 `quality-lens` is `advise`, not `block`, on purpose: in the session that prompted this work,
 passes 1–3 found real defects and passes 4–8 were the reviewer repairing its own earlier
@@ -179,6 +191,7 @@ be called by this runner. Two blocking peers is the bug.
       "severity": "block",
       "important": ["what counts as worth keeping in THIS project"]
     },
+    "steward-sync":   { "enabled": true, "severity": "advise" },
     "quality-lens":   { "enabled": true, "severity": "advise" },
     "context-recall": {
       "maxIndexEntries": null,
@@ -218,10 +231,11 @@ resets it.
 node tests/turn-end.test.js
 ```
 
-72 checks, no framework, own temp fixtures — it never reads the repo it ships in. Two of them
-replay the measured failures: *ten consecutive work turns do not oscillate* (the old guard
-returned block/allow/block/allow), and *the lens is asked at most once per user request* (all
-eight observed passes were one request).
+110 checks, no framework, own temp fixtures — it never reads the repo it ships in. Three of them
+replay measured failures: *ten consecutive work turns do not oscillate* (the old guard returned
+block/allow/block/allow), *the lens is asked at most once per user request* (all eight observed
+passes were one request), and *`done/` and `.gitkeep` are not inbox items* (a naive count read 4
+against a real inbox of 3).
 
 ## Install
 
