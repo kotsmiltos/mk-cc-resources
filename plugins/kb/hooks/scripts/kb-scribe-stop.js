@@ -1,5 +1,12 @@
 'use strict';
 /*
+ * RETIRED as of kb 0.9.0 — NO LONGER REGISTERED. See hooks/hooks.json.
+ * Its enforcement now ships as the `session-digest` duty in the turn-end plugin. Two plugins
+ * each owning a blocking Stop hook re-armed each other: this file's PRODUCE_TOOLS includes
+ * `Agent`, so the verifiability-lens's own mandated dispatch turn read as fresh work here and
+ * blocked, and the resulting fix turn used Edit and blocked again. Kept for one release so the
+ * behaviour it encoded stays readable next to its replacement; the duty is the live copy.
+ *
  * kb-scribe-stop.js — Stop hook: the ENFORCED write side of session memory.
  * Read this before doing anything:
  * - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.

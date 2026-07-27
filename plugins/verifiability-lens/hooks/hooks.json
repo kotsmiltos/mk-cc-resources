@@ -1,15 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/verifiability-stop.sh\""
-          }
-        ]
-      }
-    ]
-  }
+  "description": "No hooks. The Stop hook that auto-dispatched the lens is RETIRED as of 0.5.0 — its trigger now ships as the 'quality-lens' duty in the turn-end plugin. It fired 8 times over a single user request: its fire-once guard bounded CONSECUTIVE blocks rather than total fires (a steady 50% duty cycle), and it keyed on a hash of the turn's text, so every correction turn looked new. The duty keys on prompt_id instead — the user-request span.",
+  "hooks": {}
 }

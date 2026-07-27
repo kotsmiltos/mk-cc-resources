@@ -1,6 +1,13 @@
 "use strict";
 
 /**
+ * RETIRED as of verifiability-lens 0.5.0 — NO LONGER REGISTERED. See hooks/hooks.json.
+ * Its trigger now ships as the `quality-lens` duty in the turn-end plugin. The "fire-exactly-
+ * once guard" described below bounds CONSECUTIVE blocks, not total fires: simulating ten work
+ * turns through `decide` returns block, allow, block, allow, … — 5 fires in 10 turns, unbounded.
+ * Identity was also the wrong unit (a hash of the TURN's text, so every correction looked new);
+ * the duty keys on `prompt_id`, the user-request span. Kept for one release for readability.
+ *
  * verifiability-lens — Stop hook (P1: block + in-session classification).
  *
  * Mechanism: when Claude finishes a turn, this hook reads the transcript, and if

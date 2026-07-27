@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "duties": {
+    "session-digest": { "enabled": true, "severity": "block" },
+    "quality-lens": { "enabled": true, "severity": "advise" }
+  }
+}

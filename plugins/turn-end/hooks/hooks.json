@@ -1,0 +1,18 @@
+{
+  "description": "The single blocking Stop hook — runs every applicable turn-end duty in one pass",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/turn-end.js"],
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

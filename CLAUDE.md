@@ -207,6 +207,54 @@ plugins/
                             #   silent without .steward/; fail-open
     tests/steward-brief.test.js  # 25 checks, isolated fake home, no framework
 
+  turn-end/                 # THE single blocking Stop hook, so nothing else needs one.
+                            #   Plugins ship DUTIES, not hooks; one runner checks each against
+                            #   real state and emits ONE consolidated message per user request
+                            #   (two duties = one tail with two items, never two tails).
+                            #   Exists because two blocking Stop hooks re-armed each other —
+                            #   each one's mandated response was fresh work for the other, so
+                            #   the allow-gap never landed on an idle turn (measured: scribe
+                            #   blocked 6 + lens fired 3 in one sitting over ONE request;
+                            #   another session ran 8 passes). Stop hooks run in PARALLEL with
+                            #   no ordering and blocking is fail-closed, so runtime negotiation
+                            #   between hooks is racy by construction; one runner has no race.
+    .claude-plugin/plugin.json
+    lib/runner.js           # PURE policy: registry walk -> applies/satisfied -> ONE emission.
+                            #   TERMINATION IS STRUCTURAL — a duty ends the loop by becoming
+                            #   satisfied against real state, never by a counter. The fire
+                            #   budget is only the backstop for a satisfaction check that is
+                            #   WRONG, sits strictly under the platform's 8-consecutive-block
+                            #   cap, and NAMES the duties it abandons (a silent give-up reads
+                            #   identical to success). Escalation: additionalContext first
+                            #   (continues the turn, labelled "Stop hook feedback", no hook
+                            #   error) -> decision:block only for a severity:block duty still
+                            #   unmet after that nudge
+    lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the life of a
+                            #   fire, so a duty cannot see a tree a sibling moved. Whole-turn
+                            #   transcript extraction (last-message-only silently never fires)
+    lib/ledger.js           # per-`prompt_id` state — THE unit. The hooks this replaces keyed
+                            #   on a hash of the TURN's text, so every correction looked new
+                            #   and the guard never matched; prompt_id is the user-request span
+    lib/duties/             # extension surface: index.js registry + one module per duty.
+                            #   Contract {id, title, severity:'block'|'advise', priority,
+                            #   applies(ctx), satisfied(ctx), ask(ctx)}. Shipped:
+                            #   session-digest (from kb — Agent/Task deliberately NOT producing
+                            #   work, which is what closes the re-arm chain by definition),
+                            #   quality-lens (from verifiability-lens — at most ONE ask per
+                            #   request; `advise` because it cannot yet tell advancing from
+                            #   oscillating). Add one = one require, no runner change
+    lib/judges/             # judgment surface for duties whose satisfaction is genuinely
+                            #   opinion. `claude -p` adapter, plan-billed, four measured
+                            #   constraints encoded: argv-not-stdin (stdin is refused as prompt
+                            #   injection), never shell:true (Windows cmd.exe hangs on
+                            #   multi-line argv), MK_TURN_END_DEPTH guard (the -p child fires
+                            #   its own Stop hooks; `recursion_depth` does NOT exist), and
+                            #   --bare is unusable ("Not logged in"). NO shipped duty uses it —
+                            #   every check answerable from disk stays on disk
+    hooks/                  # the one Stop registration; the adapter holds ZERO policy
+    tests/turn-end.test.js  # 49 checks, own temp fixtures. Two replay the measured failures:
+                            #   ten work turns do not oscillate, lens asked once per request
+
   kb/                       # The project's queryable knowledge base — the PULL side of the
                             #   long-lens tools (steward + lens PUSH a fixed briefing at open;
                             #   kb lets a session ask for what it needs, when it needs it).
@@ -216,13 +264,16 @@ plugins/
                             #   injection, machine-text guarded, fail-open, config
                             #   off-switch), per-call JSONL traces (.claude/kb/trace.jsonl),
                             #   pattern split mode for non-heading ledgers, seed
-                            #   depth+autonomy. kb CARRIES THREE HOOKS: kb-pull (UserPromptSubmit
-                            #   — subject-matched hints + session-digest injection), kb-scribe
-                            #   (Stop — the enforced write side: a producing turn cannot yield
-                            #   until the session distills it into the digest and graduates
-                            #   durable items to captures/ or .steward/inbox/), and
-                            #   kb-session-start (SessionStart — archives the previous sitting's
-                            #   digest, one-time seed cue). All three are PRESENCE-gated: a
+                            #   depth+autonomy. kb CARRIES TWO HOOKS since 0.9.0: kb-pull
+                            #   (UserPromptSubmit — subject-matched hints + session-digest
+                            #   injection) and kb-session-start (SessionStart — archives the
+                            #   previous sitting's digest, one-time seed cue). The kb-scribe
+                            #   Stop hook is RETIRED — the enforced write side now ships as
+                            #   turn-end's `session-digest` duty, because two plugins each
+                            #   owning a blocking Stop hook re-armed each other (scribe's
+                            #   PRODUCE_TOOLS included `Agent`, so the lens's mandated dispatch
+                            #   turn read as fresh work). Script + 42 tests kept one release,
+                            #   marked RETIRED in the header. Both live hooks are PRESENCE-gated: a
                             #   project keeping no curated memory is never blocked and never
                             #   written into. Hooks register at INSTALL time — update the plugin
                             #   + restart, then check .claude/kb/trace.jsonl. Standalone install
@@ -297,7 +348,7 @@ lists what *is* available under the filters for the same reason.
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
 
-**verifiability-lens** (design source: `design/verifiability-awareness.md`) — a strict, opinionated work-quality guardian. Two pillars. *Detection — three checks, actively verified* (agent tools: Read/Grep/Glob/WebSearch/WebFetch/context7 + Serena semantic trio find_symbol/find_referencing_symbols/get_symbols_overview/search_for_pattern for tracing code paths, fallback to Read/Grep — it confirms/refutes, not just flags): (1) verifiability A/B/U (A = a cheap accurate check exists or was run, B = genuine guess, U = can't tell; never let a U pass as A — the false-clean; capability-relative); (2) completeness (was everything meant to be done done, or an arbitrary stop — presses to continue + finish); (3) quality bar (tested, requirements met, robust, best achievable; rejects half-assed/missing-requirement/untested work). *Delivery:* a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands the user ONLY important + actionable + fully-contextualized decisions and absorbs the rest — hard rule: never a context-less decision; auto-resolutions always logged. Generalizes essense-flow's `unknowns[]` (input-side) to the output-side, and extends librarian.md's surface-at-gate protocol. Fires automatically via a Stop hook (P1 — blocks the turn, runs the lens in-session, surfaces before yielding), **opt-in OFF by default** (`.claude/verifiability-lens.json` `{"enabled":true}`), fire-exactly-once guard, fail-open — same mechanism as essense-autopilot. Carries a hook → standalone, not in the mk-cc-all bundle.
+**verifiability-lens** (design source: `design/verifiability-awareness.md`) — a strict, opinionated work-quality guardian. Two pillars. *Detection — three checks, actively verified* (agent tools: Read/Grep/Glob/WebSearch/WebFetch/context7 + Serena semantic trio find_symbol/find_referencing_symbols/get_symbols_overview/search_for_pattern for tracing code paths, fallback to Read/Grep — it confirms/refutes, not just flags): (1) verifiability A/B/U (A = a cheap accurate check exists or was run, B = genuine guess, U = can't tell; never let a U pass as A — the false-clean; capability-relative); (2) completeness (was everything meant to be done done, or an arbitrary stop — presses to continue + finish); (3) quality bar (tested, requirements met, robust, best achievable; rejects half-assed/missing-requirement/untested work). *Delivery:* a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands the user ONLY important + actionable + fully-contextualized decisions and absorbs the rest — hard rule: never a context-less decision; auto-resolutions always logged. Generalizes essense-flow's `unknowns[]` (input-side) to the output-side, and extends librarian.md's surface-at-gate protocol. **Since 0.5.0 this plugin carries NO hook.** Automatic firing comes from turn-end's `quality-lens` duty, still **opt-in OFF by default** (`.claude/verifiability-lens.json` `{"enabled":true}`) and now scoped to `prompt_id` — at most one ask per user request. Its own Stop hook is retired: the "fire-exactly-once guard" at `verifiability-stop.js:148` bounded *consecutive* blocks, not total fires (10 simulated work turns → block/allow/block/allow, 5 fires, unbounded), and identity was a hash of the turn's text, so every correction turn looked new. The duty ships as `advise` rather than `block` because it cannot yet tell an advancing pass from one repairing its own earlier characterisation — the validation set for that classifier exists (passes 1–3 advancing, 4–8 oscillating, crossover at 3–4) but is deliberately unbuilt.
 
 ## essense-flow Pipeline
 

@@ -1,5 +1,37 @@
 # verifiability-lens — Release Notes
 
+## 0.5.0 — 2026-07-27 — the Stop hook is retired; the trigger moves to turn-end
+
+**This plugin no longer carries any hook.** Automatic firing now comes from the `quality-lens`
+duty in the new **turn-end** plugin. The agent, the rubric, the recipient profile and
+`/verifiability` are unchanged.
+
+**The defect, measured.** `verifiability-stop.js:148` — the "fire-exactly-once guard" bounds
+*consecutive* blocks, not total fires. A block sets `awaiting: true`; the next fire releases
+it. Simulating ten consecutive work turns through `decide()` returns block, allow, block,
+allow, … — **5 fires in 10 turns, unbounded**. The name promised a session-level property the
+code never had.
+
+**The unit was also wrong.** Identity was `hashText(lastAssistant.text)`, which keys on a
+*turn*. Every correction turn is new text, so `last_block_hash` never matched. All 8 observed
+passes were ONE user request, and nothing in the system represented that span. `prompt_id` is
+that span; keying on it alone turns that session into a single pass.
+
+**And it was the wrong half of a pair.** Zero of the 28 commits since 2026-07-24 touched this
+file — the regression was kb 0.6.0 adding a *second* blocking Stop hook whose mandated output
+this hook counted as work, and vice versa.
+
+**Severity is now `advise`, not block.** The owner's ledger of that session: passes 1–3 found
+real defects (an unextracted dossier, a project dormant 87 days, a gated-off campaign), passes
+4–8 were the reviewer repairing its own prior characterisations. A fire-count cap fails both
+ways against that ledger — a cap of 3 cuts a pass that was still finding real defects, a cap of
+6 permits two pure self-correction rounds. Count does not correlate with value; mode does.
+Until a duty can tell advancing from oscillating, it uses the channel that continues the turn
+without raising a hook error. Set `severity: "block"` in `.claude/turn-end.json` to enforce.
+
+`hooks/scripts/verifiability-stop.{js,sh}` and their 39 tests are kept for one release, marked
+RETIRED in the file header. `hooks/hooks.json` now registers nothing.
+
 ## 0.4.0 — Per-project profiles ("too generic" fix) + read-once profile rule
 
 - **Per-project recipient profiles are now concrete.** Standard override location:
