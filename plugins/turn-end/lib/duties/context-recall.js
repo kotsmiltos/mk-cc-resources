@@ -160,11 +160,26 @@ module.exports = {
     }
     if (!index.length) return null;
 
+    /*
+     * A judge that could not run must be VISIBLE. Returning null here would make a broken
+     * judge indistinguishable from the (common, correct) "nothing was needed" answer — the
+     * false-clean this toolkit exists to catch, and exactly how the first live fire's
+     * `spawnSync claude ENOENT` reached only the trace file and nobody's eyes.
+     */
+    const cannotRun = (why) => ({
+      error: why,
+      chosen: [],
+      material:
+        `context recall could NOT run (${why}). Treat "nothing was recalled" as UNKNOWN here, ` +
+        'not as "nothing was needed" — check this project\'s notes yourself if the answer leans ' +
+        'on prior decisions.',
+    });
+
     const verdict = claudeP.judge(buildPrompt(ctx, index), { model: 'haiku' });
-    if (!verdict.ok) return { error: verdict.error, chosen: [], material: null };
+    if (!verdict.ok) return cannotRun(verdict.error);
 
     const needed = parseVerdict(verdict.text);
-    if (needed === null) return { error: 'judge returned unparseable output', chosen: [], material: null };
+    if (needed === null) return cannotRun('judge returned unparseable output');
     if (!needed.length) return null; // the strict, common, correct answer
 
     const whyById = new Map(needed.map((n) => [n.id, n.why]));

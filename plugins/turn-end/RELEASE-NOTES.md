@@ -1,5 +1,38 @@
 # turn-end — release notes
 
+## 0.2.1 — 2026-07-27 — find the binary, and never let a broken judge look clean
+
+The first live fire of 0.2.0 wrote `{"id":"context-recall","error":"spawnSync claude ENOENT"}`.
+
+**Why the probe lied.** The manual probe that "proved" the judge ran from a tool shell, where
+Claude Code sets `CLAUDE_CODE_EXECPATH`. A **hook subprocess does not get it**, so the adapter
+fell back to the bare name `claude`. Measured on this platform:
+
+| candidate | result |
+|---|---|
+| `claude` | ENOENT — `execFile` does no `PATHEXT` lookup, a bare name never resolves |
+| `claude.exe` | ENOENT — the exe lives inside `node_modules`, not on `PATH` |
+| `claude.cmd` | EINVAL — Node refuses to `execFile` a `.cmd` without a shell |
+
+and `shell: true` is the thing that hung on a multi-line prompt, so it was not a way out.
+
+`resolveClaudeExe()` now finds a real executable: `CLAUDE_CODE_EXECPATH` when it exists on
+disk, else a `PATH` scan restricted to extensions `execFile` can actually run (`.exe`/`.com`,
+never `.cmd`/`.bat`), else the npm global payload
+(`%APPDATA%/npm/node_modules/@anthropic-ai/claude-code/bin/`). Returns `null` rather than a
+name it cannot run, and `judge()` then reports *why* without spawning.
+
+**The second bug was the shape of the first.** The ENOENT reached `trace.jsonl` and nobody's
+eyes: `supply()` returned `material: null`, which the runner renders as nothing — identical to
+the common, correct "the judge decided nothing was needed". A broken judge that reads as clean
+is the exact false-clean this toolkit exists to catch. A judge that cannot run now returns
+material saying so, and that *"nothing was recalled" must be read as UNKNOWN, not as "nothing
+was needed"*.
+
+Verified: `resolveClaudeExe()` returns the real `claude.exe` with `CLAUDE_CODE_EXECPATH`
+deleted from the env — the hook's actual situation. 72 → **78 checks**, including a regression
+test asserting the resolved path is a real file and never a `.cmd`.
+
 ## 0.2.0 — 2026-07-27 — the recall half: context plugged in, not chores demanded
 
 **This is what the plugin was for.** 0.1.x shipped the frame — one hook, a duty registry, a

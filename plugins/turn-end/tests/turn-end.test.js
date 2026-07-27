@@ -477,6 +477,72 @@ check('claude-p: a spawn failure degrades to no-verdict, never throws', () => {
   assert.ok(r.error);
 });
 
+check('REGRESSION: the exe is RESOLVED, never assumed from a bare name', () => {
+  // The first live fire returned `spawnSync claude ENOENT`: the probe that "proved" this
+  // adapter ran in a shell where CLAUDE_CODE_EXECPATH is set, and a HOOK does not get it.
+  // On this platform a bare `claude` never resolves via execFile (no PATHEXT lookup).
+  const found = claudeP.resolveClaudeExe();
+  assert.ok(found, 'a real claude executable must be discoverable on this machine');
+  assert.ok(fs.statSync(found).isFile(), 'and it must be an actual file');
+  assert.ok(!/\.(cmd|bat)$/i.test(found), 'never a .cmd/.bat — execFile cannot run one without a shell');
+});
+
+check('resolveClaudeExe prefers CLAUDE_CODE_EXECPATH when it exists', () => {
+  const fake = path.join(tmpdir('exe-env'), 'claude.exe');
+  fs.writeFileSync(fake, '');
+  assert.strictEqual(claudeP.resolveClaudeExe({ CLAUDE_CODE_EXECPATH: fake, PATH: '' }), fake);
+});
+
+check('resolveClaudeExe ignores a CLAUDE_CODE_EXECPATH that does not exist', () => {
+  const r = claudeP.resolveClaudeExe({ CLAUDE_CODE_EXECPATH: path.join(TMP, 'ghost.exe'), PATH: '' });
+  assert.strictEqual(r, null);
+});
+
+check('resolveClaudeExe returns null rather than a bare name it cannot run', () => {
+  assert.strictEqual(claudeP.resolveClaudeExe({ PATH: '' }), null);
+});
+
+check('judge with no resolvable exe reports WHY, without spawning', () => {
+  // APPDATA is cleared too: the resolver deliberately also probes the npm global payload, so
+  // leaving it set would find the real binary and actually spawn it.
+  const saved = {
+    CLAUDE_CODE_EXECPATH: process.env.CLAUDE_CODE_EXECPATH,
+    PATH: process.env.PATH,
+    APPDATA: process.env.APPDATA,
+  };
+  delete process.env.CLAUDE_CODE_EXECPATH;
+  delete process.env.APPDATA;
+  process.env.PATH = '';
+  try {
+    const r = claudeP.judge('hi');
+    assert.strictEqual(r.ok, false);
+    assert.ok(/no runnable claude executable/.test(r.error), r.error);
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
+checkAsync('a judge that CANNOT RUN surfaces as material, not as silence', async () => {
+  // Otherwise a broken judge is indistinguishable from "nothing was needed" — the false-clean.
+  const dir = tmpdir('recall-cannot-run');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# A\nbody');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: false, error: 'spawnSync claude ENOENT' });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
+    const out = await contextRecall.supply(ctx);
+    assert.ok(out && out.material, 'the failure must reach the session');
+    assert.ok(/could NOT run/.test(out.material));
+    assert.ok(/UNKNOWN/.test(out.material), 'and must not read as "nothing was needed"');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
 // ---------- registry ----------
 
 check('every registered duty satisfies the contract for its KIND', () => {
@@ -641,7 +707,8 @@ checkAsync('supply() surfaces a judge failure instead of silently recalling noth
     const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
     const out = await contextRecall.supply(ctx);
     assert.ok(out && out.error && /ETIMEDOUT/.test(out.error));
-    assert.strictEqual(out.material, null);
+    // The failure is REPORTED as material, never swallowed — see the false-clean test below.
+    assert.ok(/could NOT run/.test(out.material));
   } finally {
     claudeP.judge = realJudge;
   }

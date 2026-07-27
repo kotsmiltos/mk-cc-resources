@@ -36,10 +36,55 @@
  */
 
 const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const DEPTH_VAR = 'MK_TURN_END_DEPTH';
 const DEFAULT_MODEL = 'haiku';
 const DEFAULT_TIMEOUT_MS = 60000;
+
+/*
+ * FIFTH measured constraint, and the one that actually bit in production: FINDING THE BINARY.
+ *
+ * The first live fire returned `spawnSync claude ENOENT`. The manual probe that "proved" this
+ * adapter had passed only because it ran from a tool shell where Claude Code sets
+ * CLAUDE_CODE_EXECPATH; a HOOK subprocess does not get it. Verified on this platform:
+ *   claude      -> ENOENT   execFile does no PATHEXT lookup, so a bare name never resolves
+ *   claude.exe  -> ENOENT   the exe lives inside node_modules, not on PATH
+ *   claude.cmd  -> EINVAL   Node refuses to execFile a .cmd without a shell
+ * and `shell: true` is exactly what hung on a multi-line prompt, so it is not a way out.
+ *
+ * Therefore: resolve an actual executable file ourselves, preferring extensions execFile can
+ * run. Returns null when nothing is found, so the caller reports "no judge" instead of
+ * silently recalling nothing — a broken judge and "nothing was needed" must never look alike.
+ */
+const WINDOWS_DIRECT_EXTS = ['.exe', '.com']; // execFile-safe; .cmd/.bat need a shell
+const NPM_GLOBAL_REL = path.join('node_modules', '@anthropic-ai', 'claude-code', 'bin');
+
+function isFile(p) {
+  try { return fs.statSync(p).isFile(); } catch (_e) { return false; }
+}
+
+function resolveClaudeExe(env = process.env) {
+  const fromEnv = env.CLAUDE_CODE_EXECPATH;
+  if (fromEnv && isFile(fromEnv)) return fromEnv;
+
+  const win = process.platform === 'win32';
+  const exts = win ? WINDOWS_DIRECT_EXTS : [''];
+  const dirs = String(env.PATH || '').split(path.delimiter).filter(Boolean);
+
+  // The npm global bin holds claude.cmd, but the real executable sits beside the package —
+  // so for each PATH dir also look at its node_modules payload.
+  const candidates = [];
+  for (const d of dirs) {
+    for (const ext of exts) candidates.push(path.join(d, `claude${ext}`));
+    for (const ext of exts) candidates.push(path.join(d, NPM_GLOBAL_REL, `claude${ext}`));
+  }
+  if (win && env.APPDATA) {
+    for (const ext of exts) candidates.push(path.join(env.APPDATA, 'npm', NPM_GLOBAL_REL, `claude${ext}`));
+  }
+  return candidates.find(isFile) || null;
+}
 
 /** True when this process is already inside a judgment child — it must not judge again. */
 function isNested() {
@@ -55,7 +100,14 @@ function judge(prompt, options = {}) {
   if (isNested()) {
     return { ok: false, text: null, error: `nested (${DEPTH_VAR} set) — standing down` };
   }
-  const exe = options.exe || process.env.CLAUDE_CODE_EXECPATH || 'claude';
+  const exe = options.exe || resolveClaudeExe();
+  if (!exe) {
+    return {
+      ok: false,
+      text: null,
+      error: 'no runnable claude executable found (CLAUDE_CODE_EXECPATH unset and none on PATH)',
+    };
+  }
   const args = [
     '-p', prompt,
     '--model', options.model || DEFAULT_MODEL,
@@ -77,4 +129,7 @@ function judge(prompt, options = {}) {
   }
 }
 
-module.exports = { id: 'claude-p', judge, isNested, DEPTH_VAR, DEFAULT_MODEL, DEFAULT_TIMEOUT_MS };
+module.exports = {
+  id: 'claude-p', judge, isNested, resolveClaudeExe,
+  DEPTH_VAR, DEFAULT_MODEL, DEFAULT_TIMEOUT_MS,
+};
