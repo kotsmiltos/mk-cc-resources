@@ -139,8 +139,10 @@ continues the turn without raising an error. Set `severity: "block"` in config t
 ## Judgment
 
 `lib/judges/` is the surface for a duty whose satisfaction is genuinely a matter of opinion.
-The shipped adapter is `claude -p`, and **no shipped duty uses it** — every check answerable
-from disk stays on disk, where it is free, instant and exact.
+The shipped adapter is `claude -p`, and **`context-recall` uses it on every turn end**. Every
+check answerable from *disk* still stays on disk, where it is free, instant and exact —
+`session-digest` and `quality-lens` never call a judge. Judgment is reserved for the one
+question disk cannot answer: *given this answer, was anything material missed?*
 
 Four constraints, each measured:
 
@@ -192,7 +194,7 @@ resets it.
 node tests/turn-end.test.js
 ```
 
-49 checks, no framework, own temp fixtures — it never reads the repo it ships in. Two of them
+72 checks, no framework, own temp fixtures — it never reads the repo it ships in. Two of them
 replay the measured failures: *ten consecutive work turns do not oscillate* (the old guard
 returned block/allow/block/allow), and *the lens is asked at most once per user request* (all
 eight observed passes were one request).

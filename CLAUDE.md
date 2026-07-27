@@ -236,24 +236,54 @@ plugins/
                             #   on a hash of the TURN's text, so every correction looked new
                             #   and the guard never matched; prompt_id is the user-request span
     lib/duties/             # extension surface: index.js registry + one module per duty.
-                            #   Contract {id, title, severity:'block'|'advise', priority,
-                            #   applies(ctx), satisfied(ctx), ask(ctx)}. Shipped:
+                            #   TWO KINDS, because a turn ends badly two ways — work left
+                            #   undone, or an answer built without knowledge the project
+                            #   already had:
+                            #     DEMAND {id,title,severity:'block'|'advise',priority,
+                            #             applies(ctx),satisfied(ctx),ask(ctx)->string}
+                            #     SUPPLY {kind:'supply', …, supply(ctx)->{material}} — hands
+                            #             the session MATERIAL instead of an instruction
+                            #   supply() is the ONLY impure step, so the pure runner just
+                            #   reports it is due (`supplyDue`) and the ADAPTER executes it:
+                            #   plan (pure) -> execute (impure) -> compose (pure), which is
+                            #   what keeps the whole policy testable without a session.
+                            #   Shipped: context-recall (the recall half — see lib/sources),
                             #   session-digest (from kb — Agent/Task deliberately NOT producing
                             #   work, which is what closes the re-arm chain by definition),
                             #   quality-lens (from verifiability-lens — at most ONE ask per
                             #   request; `advise` because it cannot yet tell advancing from
-                            #   oscillating). Add one = one require, no runner change
-    lib/judges/             # judgment surface for duties whose satisfaction is genuinely
-                            #   opinion. `claude -p` adapter, plan-billed, four measured
+                            #   oscillating; its meta-loop guard judges the ROLLUP'S SHAPE, not
+                            #   the plugin's NAME — matching the bare name made a turn that
+                            #   merely DISCUSSED the lens suppress the duty).
+                            #   Add one = one require, no runner change
+    lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
+                            #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
+                            #   TWO-PHASE and the split is load-bearing: index() emits titles+
+                            #   ids and NEVER bodies, the judge picks ids, fetch() returns the
+                            #   files' own text. The judge CHOOSES; it never SUMMARISES — so
+                            #   the session gets the file, not a recollection, and the call
+                            #   stays small however much the project has written. markdown-dir
+                            #   is the generic TYPE; every shipped source is CONFIG over it
+                            #   (kb-captures, kb-extracted, steward-model). A configured dir
+                            #   that does not exist is simply empty — that is the silence rule
+    lib/judges/             # judgment surface. `claude -p` adapter, plan-billed, four measured
                             #   constraints encoded: argv-not-stdin (stdin is refused as prompt
                             #   injection), never shell:true (Windows cmd.exe hangs on
                             #   multi-line argv), MK_TURN_END_DEPTH guard (the -p child fires
                             #   its own Stop hooks; `recursion_depth` does NOT exist), and
-                            #   --bare is unusable ("Not logged in"). NO shipped duty uses it —
-                            #   every check answerable from disk stays on disk
-    hooks/                  # the one Stop registration; the adapter holds ZERO policy
-    tests/turn-end.test.js  # 49 checks, own temp fixtures. Two replay the measured failures:
-                            #   ten work turns do not oscillate, lens asked once per request
+                            #   --bare is unusable ("Not logged in"). USED BY context-recall on
+                            #   every turn end (owner directive: no pre-filter — a gate deciding
+                            #   when recall matters is itself a thing that can be wrong).
+                            #   MEASURED 46s per fire against a real corpus, not the ~11s the
+                            #   tiny experiment prompt suggested
+    hooks/                  # the one Stop registration; the adapter holds ZERO policy beyond
+                            #   executing due supply duties
+    tests/turn-end.test.js  # 72 checks, own temp fixtures. Two replay the measured failures
+                            #   (ten work turns do not oscillate; lens asked once per request);
+                            #   one asserts a VERBATIM marker from a note body survives into
+                            #   the injected material. check() REJECTS a promise-returning body
+                            #   — a sync harness counted three async tests as passing before
+                            #   their assertions ran
 
   kb/                       # The project's queryable knowledge base — the PULL side of the
                             #   long-lens tools (steward + lens PUSH a fixed briefing at open;
