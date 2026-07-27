@@ -1,5 +1,24 @@
 # turn-end — release notes
 
+## 0.2.4 — 2026-07-27 — satisfaction must be a DISK fact, not a tool-call fact
+
+Found by the duty refusing to clear while the file it demanded already existed and had just been
+updated. `session-digest.satisfied()` checked only `toolTargets` for a `Write`/`Edit` carrying
+the digest's `file_path`. The digest had been written with **Bash**, which carries no
+`file_path`, so the check saw nothing and kept asking.
+
+The design note for this duty says satisfaction is *"a disk fact … rather than a content hash of
+the turn's text"* — and then the implementation asked **how** the work was done instead of
+**whether** it was done. Same family as a sweep matching a name instead of a shape.
+
+Tool evidence stays as the fast path (exact when present). The general path is the file's own
+`mtime` against `startedAt`, a new ledger field stamped when a request's ledger is created — so
+"did this file change during this request?" is answered from disk and cannot be fooled by the
+method used.
+
+93 → **95 checks**: a digest written by a `Bash` turn with no `file_path` anywhere must satisfy
+the duty, and a digest untouched since the request began must not.
+
 ## 0.2.3 — 2026-07-27 — stop speaking in the owner's voice, and stop capping silently
 
 Owner: *"we originally put a stupid/wrong number in that you decided to do on your own, i never

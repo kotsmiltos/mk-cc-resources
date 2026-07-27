@@ -23,8 +23,20 @@ const path = require('path');
 
 const LEDGER_REL = path.join('.claude', 'turn-end', 'ledger.json');
 
-function emptyLedger(promptId, sessionId) {
-  return { promptId: promptId || null, sessionId: sessionId || null, fires: 0, asked: [], sessionAsked: [] };
+/**
+ * `startedAt` stamps when this request's ledger was created, so a duty can ask "did the file
+ * change DURING this request?" — a disk fact — instead of "did a Write tool call mention it?",
+ * which is a fact about HOW the work was done and misses every other way of doing it.
+ */
+function emptyLedger(promptId, sessionId, now) {
+  return {
+    promptId: promptId || null,
+    sessionId: sessionId || null,
+    fires: 0,
+    asked: [],
+    sessionAsked: [],
+    startedAt: typeof now === 'number' ? now : Date.now(),
+  };
 }
 
 const strings = (v) => (Array.isArray(v) ? v.filter((a) => typeof a === 'string') : []);
@@ -52,7 +64,7 @@ function readLedger(cwd, promptId, sessionId) {
     // The session bucket carries over only while the sitting is the same one.
     const sessionAsked = parsed.sessionId === sessionId ? strings(parsed.sessionAsked) : [];
     if (parsed.promptId !== promptId) {
-      return { promptId: promptId || null, sessionId: sessionId || null, fires: 0, asked: [], sessionAsked };
+      return { ...emptyLedger(promptId, sessionId), sessionAsked };
     }
     return {
       promptId,
@@ -60,6 +72,7 @@ function readLedger(cwd, promptId, sessionId) {
       fires: Number.isInteger(parsed.fires) ? parsed.fires : 0,
       asked: strings(parsed.asked),
       sessionAsked,
+      startedAt: typeof parsed.startedAt === 'number' ? parsed.startedAt : Date.now(),
     };
   } catch (_e) {
     // A corrupt ledger must not block a turn. Losing the count costs at most one extra
@@ -105,6 +118,7 @@ function advance(ledger, askedIds, sessionSpanIds) {
     fires: (ledger.fires || 0) + 1,
     asked: Array.from(asked),
     sessionAsked: Array.from(sessionAsked),
+    startedAt: ledger.startedAt,
   };
 }
 

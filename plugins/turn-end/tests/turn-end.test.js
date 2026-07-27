@@ -423,6 +423,38 @@ check('session-digest: satisfied once the turn writes the digest', () => {
   assert.strictEqual(sessionDigest.satisfied(ctx), true);
 });
 
+check('REGRESSION: a digest written by ANY means satisfies the duty, not just Write/Edit', () => {
+  // Measured: the digest was written with Bash — no file_path on the tool call — so the
+  // toolTargets check never saw it and the duty kept demanding a file that already existed.
+  // "Was it written the way I expected?" is the wrong question; "is it written?" is the right one.
+  const dir = tmpdir('digest-mtime');
+  const rel = path.join('.claude', 'kb');
+  fs.mkdirSync(path.join(dir, rel), { recursive: true });
+  const f = path.join(dir, rel, 'session-digest.md');
+  const started = Date.now() - 5000;
+  fs.writeFileSync(f, '# written by a shell command');
+  const ctx = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
+    ledger: { promptId: 'p', fires: 1, asked: [], startedAt: started },
+    turn: { text: 'x', toolNames: ['Bash'], toolTargets: [] }, // no file_path anywhere
+  });
+  assert.strictEqual(sessionDigest.satisfied(ctx), true);
+});
+
+check('a digest untouched since the request began is NOT satisfied', () => {
+  const dir = tmpdir('digest-stale');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'session-digest.md'), '# from a past request');
+  const ctx = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
+    ledger: { promptId: 'p', fires: 1, asked: [], startedAt: Date.now() + 60000 },
+    turn: { text: 'x', toolNames: ['Bash'], toolTargets: [] },
+  });
+  assert.strictEqual(sessionDigest.satisfied(ctx), false, 'an old file must not pass as this turn\'s work');
+});
+
 check('session-digest: unsatisfied when some other file was written', () => {
   const ctx = fakeCtx({ turn: { toolNames: ['Write'], toolTargets: ['/repo/src/other.md'], text: 'x' } });
   assert.strictEqual(sessionDigest.satisfied(ctx), false);

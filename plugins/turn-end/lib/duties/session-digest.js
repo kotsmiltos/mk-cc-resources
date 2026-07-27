@@ -105,10 +105,24 @@ module.exports = {
     return (ctx.turn.toolNames || []).some((t) => PRODUCE_TOOLS.has(t));
   },
 
-  // Structural termination: the turn wrote the file. Measured equivalent of the live proof —
-  // fire 1 unmet -> nudge -> the turn does it -> fire 2 sees the artifact and allows.
+  /*
+   * Structural termination — and it must be a DISK fact, not a tool-call fact.
+   *
+   * This originally only checked `toolTargets` for a Write/Edit naming the digest. Measured
+   * failure: the digest was written with Bash, which carries no `file_path`, so the duty went
+   * on demanding a file that already existed and had just been updated. The check was asking
+   * "was it written THE WAY I EXPECTED?" when the only question that matters is "is it
+   * written?". Same defect family as the sweep that matched a name instead of a shape.
+   *
+   * Tool evidence stays as the fast path (it is exact when present); the file's own mtime
+   * against this request's start is the general one, and it cannot be fooled by the method.
+   */
   satisfied(ctx) {
-    return wroteDigest(ctx);
+    if (wroteDigest(ctx)) return true;
+    const startedAt = ctx.ledger && ctx.ledger.startedAt;
+    if (typeof startedAt !== 'number') return false;
+    const mtime = ctx.disk.mtimeMs(DIGEST_POSIX);
+    return typeof mtime === 'number' && mtime >= startedAt;
   },
 
   ask(ctx, options) {

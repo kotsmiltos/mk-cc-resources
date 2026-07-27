@@ -1,6 +1,6 @@
 {
   "name": "turn-end",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "The single blocking Stop hook. Plugins ship turn-end DUTIES instead of their own hooks; the runner checks each against real state and emits one consolidated message per user request. Replaces the mutually re-arming blocking hooks that fired eight times over one request.",
   "author": {
     "name": "kotsmiltos"
