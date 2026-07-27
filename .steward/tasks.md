@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-07-27 · fact-correction pass at 817b472)
+# Tasks — ordered, executor-ready (recomputed 2026-07-27 · 3 inbox items integrated · HEAD eee1b35)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,219 +6,260 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Ordering rationale: the batch is SHIPPED and pushed (71a0b0a, plus three post-ship fix
-commits — HEAD is **817b472**), so every "push the batch" and "build it" task is deleted.
-What replaces them is the gap the ship created — **three hooks, an MCP server and a
-self-running loop that are all still theoretical on this machine** (installed kb = 0.3.0).
-Nothing below can be judged until #1 proves the mechanisms fire in a real session, so #1
-is first and everything measurement-shaped (#4, #5) waits behind it. #2 is the first
-foreign corpus AND the evidence source for #4. #3 is a defect in our own delivery
-channel — small, and it corrupts the one artifact the owner reads first. #9 jumps to the
-front the moment Q10 is answered.
+**Ordering rationale.** The old #1 ("make it LIVE") is DONE — kb, steward, thorough-mode,
+the lens and turn-end are all installed and firing, proven from two trace files, not from a
+transcript. What replaced it as the top gap is one layer up: **what the owner RUNS is not
+what this repo contains** — the bundle is pinned three fixes behind, and repo-guard cannot
+leave this checkout at all. Work that cannot reach a session is invisible regardless of its
+quality, so distribution is #1. #2 is the last hole in the one-blocking-tail invariant. #3
+lands the moment Q10's staged answer does. Everything measurement-shaped waits behind the
+crowd-game seed (#4), which is still the only foreign corpus.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
-detail here — name projects, not drives. (One slipped into task #2 and was removed at the
-07-27 pass; the rule now lives in vision.md "Who it serves" + parts.md steward contract.)
-The same class survives in 7 essense-flow test files — **task #17**, numbered last only to
-keep the references above stable; by urgency it belongs with the chores (#6/#7).
+detail here — name projects, not drives.
 
-## 1. Make it LIVE, then prove it fired (the whole batch is unproven until this)
-- **What:** `claude plugin update kb@mk-cc-resources`, then RESTART Claude Code (hooks and
-  the MCP server register at INSTALL time — this checkout is inert until then; the
-  installed build is 0.3.0). Then work one ordinary turn in this repo and read the
-  evidence off disk rather than off the transcript.
-- **Baseline to diff against (re-read line by line at the 07-27 correction pass,
-  `.claude/kb/trace.jsonl`, 21 lines):** every line `"tool":"kb-pull-hook"` from piped
-  runs · every line `"digest":false` · ZERO `kb-session-start` lines · ZERO MCP lines
-  (0.3.0's server predates `writeTrace`) · ZERO `kb-scribe-hook` lines. Every one of the
-  four checks below is therefore unfakeable — nothing of that shape has ever been written
-  here.
-- **Done-check** (each item separately, no batching):
-  1. a NEW `{"tool":"kb-session-start",…}` line with a timestamp after the restart;
-  2. a `kb-pull-hook` line reading `"digest":true` (proves the digest exists AND is being
-     injected — the whole short-term-memory claim);
-  3. a line whose `tool` is `kb_query`/`kb_overview`/`kb_read` (proves the 0.7.0 traced
-     MCP server is the one running, not the old install);
-  4. a `{"tool":"kb-scribe-hook","blocked":true,"tools":[…]}` line after a PRODUCING turn,
-     naming that turn's tools. **CORRECTED at the 07-27 pass** — the scribe used to write no
-     trace, which made this check unsatisfiable; `hooks/scripts/kb-scribe-stop.js:249-259`
-     now calls `writeTrace` on every block (under the presence gate), asserted at
-     `tests/kb-scribe.test.js:162-163`. **All three hooks ARE traced.** Pair it with the
-     block's other evidence: `.claude/kb/session-digest.md` gains that turn's content.
-  5. second sitting only: `.claude/kb/digests/` holds the previous digest, honestly dated.
-- **If a step fails:** suspect the install version first (`claude plugin` list), then the
-  presence gate (`lib/presence.js` — this repo passes: 6 extracted + 1 capture), then the
-  hook script's own fail-open swallow. Fix + patch-ship; do not soften the check.
+## 1. Make what the owner runs match what this repo contains (distribution)
 
-## 2. Crowd-game: commit its config, then run the DEEP seed (first foreign corpus)
-- **What:** in the crowd-game project (its own checkout): (a) commit the written-but-UNCOMMITTED
-  `.claude/kb.json` (splitter override + scribe focus) — a config that lives only on one
-  machine is a footgun for the pilot; (b) update the kb plugin there too and restart;
-  (c) re-run `/kb-seed` under the 0.5.0 depth mandate + judge-then-report autonomy, with
-  `kb coverage` first so the run mines only what existing `Extracted-from:` citations do
-  NOT already cover — this is the first real test that re-seed is incremental BY
-  MECHANISM; (d) copy the `game-project.yaml` lens preset into
-  `.claude/verifiability-lens/profile.yaml`; (e) delete the stray
+- **Why now:** measured this pass — the installed `mk-cc-all` bundle is cached at
+  `gitCommitSha ab1ba82`, and its `plugin-scaffold` / `skill-heal` / `docs-audit` SKILL.md
+  still open with `ls -d plugins/*/ 2>/dev/null`. The portability fix was written three
+  times in this repo and has reached NONE of the skills that actually get invoked. Separately,
+  `plugin-toolkit` is not installed as a plugin at all and the bundle ships `skills` paths
+  only, so `lib/`, `bin/` and `defaults/` never travel — **repo-guard exists only in this
+  checkout.** The owner deferred this once to close the verification legs; those are closed.
+- **What (three legs, verified one at a time):**
+  1. **Update the installs and PROVE the text moved.** The marketplace now points at the
+     GitHub repo, so an update fetches the pushed tree. Update the bundle (and any plugin
+     whose cached sha is behind), then read the cached skill file itself.
+  2. **Decide how a plugin's non-skill assets reach a project, generically** — this is not
+     about repo-guard, it is about the class: `bin/`, `lib/`, `defaults/` for
+     plugin-toolkit today, anything similar tomorrow. The contract that exists on disk is
+     "the bundle carries `skills` only; everything else travels only if the plugin itself
+     is installed." Cheapest honest move (Claude's recommendation, not an owner
+     instruction): install `plugin-toolkit` standalone the way kb/turn-end/steward already
+     are, and say so in its README + the bundle description.
+  3. **Make the class checkable** (Claude's proposal, not requested): a repo-guard detector
+     that fails when a shipped instruction names a path an install cannot resolve. The
+     `@ship` line already had to be hand-fixed into a probe — that is the same defect once,
+     by hand.
+- **Done-check:** (1) the cached bundle's `docs-audit` SKILL.md contains the
+  resolve-and-fallback form and no `ls -d plugins/*/ 2>/dev/null` — read the installed file,
+  not the repo's; (2) `node plugins/plugin-toolkit/bin/repo-guard.js` runs from a DIFFERENT
+  project on this machine (or the decision is recorded in log.md with its reason); (3) if
+  built, the new detector flags a deliberately unreachable path in a fixture and passes on
+  the current tree.
+
+## 2. Extract autopilot's `decide()` so it can become a duty (closes invariant 9)
+
+- **What:** essense-autopilot still owns a blocking `Stop` hook and IS installed
+  (user-scope). Its decision logic is welded into `main()` — only `countInFlightAgents` is
+  exported (`plugins/essense-autopilot/hooks/scripts/autopilot.js:421`). Extract a PURE
+  `decide(state) -> {advance|halt, reason}` in that plugin, then register a turn-end duty
+  that consumes it. Owner direction: "autopilot should become a duty." Do NOT re-implement a
+  thinner "what's next" inside turn-end — that creates a competing source of truth.
+- **Done-check:** `decide()` is exported and unit-tested against the existing halt cases;
+  the turn-end duty returns the same verdict for the same state; autopilot's `hooks.json`
+  no longer registers a Stop hook; a pipeline project shows ONE tail with both items.
+
+## 3. `steward-sync`: document it, then see it fire [Q10 — answer inbound]
+
+- **What:** the duty is already on disk (`plugins/turn-end/lib/duties/steward-sync.js`,
+  registered, `advise` in `defaults/config.json`) and has never fired — no `steward-sync`
+  line in `.claude/turn-end/trace.jsonl` through 07-27T17:02Z, and it is missing from
+  turn-end's README duty table, its RELEASE-NOTES and root CLAUDE.md. Q10's staged answer
+  decides whether it stays `advise`, hardens to `block`, or widens its trigger; the
+  documenting and the first observed fire are needed either way.
+- **Done-check:** a trace line naming `steward-sync` in `unsatisfied` while items sit in
+  `.steward/inbox/`, and a later line where it is absent after an integration; the README
+  duty table lists all four duties; version bump + cascade (marketplace row + root
+  CLAUDE.md + RELEASE-NOTES).
+
+## 4. Crowd-game: commit its config, then run the DEEP seed (first foreign corpus)
+
+- **What:** in the crowd-game project (its own checkout): (a) commit the written-but-
+  UNCOMMITTED `.claude/kb.json` — a config that lives on one machine is a footgun for the
+  pilot; note its `scribe.focus` key now names a RETIRED hook, so port it to
+  `.claude/turn-end.json` `duties.session-digest.important` if it should still apply;
+  (b) update the kb + turn-end plugins there and restart; (c) re-run `/kb-seed` under the
+  depth mandate + judge-then-report autonomy, running `kb coverage` FIRST so the sweep mines
+  only what existing `Extracted-from:` citations do not already cover — the first real test
+  that re-seed is incremental BY MECHANISM; (d) copy the `game-project.yaml` lens preset
+  into `.claude/verifiability-lens/profile.yaml`; (e) delete the stray
   `.claude/prompts/.claude/verifiability-lens/state.json`.
-- **Also record while there** (this is the evidence #4 gates on): every hand-driven query
+- **Also record while there** (this is the evidence #11 gates on): every hand-driven query
   that MISSES, classified — splitter / vocabulary / ranking / genuinely-absent.
 - **Done-check:** config committed there; `kb coverage` output shows previously-uncovered
-  substrate now cited; entry count before/after both recorded (numbers read from the
-  tool, not remembered); a hand-driven query finds a fact that only the deep sweep could
-  have reached (e.g. a full git message or a ledger addendum); the miss list exists in
-  writing, even if it reads "none found".
+  substrate now cited; entry count before/after both read from the tool; a hand-driven query
+  finds a fact only the deep sweep could reach; the miss list exists in writing, even if it
+  reads "none found".
 
-## 3. Fix the steward briefing over-cap defect (our own delivery channel)
-- **What:** `plugins/steward/hooks/scripts/steward-brief.js:20` caps injection at
-  `BRIEFING_MAX_CHARS = 2000`. The premise of the capture was CORRECTED at integration —
-  a truncation marker does exist (`:70-72`, asserted at
-  `tests/steward-brief.test.js:68`) — so this is not a silent loss to the session. It is
-  still a real defect on three counts: nothing enforces the budget at WRITE time; the
-  marker names neither how much was dropped nor what to run; and the OWNER never sees
-  injected text at all. Crowd-game paid for it (Q12 tail, Q7, P1 gone unnoticed).
-  Do BOTH halves: (a) **write-time enforcement is the root fix** — the steward agent is
-  the only writer, so a briefing over budget is an integration defect; add the budget to
-  the agent's briefing contract AND a deterministic check (a test asserting every
-  `.steward/briefing.md` in the repo is ≤ cap, so the rule is a gate, not a sentence);
-  (b) upgrade the marker to name the loss and the recovery: `[briefing truncated at 2000
-  chars — N chars dropped; run steward sync]`.
-- **Done-check:** a fixture briefing of 3000 chars injects a marker containing the
-  dropped-char count and the recovery command; the write-time check FAILS on a
-  deliberately over-cap briefing fixture and passes on the real one; steward suite green;
-  version bump + cascade (marketplace row + README + RELEASE-NOTES).
+## 5. Prove which MCP build is answering (the one open leg of the old task #1)
 
-## 4. Decide rungs 2/3 on the deep-seed evidence (kb, after #2)
-- **What:** Q9's law is cheapest-substrate-first, and the first foreign datum already
-  bent it: the miss was SPLITTER-class and a `pattern` split mode fixed it for free, so
-  rungs 2/3 are still UNGATED. Read #2's classified miss list: build rung 2 (the
-  characterization pass — one LLM enrich at index time, cached by content hash, ranker
-  reads it as a high-weight field) ONLY if vocabulary-mismatch misses actually appear.
-  Otherwise record "rung 1 + splitters suffice — 2/3 parked WITH evidence".
+- **What:** `.claude/kb/trace.jsonl` holds no `kb_query`/`kb_read` line. The two
+  `kb_overview` lines in it (07-26T22:54Z, 22:56Z) PREDATE the commit that shipped that
+  write path (`7657f00`, 22:57Z), so they prove a dev run, not the session-attached server.
+  A stdio MCP server keeps the code it was launched with — editing the file and
+  `/reload-plugins` both do nothing, and retrieval keeps working, so there is no symptom.
+  This is a substrate fact, not a defect.
+- **Done-check:** after a full Claude Code restart, one `kb_overview` call reports
+  `version: 0.10.1` (kb 0.8.0 derives it from plugin.json) AND a `kb_query`/`kb_read` line
+  with a post-restart timestamp appears in the trace. Both, or the leg is not closed.
+
+## 6. Make documented counts and claims derivable, not remembered
+
+- **What:** the class produced four fresh instances this pass, in three files, none of them
+  code: root CLAUDE.md says turn-end "72 checks" (its RELEASE-NOTES 0.2.4 says 95) and
+  kb.test.js 256 / kb-pull 37 (kb's own CLAUDE.md says 273 / 42); the root bundle
+  `.claude-plugin/plugin.json` description still says kb carries "three hooks", still lists
+  verifiability-lens as hook-carrying, and omits turn-end; kb/CLAUDE.md and
+  verifiability-lens/CLAUDE.md both still document Stop hooks that no longer register. Text
+  cannot fix text (invariant 3): add a deterministic check that runs each suite and compares
+  the count to what the docs claim, or stop printing counts in prose and point at the command
+  instead. Prefer the second wherever the number earns nothing. The hook-registration claims
+  are checkable the same way: parse each `hooks/hooks.json` and compare it to the prose.
+- **Done-check:** the check fails on today's four instances and passes after they are
+  corrected; one command re-verifies every documented count and hook claim in the repo.
+
+## 7. Retire the leaked-path allowlist entry (the absolute-path debt, expressed as a gate)
+
+- **What:** `plugins/essense-flow/test/` is the one entry in repo-guard's `leaked-path`
+  allowlist (`plugins/plugin-toolkit/defaults/repo-guard.json`), and its own note calls it
+  *"Known debt, NOT exempt by design … remove this entry when that pass lands."* Those files
+  carry the author's real home paths as load-bearing fixture roots — a blanket replace broke
+  4 suites and was reverted, so this needs a per-file pass: read what each literal is FOR,
+  replace with a tmpdir/`__dirname`-derived path or a placeholder the assertion still
+  matches, run that suite, then move on.
+- **Do NOT re-introduce a count.** The "exactly 7 files" claim was wrong in both directions:
+  two sites named in an earlier capture are already fixed, and `artifacts/` holds
+  placeholder-shaped strings a naive regex flags wrongly. The allowlist entry IS the
+  done-check.
+- **Done-check:** the `plugins/essense-flow/test/` entry is deleted from the allowlist AND
+  `node plugins/plugin-toolkit/bin/repo-guard.js` still exits 0, AND
+  `node plugins/essense-flow/test/run-all.cjs` still reports zero failures. All three.
+
+## 8. Enforce the briefing budget at WRITE time (residual of the fixed cap defect)
+
+- **What:** the injection side is fixed (steward 0.2.1: line + char budgets, cuts on line
+  boundaries, marker names `dropped N line(s) / M chars` + the remedy). What is still
+  missing is the root fix: the steward agent is the ONLY writer, so an over-budget briefing
+  is an integration defect, and nothing checks it. The agent's contract text is the only
+  thing holding the line — the "rule, not mechanism" shape invariant 3 rejects.
+- **Done-check:** a deterministic check FAILS on a deliberately over-budget
+  `.steward/briefing.md` fixture and passes on this repo's real one; steward suite green.
+
+## 9. Chore: fix ledger-compaction calendar drift (essense-flow)
+
+- **What:** `plugins/essense-flow/tests/ledger-compaction.test.js` fails on a clean tree —
+  10 governance ledger entries dated 2026-05-14..17 are past its 30-day archive threshold.
+  It is a time-triggered gate asking for an archive sibling to be authored. Root-fix (archive
+  the entries or make the test time-robust), never a skip.
+- **Done-check:** green on a clean tree AND still green with the system date advanced 60
+  days — the drift class closed, not dodged. Run `tests/` explicitly; `test/run-all` says
+  nothing about it.
+
+## 10. Diploma residual: confirm the corrupt-state banner (next Diploma session)
+
+- **What:** essense-flow 0.26.1's parse-corrupt DEGRADED banner is only observable IN
+  Diploma (its duplicate key in `state.yaml`). First minutes of the next Diploma session:
+  launch, expect the banner, then fix that file.
+- **Done-check:** banner observed (or its absence investigated as a 0.26.1 bug); Diploma
+  `state.yaml` parses clean afterward.
+
+## 11. Decide kb retrieval rungs 2/3 on the deep-seed evidence (after #4)
+
+- **What:** Q9's law is cheapest-substrate-first, and the first foreign datum already bent
+  it — the miss was SPLITTER-class and a `pattern` split mode fixed it for free, so rungs
+  2/3 are still UNGATED. Read #4's classified miss list: build rung 2 (characterization
+  pass — one LLM enrich at index time, cached by content hash, ranker reads it as a
+  high-weight field) ONLY if vocabulary-mismatch misses actually appear. Otherwise record
+  "rung 1 + splitters suffice — 2/3 parked WITH evidence".
 - **Done-check:** decision written in log.md citing concrete misses by name (or their
   documented absence); if built: enrich job cached + incremental, ranker tests green, and
   the previously-missing queries now hit.
 
-## 5. Dogfood watch — does the ambient surface actually fire? (passive, after #1)
-- **What:** the sharpest evidence to date is the T13 datum (crowd-game: /kb-seed ran, a
-  founding DESIGN shipped the same day, the server instructions name that exact trigger,
-  and NO query fired). kb 0.5.0–0.7.0 is the answer to it. Now measure instead of
-  reasoning: after #1, `trace.jsonl` makes this objective for the first time.
-- **Done-check:** across ~5 real sessions — how many turns carried a kb-pull hint; how
-  many hints were followed by a `kb_read`/`kb_query` in the same turn; ≥1 unprompted
-  query whose answer changed the work, logged with the query and what it saved. **A zero
-  is still a result** — it would mean the hint lines are visible and ignored, which
-  points at hint QUALITY (scan mode / ubiquity rule tuning), not at awareness.
+## 12. Dogfood watch — do the ambient surfaces actually change the work? (passive)
 
-## 6. Chore: fix ledger-compaction T-ENF-3 calendar drift (essense-flow)
-- **What:** `plugins/essense-flow/tests/ledger-compaction.test.js` T-ENF-3 fails on a
-  clean tree — governance-ledger entries >30d unarchived. Still red as far as the model
-  knows: the reported `test/run-all` 54/0 covers the `test/` dir only, and this suite
-  lives in `tests/`. Root-fix (archive the stale entries or make the test time-robust),
-  never a skip.
-- **Done-check:** the suite is green on a clean tree AND still green with the system date
-  advanced 60 days — the drift class closed, not dodged. Run `tests/` explicitly; do not
-  infer its state from run-all.
+- **What:** the sharpest datum is still T13 (crowd-game: /kb-seed ran, a founding DESIGN
+  shipped the same day, the server instructions name that exact trigger, and NO query
+  fired). There are now TWO instruments: `.claude/kb/trace.jsonl` (hint lines, digest
+  injection) and `.claude/turn-end/trace.jsonl` (which notes `context-recall` chose, and
+  whether the answer used them).
+- **Done-check:** across ~5 real sessions — how many turns carried a kb-pull hint; how many
+  hints were followed by a `kb_read`/`kb_query` in the same turn; how many `context-recall`
+  supplies named a note the answer then actually used; ≥1 case logged where recalled
+  material changed the work, with what it saved. **A zero is still a result** — it would
+  point at hint/selection QUALITY, not at awareness.
 
-## 7. Make documented counts derivable, not remembered
-- **What:** 5 confirmed defects of one class — 4 of the 4 doc defects in 4 lens rounds
-  were stale numbers, plus root `CLAUDE.md` claiming statusline "12 checks" when the
-  suite runs 16. Text can't fix text (invariant 3): add a deterministic check that runs
-  each suite and compares the count to what the docs claim, OR stop printing counts in
-  prose and point at the command instead. Prefer the second where a number earns nothing.
-- **Done-check:** the check fails on today's statusline line, passes after it is
-  corrected; one command re-verifies every documented count in the repo.
+## 13. Phase 0 validation — passive, on THIS repo (live)
 
-## 8. Diploma residual: confirm the corrupt-state banner (next Diploma session)
-- **What:** essense-flow 0.26.1's parse-corrupt DEGRADED banner is only observable IN
-  Diploma (its `state.yaml:123` duplicate key). First minutes of the next Diploma
-  session: launch, expect the banner, then fix Diploma's state.yaml.
-- **Done-check:** banner observed (or its absence investigated as a 0.26.1 bug); Diploma
-  state.yaml parses clean afterward.
-
-## 9. Steward staleness enforcement — GATED ON Q10
-- **What:** crowd-game's model went a full session stale; captures land but nothing forces
-  the RECOMPUTE. Q10 asks whether steward keeps its no-Stop-hook design (B), gets a
-  narrow enforced sync reusing kb-scribe's contract (A, recommended), or borrows the
-  scribe's block text (C, interim). **Answer first, then build** — this task jumps to #4
-  the moment the answer is A or C.
-- **Done-check:** per option — (A) hook fires on a staleness signal only, never per-turn,
-  fire-once + fail-open + off-switch, suite green; (C) scribe block text demands
-  integration when `.steward/inbox/` is non-empty, and the log records it as INTERIM.
-
-## 10. Phase 0 validation — passive, on THIS repo (live)
 - **What:** keep using this repo through the steward loop: auto-brief at open, captures
   during talk, owner-present integration diffs.
 - **Done-check:** design §5 Phase 0 checks measured HERE — (a) zero pasted context at
   session start; (b) diffs read correctly; (c) ~0 steering turns between "do it" and
   hand-back; (d) ≥1 direction-change lands as thought → recompute → diff → rebuilt part.
-  Three strong data now: the kb thread 07-24→07-25, Q9 → rung 1 same session, and the
-  0.5.0→0.7.0 wave built straight off inbox captures.
+  Data so far: the kb thread 07-24→07-25, Q9 → rung 1 same session, the 0.5.0→0.7.0 wave
+  built straight off inbox captures, and the turn-end plugin itself (three captures → one
+  plugin → two retirements).
 
-## 11. Crowd-game steward evaluation (~5 sessions or ~1 week after its deep seed)
-- **What:** re-run the 2026-07-21 audit methodology on crowd-game transcripts
-  (baseline = 43 .jsonl files existing 2026-07-21; after-set = post-seed mtime; exclude
-  eval sessions). Before/after on 5 signals: (a) start ritual (new files in its
-  `.claude\prompts\`, baseline 21 — disk-verified; >500-char context paste = ritual),
-  (b) steering density (real user-typed turns only; baseline median ~20–25, max 93 —
-  B-inherited), (c) idea survival (captured/spoken ratio; baseline 0), (d) ship awareness
-  ("where do we stand" in user text; pass = zero + owner-felt verdict), (e)
-  direction-change cost (user turns from change-of-mind to built+accepted; baseline
-  precedent 45-turn psience churn; pass = single digits). Full rules preserved verbatim:
+## 14. Crowd-game steward evaluation (~5 sessions or ~1 week after its deep seed)
+
+- **What:** re-run the 2026-07-21 audit methodology on crowd-game transcripts (baseline =
+  43 `.jsonl` files existing 2026-07-21; after-set = post-seed mtime; exclude eval
+  sessions). Before/after on 5 signals: start ritual (baseline 21 kickoff files;
+  >500-char context paste = ritual) · steering density (user-typed turns only; baseline
+  median ~20–25, max 93) · idea survival (captured/spoken ratio; baseline 0) · ship
+  awareness ("where do we stand" in user text; pass = zero + owner-felt verdict) ·
+  direction-change cost (user turns from change-of-mind to built+accepted; precedent is a
+  45-turn churn; pass = single digits). Full rules preserved verbatim in
   `.steward/inbox/done/20260721-2345-eval-measurement-recipe.md`.
-- **Done-check:** before/after table with confidence notes (B-inherited vs disk-verified).
+- **Done-check:** before/after table with confidence notes (inherited vs disk-verified).
   **Owner annoyance = veto regardless of numbers.** Outcome also unlocks the deferred
   drop-channel decision (Q8).
 
-## 12. Phase A — wire the gates (on this repo)
-- **What:** coupling/extensibility + tests into every executor step; deterministic
-  model-vs-code drift check (parts.md contracts vs `runner map`). Task #7's counts check
-  is the same family and can share the harness.
-- **Done-check:** a deliberate reach-in fails a hand-back; a stale parts.md entry is
-  flagged. (Gated on task 10 showing the loop holds here.)
+## 15. Phase A — wire the gates (on this repo)
 
-## 13. Phase B — harden the steward
-- **What:** adversarial inbox suite (pivot, vision-contradiction, deletion, duplicate →
+- **What:** coupling/extensibility + tests into every executor step; a deterministic
+  model-vs-code drift check (parts.md contracts vs `runner map`). #6's counts check is the
+  same family and can share the harness.
+- **Done-check:** a deliberate reach-in fails a hand-back; a stale parts.md entry is
+  flagged. (Gated on #13 showing the loop holds here.)
+
+## 16. Phase B — harden the steward
+
+- **What:** adversarial inbox suite (pivot, vision-contradiction, deletion, duplicate,
+  **and three items that supersede each other** — the shape this integration actually had →
   correct cascaded diffs); recurring spot-check re-injection; verbs /discuss /test /work.
-  Fold in whatever #3 and #9 leave standing.
+  Fold in whatever #3 and #8 leave standing.
 - **Done-check:** each adversarial item produces a correct diff incl. cascaded deletions;
   spot-check fires periodically in normal use.
 
-## 14. Phase C — injection-layer economics
-- **What:** REMAINING lens work: hand-back + risk-triggered firing (not per-turn) — the
-  profile side shipped in 0.4.0. BROADENED per owner: the same economics for the whole
-  per-prompt stack (verification-rules, caveman, generalize-first, hints) — and the stack
-  is now DENSER, since kb-pull injects per prompt and kb-scribe blocks producing turns.
-  Fire conditionally, not unconditionally; prefer pull wherever a session can ask.
-- **Done-check:** lens fire-count drops vs the 2026-07-21 baseline (24–30 fires/long
-  session, ~25–55k tok/dispatch) with zero missed hand-back failures; each injector fires
-  only where its trigger condition holds; measured per-prompt cost recorded.
+## 17. Phase C — injection-layer economics
 
-## 15. Phase D — generalization pass
+- **What:** REMAINING lens work: hand-back + risk-triggered firing — the profile side
+  shipped in 0.4.0 and the per-request scoping came free with the duty. BROADENED per
+  owner: the same economics for the whole per-prompt stack (verification-rules, caveman,
+  generalize-first, hints, kb-pull) plus the per-turn-end stack (`context-recall` fires a
+  judge on EVERY turn end by owner choice, measured at 46s per fire).
+- **Done-check:** measured AFTER numbers against the 2026-07-21 baseline (24–30 fires/long
+  session, ~25–55k tok/dispatch) with zero missed hand-back failures; each injector fires
+  only where its trigger holds; per-prompt and per-turn-end cost recorded.
+
+## 18. Phase D — generalization pass
+
 - **What:** crowd-game steward-seeded 2026-07-21 and kb-seeded 2026-07-25 — remaining:
-  extract anything mk-cc-resources-specific from the loop after the task-11 eval; verb set
-  + model structure prove open or get fixed; /kb-seed generalization rides the same pass.
+  extract anything mk-cc-resources-specific from the loop after the #14 eval; verb set +
+  model structure prove open or get fixed; /kb-seed generalization rides the same pass.
   Then EMDE/psience.
 - **Done-check:** the next project onboards by steward-seeding + kb-seeding alone — no
   tooling code changes.
 
-## 16. Phase E — retire ceremony officially [Q4, Q5 land here]
-- **What:** docs + marketplace reposition; classic pipeline preserved; essense-autopilot
-  retires (Q4). Absorption fodder: handoff/resume redundant in steward projects (and now
-  double-indexed by kb); retro/meta-review → steward verbs; truth split memory=owner /
-  model=project / CLAUDE.md=code / kb=queryable everything.
-- **Done-check:** a new toy project goes idea → running slice through the steward loop
-  only, in one evening.
+## 19. Phase E — retire ceremony officially [Q4, Q5 land here]
 
-## 17. Scrub the last absolute-path leaks (7 essense-flow test files) — chore, ranks with #6/#7
-- **What:** 817b472 scrubbed `.planning/rebuild/*.md`; the remaining leaks are in
-  `plugins/essense-flow/test/*.cjs` — 7 files: `arch-alignment-check`, `cursor-init`,
-  `test-mode-guard`, `task-spec-write-section`, `project-dir`,
-  `state-yaml-malformed-shapes`, `next-step`. These paths are **load-bearing literals**
-  (fixture roots and assertion strings), not prose: a blanket replace was tried, broke 4
-  suites, and was reverted. So this needs a per-file pass — read what each literal is FOR,
-  replace with a tmpdir/`__dirname`-derived path or a placeholder the assertion still
-  matches, and run that suite before moving to the next file.
-- **Done-check:** `rg 'C:\\\\Users|/home/[a-z]+/' plugins/essense-flow/test` returns zero
-  hits AND `node test/run-all.cjs` still reports 54 files / 0 failures — both, or the pass
-  is not done. (`tree.json` is gitignored and is not part of this.)
+- **What:** docs + marketplace reposition; classic pipeline preserved; essense-autopilot
+  retires (Q4 — #2 may make this a deletion rather than a migration). Absorption fodder:
+  handoff/resume redundant in steward projects (and double-indexed by kb); retro/meta-review
+  → steward verbs; truth split memory=owner / model=project / CLAUDE.md=code / kb=queryable
+  everything.
+- **Done-check:** a new toy project goes idea → running slice through the steward loop only,
+  in one evening.

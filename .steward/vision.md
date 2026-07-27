@@ -32,14 +32,30 @@ session."
 Refined 2026-07-25 (kb 0.5.0–0.7.0, owner: "you have to build it"): pull alone
 under-fires. A tool the session *can* call is not a tool the session *does* call — the
 T13 datum (a design turn where the trigger was visible in context and no query fired)
-settled it. So kb now spans all three duties, and MEMORY HAS TWO LENGTHS:
+settled it. So kb now spans all three jobs (create / maintain / reach), and MEMORY HAS
+TWO LENGTHS:
 - **awareness** (ambient push, cheap + conditional) — score-floored hint lines per
   prompt naming what the KB holds, so the session can see what it may ask for;
 - **short-term** — a rolling session digest injected every prompt, rotated at each new
   sitting so "now" never carries yesterday's context;
-- **durable** — captures / extracted / the steward model, written under ENFORCEMENT
-  (a Stop-hook block), because the owner ruled a nudge insufficient.
+- **durable** — captures / extracted / the steward model, written under ENFORCEMENT,
+  because the owner ruled a nudge insufficient. (The enforcement MOVED on 2026-07-27:
+  it is now a duty inside the one blocking Stop hook, not a hook kb owns — see below.)
 Pull remains the permanent core; push is what makes pull reachable.
+
+## The turn-end law (2026-07-27) — one blocking tail
+
+Two plugins each owning a blocking `Stop` hook RE-ARMED each other: each one's mandated
+response was fresh work for the other, so the allow-gap never landed on an idle turn
+(measured: 6 blocks + 3 fires in one sitting over ONE request; another sitting ran 8
+passes and was ended by the platform's 8-consecutive-block cap, not by a criterion).
+Stop hooks run in PARALLEL with no ordering and blocking is fail-closed, so runtime
+negotiation between hooks is racy by construction. Law now: **plugins ship DUTIES, one
+runner owns the tail.** Owner decisions taken that day: a new `turn-end` plugin rather
+than hosting it in an existing one · escalate `additionalContext` → `block` · autopilot
+should become a duty. A second duty KIND followed the same day — SUPPLY, which hands the
+session MATERIAL (its own notes, chosen by a judge, fetched verbatim) instead of demanding
+work. Recall and demand are the two ways a turn ends badly; one runner covers both.
 
 ## Who it serves
 
@@ -47,8 +63,14 @@ Pull remains the permanent core; push is what makes pull reachable.
 - Public marketplace users, secondarily — plugins must stay portable, no personal setup
   details in shipped files. **"Shipped" includes every committed file: skills, docs and
   the `.steward/` model itself** (only `inbox/` stays local). Absolute paths, usernames
-  and drive letters are leaks, not conveniences — the class has bitten twice (4 SKILL.md
-  files, and this model's own tasks.md).
+  and drive letters are leaks, not conveniences. The class kept coming back under
+  hand-written sweeps (each sweep shaped wrong, not run lazily), so it is now a
+  MECHANISM: plugin-toolkit's `repo-guard` `leaked-path` detector over `git ls-files`,
+  blocking severity. Counting the remaining sites is what kept failing; the guard's
+  allowlist is the honest ledger of the debt instead.
+- **Reachability is part of "shipped."** A capability that no install can resolve does
+  not exist for the owner, however good the checkout is. Instructions may only name
+  paths an install provides, or must probe first.
 
 ## Invariants (must stay true)
 
@@ -72,7 +94,15 @@ Pull remains the permanent core; push is what makes pull reachable.
 7. **Decoupled + open-for-extension code**, enforced by measurement (`runner coupling`,
    `runner extensibility`), not by instruction.
 8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they
-   don't apply.
+   don't apply. The ONE hook that may block blocks the turn's END, never a tool call,
+   and fails open on every path.
+9. **One blocking tail.** At most one blocking `Stop` hook exists across the whole
+   toolkit; every other plugin contributes a DUTY to it. A duty terminates by becoming
+   SATISFIED against real state (a file on disk, a ledger entry) — never by a counter;
+   a fire budget is only the backstop for a satisfaction check that is wrong, and it
+   names what it abandons. Currently holds everywhere except a project running
+   essense-autopilot, which still owns its own blocking Stop hook (tasks: extract its
+   `decide()`).
 
 ## Declared growth axes (change expected here)
 
@@ -84,13 +114,21 @@ Pull remains the permanent core; push is what makes pull reachable.
 - Glossary engine language coverage (Python/TS/JS/C# today; extensibility measure is
   C#-only MVP).
 - Lens firing economics (Phase C: hand-back + risk-triggered, not per-turn) — kb is now
-  an instrument here: pull replaces push wherever a session can ask instead of being fed.
+  an instrument here: pull replaces push wherever a session can ask instead of being fed,
+  and turn-end's per-`prompt_id` scoping already collapsed the lens from N fires per
+  sitting to at most one ask per user request.
+- **turn-end has three drop-in surfaces** (add one = one `require`, no runner change):
+  DUTIES (`lib/duties/` — demand or supply), SOURCES of recallable knowledge
+  (`lib/sources/` — `markdown-dir` is the generic TYPE; every shipped source is config
+  over it), and JUDGES (`lib/judges/` — `claude -p` today). Retiring another plugin's
+  Stop hook into a duty is the expected motion, not an exception.
 - kb axes are drop-in surfaces: kinds (all four now written — `working` since the 0.5.0
   session digest), castes, source types (`markdown-dir` is the first; its `split` knob is
   its own extension point — `h2`, then `pattern` for non-heading ledgers), rankers
   (`term-overlap` is the first; `scan` mode scores a prompt rather than a query), config
   knobs (generic `mergeLayer` — a future knob is config, not a branch), and adapters
-  (MCP/CLI/3 hooks are peers over one facade). Retrieval improves along an ANSWERED
+  (MCP/CLI/2 hooks are peers over one facade — the third retired into a duty). Retrieval
+  improves along an ANSWERED
   3-rung ladder (Q9, 2026-07-25): deterministic term-overlap upgrades (rung 1 SHIPPED,
   kb 0.4.0) → characterization pass → embeddings, each rung evidence-gated on real
   corpora. First foreign datum (crowd-game, 2026-07-25) was NOT what the ladder

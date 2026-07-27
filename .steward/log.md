@@ -6,6 +6,50 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-27 · Three inbox items integrated at eee1b35 — the model had a DEAD front page
+Items 0035 / 0300 / 0700, written hours apart, each superseding the one before. Reconciled
+against each other AND against disk; where disk disagreed with a capture, disk won.
+- **The front page was dead, not merely stale.** briefing/state asserted HEAD `817b472`,
+  kb 0.7.0, marketplace 2.38.0 and "NOTHING IS LIVE / installed kb is 0.3.0". Disk: HEAD
+  **eee1b35** (local ref == origin ref), 14 commits later; marketplace **2.44.5**; installed
+  kb **0.10.1**, turn-end **0.2.4 @ eee1b35**, and every other install matching its repo
+  version. The whole "unproven until it runs" framing is DELETED.
+- **NEW plugin `turn-end` 0.2.4** — the single blocking Stop hook, with two duty KINDS
+  (demand + supply), a source registry and a judge adapter. kb 0.9.0 and
+  verifiability-lens 0.5.0 retired their own Stop hooks into duties (both `hooks.json`
+  read this pass: kb registers two hooks, the lens registers `{}`). New vision invariant 9,
+  "one blocking tail", with its exception named.
+- **LIVE, proven from disk not transcript:** `.claude/turn-end/trace.jsonl` 13 fires
+  01:37Z→17:02Z, the ladder proven on ONE prompt_id (advise 15:43:48 → `decision:block`,
+  `stop_hook_active:true`, `fires:1` 15:44:45), `context-recall` supplying
+  `.steward/parts.md` + `.steward/questions.md` at 17:02Z; `.claude/kb/trace.jsonl` 101
+  lines (was the 21-line pre-live baseline) with `kb-session-start` + `"digest":true`, and
+  zero `kb-scribe-hook` lines after 07-27T01:33Z — exactly what the retirement predicts.
+- **THREE capture claims REFUTED by disk, and the model records the disk answer:**
+  (1) "the re-point dropped `autoUpdate: true`" — it is SET in the marketplace registry
+  (lastUpdated 07-27T16:21Z), so no task; (2) "the `@ship` line points every project at a
+  dead path" — thorough-mode 1.11.1 already made it PROBE first
+  (`hooks/thorough-mode.js:72`); (3) "the leaks are exactly 7 test files" — wrong in both
+  directions: the two sites the capture named are fixed, `artifacts/` holds
+  placeholder-shaped strings a naive regex flags wrongly, and the honest ledger is
+  repo-guard's allowlist entry, which its own note calls known debt.
+- **CONFIRMED and promoted to THE gap:** the installed `mk-cc-all` bundle is cached at
+  `ab1ba82` and its `plugin-scaffold`/`skill-heal`/`docs-audit` SKILL.md still open with
+  `ls -d plugins/*/ 2>/dev/null` — the portability fix, written three times, has reached
+  none of the invoked skills. `plugin-toolkit` is not installed at all and the bundle ships
+  `skills` paths only, so repo-guard cannot leave this checkout. Now tasks #1.
+- **Found by this integration, in neither capture:** a fourth turn-end duty,
+  **`steward-sync`**, is registered and enabled `advise` — built, never fired, and absent
+  from its own plugin's README/RELEASE-NOTES and root CLAUDE.md. Q10 stays OPEN (the
+  owner's answer is being staged separately) but its context now names the mechanism, the
+  owner-specified vs Claude-chosen parameters, the prompt-span measurement, and the
+  platform's 8-block cap — which also corrects "the 8-pass runaway ended by context
+  exhaustion" before that characterisation ever entered the model.
+- Tasks recomputed 17 → 19 and reordered around distribution; old #1 (make it live) DELETED
+  as done except one restart-gated leg, old #3 (briefing cap) DELETED except the write-time
+  gate, old #17's done-check REPLACED by "the allowlist entry is gone and repo-guard still
+  exits 0". Nothing was appended without reconciling.
+
 ## 2026-07-27 · Fact-correction at 817b472 — the previous pass had read a MOVING tree
 - Three facts were stale by TIMING, not carelessness (the recompute ran while `817b472` was
   being made): HEAD `ab1ba82` → **817b472**; plugin-toolkit "1.7.1, bump in flight" → **1.7.2

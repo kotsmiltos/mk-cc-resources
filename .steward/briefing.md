@@ -1,10 +1,10 @@
-# mk-cc-resources — briefing (2026-07-27, post-ship fixes)
-Ship position: local main == origin/main == 817b472, PUSHED — the 19-commit batch plus three fix commits. kb 0.7.0 · essense-flow 0.26.1 · plugin-toolkit 1.7.2 · marketplace 2.38.0 · bundle 2.26.0. kb tests 462 across six suites; all other suites green.
-Last change: 817b472 — skill-path fix done RIGHT: `"${CLAUDE_PROJECT_DIR:-.}/plugins/"*/` survives BOTH doc unknowns (substitution inside a shell block? its cwd?); executed in 4 scenarios — subdirectory/env-unset is the row bare-relative would have shipped broken. Plus .planning/rebuild scrubbed + the 1.7.2 cascade.
-BUT NOTHING IS LIVE: installed kb is 0.3.0 and hooks register at INSTALL time — every "it maintains itself" claim is proven only in tests and piped runs.
+# mk-cc-resources — briefing (2026-07-27, post turn-end)
+Ship: local main == origin/main == eee1b35, PUSHED. NEW plugin turn-end 0.2.4 — THE single blocking Stop hook; kb 0.10.1 and verifiability-lens 0.5.0 retired theirs into duties. Also plugin-toolkit 1.8.0 (repo-guard), thorough-mode 1.11.1, steward 0.2.1, marketplace 2.44.5.
+IT IS LIVE — the old "nothing is live" line was true at kb 0.3.0, not now. turn-end trace: 13 fires, advise→block proven on one prompt_id, context-recall handing a session .steward/parts.md + questions.md. kb trace: session-start + "digest":true lines.
+Last change: 0.2.4 — satisfaction must be a DISK fact; the digest duty asked HOW the work was done, so a digest written with Bash never satisfied it.
 Next 3 tasks:
-1. Update the kb plugin + RESTART, then prove it off disk in .claude/kb/trace.jsonl (baseline: 21 lines, all kb-pull-hook, all "digest":false): expect a kb-session-start line, a "digest":true line, an MCP-tool line, AND a kb-scribe-hook "blocked":true line.
-2. Crowd-game: commit its uncommitted .claude/kb.json, then deep /kb-seed with `kb coverage` first — first foreign corpus, and the miss list rungs 2/3 gate on.
-3. Fix our own briefing over-cap defect (steward): enforce the budget at write time + a marker naming the dropped chars.
-Decisions waiting: Q10 — who forces the RECOMPUTE? Crowd-game went a session stale; THIS model just lagged too (recomputed against a moving tree). Default: narrow enforced sync reusing kb-scribe's contract.
-Watch: `.steward/` is COMMITTED + public — 7 essense-flow test files still leak absolute paths (tasks #17); ambient kb use still unproven (T13).
+1. Distribution — the installed bundle is pinned at ab1ba82 and still ships the pre-fix `ls -d plugins/*/`; plugin-toolkit isn't installed at all, so repo-guard exists only in this checkout. Update, prove the cached text moved, then decide how lib/bin/defaults reach a project.
+2. Extract autopilot's decide() into a duty — it still owns a blocking Stop hook and is installed: the one hole in "one blocking tail".
+3. steward-sync duty — on disk and registered, never fired, undocumented anywhere. Document it, then catch a trace line.
+Decisions waiting: Q10 (who forces the RECOMPUTE) — a steward-sync duty already exists, advise + session span; the open part is ratify vs harden to block vs widen the trigger. Your own answer is being staged separately.
+Watch: the kb MCP leg needs a restart to prove which build answers; essense-flow ledger-compaction still red; repo-guard exits 0 only because plugins/essense-flow/test/ is allowlisted.
