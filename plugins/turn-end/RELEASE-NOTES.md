@@ -1,5 +1,64 @@
 # turn-end — release notes
 
+## 0.2.0 — 2026-07-27 — the recall half: context plugged in, not chores demanded
+
+**This is what the plugin was for.** 0.1.x shipped the frame — one hook, a duty registry, a
+`prompt_id` ledger, the escalation ladder — plus a `claude -p` adapter that *nothing called*.
+The owner's actual ask was the judge: *"checks if we need additional context plugged in to
+produce better results."* That is now built.
+
+### A second duty KIND
+
+A turn can end badly two ways: work left undone, or an answer built without knowledge the
+project already had. 0.1.x only modelled the first.
+
+- **demand** (`ask() -> string`) — asks the session to do something. Unchanged.
+- **supply** (`kind: 'supply'`, `supply() -> {material}`) — hands the session *material*.
+
+`supply` is the one impure step (it spawns a judge), so the **pure runner only reports that it
+is due** (`supplyDue`); the adapter executes it and passes the result back into `decide` as
+`materials`. Three passes: pure plan → impure execute → pure compose. The whole policy stays
+testable without a session, which is the property the runner exists to have.
+
+### `context-recall`
+
+Looks at what was asked, what was answered, and what this project has already written down;
+injects the notes the answer should have been built on.
+
+**Two-phase, and the split is load-bearing:**
+1. sources emit an **index** — titles and ids, *no bodies* — and the judge picks ids;
+2. the runner **fetches** those ids deterministically.
+
+So the judge *chooses*; it never *summarises*. The session receives the file's own text, and
+the call stays small however much the project has written. A test asserts a verbatim marker
+from the note body survives into the injected material.
+
+Why a judge and not a ranker: lexical matching answers "which notes share words with this
+prompt?" — kb's pull hook already does that cheaply at prompt time. The question here needs
+reading: *given this answer, was anything material missed?* An answer can be fluent and quietly
+contradict a note whose vocabulary it never used.
+
+**Sources** are the new extension surface (`lib/sources/`), same two levels as duties: a new
+*instance* is a config entry over `markdown-dir`; a new *type* is a drop-in. Shipped:
+`kb-captures`, `kb-extracted`, `steward-model`. A configured directory that does not exist is
+simply empty — that is what keeps this silent where nothing is written down.
+
+**Firing policy — owner directive:** every turn end, no pre-filter. A gate that decides when
+recall matters is itself a thing that can be wrong, and a silent miss is the failure this
+exists to remove. Measured cost ~11s / ~$0.03 per fire. The fire budget now caps *spend* too:
+an exhausted request never schedules a supply duty.
+
+Prompt-injection posture: the request and answer are framed to the judge as **data, not
+instructions**, explicitly. `parseVerdict` strips the ```json fence the model measurably tends
+to add, and returns `null` on garbage rather than pretending nothing was needed.
+
+### Test harness fix, found the honest way
+
+Three new tests had async bodies and the sync `check()` helper would have counted them as
+passing before their assertions ran. `check()` now *rejects* a promise-returning body and
+`checkAsync()` collects them, with the report awaiting all of them. It caught all three
+immediately. 53 → **72 checks**.
+
 ## 0.1.1 — 2026-07-27 — the meta-loop guard judged the NAME, not the shape
 
 Found by the **first live fire**, which is the only reason it was found: the runner emitted one

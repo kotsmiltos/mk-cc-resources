@@ -56,13 +56,14 @@ function makeDisk(cwd) {
  * from the payload is carried separately and preferred for the final text.
  */
 function extractTurn(transcriptPath) {
-  if (!transcriptPath) return { text: '', toolNames: [], toolTargets: [] };
+  const EMPTY = { text: '', toolNames: [], toolTargets: [], userRequest: '' };
+  if (!transcriptPath) return EMPTY;
   let raw;
   try {
-    if (!fs.existsSync(transcriptPath)) return { text: '', toolNames: [], toolTargets: [] };
+    if (!fs.existsSync(transcriptPath)) return EMPTY;
     raw = fs.readFileSync(transcriptPath, 'utf8');
   } catch (_e) {
-    return { text: '', toolNames: [], toolTargets: [] };
+    return EMPTY;
   }
 
   const msgs = [];
@@ -93,13 +94,21 @@ function extractTurn(transcriptPath) {
     }
     msgs.push({ role, text: text.trim(), tools, targets, hasToolResult });
   }
-  if (!msgs.length) return { text: '', toolNames: [], toolTargets: [] };
+  if (!msgs.length) return EMPTY;
 
   // Turn start = just after the last GENUINE user prompt. Tool results arrive as user-role
   // messages and are NOT turn boundaries.
   let start = 0;
+  let userRequest = '';
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult) { start = i + 1; break; }
+    if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult) {
+      start = i + 1;
+      // The ASK itself. A judge deciding "what context was this answer missing?" needs the
+      // question, not only the answer — an answer can look complete and still address the
+      // wrong thing.
+      userRequest = msgs[i].text;
+      break;
+    }
   }
 
   let text = '';
@@ -111,7 +120,7 @@ function extractTurn(transcriptPath) {
     toolNames = toolNames.concat(msgs[i].tools);
     toolTargets = toolTargets.concat(msgs[i].targets);
   }
-  return { text: text.trim(), toolNames, toolTargets };
+  return { text: text.trim(), toolNames, toolTargets, userRequest };
 }
 
 /**

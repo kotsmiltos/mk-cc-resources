@@ -55,6 +55,47 @@ duties abandoned, rather than being cut off in a way that looks identical to suc
 | satisfied | any | nothing — allow, silently |
 | past the budget | any | allow, and say which duties were abandoned |
 
+## The two duty kinds
+
+A turn can end badly two ways: **work left undone**, or **an answer built without knowledge the
+project already had**.
+
+| kind | shape | ships |
+|---|---|---|
+| **demand** | `ask() -> string` — asks the session to do something | `session-digest`, `quality-lens` |
+| **supply** | `supply() -> {material}` — hands the session material | `context-recall` |
+
+### `context-recall` — the reason this plugin exists
+
+On every turn end it asks a `claude -p` judge: *given what was asked and what was answered, did
+this turn need notes it never opened?* If so, those notes' **own text** is injected via
+`additionalContext` and the turn continues with them in hand.
+
+Two phases, and the split is load-bearing:
+
+1. sources emit an **index** — titles and ids, *never bodies* — and the judge picks ids;
+2. the runner **fetches** those ids deterministically.
+
+The judge *chooses*; it never *summarises*. The session gets the file, not a recollection of
+it, and the expensive call stays small however much the project has written down.
+
+Why a judge and not a ranker: lexical matching answers "which notes share words with this
+prompt?" — kb's pull hook already does that, cheaply, at prompt time. This question needs
+reading: an answer can be fluent, complete-looking, and quietly contradict a note whose
+vocabulary it never used.
+
+`supply` is the one impure step, so the pure runner only reports it is **due** and the adapter
+executes it: **plan (pure) → execute (impure) → compose (pure)**.
+
+**Cost:** ~11s and ~$0.03 per fire, every turn end, by owner directive — a gate deciding when
+recall matters is itself a thing that can be wrong. The fire budget caps spend too: an
+exhausted request never schedules a supply duty.
+
+**Sources** (`lib/sources/`) are the extension surface, same two levels as duties: a new
+*instance* is a config entry over `markdown-dir`; a new *type* is a drop-in module. Shipped:
+`kb-captures`, `kb-extracted`, `steward-model`. A configured directory that does not exist is
+simply empty.
+
 ## Writing a duty
 
 ```js

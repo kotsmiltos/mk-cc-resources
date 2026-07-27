@@ -56,6 +56,17 @@ function evaluate(duty, ctx, options) {
     if (typeof duty.satisfied === 'function' && duty.satisfied(ctx, options)) {
       return { id: duty.id, state: 'satisfied' };
     }
+    // A SUPPLY duty hands the session material instead of demanding work, and producing that
+    // material is impure (it may spawn a judge). So the pure runner only reports that it should
+    // run; the adapter executes it and passes the result back in `materials`.
+    if (duty.kind === 'supply') {
+      return {
+        id: duty.id,
+        state: 'supply-due',
+        title: duty.title,
+        priority: typeof duty.priority === 'number' ? duty.priority : 100,
+      };
+    }
     return {
       id: duty.id,
       state: 'unsatisfied',
@@ -80,15 +91,22 @@ function evaluate(duty, ctx, options) {
  * two items — never two tails. Errored duties are named in the same message because a duty
  * that did not run reads as satisfied if nobody says otherwise.
  */
-function renderMessage(unsatisfied, errored, hard) {
+function renderMessage(unsatisfied, errored, hard, materials) {
   const lines = [];
-  const lead = hard
-    ? `${HEADER} still unmet after a prior nudge — do these before yielding:`
-    : `${HEADER} before yielding, ${unsatisfied.length === 1 ? 'one duty is' : `${unsatisfied.length} duties are`} unmet:`;
-  lines.push(lead);
-  unsatisfied.forEach((d, i) => {
-    lines.push(`${i + 1}. (${d.id}) ${d.ask}`);
-  });
+  const supplied = Object.values(materials || {}).filter(Boolean);
+
+  // Material first: it can change what the answer SAYS, whereas a chore only adds to it.
+  for (const m of supplied) lines.push(`${HEADER} ${m}`);
+
+  if (unsatisfied.length) {
+    if (supplied.length) lines.push('');
+    lines.push(hard
+      ? `${HEADER} still unmet after a prior nudge — do these before yielding:`
+      : `${HEADER} before yielding, ${unsatisfied.length === 1 ? 'one duty is' : `${unsatisfied.length} duties are`} unmet:`);
+    unsatisfied.forEach((d, i) => {
+      lines.push(`${i + 1}. (${d.id}) ${d.ask}`);
+    });
+  }
   if (errored.length) {
     lines.push(
       `NOT CHECKED — ${errored.map((e) => `${e.id}: ${e.error}`).join('; ')}. ` +
@@ -113,7 +131,7 @@ function renderMessage(unsatisfied, errored, hard) {
  * @param duties duty list; defaults to the registry
  * @param config { duties: { [id]: { enabled?, severity?, ...options } } }
  */
-function decide(ctx, duties = registry.all(), config = {}) {
+function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
   const perDuty = (config && config.duties) || {};
   const results = [];
 
@@ -130,22 +148,36 @@ function decide(ctx, duties = registry.all(), config = {}) {
     .filter((r) => r.state === 'unsatisfied')
     .sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
   const errored = results.filter((r) => r.state === 'errored');
+  const fires = (ctx.ledger && ctx.ledger.fires) || 0;
+  const exhausted = fires >= MAX_FIRES_PER_PROMPT;
+
+  // Supply duties are EXPENSIVE (a judge call). Never schedule one on an exhausted request —
+  // the budget exists precisely so a broken satisfaction check cannot bill forever.
+  const supplyDue = exhausted
+    ? []
+    : results.filter((r) => r.state === 'supply-due').sort((a, b) => a.priority - b.priority).map((r) => r.id);
+
+  const hasMaterial = Object.values(materials || {}).some(Boolean);
 
   const base = {
     results,
     unsatisfied: unsatisfied.map((d) => d.id),
     errored: errored.map((d) => d.id),
+    supplyDue,
     ran: results.filter((r) => r.state !== 'disabled').map((r) => r.id),
   };
 
-  if (!unsatisfied.length) {
-    // Every applicable duty is satisfied. This is the structural exit and the ONLY one
-    // that should ever fire in a healthy project.
+  if (!unsatisfied.length && !hasMaterial) {
+    // Every applicable duty is satisfied and nothing was recalled. This is the structural exit
+    // and the ONLY one that should fire in a healthy project. `supplyDue` still rides along:
+    // the adapter reads it to know what to execute before asking again.
     return { ...base, action: 'allow', emission: null, reason: 'all applicable duties satisfied' };
   }
 
-  const fires = (ctx.ledger && ctx.ledger.fires) || 0;
-  if (fires >= MAX_FIRES_PER_PROMPT) {
+  if (exhausted && !unsatisfied.length) {
+    return { ...base, action: 'allow', emission: null, reason: 'fire budget exhausted' };
+  }
+  if (exhausted) {
     // Exhaustion is an OUTCOME, not a silence. A satisfaction check that never goes true is
     // a defect in the duty, and the owner only finds it if the runner says so.
     return {
@@ -167,7 +199,7 @@ function decide(ctx, duties = registry.all(), config = {}) {
   // Only a duty the registry (or the project) marked blocking may harden the tail, and only
   // once the soft nudge has already been seen and ignored.
   const hard = ctx.stopHookActive && unsatisfied.some((d) => d.severity === SEVERITY_BLOCK);
-  const message = renderMessage(unsatisfied, errored, hard);
+  const message = renderMessage(unsatisfied, errored, hard, materials);
 
   if (hard) {
     return { ...base, action: 'block', emission: { decision: 'block', reason: message }, reason: 'unmet blocking duty after prior nudge' };

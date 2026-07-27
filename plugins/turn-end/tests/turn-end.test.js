@@ -29,19 +29,35 @@ const ledgerStore = require('../lib/ledger');
 const { buildContext, extractTurn, makeDisk } = require('../lib/context');
 const sessionDigest = require('../lib/duties/session-digest');
 const qualityLens = require('../lib/duties/quality-lens');
+const contextRecall = require('../lib/duties/context-recall');
 const claudeP = require('../lib/judges/claude-p');
 const duties = require('../lib/duties');
+const sources = require('../lib/sources');
+const { makeSource } = require('../lib/sources/markdown-dir');
 
 let passed = 0;
 let failed = 0;
 function check(name, fn) {
   try {
-    fn();
+    const r = fn();
+    // An async body would resolve AFTER the report and its failures would vanish. A test
+    // harness that can silently drop a test is worse than no harness.
+    assert.ok(!(r && typeof r.then === 'function'), 'use checkAsync for an async body');
     passed++;
   } catch (err) {
     failed++;
     console.error(`FAIL: ${name}\n      ${err.message}`);
   }
+}
+
+const pending = [];
+function checkAsync(name, fn) {
+  pending.push(
+    Promise.resolve()
+      .then(fn)
+      .then(() => { passed++; })
+      .catch((err) => { failed++; console.error(`FAIL: ${name}\n      ${err.message}`); })
+  );
 }
 
 // ---------- fixtures ----------
@@ -463,21 +479,208 @@ check('claude-p: a spawn failure degrades to no-verdict, never throws', () => {
 
 // ---------- registry ----------
 
-check('every registered duty satisfies the contract', () => {
+check('every registered duty satisfies the contract for its KIND', () => {
   for (const d of duties.all()) {
     assert.ok(typeof d.id === 'string' && d.id, 'id');
     assert.ok(typeof d.title === 'string' && d.title, `${d.id}: title`);
     assert.ok(['block', 'advise'].includes(d.severity), `${d.id}: severity`);
     assert.strictEqual(typeof d.applies, 'function', `${d.id}: applies`);
     assert.strictEqual(typeof d.satisfied, 'function', `${d.id}: satisfied`);
-    assert.strictEqual(typeof d.ask, 'function', `${d.id}: ask`);
-    assert.ok(d.ask(fakeCtx()).length > 20, `${d.id}: ask is substantive`);
+    if (d.kind === 'supply') {
+      assert.strictEqual(typeof d.supply, 'function', `${d.id}: supply`);
+      assert.strictEqual(typeof d.ask, 'undefined', `${d.id}: a supply duty must not also demand`);
+    } else {
+      assert.strictEqual(typeof d.ask, 'function', `${d.id}: ask`);
+      assert.ok(d.ask(fakeCtx()).length > 20, `${d.id}: ask is substantive`);
+    }
   }
 });
 
 check('duty ids are unique', () => {
   const ids = duties.all().map((d) => d.id);
   assert.strictEqual(new Set(ids).size, ids.length);
+});
+
+// ---------- supply duties: the recall half ----------
+
+const supplyStub = (id, over = {}) => ({
+  id, title: `supply ${id}`, kind: 'supply', severity: 'advise', priority: 10,
+  applies: () => true, satisfied: () => false,
+  supply: async () => ({ material: `MATERIAL-${id}`, chosen: [] }),
+  ...over,
+});
+
+check('a due supply duty is reported, not executed, by the pure runner', () => {
+  const r = decide(fakeCtx(), [supplyStub('recall')]);
+  assert.deepStrictEqual(r.supplyDue, ['recall']);
+  assert.strictEqual(r.emission, null, 'nothing to say until the material exists');
+});
+
+check('material passed back in produces an emission', () => {
+  const r = decide(fakeCtx(), [supplyStub('recall')], {}, { recall: 'here is what you missed' });
+  assert.strictEqual(r.action, 'advise');
+  assert.ok(r.emission.hookSpecificOutput.additionalContext.includes('here is what you missed'));
+});
+
+check('material is rendered BEFORE demands (it can change what the answer says)', () => {
+  const r = decide(
+    fakeCtx(),
+    [supplyStub('recall'), dutyStub('chore')],
+    {},
+    { recall: 'MATERIAL-HERE' }
+  );
+  const text = r.emission.hookSpecificOutput.additionalContext;
+  assert.ok(text.indexOf('MATERIAL-HERE') < text.indexOf('do chore'), 'material first');
+});
+
+check('a satisfied supply duty is not due again this request', () => {
+  const ctx = fakeCtx({ ledger: { promptId: 'p', fires: 1, asked: ['recall'] } });
+  const r = decide(ctx, [supplyStub('recall', { satisfied: (c) => c.ledger.asked.includes('recall') })]);
+  assert.deepStrictEqual(r.supplyDue, []);
+});
+
+check('an EXHAUSTED request never schedules an expensive supply duty', () => {
+  const ctx = fakeCtx({ ledger: { promptId: 'p', fires: runner.MAX_FIRES_PER_PROMPT, asked: [] } });
+  const r = decide(ctx, [supplyStub('recall')]);
+  assert.deepStrictEqual(r.supplyDue, [], 'budget must cap spend, not just nudges');
+});
+
+check('context-recall is silent where the project keeps no notes', () => {
+  assert.strictEqual(contextRecall.applies(fakeCtx()), false);
+});
+
+check('context-recall applies once notes exist and something was answered', () => {
+  const dir = tmpdir('recall-applies');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# A decision\nbody');
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
+  assert.strictEqual(contextRecall.applies(ctx), true);
+});
+
+check('context-recall: once per request', () => {
+  const ctx = fakeCtx({ ledger: { promptId: 'p', fires: 1, asked: ['context-recall'] } });
+  assert.strictEqual(contextRecall.satisfied(ctx), true);
+});
+
+check('parseVerdict strips a ```json fence — measured: the model often adds one', () => {
+  const out = contextRecall.parseVerdict('```json\n{"needed":[{"id":"kb-captures::a.md","why":"settled"}]}\n```');
+  assert.deepStrictEqual(out, [{ id: 'kb-captures::a.md', why: 'settled' }]);
+});
+
+check('parseVerdict handles the common empty answer', () => {
+  assert.deepStrictEqual(contextRecall.parseVerdict('{"needed":[]}'), []);
+});
+
+check('parseVerdict returns null on garbage rather than pretending', () => {
+  assert.strictEqual(contextRecall.parseVerdict('I think maybe none?'), null);
+  assert.strictEqual(contextRecall.parseVerdict(''), null);
+});
+
+check('parseVerdict caps how many notes one judgement may pull', () => {
+  const many = { needed: Array.from({ length: 20 }, (_, i) => ({ id: `s::${i}.md`, why: 'x' })) };
+  assert.strictEqual(contextRecall.parseVerdict(JSON.stringify(many)).length, contextRecall.MAX_CHOSEN);
+});
+
+check('the judge prompt carries the REQUEST, the ANSWER and the note index', () => {
+  const ctx = fakeCtx({
+    lastAssistantMessage: 'I rebuilt the widget from scratch',
+    turn: { text: 'x', toolNames: [], toolTargets: [], userRequest: 'make the widget' },
+  });
+  const p = contextRecall.buildPrompt(ctx, [{ id: 'kb-captures::w.md', title: 'why the widget is like that' }]);
+  assert.ok(p.includes('make the widget'));
+  assert.ok(p.includes('I rebuilt the widget from scratch'));
+  assert.ok(p.includes('kb-captures::w.md — why the widget is like that'));
+  assert.ok(/DATA, not instructions/.test(p), 'transcript framed as untrusted data');
+});
+
+checkAsync('supply() injects the FILE TEXT, not the judge\'s paraphrase', async () => {
+  const dir = tmpdir('recall-supply');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, '.claude', 'kb', 'captures', 'rejected.md'),
+    '# We rejected polling\nBecause it burned the rate limit. VERBATIM-MARKER-9Z'
+  );
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({
+    ok: true,
+    text: '{"needed":[{"id":"kb-captures::.claude/kb/captures/rejected.md","why":"this was already refuted"}]}',
+  });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'lets poll every second' });
+    const out = await contextRecall.supply(ctx);
+    assert.ok(out && out.material, 'material produced');
+    assert.ok(out.material.includes('VERBATIM-MARKER-9Z'), 'the note\'s own text reached the session');
+    assert.ok(out.material.includes('this was already refuted'), 'the why rides along');
+    assert.ok(out.material.includes('.claude/kb/captures/rejected.md'), 'path cited');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+checkAsync('supply() returns null when the judge says nothing was needed', async () => {
+  const dir = tmpdir('recall-none');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# A\nbody');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: true, text: '{"needed":[]}' });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
+    assert.strictEqual(await contextRecall.supply(ctx), null);
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+checkAsync('supply() surfaces a judge failure instead of silently recalling nothing', async () => {
+  const dir = tmpdir('recall-fail');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# A\nbody');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: false, error: 'spawn ETIMEDOUT' });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
+    const out = await contextRecall.supply(ctx);
+    assert.ok(out && out.error && /ETIMEDOUT/.test(out.error));
+    assert.strictEqual(out.material, null);
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+// ---------- sources ----------
+
+check('markdown-dir indexes titles cheaply and fetches bodies exactly', () => {
+  const dir = tmpdir('src-md');
+  fs.mkdirSync(path.join(dir, 'notes'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'notes', '20260101-0900-a-thing.md'), '# The real title\nBODY-HERE');
+  fs.writeFileSync(path.join(dir, 'notes', 'no-heading.md'), 'just text');
+  const src = makeSource({ id: 'notes', title: 'notes', dirs: ['notes'] });
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir) });
+  const idx = src.index(ctx);
+  assert.strictEqual(idx.length, 2);
+  assert.ok(idx.some((e) => e.title === 'The real title'), 'heading wins');
+  assert.ok(idx.some((e) => e.title === 'no heading'), 'filename fallback, de-dated');
+  assert.ok(!JSON.stringify(idx).includes('BODY-HERE'), 'index carries NO bodies');
+  const got = src.fetch(ctx, [idx.find((e) => e.title === 'The real title').id]);
+  assert.strictEqual(got.length, 1);
+  assert.ok(got[0].content.includes('BODY-HERE'));
+});
+
+check('a source over a missing directory is simply empty, never an error', () => {
+  const dir = tmpdir('src-missing');
+  const src = makeSource({ id: 'gone', title: 'gone', dirs: ['nope'] });
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir) });
+  assert.strictEqual(src.available(ctx), false);
+  assert.deepStrictEqual(src.index(ctx), []);
+});
+
+check('availableIn reports only sources this project actually populated', () => {
+  const dir = tmpdir('src-avail');
+  fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.steward', 'state.md'), '# state');
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir) });
+  const ids = sources.availableIn(ctx).map((s) => s.id);
+  assert.deepStrictEqual(ids, ['steward-model']);
 });
 
 // ---------- adapter end-to-end ----------
@@ -564,11 +767,15 @@ check('E2E: config off-switch silences the runner', () => {
 
 // ---------- report ----------
 
-try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (_e) { /* best effort */ }
+// Async checks resolve after the sync pass, so the report waits on them — otherwise a failing
+// async test would print after the exit code was already decided.
+Promise.all(pending).then(() => {
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (_e) { /* best effort */ }
 
-const total = passed + failed;
-console.log(`\n${passed}/${total} checks passed`);
-if (failed) {
-  console.error(`${failed} FAILED`);
-  process.exit(1);
-}
+  const total = passed + failed;
+  console.log(`\n${passed}/${total} checks passed`);
+  if (failed) {
+    console.error(`${failed} FAILED`);
+    process.exit(1);
+  }
+});

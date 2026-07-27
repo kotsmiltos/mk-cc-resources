@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { decide } = require('../../lib/runner');
+const duties = require('../../lib/duties');
 const { buildContext } = require('../../lib/context');
 const ledgerStore = require('../../lib/ledger');
 const claudeP = require('../../lib/judges/claude-p');
@@ -85,10 +86,42 @@ async function main() {
   const promptId = payload.prompt_id || null;
   const ledger = ledgerStore.readLedger(cwd, promptId);
   const ctx = buildContext(payload, cwd, ledger);
-  const result = decide(ctx, undefined, config);
 
-  if (result.emission) {
-    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, result.unsatisfied));
+  // PASS 1 — pure. Which demands are unmet, and which supply duties are due?
+  const planned = decide(ctx, undefined, config);
+
+  // PASS 2 — impure, and the ONLY impure step: run the due supply duties. A supply may read
+  // widely or spawn a judge, so it lives here rather than inside the runner. Each is isolated:
+  // one that throws costs its own material, never the turn.
+  const materials = {};
+  const supplyNotes = [];
+  for (const id of planned.supplyDue) {
+    const duty = duties.byId(id);
+    if (!duty || typeof duty.supply !== 'function') continue;
+    try {
+      const produced = await duty.supply(ctx);
+      if (produced && produced.material) {
+        materials[id] = produced.material;
+        supplyNotes.push({ id, chosen: produced.chosen || [] });
+      } else if (produced && produced.error) {
+        supplyNotes.push({ id, error: produced.error });
+      } else {
+        supplyNotes.push({ id, chosen: [] });
+      }
+    } catch (err) {
+      supplyNotes.push({ id, error: String((err && err.message) || err).slice(0, 200) });
+    }
+  }
+
+  // PASS 3 — pure again, now with the material in hand.
+  const result = planned.supplyDue.length ? decide(ctx, undefined, config, materials) : planned;
+
+  // A supply duty that RAN must be recorded even when it produced nothing, or it re-runs — and
+  // re-pays — on every remaining turn of the same request.
+  const toRecord = result.unsatisfied.concat(planned.supplyDue);
+
+  if (result.emission || toRecord.length) {
+    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord));
     writeTrace(cwd, {
       t: new Date().toISOString(),
       hook: 'turn-end',
@@ -96,11 +129,12 @@ async function main() {
       stop_hook_active: ctx.stopHookActive,
       action: result.action,
       unsatisfied: result.unsatisfied,
+      supplied: supplyNotes,
       errored: result.errored,
       fires: ledger.fires,
     });
-    process.stdout.write(JSON.stringify(result.emission));
   }
+  if (result.emission) process.stdout.write(JSON.stringify(result.emission));
   process.exit(0);
 }
 
