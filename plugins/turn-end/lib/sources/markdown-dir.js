@@ -36,10 +36,16 @@ function titleOf(file, text) {
 
 /**
  * Build a source instance from config.
+ * `maxEntries` is UNLIMITED by default. It used to default to 60 — a number Claude picked,
+ * which no shipped source overrode, so every index silently stopped at 60 notes. In a feature
+ * whose whole question is "did this answer miss something we already knew?", a silent cap is
+ * the answer being wrong in the one direction that cannot be noticed. A project may still set
+ * one; the duty then STATES that the list was truncated rather than hiding it.
+ *
  * @param spec {{id, title, dirs: string[], maxEntries?: number}}
  */
 function makeSource(spec) {
-  const maxEntries = spec.maxEntries || 60;
+  const maxEntries = typeof spec.maxEntries === 'number' && spec.maxEntries > 0 ? spec.maxEntries : Infinity;
 
   return {
     id: spec.id,

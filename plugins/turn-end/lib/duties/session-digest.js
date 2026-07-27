@@ -44,16 +44,42 @@ const STEWARD_DIR = '.steward';
 // This duty's own instruction coming back in the model's text must not re-trigger it.
 const OWN_MARKER_RX = /\[turn-end\]|\[kb-scribe\]|session[- ]digest (updated|current|maintained)/i;
 
-const ASK =
-  'Distill this turn into the session digest. IMPORTANT = the knowledge that dies first: a ' +
-  'decision WITH its one-line why; a rejected approach or dead end (and why it lost); a ' +
-  'direction change; a verified outcome WITH the check that proved it; a constraint discovered; ' +
-  'an open question that must not be lost. NOT important: mechanical steps, file-by-file ' +
-  `narration, anything git already records. (1) Update ${DIGEST_POSIX} (create if absent): one ` +
-  'compact bullet per important item; compress superseded bullets — it is a distillation, not a ' +
-  'log. (2) Graduate durable project-length knowledge to .claude/kb/captures/; anything that ' +
-  'changes the steward MODEL (plans, tasks, vision) goes to .steward/inbox/ instead. ' +
-  '(3) If the turn genuinely produced nothing worth keeping, say so in one line.';
+/*
+ * WHOSE DEFINITION OF "IMPORTANT" IS THIS? Claude's.
+ *
+ * It was previously delivered to every session as flat doctrine, indistinguishable from a rule
+ * the owner set — and text a model reads as law is exactly where an invented rule does the most
+ * damage, because nothing questions it. So the ask now SAYS it is a default, and a project can
+ * replace it outright:
+ *   .claude/turn-end.json -> {"duties": {"session-digest": {"important": ["...", "..."]}}}
+ */
+const DEFAULT_IMPORTANT = [
+  'a decision WITH its one-line why',
+  'a rejected approach or dead end (and why it lost)',
+  'a direction change',
+  'a verified outcome WITH the check that proved it',
+  'a constraint or invariant discovered',
+  'an open question that must not be lost',
+];
+
+function buildAsk(important, isDefault) {
+  const list = important.map((i) => `- ${i}`).join('\n');
+  const provenance = isDefault
+    ? "This working definition of IMPORTANT is Claude's default, NOT a rule this project set — " +
+      'treat it as a starting point and say so if it is wrong for the work at hand. Replace it ' +
+      'via .claude/turn-end.json {"duties":{"session-digest":{"important":[…]}}}.'
+    : 'This definition of IMPORTANT comes from THIS PROJECT\'s config — follow it.';
+  return (
+    `Distill this turn into the session digest. IMPORTANT = the knowledge that dies first:\n${list}\n` +
+    `${provenance}\n` +
+    'NOT important: mechanical steps, file-by-file narration, anything git already records. ' +
+    `(1) Update ${DIGEST_POSIX} (create if absent): one compact bullet per important item; ` +
+    'compress superseded bullets — it is a distillation, not a log. (2) Graduate durable ' +
+    'project-length knowledge to .claude/kb/captures/; anything that changes the steward MODEL ' +
+    '(plans, tasks, vision) goes to .steward/inbox/ instead. (3) If the turn genuinely produced ' +
+    'nothing worth keeping, say so in one line.'
+  );
+}
 
 /** Does this project curate memory at all? Nothing to maintain where nobody keeps any. */
 function hasCuratedMemory(ctx) {
@@ -85,11 +111,18 @@ module.exports = {
     return wroteDigest(ctx);
   },
 
-  ask() {
-    return ASK;
+  ask(ctx, options) {
+    const custom = options && Array.isArray(options.important)
+      ? options.important.filter((i) => typeof i === 'string' && i.trim())
+      : null;
+    return custom && custom.length
+      ? buildAsk(custom, false)
+      : buildAsk(DEFAULT_IMPORTANT, true);
   },
 };
 
 module.exports.DIGEST_REL = DIGEST_REL;
+module.exports.DEFAULT_IMPORTANT = DEFAULT_IMPORTANT;
+module.exports.buildAsk = buildAsk;
 module.exports.PRODUCE_TOOLS = PRODUCE_TOOLS;
 module.exports.hasCuratedMemory = hasCuratedMemory;

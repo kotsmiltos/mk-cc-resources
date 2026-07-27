@@ -87,9 +87,11 @@ vocabulary it never used.
 `supply` is the one impure step, so the pure runner only reports it is **due** and the adapter
 executes it: **plan (pure) → execute (impure) → compose (pure)**.
 
-**Cost:** ~11s and ~$0.03 per fire, every turn end, by owner directive — a gate deciding when
-recall matters is itself a thing that can be wrong. The fire budget caps spend too: an
-exhausted request never schedules a supply duty.
+**Cost: ~46s per fire, every turn end.** Provenance, because it matters here: Claude offered
+three firing policies, marked the cheap-pre-filter one "(Recommended)", and quoted ~11s. The
+owner chose every-turn-end. **The ~11s was Claude's estimate and it was wrong — the measured
+figure is 46s**, so that choice rests on a bad number and is worth re-taking. The fire budget
+caps spend too: an exhausted request never schedules a supply duty.
 
 **Sources** (`lib/sources/`) are the extension surface, same two levels as duties: a new
 *instance* is a config entry over `markdown-dir`; a new *type* is a drop-in module. Shipped:
@@ -172,11 +174,33 @@ be called by this runner. Two blocking peers is the bug.
 {
   "enabled": true,
   "duties": {
-    "session-digest": { "enabled": true, "severity": "block" },
-    "quality-lens":   { "enabled": true, "severity": "advise" }
+    "session-digest": {
+      "enabled": true,
+      "severity": "block",
+      "important": ["what counts as worth keeping in THIS project"]
+    },
+    "quality-lens":   { "enabled": true, "severity": "advise" },
+    "context-recall": {
+      "maxIndexEntries": null,
+      "maxChosen": null,
+      "maxContentChars": 2400
+    }
   }
 }
 ```
+
+**On the numbers here — provenance matters.** Every bound in this plugin was chosen by Claude,
+not requested by anyone, so they are split by what they cost you when they bite:
+
+- **Content-discarding** (`maxIndexEntries`, `maxChosen`) ship **off**. A silent cap on what the
+  judge may see or return makes "nothing was missed" unfalsifiable — the one failure this duty
+  exists to remove. Set one and the truncation is stated in the prompt and in the result.
+- **Excerpt bounds** (`maxContentChars`, `maxTotalChars`) keep a default because each already
+  announces its own cut inline (`… [+N chars]`). Still guesses; override if they bite.
+
+`session-digest.important` replaces Claude's default definition of what is worth keeping. Left
+unset, the instruction tells the session that the definition is a Claude default and not a rule
+this project set.
 
 A malformed config is reported on stderr and ignored — throwing would wedge every turn.
 

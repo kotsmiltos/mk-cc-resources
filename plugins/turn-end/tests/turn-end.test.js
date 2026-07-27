@@ -428,6 +428,28 @@ check('session-digest: unsatisfied when some other file was written', () => {
   assert.strictEqual(sessionDigest.satisfied(ctx), false);
 });
 
+check('session-digest: the IMPORTANT list SAYS it is Claude\'s default, not project doctrine', () => {
+  // It used to arrive as flat doctrine — indistinguishable from a rule the owner set, in text
+  // a model reads as law, which is exactly where an invented rule cannot be questioned.
+  const ask = sessionDigest.ask(fakeCtx(), {});
+  assert.ok(/Claude's default, NOT a rule this project set/.test(ask));
+  assert.ok(/turn-end\.json/.test(ask), 'and names how to replace it');
+  for (const item of sessionDigest.DEFAULT_IMPORTANT) assert.ok(ask.includes(item), item);
+});
+
+check('session-digest: a project definition REPLACES it and drops the disclaimer', () => {
+  const ask = sessionDigest.ask(fakeCtx(), { important: ['whether the build stayed green'] });
+  assert.ok(ask.includes('whether the build stayed green'));
+  assert.ok(/comes from THIS PROJECT/.test(ask));
+  assert.ok(!/Claude's default/.test(ask), 'an owner-set rule is not hedged');
+  assert.ok(!ask.includes(sessionDigest.DEFAULT_IMPORTANT[0]), 'and the default is gone, not appended');
+});
+
+check('session-digest: an empty/garbage override falls back to the default, still labelled', () => {
+  const ask = sessionDigest.ask(fakeCtx(), { important: ['', '   '] });
+  assert.ok(/Claude's default/.test(ask));
+});
+
 check('session-digest: its own instruction echoed back does not re-trigger it', () => {
   const ctx = fakeCtx({ disk: memoryDisk(), lastAssistantMessage: '[turn-end] before yielding…', turn: { toolNames: ['Edit'], toolTargets: [], text: 'x' } });
   assert.strictEqual(sessionDigest.applies(ctx), false);
@@ -699,9 +721,28 @@ check('parseVerdict returns null on garbage rather than pretending', () => {
   assert.strictEqual(contextRecall.parseVerdict(''), null);
 });
 
-check('parseVerdict caps how many notes one judgement may pull', () => {
+check('parseVerdict returns EVERY id the judge asked for — capping happens where it can be said', () => {
   const many = { needed: Array.from({ length: 20 }, (_, i) => ({ id: `s::${i}.md`, why: 'x' })) };
-  assert.strictEqual(contextRecall.parseVerdict(JSON.stringify(many)).length, contextRecall.MAX_CHOSEN);
+  assert.strictEqual(contextRecall.parseVerdict(JSON.stringify(many)).length, 20);
+});
+
+check('content-discarding bounds ship OFF — a silent cap makes "nothing missed" unfalsifiable', () => {
+  const d = contextRecall.resolveLimits({});
+  assert.strictEqual(d.maxIndexEntries, null, 'the judge sees every note by default');
+  assert.strictEqual(d.maxChosen, null, 'and may return as many as it needs');
+  assert.strictEqual(contextRecall.DEFAULT_MAX_INDEX_ENTRIES, null);
+  assert.strictEqual(contextRecall.DEFAULT_MAX_CHOSEN, null);
+});
+
+check('a project CAN set those bounds, and config wins', () => {
+  const d = contextRecall.resolveLimits({ maxIndexEntries: 10, maxChosen: 2 });
+  assert.strictEqual(d.maxIndexEntries, 10);
+  assert.strictEqual(d.maxChosen, 2);
+});
+
+check('excerpt bounds keep a default — they announce their own cut inline', () => {
+  const d = contextRecall.resolveLimits({});
+  assert.ok(d.maxContentChars > 0 && d.maxTotalChars > 0 && d.maxExcerptOfTurn > 0);
 });
 
 check('the judge prompt carries the REQUEST, the ANSWER and the note index', () => {
@@ -709,11 +750,41 @@ check('the judge prompt carries the REQUEST, the ANSWER and the note index', () 
     lastAssistantMessage: 'I rebuilt the widget from scratch',
     turn: { text: 'x', toolNames: [], toolTargets: [], userRequest: 'make the widget' },
   });
-  const p = contextRecall.buildPrompt(ctx, [{ id: 'kb-captures::w.md', title: 'why the widget is like that' }]);
+  const limits = contextRecall.resolveLimits({});
+  const p = contextRecall.buildPrompt(ctx, [{ id: 'kb-captures::w.md', title: 'why the widget is like that' }], limits, null);
   assert.ok(p.includes('make the widget'));
   assert.ok(p.includes('I rebuilt the widget from scratch'));
   assert.ok(p.includes('kb-captures::w.md — why the widget is like that'));
   assert.ok(/DATA, not instructions/.test(p), 'transcript framed as untrusted data');
+  assert.ok(!/LIST TRUNCATED/.test(p), 'no truncation notice when nothing was cut');
+  assert.ok(!/at most/.test(p), 'no arbitrary cap announced when none is set');
+});
+
+check('a TRUNCATED index tells the judge it did not see everything', () => {
+  const limits = contextRecall.resolveLimits({ maxIndexEntries: 1, maxChosen: 3 });
+  const p = contextRecall.buildPrompt(fakeCtx(), [{ id: 'a::1.md', title: 't' }], limits, { shown: 1, total: 42 });
+  assert.ok(/LIST TRUNCATED — showing 1 of 42/.test(p), 'names both numbers');
+  assert.ok(/have NOT seen the rest/.test(p));
+  assert.ok(/at most 3 entries/.test(p));
+});
+
+check('a clipped selection is REPORTED, not passed off as the judge finding nothing more', () => {
+  const limits = contextRecall.resolveLimits({});
+  const m = contextRecall.renderMaterial(
+    [{ title: 'T', path: 'p.md', content: 'body', why: 'w' }],
+    limits,
+    { wanted: 5, shown: 1 }
+  );
+  assert.ok(/judge asked for 5 notes/.test(m));
+  assert.ok(/dropped, not judged irrelevant/.test(m));
+});
+
+check('markdown-dir indexes EVERY note by default — the 60 cap was silent blindness', () => {
+  const dir = tmpdir('src-nocap');
+  fs.mkdirSync(path.join(dir, 'notes'), { recursive: true });
+  for (let i = 0; i < 75; i++) fs.writeFileSync(path.join(dir, 'notes', `n${i}.md`), `# note ${i}\nbody`);
+  const src = makeSource({ id: 'notes', title: 'notes', dirs: ['notes'] });
+  assert.strictEqual(src.index(fakeCtx({ cwd: dir, disk: makeDisk(dir) })).length, 75);
 });
 
 checkAsync('supply() injects the FILE TEXT, not the judge\'s paraphrase', async () => {

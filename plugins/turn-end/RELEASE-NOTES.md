@@ -1,5 +1,43 @@
 # turn-end — release notes
 
+## 0.2.3 — 2026-07-27 — stop speaking in the owner's voice, and stop capping silently
+
+Owner: *"we originally put a stupid/wrong number in that you decided to do on your own, i never
+spoke something of it"* … *"not just numbers but in general not speaking and doing things in my
+voice."* Three fixes, all requested.
+
+**1. The false "owner directive".** Source, README and RELEASE-NOTES all recorded the firing
+policy as an owner decree. What happened: Claude wrote a 3-option menu, authored every option,
+marked one "(Recommended)", and quoted ~11s per fire — a figure that **measured 46s**. The owner
+picked an option. Recorded now as exactly that, with the bad estimate visible, because a choice
+made on a wrong number should stay revisable instead of hardening into a rule.
+
+**2. The IMPORTANT definition was Claude's, delivered as doctrine.** `session-digest`'s ask told
+every session what knowledge is worth keeping, in text a model reads as law, indistinguishable
+from something the project set. It now SAYS it is a Claude default, and a project can replace it
+outright: `{"duties":{"session-digest":{"important":[…]}}}`. When set, the disclaimer disappears
+— an owner-set rule is not hedged.
+
+**3. Silent caps that made "nothing was missed" unfalsifiable.** `MAX_INDEX_ENTRIES = 80` capped
+what the judge could even see, with nothing reporting it — the same bug as the retired 1500-char
+digest cap, not merely the same shape. Auditing it surfaced a **worse one underneath**:
+`markdown-dir` defaulted to `maxEntries || 60`, and no shipped source overrode it, so every index
+had already stopped at 60 notes before the 80 was reached.
+
+Bounds are now split by what they cost when they bite:
+
+| class | examples | default | when it bites |
+|---|---|---|---|
+| content-discarding | `maxIndexEntries`, `maxChosen` | **off** | stated in the prompt (`LIST TRUNCATED — showing N of M … you have NOT seen the rest`) and in the result (`the judge asked for N notes … dropped, not judged irrelevant`) |
+| excerpt | `maxContentChars`, `maxTotalChars` | kept | already announced inline by `clip()` |
+
+`parseVerdict` no longer silently slices the judge's answer; capping moved to `supply()`, the one
+place that still knows how much was dropped and can say so.
+
+87 → **93 checks**, including: defaults assert as literally `null`, a truncated index must carry
+both numbers, a clipped selection must be reported, and `markdown-dir` must index all 75 of 75
+notes.
+
 ## 0.2.2 — 2026-07-27 — a duty that spawns an agent must not be scoped to the prompt
 
 Reported from another project: six lens dispatches back to back, the owner typing nothing.
@@ -121,10 +159,12 @@ contradict a note whose vocabulary it never used.
 `kb-captures`, `kb-extracted`, `steward-model`. A configured directory that does not exist is
 simply empty — that is what keeps this silent where nothing is written down.
 
-**Firing policy — owner directive:** every turn end, no pre-filter. A gate that decides when
-recall matters is itself a thing that can be wrong, and a silent miss is the failure this
-exists to remove. Measured cost ~11s / ~$0.03 per fire. The fire budget now caps *spend* too:
-an exhausted request never schedules a supply duty.
+**Firing policy — what happened:** Claude offered three options, marked the cheap-pre-filter one
+"(Recommended)", and quoted ~11s per fire. The owner chose every-turn-end. **That ~11s was
+Claude's estimate and it was wrong — measured 46s** (see 0.2.1), so the choice rests on a bad
+number and is worth re-taking. It was recorded here and in source as an "owner directive" until
+0.2.3 corrected it. The fire budget now caps *spend* too: an exhausted request never schedules a
+supply duty.
 
 Prompt-injection posture: the request and answer are framed to the judge as **data, not
 instructions**, explicitly. `parseVerdict` strips the ```json fence the model measurably tends
