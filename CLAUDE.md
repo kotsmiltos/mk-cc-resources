@@ -117,6 +117,46 @@ plugins/
                             #   defaults/repo-guard.json; malformed config THROWS
     tests/repo-guard.test.js # 94 checks, in-memory fixtures only — a guard whose tests read the
                             #   tree it guards passes for the wrong reason the day it changes
+    lib/test-sweep.js       # PURE plan + classify + summarise; execution is INJECTED, which is
+                            #   what lets the whole policy be tested without running a suite.
+                            #   Exit code is the verdict (measured: all three harness styles here
+                            #   — 11 hand-rolled check() counters, 15 node:test files, pytest —
+                            #   exit 1 on failure while printing wildly different text). Output
+                            #   is evidence only, and may CONTRADICT a green exit: a suite that
+                            #   exits 0 while printing a failure is SUSPECT, never counted green
+    lib/suite-runners/      # extension surface: index.js registry + aggregator (a unit's own
+                            #   run-all, which CLAIMS its directory so its files are not also
+                            #   run) + node-file + pytest (launched from its own project root).
+                            #   Discovery is by SHAPE, never a filename list — the measured
+                            #   failure being a documented command that named its files and
+                            #   silently stopped covering a suite the day one was added
+    bin/test-all.js         # CLI adapter, peer of repo-guard's. Walks the tree ONCE. Exit 0
+                            #   green / 1 red-or-suspect-or-could-not-run / 2 sweep cannot run.
+                            #   A unit shipping NO suite is NAMED — an unmentioned unit reads as
+                            #   a passing one. Runs anywhere: no plugins/ dir = one unit at root
+    lib/registry-check.js   # PURE checker over the claim registry. Two channels, and the split
+                            #   is load-bearing: a MISMATCH is a fact that is wrong and fails;
+                            #   an INFORMATIONAL finding is a decision that should be deliberate
+                            #   rather than accidental, and reports without failing
+    lib/registry-claims/    # extension surface: index.js registry + plugin-version (row vs
+                            #   manifest) + plugin-listing (dirs vs rows, BOTH directions; the
+                            #   bundle excluded by SOURCE, not by name) + doc-version (bolded
+                            #   name + bare semver in a table row — deliberately NOT every
+                            #   version in prose, since release notes legitimately name old
+                            #   ones) + bundle-paths + referenced-path (files a CI step invokes;
+                            #   measured — the only workflow here ran a script deleted in
+                            #   508e2a7, on a pull_request trigger in a repo with zero PRs) +
+                            #   capability-reach (bundle ships declared surfaces only, so
+                            #   lib/bin/defaults do not travel — informational, because a
+                            #   standalone install DOES carry them and which one the owner uses
+                            #   is their call, not a wrong fact)
+    bin/registry-check.js   # CLI adapter. Exit 0 consistent / 1 drift / 2 cannot run.
+                            #   CHECKS, never generates: only the facts in those files are
+                            #   derivable, and the prose around them is written for a human
+    tests/test-sweep.test.js      # 27 checks, synthetic units only
+    tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since
+                            #   a checker only ever run on a consistent repo has proved nothing
+                            #   about itself; it would pass identically if it returned []
 
   schema-scout/             # Data file schema exploration CLI
     .claude-plugin/plugin.json
@@ -446,6 +486,8 @@ Six composable skills for working ON plugins (and the codebases they ship in).
 | `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
 | `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 147-verb vocab, Pass B cluster review with composite verdicts from deterministic `composed_of_candidates`, deterministic judge candidates via `runner near-misses`, Pass C substrate-verify). Optional `--scan-blocks` surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md; `runner diff --old --new` tracks duplication drift between runs ({(file, function)} identity, 6 classes); `runner map` renders MAP.md — mermaid module graph + lossless machine index, the consult-before-designing artifact essense-flow /architect + /build inject into briefs; `runner coupling` (engine 2.4.0) enforces DECOUPLED by measuring coupling — scope-aware call graph from records (a call binds to a same-module definition when one exists, so duplicated private names don't fabricate phantom edges), threshold-free binary violations (cross-module dependency cycles + reach-ins into a module's internal surface), writes COUPLING.yaml (each violation named file:function), `--fail-on-violation` CI gate; `runner extensibility` (engine 2.5.0, C#-only MVP) enforces OPEN-FOR-EXTENSION by measuring dispatch — per axis (an enum, or a declared growth axis from /elicit's ledger) it counts the add-one-instance edit-sites (`switch`/switch-expression/if-ladder/dict that enumerate the axis's instances; sites bind by ≥2 case-label overlap, no type inference), writes EXTENSIBILITY.yaml (each site named file:line), edit-count is a measurement while a declared-OPEN axis carrying a dispatch site is the binary gate (`--fail-on-violation`); intrinsic enums are advisory. Pure model `extensibility.py` + impure `indexer/dispatch_scanner.py`; design source `EXTENSIBILITY-MEASURE-DESIGN.md`. Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. |
 | `node bin/repo-guard.js` | Before a push, or when a defect class keeps coming back | Runs every registered detector over the tracked files + git history in ONE context snapshot. Catches what is invisible from inside a round: machine-specific absolute paths, injected shell whose failure is indistinguishable from empty success, and fix-the-fix commit chains (the same file rewritten by a run of fix commits in a short window). Exit 1 on blocking findings — usable as a pre-push gate. Extend by dropping a module into `lib/detectors/`. |
+| `node bin/test-all.js` | Before a push, or any time "is the repo green?" is answerable only from memory | Runs EVERY suite in every plugin in one command with one verdict — 30 suites, ~1600 checks, ~75s. Discovery is by shape, so a new suite is covered the day it lands. Names the units shipping no suite at all, and flags a suite that exits 0 while printing failures instead of counting it green. Exit 1 on any red, suspect, or could-not-run. |
+| `node bin/registry-check.js` | Before a push, or after any version change | Verifies the CLAIMS the marketplace, bundle manifest and doc tables make about the repo, against disk: row-vs-manifest versions, plugin list in both directions, versions quoted in doc tables, bundle paths that resolve, and files a CI step invokes. Checks rather than generates — the prose in those files is written for a human, only its facts are derivable. Exit 1 on drift. |
 | `/dry-refactor <glossary.yaml> <gloss-id>` | Planning an extraction the glossary proposed | v3 MVP: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) via `python -m code_glossary.dry_refactor.runner`, then a dry-run plan — synthesized helper + per-site edit list. **Zero source writes**; live execution ships later behind its own gate. |
 
 Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract `/dry-refactor` consumes (Appendix A of DESIGN-V2.md; MVP = preflight + dry-run, built in v2.2).

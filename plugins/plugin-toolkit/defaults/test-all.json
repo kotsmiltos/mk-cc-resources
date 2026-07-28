@@ -1,0 +1,7 @@
+{
+  "runners": {
+    "aggregator": { "enabled": true },
+    "node-file": { "enabled": true },
+    "pytest": { "enabled": true }
+  }
+}

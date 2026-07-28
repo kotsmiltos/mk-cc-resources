@@ -1,5 +1,60 @@
 # Release notes — plugin-toolkit
 
+## 1.9.0 — two more gates beside repo-guard: one green verdict, one consistency verdict
+
+Both are the same shape as repo-guard — a pure runner over a drop-in registry, one context
+gathered once, a report that names what did **not** run. Adding a runner or a claim source is one
+`require`.
+
+### `bin/test-all.js` — is the whole ecosystem green?
+
+It was answerable only from memory: 30 suites across three harness styles, run one at a time by
+hand, and a plugin shipping **no** suite looked exactly like one that passed. Now one command,
+~1600 checks, ~75s.
+
+Three properties, each closing a defect this repo has measured on itself:
+
+- **Discovery is by shape, never a filename list.** A documented test command that named its
+  files stopped covering a whole suite the day one was added, and nothing said so.
+- **Silence is a finding.** Units shipping no suite are NAMED (today: alert-sounds,
+  project-note-tracker, schema-scout, session-lifecycle). So is a runner that could not launch.
+- **A green exit is not proof on its own.** Exit code is the verdict — measured across all three
+  harness styles before anything was built on it, because their *output* formats disagree wildly
+  while their exit codes do not. But a suite that exits 0 while printing a failure is marked
+  SUSPECT rather than counted green. The second recurring defect class here is "tests that lie",
+  always in the flattering direction.
+
+Found immediately on first run: **613 Python checks** in the code-glossary engine that appear in
+no documented count anywhere. And the tool reproduced this repo's own "counts in prose" defect
+inside itself — first-match parsing read a 54-file aggregate as `4/4` — now fixed by
+most-specific-first, last-match-wins, and pinned by a named regression.
+
+### `bin/registry-check.js` — do the files that describe this repo still describe it?
+
+Four files enumerate the same plugin list by hand and none is derived: the marketplace, the
+bundle manifest, the README table, the architecture map. Six claim sources, each with a
+**negative control** in the suite — a consistency checker only ever run on a consistent repo has
+proved nothing about itself, since it would pass identically if it returned an empty array.
+
+`referenced-path` exists because of a measured case: this repo's only CI workflow invoked
+`scripts/enforce_amendment_protocol.py`, deleted in `508e2a7`, on a `pull_request` trigger in a
+repo with **zero pull requests ever**. Dead twice over, and nothing could notice. That workflow
+is replaced by `.github/workflows/checks.yml`, running on `push` — the event this repo actually
+produces — and invoking the same commands a laptop runs.
+
+**It checks; it does not generate.** Only the facts in those files are derivable; the prose
+around them is written for a human, and regenerating would flatten it.
+
+`capability-reach` reports, without failing, that `lib/`, `bin/` and `defaults/` do not travel in
+a bundle install — measured from the installed cache, not from documentation. It is
+informational because every plugin also has its own marketplace row, so a standalone install
+does carry them; which one the owner uses is a distribution decision, not a wrong fact. Getting
+that severity wrong first is recorded in the source.
+
+94 → **146 checks** for this plugin: repo-guard 94, test-sweep 27, registry-check 25, each read
+from its own run. The first draft of this line said 95 → 147 from memory and arithmetic — the
+exact defect the tool above exists to remove, committed inside its own release notes.
+
 ## 1.8.0 — repo-guard: the loop that produced 1.7.0–1.7.2 is now a detector
 
 Three commits in fourteen minutes rewrote the same five lines — `616a42f` (bare
