@@ -94,14 +94,19 @@ function daysSince(date) {
   return Math.floor((NOW.getTime() - date.getTime()) / MS_PER_DAY);
 }
 
-test("T-ENF-3: governance ledger entries with status resolved/ratified/complete + age >30d must be archived", async () => {
-  // Fail-Soft: redesign workspace is optional (other plugin consumers don't
-  // have it). Skip with stderr if absent.
+test("T-ENF-3: governance ledger entries with status resolved/ratified/complete + age >30d must be archived", async (t) => {
+  // The subject of this test is NOT in this repo: it is an untracked sibling
+  // workspace that exists on one machine. That is legitimate — other consumers
+  // of the plugin have no reason to hold it — but the absence must be VISIBLE.
+  //
+  // It previously `return`ed here, which reports a PASS. So on every machine but
+  // one, this suite went green while checking nothing, and any aggregate runner
+  // counted it as coverage. `t.skip` marks it skipped in the TAP output instead,
+  // so "not checked" stops being indistinguishable from "checked and fine".
   if (!existsSync(REDESIGN_DIR)) {
-    process.stderr.write(
-      `T-ENF-3 note: redesign workspace at ${REDESIGN_DIR} does not exist; ledger-compaction test skipped (Fail-Soft).\n`,
+    return t.skip(
+      `redesign workspace absent at ${REDESIGN_DIR} — nothing was checked (this is NOT a pass)`,
     );
-    return;
   }
 
   const archiveCandidates = [];

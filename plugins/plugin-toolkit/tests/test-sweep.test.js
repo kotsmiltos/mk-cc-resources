@@ -164,6 +164,43 @@ check('a clean summary that merely CONTAINS the word failure stays ok', () => {
   assert.strictEqual(sweep.classify({ status: 0, output: '# fail 0\n# pass 12\n' }).state, sweep.OK);
 });
 
+check('REGRESSION: a suite that skipped everything is NOT counted as passing', () => {
+  // Measured: essense-flow's ledger-compaction test `return`ed early when its subject (an
+  // untracked sibling workspace) was absent, which node:test reports as a PASS. On every
+  // machine but one it went green while checking nothing, and the aggregate counted it as
+  // coverage. A skip is legitimate; a skip indistinguishable from a pass is not.
+  const r = sweep.classify({ status: 0, output: 'ok 1 - thing # SKIP absent\n# pass 0\n# fail 0\n# skipped 1\n' });
+  assert.strictEqual(r.state, sweep.NOTHING_CHECKED);
+  assert.strictEqual(r.skipped, 1);
+});
+
+check('a suite that skipped SOME tests but checked others is still ok', () => {
+  const r = sweep.classify({ status: 0, output: '# pass 12\n# fail 0\n# skipped 1\n' });
+  assert.strictEqual(r.state, sweep.OK);
+  assert.strictEqual(r.skipped, 1);
+});
+
+check('a wholly-skipped suite is REPORTED but does not fail the build', () => {
+  const planned = { unitsWithoutSuites: [], errored: [], ran: [], skipped: [] };
+  const s = sweep.summarise(planned, [{ suite: 'a', state: sweep.NOTHING_CHECKED, counts: { passed: 0, total: 0 }, skipped: 3, note: '3 skipped, 0 checked' }]);
+  assert.strictEqual(s.green, true, 'an optional subject being absent is not a defect');
+  assert.strictEqual(s.skippedTests, 3);
+  assert.ok(sweep.format(s).includes('CHECKED NOTHING'), 'but it is named');
+});
+
+check('skippedTests does not collide with the disabled-runners list', () => {
+  const planned = { unitsWithoutSuites: [], errored: [], ran: [], skipped: ['pytest'] };
+  const s = sweep.summarise(planned, [{ suite: 'a', state: sweep.OK, counts: null, skipped: 2 }]);
+  assert.deepStrictEqual(s.skipped, ['pytest'], 'runner list intact');
+  assert.strictEqual(s.skippedTests, 2, 'test count intact');
+});
+
+check('parseSkips reads both harness spellings, last match wins', () => {
+  assert.strictEqual(sweep.parseSkips('# skipped 0\n# skipped 4\n'), 4);
+  assert.strictEqual(sweep.parseSkips('3 passed, 2 skipped in 1.2s'), 2);
+  assert.strictEqual(sweep.parseSkips('nothing here'), 0);
+});
+
 check('a suite that could not launch is CANNOT-RUN, distinct from a passing one', () => {
   const r = sweep.classify({ status: null, output: '', spawnError: 'uv: ENOENT' });
   assert.strictEqual(r.state, sweep.CANNOT_RUN);
