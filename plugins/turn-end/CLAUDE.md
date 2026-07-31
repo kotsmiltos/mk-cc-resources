@@ -86,7 +86,11 @@ lib/judges/             # judgment surface. `claude -p` adapter, plan-billed, fo
                         #   MEASURED 46s per fire against a real corpus, not the ~11s the
                         #   tiny experiment prompt suggested
 hooks/                  # the one Stop registration; the adapter holds ZERO policy beyond
-                        #   executing due supply duties
+                        #   executing due supply duties. timeout: 90 (0.3.1) — the hook budget
+                        #   MUST exceed the judge's own 60s budget, or the platform kills the
+                        #   whole runner mid-fire and every duty's output is lost, not just
+                        #   the verdict (measured: 30s killed 39/52 in-window fires; one real
+                        #   fire with the judge measures ~40-46s)
 tests/turn-end.test.js  # 110 checks, own temp fixtures. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items);

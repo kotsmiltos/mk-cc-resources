@@ -1,5 +1,26 @@
 # turn-end — release notes
 
+## 0.3.1 — 2026-07-31 — the hook budget no longer kills its own judge
+
+`hooks.json` set `timeout: 30` while a real context-recall fire measures ~40–46s against a real
+corpus — so the platform killed the WHOLE runner at ~31–32s on exactly the fires where the judge
+ran. A platform kill loses everything: every duty's output, not just the verdict, and the
+`hook_cancelled` record reaches only the transcript, nobody's eyes. Measured across 50 sessions /
+4 projects (/doctor scan, 2026-07-27→31): 39 of 52 turn-end fires died at the timeout;
+crowd-game never completed one.
+
+Now `timeout: 90`. The invariant the 30 violated: **the hook budget must exceed the judge
+budget.** The judge already carries its own 60s execFile timeout and degrades to a NAMED
+no-verdict ("context recall could NOT run…") — that is the budget that should govern, and it can
+only govern if the platform doesn't kill the runner first. Measured pass after the change: one
+real end-to-end fire against a live session transcript — judge ran, clean verdict, 40.6s,
+exit 0, trace line written.
+
+Evidence: `.claude/kb/captures/20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
+Found by /doctor + the verifiability-lens (which upgraded the attribution from plausible to
+proven by reading `hooks.json:12` against the measured 46s). Hooks register at INSTALL time —
+`claude plugin update turn-end@mk-cc-resources` + restart before expecting the new budget.
+
 ## 0.3.0 — 2026-07-27 — a third duty: the model gets recomputed, not just written to
 
 `steward-sync`. A living model is only worth what its last recompute was worth. Captures land in
