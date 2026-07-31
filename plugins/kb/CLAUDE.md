@@ -60,13 +60,16 @@ skills/kb-seed/SKILL.md      # CREATE: extract an existing project's knowledge -
                              #   re-runs top up)
 skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .claude/kb/captures/
                              #   (steward-MODEL changes route to .steward/inbox/ instead — recompute rule)
-hooks/hooks.json             # UserPromptSubmit (kb-pull) + Stop (kb-scribe) + SessionStart
-                             #   (kb-session-start) registration
+hooks/hooks.json             # UserPromptSubmit (kb-pull) + SessionStart (kb-session-start)
+                             #   registration; the kb-scribe Stop registration is RETIRED
+                             #   (0.9.0 — see below)
 hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over the prompt ->
                              #   score-floored hint lines (title+id, kb_read to pull) +
                              #   session-digest injection; machine-text guard; fail-open;
                              #   .claude/kb.json {"pull":{...}} knobs
-hooks/scripts/kb-scribe-stop.js # the ENFORCED write side: on a producing turn, blocks the
+hooks/scripts/kb-scribe-stop.js # RETIRED (0.9.0) — kept one release, marked RETIRED in the
+                             #   header; the enforced write side now ships as turn-end's
+                             #   session-digest duty. Was: on a producing turn, blocks the
                              #   yield until the session distills the turn into the digest +
                              #   graduates durable items (captures/ or .steward/inbox/).
                              #   Fire-once + hash-skip + fail-open (lens contract); IMPORTANT
@@ -123,12 +126,16 @@ Both markdown surfaces teach the **narrowing loop** (re-query on the hint before
 the **citation rule** (name the `path`). If they ever diverge, the skill wins — it is the one
 that fires unprompted.
 
-Since 0.7.0 kb CARRIES THREE HOOKS — kb-pull (UserPromptSubmit), kb-scribe (Stop),
-kb-session-start (SessionStart) — so a standalone install is required for the hooks + MCP
-server; the bundle ships only the skills. **Hooks register at install time**, so an older
-install keeps its old behaviour regardless of this checkout: `claude plugin update
-kb@mk-cc-resources`, restart, then confirm a `kb-session-start` line in
-`.claude/kb/trace.jsonl`.
+Since 0.9.0 kb CARRIES TWO HOOKS — kb-pull (UserPromptSubmit) and kb-session-start
+(SessionStart). The kb-scribe Stop hook is RETIRED — the enforced write side now ships as
+turn-end's `session-digest` duty, because two plugins each owning a blocking Stop hook
+re-armed each other (scribe's PRODUCE_TOOLS included `Agent`, so the lens's mandated dispatch
+turn read as fresh work); script + 42 tests kept one release, marked RETIRED in the header.
+Both live hooks are PRESENCE-gated: a project keeping no curated memory is never blocked and
+never written into. A standalone install is required for the hooks + MCP server; the bundle
+ships only the skills. **Hooks register at install time**, so an older install keeps its old
+behaviour regardless of this checkout: `claude plugin update kb@mk-cc-resources`, restart,
+then confirm a `kb-session-start` line in `.claude/kb/trace.jsonl`.
 
 ## Conventions
 

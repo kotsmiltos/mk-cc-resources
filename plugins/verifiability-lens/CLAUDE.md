@@ -81,6 +81,16 @@ written claims (default OFF — without it, only artifact-producing turns trigge
   for THIS project (quality-bar weighting); copyable presets in `defaults/presets/`
   (game-project / plugin-repo / research-data); read-ONCE-per-dispatch profile rule (kills the
   measured 90×-reads waste). Hook contract tests 39/39.
+- ✅ v0.5.0: **hook retired into turn-end** — this plugin carries NO hook since 0.5.0. Automatic
+  firing comes from turn-end's `quality-lens` duty, still opt-in OFF by default
+  (`.claude/verifiability-lens.json` `{"enabled":true}`) and scoped to `prompt_id` — at most one
+  ask per user request. Why retired: the "fire-exactly-once guard" at `verifiability-stop.js:148`
+  bounded *consecutive* blocks, not total fires (10 simulated work turns →
+  block/allow/block/allow, 5 fires, unbounded), and identity was a hash of the turn's text, so
+  every correction turn looked new. The duty ships as `advise` rather than `block` because it
+  cannot yet tell an advancing pass from one repairing its own earlier characterisation — the
+  validation set for that classifier exists (passes 1–3 advancing, 4–8 oscillating, crossover at
+  3–4) but is deliberately unbuilt.
 - later (own gates): firing economics (hand-back + risk-triggered, not per-turn — Phase C of
   design/continuous-transformation.md); in-band pipeline-gate dispatch; PostToolUse fire points;
   extend librarian.md's surfacing protocol with the triage; the schema deepening.

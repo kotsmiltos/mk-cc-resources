@@ -6,72 +6,98 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-## Q10 · Who forces the RECOMPUTE? — and on what terms, now that a mechanism exists
+## Q11 · Re-take the context-recall firing policy — the estimate it was chosen on was wrong
 
-**Status: OPEN, and the owner's own answer is being staged as a separate inbox item.**
-Nothing below decides it; this is the context that answer lands into.
+**Owner's words, verbatim (2026-07-27):** *"OPEN — context-recall fires every turn at a
+MEASURED 46s; that policy was chosen on a wrong 11s estimate and is worth re-taking."*
 
-**The failure it exists for.** Crowd-game's model went a full session stale (its state
-front said one thing while the tree said another). Captures were never the problem —
-integration was: nothing forced the model to be recomputed before a sitting ended. The
-owner had already ruled on the identical failure for kb (*"a nudge… is not gonna be
-enough"*). Against that sits steward's standing design choice: **no Stop / per-turn hook,
-by design.**
+**Why this is open.** The current policy — fire the `claude -p` judge on EVERY turn end, no
+pre-filter — was picked from a Claude-authored menu whose cost estimate said ~11s and
+measured **46s** (source: `.claude/kb/captures/20260727-0830-invented-constraints-written-in-the-owners-voice.md`).
+The attribution was corrected in code (turn-end 0.2.3), but fixing the *record* of a
+laundered choice does not re-open the *choice*; it is still standing on the bad number.
 
-**What changed since the question was opened (all disk-verified 2026-07-27):**
-- **A mechanism is already on disk**: `steward-sync`, a turn-end DUTY —
-  `plugins/turn-end/lib/duties/steward-sync.js`, registered in `lib/duties/index.js`,
-  enabled `advise` in `defaults/config.json`. So the collision dissolved on its own: the
-  enforcement does NOT have to be a hook steward owns, because the toolkit now has exactly
-  one blocking tail that other plugins contribute duties to (vision, invariant 9).
-- **Provenance, per that file's own header** — OWNER-SPECIFIED: severity `advise`, session
-  span, silent on an empty inbox, applies while `.steward/inbox/*.md` count > 0, satisfied
-  at count 0. CHOSEN BY CLAUDE, NOT REQUESTED: the priority (25, between digest and lens),
-  the wording of the ask, and the definition of an item (top-level, non-dot, `.md`).
-- **It has never fired.** No `steward-sync` appears in `.claude/turn-end/trace.jsonl`
-  through 2026-07-27T17:02Z, and it is absent from turn-end's README duty table, its
-  RELEASE-NOTES and root CLAUDE.md. Built ≠ proven ≠ documented.
-- **Span is load-bearing, and the reason is measured**: a background agent's completion
-  wakes the session as a NEW `prompt_id`, so `prompt_id` is the PROMPT span, not the
-  user-request span. A duty whose ask is "dispatch an agent" that keys on `prompt_id`
-  re-arms off its own output — seven prompt_ids in 24 minutes, owner typing nothing, six
-  dispatches. Source: `.claude/kb/captures/20260727-0800-a-background-agent-completion-is-a-new-prompt.md`.
-- **The platform ends a turn after 8 consecutive continuations** (`lib/runner.js:32-38`),
-  so any enforcement here has a hard ceiling it must stay under and REPORT against — a
-  silent platform cut reads identical to success. (This also corrects an older
-  characterisation: the observed 8-pass runaway was ended by that cap, not by context
-  exhaustion.)
-- **Timing evidence from inside the loop:** an integration is a snapshot, and a snapshot of
-  a moving tree goes stale with nobody at fault. Whatever forces the recompute should fire
-  after the work SETTLES, not merely before a sitting ends.
+**NEW measured evidence (2026-07-31 — Claude's finding, /doctor transcript scan + disk
+read; capture `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`):** the hook's
+own registration caps it at 30s — `plugins/turn-end/hooks/hooks.json:12` sets
+`"timeout": 30` (re-read at integration) — so the platform KILLS the 46s judge mid-flight.
+Across 50 sessions (07-27→07-31): 162 Stop fires, **36 hit the timeout** (`hook_cancelled`,
+`timedOut:true`, ~31–32s); p50 182ms, so the fast path is unaffected — the kill lands
+exactly on the fires where the judge runs, and the recall material is LOST on those turns.
+Not a code-vs-disk lag: the running hook matches disk; the config contradicts itself. So
+the policy as it actually executes is not "unconditional recall at 46s" — it is a ~31s
+dead stall on ~22% of turn-ends with the payload lost on exactly those. **The
+no-silent-miss property the policy was chosen FOR is already violated by its own config.**
 
-**The open part — what the answer has to say:**
-- **(A) Ratify the duty as it stands** (`advise`, session span, fires while the inbox is
-  non-empty). Cheapest, already built; the owner sees one line in the tail and can ignore
-  it. Cost: `advise` never blocks, so a sitting can still end with the model stale — which
-  is the exact failure the question exists for.
-- **(B) Harden it to `severity:'block'`.** The model can no longer go stale across a
-  sitting. Cost: the tail blocks on a duty whose satisfaction depends on an agent
-  dispatch — the shape that already produced a re-arm loop once, now guarded by session
-  span rather than by argument.
-- **(C) Widen the trigger beyond "inbox non-empty"** — e.g. also when the model is
-  untouched across N producing turns. Catches the crowd-game failure mode directly (there,
-  captures existed and integration did not), but "N producing turns" is a number nobody has
-  measured, and this model rejects arbitrary thresholds.
-- Orthogonal to all three: **it must be documented and observed firing** before it counts
-  as an answer at all.
+**What a re-take has to preserve** (the original argument, intact and not a cost claim):
+any gate deciding when recall matters can itself be wrong, and its failure mode is
+SILENT — the turn that most needed a note is the turn a cheap heuristic skips. 46s does
+not refute that; it prices it. The candidate directions (Claude's framing, offered as
+material, not a menu): eat the 46s unconditionally · make the judge cheaper rather than
+rarer · let the 46s overlap the turn instead of terminating it · gate on a signal whose
+misses are visible. The owner pays the 46s and knows what a missed note costs — the
+decision is theirs.
 
-**Recommended default (Claude's, pending the owner's own answer): (A) now, and treat the
-first observed fire as the evidence gate for (B).** It is what is already on disk, it costs
-nothing, and hardening a duty is a one-word config change once there is a trace line to
-argue from.
+**Recommended default (Claude's — UPDATED by the timeout evidence; the previous "change
+nothing" default preserved a config that defeats the chosen policy):** fix the
+CONTRADICTION without re-taking the POLICY — raise or remove `timeout: 30` (the platform
+default 60s clears a 46s judge) and record one measured pass, which meets your rule that
+any alternative arrives with its own measured number. That restores the policy you chose
+(every-turn recall, no silent misses) as actually executed; the policy re-take itself
+(every-turn vs cheaper / rarer / overlapped / visibly-gated) stays open and is yours.
 
-**Blocks:** nothing. Both pilots run today.
+**Blocks:** nothing — but until touched it costs a ~31s dead stall on ~22% of turn-ends
+AND loses the recall material on exactly those.
+
+---
+
+## Q12 · CI: the tree now has ZERO workflows — was the revert deliberate?
+
+**The facts (disk-read 2026-07-31):** `51f139e` (plugin-toolkit 1.9.0) added
+`.github/workflows/checks.yml` running the three gates on `push`, replacing a workflow that
+was dead twice over (invoked a script deleted in `508e2a7`, on a `pull_request` trigger in
+a repo with zero PRs ever). **289 seconds later**, `3633ff7` — *"revert(ci): drop the
+GitHub Actions workflow, restore the one it replaced"* — removed it. But the `.github/`
+directory **does not exist at all** now: the subject claims a restore that is not in the
+tree. Both commits are pushed. The model does not know whether the revert was the owner's
+call or Claude's mid-session; the 0130 inbox item still describes checks.yml as live, so it
+predates or missed the revert. Meanwhile plugin-toolkit's RELEASE-NOTES 1.9.0 still states
+the workflow "is replaced by `.github/workflows/checks.yml`" — false on disk.
+
+**Options:** (a) **No CI, on purpose** — fix the RELEASE-NOTES claim and done; the gates
+stay laptop-run (they only exist in this checkout anyway, see tasks #1). (b) **Re-add
+checks.yml** — recoverable from `51f139e` in minutes; note it will be RED from its first
+run until the ledger-compaction archive is authored (tasks #9). (c) Re-add later, gated
+behind #9 going green.
+
+**Recommended default (Claude's): (a).** The revert survived a push in the same sitting, so
+treat it as deliberate; correct the stale prose (folds into tasks #6). Re-adding is cheap
+whenever wanted.
+
+**Blocks:** nothing.
 
 ---
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
+- **Q10 · Who forces the RECOMPUTE? → RESOLVED 2026-07-27: the `steward-sync` turn-end
+  duty, on the owner's terms** (verbatim: *"steward-sync duty. Owner decision: advise,
+  session-span, silent on empty"*; applies while `.steward/inbox/*.md` count > 0, satisfied
+  at count 0). **The collision DISSOLVED rather than being decided** — worth recording,
+  because "we picked A" loses the reason the trade-off stopped existing: the question was
+  priced when enforcement meant a plugin shipping its own blocking Stop hook (*"a fourth
+  blocking hook in the stack"*); turn-end removed that price, so enforcement is a data
+  declaration in the one blocking tail and steward keeps its no-Stop-hook design intact.
+  Both positions hold at once. CHOSEN BY CLAUDE, NOT REQUESTED (per the duty's own header):
+  priority 25, the ask wording, item = top-level non-dot `.md`. **Deliberately weaker than
+  the kb precedent** (*"a nudge… is not gonna be enough"* → kb got a block): `advise` never
+  blocks, so a sitting CAN still end with the model stale — the owner set that explicitly;
+  escalation is one config line (`{"duties":{"steward-sync":{"severity":"block"}}}`).
+  **Open remainder, flagged not proposed:** the duty only sees STAGED notes; a sitting that
+  changes the project's shape with no capture written leaves the model stale and the inbox
+  empty, and nothing fires (Q10's second staleness signal, unbuilt, not asked for). First
+  observed fire still outstanding — tasks #3.
+  Provenance: `inbox/done/20260727-2029-q10-resolution-enforced-recompute-as-a-turn-end-duty.md`.
 - **Q1 · Phase 0 pilot → mk-cc-resources (THIS repo)**, not crowd-game. The toolkit pilots
   itself; crowd-game seeding became a later task (Phase D), not the gate.
 - **Q2 · verifiability-lens → keep ON as-is.** Phase C baselines come from rough session

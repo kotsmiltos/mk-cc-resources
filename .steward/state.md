@@ -1,4 +1,4 @@
-# State — current truth (2026-07-27 · 3 inbox items integrated · HEAD eee1b35)
+# State — current truth (2026-07-31 · /doctor item integrated · HEAD 8d5cab6, tree NOT clean)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,200 +8,115 @@
 
 ## Ship position
 
-**local main == origin/main == `eee1b35` — PUSHED.** Refs read this pass from
-`.git/refs/heads/main` and `.git/refs/remotes/origin/main`; identical.
-
-Fourteen commits past `817b472` (subjects read from `.git/logs/HEAD`, not remembered):
-repo-guard lands (`d46680c`, plugin-toolkit 1.8.0) → the guard is WIRED and the redirect
-MODELLED after review (`4f21e30`, tm 1.11.0) → two verification legs closed (`d929e2c`,
-kb 0.8.0 + steward 0.2.1) → review fixes incl. a false provenance (`1700fbc`, tm 1.11.1) →
-**turn-end 0.1.0** (`9021ca8`) → meta-loop guard judged the NAME not the shape (`cb1a376`,
-0.1.1) → **the recall half** (`f20c1a8`, 0.2.0) → kb digest UNCAPPED (`a950afe`, 0.10.0) →
-find the binary / never let a broken judge look clean (`ee74d06`, 0.2.1) → a duty that
-spawns an agent must not be prompt-scoped (`4859b60`, 0.2.2) → `/reload-plugins` was
-archiving the LIVE digest (`74da81d`, kb 0.10.1) → stop speaking in the owner's voice,
-stop capping silently (`7edbbff`, 0.2.3) → satisfaction must be a DISK fact (`eee1b35`,
-0.2.4).
+**local main == origin/main == `8d5cab6` — PUSHED** (refs read this pass from
+`.git/refs/heads/main` and `.git/refs/remotes/origin/main`; identical). **But the working
+tree is NOT clean:** the owner-approved /doctor session (2026-07-31, per-group
+AskUserQuestion approvals) restructured root CLAUDE.md **50,247 → 11,491 chars** — deep
+per-plugin annotations moved VERBATIM to `plugins/<name>/CLAUDE.md` (five NEW files
+verified on disk this pass: turn-end, plugin-toolkit, essense-flow, steward, statusline;
+kb + verifiability-lens CLAUDE.md patched — kb now reads two-hooks/scribe-RETIRED, lens
+carries the 0.5.0 no-hook entry, both grep-verified). Root is orientation-only with a
+"deep notes live in `plugins/<name>/CLAUDE.md`" pointer and a NEW cross-reference row for
+the pattern. **All of it UNCOMMITTED** — HEAD unchanged while the files exist, so the next
+commit must carry the restructure AND this integration's `.steward/` rewrites together.
+registry-check exit 0 after the restructure (reported by the doctor item, not re-run here).
 
 ## Versions on disk
 
-Each read this pass from `plugins/*/.claude-plugin/plugin.json` AND its `marketplace.json`
-row; the two agree for all fourteen. Marketplace metadata **2.44.5**, 15 rows.
+No version moved this pass: **turn-end 0.3.0 · plugin-toolkit 1.10.0** · marketplace
+metadata **2.47.0**, 15 rows. Unchanged: kb 0.10.1 · thorough-mode 1.11.1 ·
+verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · steward 0.2.1 · essense-flow 0.26.1 ·
+essense-autopilot 0.4.0 · schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds
+1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2.26.0.
 
-**turn-end 0.2.4 (NEW) · kb 0.10.1 · plugin-toolkit 1.8.0 · thorough-mode 1.11.1 ·
-verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · steward 0.2.1** · unchanged:
-essense-flow 0.26.1 · essense-autopilot 0.4.0 · schema-scout 1.2.1 ·
-project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 ·
-mk-cc-all bundle 2.26.0 (correctly unmoved — no new skill shipped).
+## LIVE — distribution moved under the owner's hand (2026-07-31)
 
-## IT IS LIVE (the "NOTHING IS LIVE" front is DELETED — it was true at 0.3.0, not now)
-
-- **Installed set** (user-scope plugin registry, read this pass): kb **0.10.1**,
-  turn-end **0.2.4 @ eee1b35**, verifiability-lens 0.5.0, steward 0.2.1,
-  thorough-mode 1.11.1, session-lifecycle 1.3.1, essense-flow 0.26.1,
-  essense-autopilot 0.4.0, alert-sounds 1.1.1, reuse-gate 0.1.0, mk-cc-all 2.26.0.
-  **plugin-toolkit and statusline are not installed as plugins at all** (see THE gap).
-- **`.claude/kb/trace.jsonl` is no longer the 21-line pre-live baseline — 101 lines**,
-  running to 2026-07-27T17:07Z. `kb-session-start` lines from 07-26T21:05Z;
-  `kb-pull-hook` lines reading `"digest":true` from 07-26T21:31Z (the short-term-memory
-  claim, proven); `kb-scribe-hook … "blocked":true` lines 07-26T21:14Z → 07-27T01:33Z and
-  **none after** — exactly what the 0.9.0 retirement predicts.
-- **`.claude/turn-end/trace.jsonl` — 13 fires, 07-27T01:37Z → 17:02Z.** The escalation
-  ladder is proven on ONE `prompt_id` (`fb0276d2`): `action:"advise"` at 15:43:48Z →
-  `action:"block"`, `stop_hook_active:true`, `fires:1` at 15:44:45Z. `context-recall`
-  supplied real notes from 13:13Z on, including `.steward/parts.md` + `.steward/questions.md`
-  at 17:02Z — the steward model reaching a session as MATERIAL, not as a summary. Two
-  `spawnSync claude ENOENT` supply errors (02:21Z, 02:35Z) are visible in the trace because
-  a broken judge is REPORTED rather than silently clean; `ee74d06` fixed the cause.
-- **One leg still open:** no `kb_query`/`kb_read` line anywhere in the trace. Two
-  `kb_overview` lines exist (07-26T22:54Z, 22:56Z) but both PREDATE the commit that shipped
-  that write path (`7657f00`, 22:57Z), so they are dev-run evidence, not proof of the
-  session-attached server. A stdio MCP server keeps the code it was launched with — editing
-  the file and `/reload-plugins` both do nothing. Retrieval works, so there is no symptom.
+- **plugin-toolkit 1.10.0 IS NOW INSTALLED** — user scope, installed 07-31T16:49Z **@
+  `8d5cab6`, current HEAD, zero lag** (read this pass from the installed-plugins registry)
+  and ENABLED in user settings. A standalone install carries `lib/`, `bin/`, `defaults/`
+  (capability-reach's own informational note), so **all THREE gates travel outside this
+  checkout for the first time.** No gate has yet been RUN from another project — reachable
+  ≠ exercised (tasks #1 done-check).
+- **mk-cc-all bundle DISABLED** (`enabledPlugins: false`, read this pass from user
+  settings). The picker-duplication objection to a standalone toolkit is VOIDED — but only
+  while the bundle stays off; both on at once would double-list six skills again. The
+  bundle's stale `ab1ba82` cache (pre-fix `ls -d plugins/*/` skill text, gitignored
+  scratch inside) is now DORMANT, not fixed: it returns the day the bundle is re-enabled.
+- Rest of the installed set unchanged: turn-end 0.3.0 @ `71d661f` (07-27T17:31Z) · kb
+  0.10.1 @ `74da81d` · steward 0.2.1 · thorough-mode 1.11.1 · verifiability-lens 0.5.0 ·
+  session-lifecycle 1.3.1 · essense-flow 0.26.1 · essense-autopilot 0.4.0 · alert-sounds
+  1.1.1 · reuse-gate 0.1.0. **statusline still not installed — by design** (settings-level
+  wiring, not a plugin).
+- **`steward-sync` still never observed firing** — unchanged watch; this integration
+  empties the inbox again, so the next staged item is the probe (tasks #3).
+- **kb MCP leg still open** — unchanged; only a restart proves which build answers
+  (tasks #5).
 
 ## What exists and works
 
-- **turn-end 0.2.4 — THE single blocking Stop hook** (new plugin; see parts.md for the
-  contract). One runner walks a duty registry against ONE frozen context snapshot and emits
-  ONE consolidated message per user request. Four duties registered
-  (`lib/duties/index.js`): `context-recall` (supply), `session-digest` (block),
-  `steward-sync` (advise — see gaps), `quality-lens` (advise). Termination is structural;
-  `MAX_FIRES_PER_PROMPT = 3` sits under the platform's documented 8-consecutive-block cap
-  (`lib/runner.js:32-38`) and names what it abandons. Judge adapter (`claude -p`,
-  plan-billed) with the recursion guard the platform does not provide.
-- **kb 0.10.1 — two hooks + MCP.** `hooks/hooks.json` (read this pass) registers
-  UserPromptSubmit + SessionStart only; its own description records the Stop hook as
-  RETIRED at 0.9.0. 0.8.0 made the running server say which build it is
-  (`kb_overview` returns version/startedAt, derived from plugin.json so the staleness
-  diagnostic cannot itself go stale); 0.10.0 removed the digest cap; 0.10.1 stopped
-  `/reload-plugins` archiving the LIVE sitting's digest.
-- **verifiability-lens 0.5.0 — carries NO hook.** `hooks/hooks.json` is literally
-  `{"hooks": {}}` with the retirement reason in its description. Its firing is now
-  turn-end's `quality-lens` duty, shipped `advise` (it cannot yet tell an advancing pass
-  from one repairing its own earlier characterisation).
-- **plugin-toolkit 1.8.0 — repo-guard.** A pure runner over a detector registry, one
-  frozen context for all detectors, a crashed detector becomes a BLOCKING finding.
-  Shipped detectors: `leaked-path` (block), `silenced-failure` (block), `revert-chain`
-  (warn). Config merges BY DETECTOR ID over `defaults/repo-guard.json`.
-- **thorough-mode 1.11.1** — `@ship` gained a repo-pathologies item that PROBES for
-  repo-guard before naming it (`hooks/thorough-mode.js:72`), so the instruction is honest
-  in a project that has no checkout.
-- **steward 0.2.1** — the injected briefing now names its loss
-  (`dropped N line(s) / M chars` + the budget + regenerate-shorter) and enforces ≤10 lines
-  as a line budget in its own right (cap 12, two lines of slack), cutting on line
-  boundaries; the one mid-line cut left is a single line that busts the whole char budget.
-  A test drove that out: the first implementation let a 5000-char single-line briefing
-  through uncut.
-- **essense-flow 0.26.1** — unchanged this arc; zero files touched.
-- Measurement machinery unchanged: `runner coupling` (2.4.0), `runner extensibility`
-  (2.5.0, C#-only), MAP.md, drift diff.
-
-## THE gap: what the owner RUNS is not what this repo contains
-
-The old gap ("none of it is live") is closed. The one that replaced it is one layer up.
-
-- **Distribution is now push-coupled.** The marketplace was re-pointed from a `file`
-  source at this checkout to `{"source":"github","repo":"kotsmiltos/mk-cc-resources"}`
-  (owner instruction: *"i wanna push an update to me marketplace, update from there and
-  have it working"*). **Push is REQUIRED before any install/update sees a change.** Local
-  == origin right now, so the door is open.
-- **CORRECTION to the capture:** `autoUpdate: true` IS set for this marketplace (registry
-  read this pass, lastUpdated 07-27T16:21Z). The inbox item said the re-point silently
-  dropped it; disk disagrees. No task.
-- **The installed bundle is pinned behind the repo.** `mk-cc-all` 2.26.0 is cached at
-  `gitCommitSha ab1ba82`. Its cached `plugin-scaffold`, `skill-heal` and `docs-audit`
-  SKILL.md still open with the bare-relative `ls -d plugins/*/ 2>/dev/null` — **the
-  portability fix, rewritten three times in this repo, has reached NONE of the skills that
-  actually get invoked.** The bundle version did not move (patch bumps skip it by rule), so
-  nothing signals an update is due.
-- **plugin-toolkit reaches the owner only through the bundle, and the bundle ships
-  `skills` paths only** (root `.claude-plugin/plugin.json`, read this pass). `lib/`, `bin/`
-  and `defaults/` are never distributed — **repo-guard exists only in this checkout.** Half
-  mitigated: `@ship` now probes instead of naming a dead path. The instruction is honest;
-  the capability still does not travel.
-- Owner chose to close the verification legs before this. It is **PARKED, not resolved**,
-  and it is the top task.
+- **turn-end 0.3.0** — four duties, 110 checks; proven live (escalation ladder,
+  context-recall supplying real notes). **NEW MEASURED DEFECT — the hook kills its own
+  judge:** `plugins/turn-end/hooks/hooks.json:12` sets `"timeout": 30` (read this pass)
+  while the context-recall judge measures 46s. Transcript scan (50 sessions,
+  07-27→07-31): **162 Stop fires, 36 hit the timeout** (`hook_cancelled`,
+  `timedOut:true`, ~31–32s); p50 182ms, so the fast path is fine — the kill lands exactly
+  on the fires where the judge runs, and the recall material is LOST on those turns. The
+  config is self-contradictory, not lagging (running hook matches disk). Direct Q11
+  evidence; capture `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
+- **plugin-toolkit 1.9.0/1.10.0 — THREE gates**, each a pure runner over a drop-in
+  registry (contracts in parts.md) — and now INSTALLED (see LIVE). Standing findings
+  unchanged: 613 undocumented Python checks · cross-plugin duplication is CORRECT
+  (never extract) · `runner coupling` scope limit (vision inv. 7).
+- kb 0.10.1, verifiability-lens 0.5.0 (no hook), steward 0.2.1, thorough-mode 1.11.1,
+  essense-flow 0.26.1 — all unchanged this arc.
 
 ## Known-broken / known-gaps
 
-- **Invariant 9 has a hole: essense-autopilot still owns a blocking Stop hook, and it IS
-  installed.** Its decision logic is welded into `main()` — only `countInFlightAgents` is
-  exported (`hooks/scripts/autopilot.js:421`), so migrating it means extracting a pure
-  `decide()` in that plugin first. Shipping a thinner "what's next" inside turn-end would
-  create a competing source of truth. Inert in THIS repo (no `.pipeline/`), live wherever a
-  pipeline project opts in.
-- **`steward-sync` duty: on disk, undocumented, never yet fired.** Registered in
-  `lib/duties/index.js`, enabled `advise` in `defaults/config.json`; its source header
-  records what the owner specified (severity, session span, silent on an empty inbox,
-  applies on inbox count > 0) versus what Claude chose (priority, wording, the definition
-  of an item). Session span is load-bearing: a backgrounded agent's completion wakes the
-  session as a NEW `prompt_id`. It is absent from turn-end's README duty table, its
-  RELEASE-NOTES and root CLAUDE.md, and no `steward-sync` appears in any trace line through
-  17:02Z. **Q10 is the open decision; the owner's answer is being staged separately.**
-- **Absolute-path debt, restated as a mechanism instead of a count.** repo-guard exits 0
-  ONLY because `plugins/essense-flow/test/` is allowlisted in
-  `plugins/plugin-toolkit/defaults/repo-guard.json`, whose own note calls it *"Known debt,
-  NOT exempt by design … remove this entry when that pass lands."* Verified this pass: the
-  files under that dir still carry real home-directory literals as load-bearing fixture
-  roots (a blanket replace broke 4 suites and was reverted). The "exactly 7 files" claim is
-  dead as a done-check in BOTH directions — the two sites the 0035 capture named
-  (essense-flow RELEASE-NOTES; the code-glossary sanity-check script, which now takes the
-  corpus path from argv/env) are FIXED, while `artifacts/` holds placeholder-shaped hits a
-  naive regex would flag wrongly. The allowlist entry is the done-check.
-- **Recurring defect class 1 — counts and claims in prose.** The statusline 12→16 instance
-  is FIXED. Four fresh ones found this pass, all in docs, none in code, each quoted from
-  the file that claims it (nothing re-run here): root CLAUDE.md says turn-end "72 checks"
-  while turn-end's RELEASE-NOTES 0.2.4 says 95; root CLAUDE.md says kb.test.js 256 /
-  kb-pull 37 while kb's own CLAUDE.md says 273 / 42; the root bundle
-  `.claude-plugin/plugin.json` description still says kb carries "three hooks", still lists
-  verifiability-lens as hook-carrying, and omits turn-end (README's bundle row is correct);
-  kb/CLAUDE.md and verifiability-lens/CLAUDE.md both still document their retired Stop
-  hooks. Text drifts, code moved on.
-- **Recurring defect class 2 — tests that lie.** Standing. A green suite is evidence only
-  when the check itself has been read. Two fresh confirmations from this arc: a
-  satisfaction check that asked HOW the work was done instead of WHETHER (0.2.4), and a
-  `markdown-dir` default that silently indexed 60 of 75 notes (0.2.3).
-- **essense-flow `tests/ledger-compaction.test.js` still red** (session-measured 07-27, not
-  re-run at this pass): 10 governance ledger entries dated 2026-05-14..17 are past the
-  30-day archive threshold. Time-triggered gate wanting an archive sibling authored; zero
-  essense-flow files were touched this arc.
-- **steward briefing: no WRITE-time gate.** The injection side is fixed (0.2.1) and its
-  tests use fixtures; nothing checks that this repo's own `briefing.md` is inside budget.
-  The only thing keeping it there is the agent's contract text — the "rule, not mechanism"
-  shape invariant 3 rejects.
-- **kb ambient-availability still unproven, but now instrumented.** T13 stands as the
-  sharpest datum (crowd-game: /kb-seed ran, a founding DESIGN shipped the same day, no
-  query fired). Two trace files now make the question answerable from disk.
-- **verifiability-lens firing economics:** the old baseline (24–30 fires/long session,
-  ~25–55k tok/dispatch) is superseded in mechanism — the duty asks at most once per
-  `prompt_id` and is `advise` — but there is no measured AFTER number yet.
-- **Crowd-game:** its `.claude/kb.json` (splitter override + scribe focus) is still
-  uncommitted THERE, and its deep `/kb-seed` re-run is pending — the first real
-  foreign-corpus test of coverage-driven top-up. Its scribe-focus key now names a retired
-  hook.
-- **Diploma residual (must not vanish):** the 0.26.1 corrupt-state DEGRADED banner is only
-  observable IN Diploma.
-- **Coupling/extensibility gates run in ZERO projects.** Phase A closes this.
-- **essense-flow slash-command adoption:** all 14 commands abandoned after week 1; the
-  steward loop is the fix, not an in-place patch. Autopilot retires with Phase E (Q4); doc
-  repositioning holds until Phase D/E (Q5).
+- **Invariant 9 hole:** essense-autopilot still owns a blocking Stop hook and IS
+  installed; `decide()` welded into `main()` (`hooks/scripts/autopilot.js:421`). Tasks #2.
+- **`steward-sync` first fire** — tasks #3.
+- **Q11 now has its second measured number** — the timeout kill above: the current policy
+  is not "unconditional recall at 46s", it is a ~31s dead stall on ~22% of turn-ends with
+  the material lost on exactly those. Owner's re-take, questions.md.
+- **Absolute-path debt:** unchanged — repo-guard's allowlist entry
+  (`plugins/essense-flow/test/`) is the honest ledger.
+- **Counts and claims in prose — the list SHRANK this pass** (the /doctor session fixed
+  instances at the source): kb + lens CLAUDE.md retired-hook drift **FIXED**
+  (grep-verified both); the root-vs-kb per-file test-count disagreement **DISSOLVED**
+  (root CLAUDE.md no longer states per-file counts at all). Still standing: **root README
+  turn-end row lists three duties** (re-read this pass, omits `steward-sync` — #3 carries
+  it) · test-all totals un-adjudicated (0130 capture 31/1663 vs docs 30/~1600) ·
+  **plugin-toolkit 1.10.0 has no RELEASE-NOTES entry** · RELEASE-NOTES 1.9.0 claims
+  checks.yml exists (false on disk, Q12) · bundle description drift (not re-verified;
+  stakes lowered while the bundle is disabled) · 613 Python checks in no documented total.
+  NEW class instance to sweep: **references that pointed at root CLAUDE.md deep content
+  now point at moved text** (restructure side-effect, un-swept — folds into tasks #6).
+- **Tests that lie — standing** (1.10.0 closed the skipped-as-passing instance at the tool).
+- **essense-flow `tests/ledger-compaction.test.js` still red** (not re-run). Tasks #9.
+- **CI: zero workflows on disk, provenance of the revert unknown** — Q12.
+- **steward briefing: no WRITE-time gate** — unchanged (tasks #8).
+- **kb ambient-availability unproven, instrumented** — T13 stands. Tasks #12.
+- **Crowd-game:** unchanged (uncommitted kb.json there, deep re-seed pending). Tasks #4.
+- **Diploma residual:** corrupt-state DEGRADED banner observable only IN Diploma.
+- **Coupling/extensibility gates now REACHABLE everywhere, still RUN in zero other
+  projects** — the install exists; the evidence of a run elsewhere does not. Tasks #1/#15.
+- **essense-flow slash-command adoption:** unchanged (Q4/Q5 hold).
 
 ## Working tree
 
-`eee1b35` pushed. The tracked tree carries only the `.steward/` model files rewritten by
-this integration — that is the next commit. `.steward/inbox/*` is gitignored (including
-`done/`), as is `.claude/*` — so `.claude/kb/` (extracted + captures + trace + digests) and
-`.claude/turn-end/` (trace + ledger) are local evidence only, never shipped.
+**NOT clean:** carries the uncommitted /doctor restructure (root CLAUDE.md + five new
+per-plugin CLAUDE.md + kb/lens patches) plus this integration's `.steward/` rewrites —
+one commit should land both. One INTEGRATED stub awaits session deletion (undeleted stubs
+lie to the brief hook's counter AND to the steward-sync duty).
 
-## Outside-repo (log-only context)
+## Outside-repo (log-only context; owner-approved via /doctor, 2026-07-31)
 
-- Marketplace registry now GitHub-sourced with `autoUpdate: true`; config backups
-  (`*.json.bak`) sit beside it from the re-point.
-- `~/.claude/kb/cued.json` (one-time seed cue) and `~/.claude/steward/fleet.json` are real
-  HOME-scope artifacts.
-- `~/.claude/hooks/generalize-first.sh` fixed 2026-07-25 (jq-absent root cause); Serena
-  read-nag wrapper active; BinanceRepo key scare RESOLVED 2026-07-22.
-- External hygiene debt: Diploma corrupt `state.yaml`; psience missing root CLAUDE.md +
-  deploy queue (parked, Q8); crowd-game stray file
-  `.claude/prompts/.claude/verifiability-lens/state.json` to delete during the crowd-game
-  task.
+- **mk-cc-all disabled + plugin-toolkit enabled** at user scope (the LIVE section facts).
+- **blender MCP disabled for this project** · **`defaultMode=auto`** at user scope ·
+  **12 stale user-scope `essense-flow-*` agent copies REMOVED** (were shadow-risk for
+  bare-name dispatch) · Claude Code 2.1.220 verified current.
+- Marketplace registry GitHub-sourced, `autoUpdate: true`.
+- `~/.claude/kb/cued.json`, `~/.claude/steward/fleet.json` — real HOME-scope artifacts.
+- External hygiene debt unchanged: Diploma corrupt `state.yaml`; psience missing root
+  CLAUDE.md + deploy queue (parked, Q8); crowd-game stray lens state file to delete
+  during tasks #4.

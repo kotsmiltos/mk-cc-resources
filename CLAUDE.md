@@ -2,6 +2,9 @@
 
 > Claude Code plugin marketplace: skills distributed as installable plugins.
 
+Deep per-plugin notes live in `plugins/<name>/CLAUDE.md` — loaded automatically when working
+under that plugin's directory. This root file is orientation + the rules that apply repo-wide.
+
 ## Architecture
 
 ```
@@ -11,486 +14,124 @@
                             # to discover skills inside plugins/ (no root skills/ duplication)
 
 plugins/
-  essense-flow/             # Multi-phase AI development pipeline (headline plugin)
-    .claude-plugin/plugin.json
-    bin/                    # essense-flow-tools.cjs — single gateway for state ops (state-set-phase,
-                            #   record-task-completion, state-reconcile, register-add --kind unknown)
-    lib/                    # 19 Node.js modules (state, infer-phase, schema-validate, brief, dispatch,
-                            #   verify-disk, atomic-write, with-lock, rule sweeps, etc.)
-    agents/                 # 12 sub-agent defs; producer returns carry required unknowns[] (librarian)
-    hooks/                  # hooks.json + scripts/: context-inject.js (UserPromptSubmit + SessionStart),
-                            #   next-step.js (Stop) — both advisory, fail-soft
-    skills/
-      elicit/               # Pitch → SPEC.md through collaborative ideation
-      research/             # Multi-perspective analysis → REQ.md
-      triage/               # Categorize findings, route to correct phase
-      architect/            # Decide → delegate → synthesize → pack. Produces ARCH.md + task specs
-      organize/             # Optional spec-level DRY pass (code-glossary engine, spec mode)
-      build/                # Execute task specs in dependency-ordered waves
-      glossary/             # Optional code-level DRY audit (code-glossary engine, code mode)
-      review/               # Adversarial QA — bug-finding + drift-finding + coupling-finding
-                            #   (the `coupling` lens blocks cross-boundary reach-ins)
-      verify/               # Top-down spec compliance audit
-      context/              # State plumbing — init, status, next-step
-      heal/                 # Pipeline self-heal from any degraded state
-    commands/               # 14 slash commands (/init, /elicit, /organize, /glossary, etc.)
-    defaults/               # config.yaml, state.yaml templates
-    references/             # transitions.yaml, phase-command-map.yaml, principles.md,
-                            #   generativity-protocol.md (FORK→BOTH→ABSTRACT→GENERALIZE→
-                            #   DECOUPLE→IMPLEMENT — the rung-2 design-fork protocol, single
-                            #   source referenced at architect decide, elicit's declared-growth-
-                            #   axes SPEC section, and build's mid-flight fork routing; default-
-                            #   closed guard mirrors alignment-lens criterion 9),
-                            #   librarian.md (research-first + unknowns[] protocol),
-                            #   code-conventions.md (how build agents write code — cited by
-                            #   task-agent + build + architect; craft, never contract; leads with
-                            #   one rule: BUILD DECOUPLED — agents write blind, so units bind only
-                            #   to declared contracts. Enforced at design time by the
-                            #   architect-alignment lens (criterion 8 — exposes/consumes contract
-                            #   integrity), at code time by the review `coupling` lens, and at audit
-                            #   time by /verify's contract-compliance items (built surface honors
-                            #   the declared exposes/consumes; reach-ins verdict as drift)),
-                            #   schemas/ (canonical artifact shapes: task-spec, completion-record,
-                            #   register-item, unknown-entry — validators, templates, and agent-def
-                            #   shape blocks derive via scripts/render-schema-docs.cjs, drift-tested)
+  essense-flow/             # Multi-phase AI development pipeline (headline plugin).
+                            #   bin/ = essense-flow-tools.cjs, the single gateway for state ops;
+                            #   lib/ = 19 Node modules; agents/ = 12 sub-agent defs (librarian
+                            #   protocol — producer returns carry required unknowns[]);
+                            #   hooks/ = context-inject.js + next-step.js, advisory, fail-soft;
+                            #   references/ = transitions, generativity-protocol (the rung-2
+                            #   design-fork protocol), librarian, code-conventions (leads with
+                            #   BUILD DECOUPLED), schemas/ (single-source, drift-tested).
+                            #   See plugins/essense-flow/CLAUDE.md.
 
-  essense-autopilot/        # Stop-hook autopilot for essense-flow
-    .claude-plugin/plugin.json
-    hooks/
-      hooks.json            # Stop hook config
-      autopilot.js          # Phase → command mapping, halt conditions
+  essense-autopilot/        # Stop-hook autopilot for essense-flow — phase → command mapping,
+                            #   halt conditions (hooks/autopilot.js)
 
-  session-lifecycle/        # Session continuity + workflow improvement
-    .claude-plugin/plugin.json
-    skills/
-      handoff/              # Capture session state → .claude/handoffs/ (timestamped history + INDEX) + handoff.md alias
-      resume/               # Restore context from handoff.md alias, validate state, preserve history
-      claude-md-sync/       # Propose CLAUDE.md updates for stale sections
-      retro/                # Metrics-driven retrospective (gaps before strengths)
-      meta-review/          # Diagnose session friction → multi-step chains + skill friction + coverage gaps
+  session-lifecycle/        # Session continuity: handoff / resume / claude-md-sync / retro /
+                            #   meta-review (table below)
 
-  plugin-toolkit/           # Plugin/skill dev + maintenance toolkit
-    .claude-plugin/plugin.json
-    skills/
-      skill-heal/           # Audit plugin's skill set against best practices
-      plugin-scaffold/      # Bootstrap new plugin: dirs + cross-refs in one invocation
-      version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + RELEASE-NOTES
-      docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
-      code-glossary/        # Functionality glossary + DRY audit (v2): deterministic Python engine
-                            #   (code_glossary/ package: AST + tree-sitter, 5 signals, Pass A
-                            #   clustering, frozen-schema render, drift diff) + in-session
-                            #   sub-agent briefs. DESIGN-V2.md is the design source of truth.
-                            #   Also powers essense-flow /organize + /glossary, and hosts the
-                            #   code_glossary.dry_refactor engine sub-package.
-      dry-refactor/         # /dry-refactor v3 MVP: preflight (7 Appendix-A gates) + dry-run
-                            #   refactor plans from GLOSSARY.yaml. Zero source writes; live
-                            #   execution deferred. Engine lives in the code-glossary package.
-    lib/repo-guard.js       # PURE runner over the detector registry — builds the context ONCE
-                            #   and hands the same frozen object to every detector, so none can
-                            #   see a tree that moved under a sibling. A crashed detector becomes
-                            #   a BLOCKING finding; the report always names what did not run
-    lib/detectors/          # the extension surface: index.js registry + one module per
-                            #   pathology. Contract: {id, title, surface:'files'|'history',
-                            #   severity:'block'|'warn', run(ctx, options) -> Finding[]} where a
-                            #   Finding carries where (openable) + evidence (verbatim) + why.
-                            #   Detectors MODEL their subject, never enumerate spellings — the
-                            #   first draft listed literal silencer strings and would have
-                            #   missed 2>&- and >/dev/null 2>&1, i.e. the wrongly-shaped sweep
-                            #   committed inside the detector. Shipped: leaked-path (every drive
-                            #   letter + both separators + POSIX homes, fed from git ls-files so
-                            #   dot-dirs cannot hide; exemption is a NAMED system-root list, not
-                            #   a segment count — a one-segment drive path can be a project
-                            #   root), silenced-failure (models the redirect [fd]>|>>|>& -> null
-                            #   sink; the only list is the OS-defined sink set /dev/null NUL
-                            #   $null &-; "handled" means output is GUARANTEED, so `|| true` is
-                            #   still a finding; scans SKILL.md AND commands/*.md, fence AND
-                            #   inline !`cmd`), revert-chain (same file rewritten by a run of
-                            #   fix-shaped commits in a window = circling; minRunLength 3 and
-                            #   ubiquityRatio 0.20 are measured, windowMinutes 60 is flagged in
-                            #   source as an extrapolation). Does NOT cover: uncommitted
-                            #   circling (review rounds leave no commits), circling that
-                            #   migrates across files, `| head -N` truncation.
-                            #   Add one = one require, no runner change
-    bin/repo-guard.js       # CLI adapter: gathers tracked files + git history, prints, exits
-                            #   0 clean / 1 blocking / 2 cannot-run. Skips vendored trees.
-                            #   Config .claude/repo-guard.json merges BY DETECTOR ID over
-                            #   defaults/repo-guard.json; malformed config THROWS
-    tests/repo-guard.test.js # 94 checks, in-memory fixtures only — a guard whose tests read the
-                            #   tree it guards passes for the wrong reason the day it changes
-    lib/test-sweep.js       # PURE plan + classify + summarise; execution is INJECTED, which is
-                            #   what lets the whole policy be tested without running a suite.
-                            #   Exit code is the verdict (measured: all three harness styles here
-                            #   — 11 hand-rolled check() counters, 15 node:test files, pytest —
-                            #   exit 1 on failure while printing wildly different text). Output
-                            #   is evidence only, and may CONTRADICT a green exit: a suite that
-                            #   exits 0 while printing a failure is SUSPECT, never counted green
-    lib/suite-runners/      # extension surface: index.js registry + aggregator (a unit's own
-                            #   run-all, which CLAIMS its directory so its files are not also
-                            #   run) + node-file + pytest (launched from its own project root).
-                            #   Discovery is by SHAPE, never a filename list — the measured
-                            #   failure being a documented command that named its files and
-                            #   silently stopped covering a suite the day one was added
-    bin/test-all.js         # CLI adapter, peer of repo-guard's. Walks the tree ONCE. Exit 0
-                            #   green / 1 red-or-suspect-or-could-not-run / 2 sweep cannot run.
-                            #   A unit shipping NO suite is NAMED — an unmentioned unit reads as
-                            #   a passing one. Runs anywhere: no plugins/ dir = one unit at root
-    lib/registry-check.js   # PURE checker over the claim registry. Two channels, and the split
-                            #   is load-bearing: a MISMATCH is a fact that is wrong and fails;
-                            #   an INFORMATIONAL finding is a decision that should be deliberate
-                            #   rather than accidental, and reports without failing
-    lib/registry-claims/    # extension surface: index.js registry + plugin-version (row vs
-                            #   manifest) + plugin-listing (dirs vs rows, BOTH directions; the
-                            #   bundle excluded by SOURCE, not by name) + doc-version (bolded
-                            #   name + bare semver in a table row — deliberately NOT every
-                            #   version in prose, since release notes legitimately name old
-                            #   ones) + bundle-paths + referenced-path (files a CI step invokes;
-                            #   measured — the only workflow here ran a script deleted in
-                            #   508e2a7, on a pull_request trigger in a repo with zero PRs) +
-                            #   capability-reach (bundle ships declared surfaces only, so
-                            #   lib/bin/defaults do not travel — informational, because a
-                            #   standalone install DOES carry them and which one the owner uses
-                            #   is their call, not a wrong fact)
-    bin/registry-check.js   # CLI adapter. Exit 0 consistent / 1 drift / 2 cannot run.
-                            #   CHECKS, never generates: only the facts in those files are
-                            #   derivable, and the prose around them is written for a human
-    tests/test-sweep.test.js      # 27 checks, synthetic units only
-    tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since
-                            #   a checker only ever run on a consistent repo has proved nothing
-                            #   about itself; it would pass identically if it returned []
+  plugin-toolkit/           # Plugin dev + maintenance: skill-heal, plugin-scaffold,
+                            #   version-bump, docs-audit, code-glossary (deterministic Python
+                            #   engine; DESIGN-V2.md is the design source), dry-refactor —
+                            #   plus the repo-level CLI gates repo-guard / test-all /
+                            #   registry-check (lib/ pure policy + bin/ adapters + registries
+                            #   as extension surfaces). See plugins/plugin-toolkit/CLAUDE.md.
 
-  schema-scout/             # Data file schema exploration CLI
-    .claude-plugin/plugin.json
-    skills/schema-scout/
-      SKILL.md
-      tool/                 # Standalone Python CLI package (typer + openpyxl + rich)
+  schema-scout/             # Data file schema exploration CLI (Python: typer + openpyxl + rich)
 
   thorough-mode/            # Prompt modifiers (++/@thorough, @ship, @present, @debug, @verify,
-                            #   @fresh, @prompt, @build) — hooks-only. @thorough/@fresh/@prompt
-                            #   injections are protocol-shaped (failure named → ordered steps →
-                            #   anti-signals → exit check; convention documented in the plugin
-                            #   CLAUDE.md for future modifiers to drop into). Machine-text guard:
-                            #   prompts opening with machine markers (notifications, Stop-hook
-                            #   feedback, command transcripts) never fire modifiers or hints.
-                            #   @prompt is steward-aware: with a .steward/ model present it
-                            #   renders the kickoff FROM the model (RENDER→SPOT-CHECK→SAVE→SHOW)
-    .claude-plugin/plugin.json
-    hooks/thorough-mode.js    # UserPromptSubmit modifier injection (MODIFIERS) + hint injection (HINTS)
-    tests/thorough-mode.test.js  # 21 checks, no framework
+                            #   @fresh, @prompt, @build) — hooks-only, protocol-shaped
+                            #   injections, machine-text guard; @prompt is steward-aware.
+                            #   See plugins/thorough-mode/CLAUDE.md.
 
-  project-note-tracker/     # Question + bug tracker with Excel backend
-    .claude-plugin/plugin.json
-    skills/note/
-      SKILL.md
-      workflows/            # init, research-question, bug, agenda, meeting, resolve, etc.
-      scripts/              # tracker.py — Excel I/O via uvx --with openpyxl
+  project-note-tracker/     # Question + bug tracker with Excel backend (tracker.py via uvx)
 
-  alert-sounds/             # Cross-platform audio + visual alerts
-    .claude-plugin/plugin.json
-    hooks/
-      hooks.json            # Stop, Notification, UserPromptSubmit hooks
-      alert.py              # Platform-native beeps, notifications, taskbar flash
-      config.json           # Per-event toggles (beep, sound, notify, flash)
-    skills/alert-sounds/
-      SKILL.md              # /alert-sounds config skill
+  alert-sounds/             # Cross-platform audio + visual alerts (Stop / Notification /
+                            #   UserPromptSubmit hooks; per-event config.json toggles)
 
-  statusline/               # Segment-based statusline (no hooks/skills — settings-level wiring).
-                            #   Segments: model | current task | dir | steward anchor (⚓+inbox) |
-                            #   context counter (normalized used-% bar, ~16.5% autocompact buffer
-                            #   accounted; green/yellow/orange/skull). Fail-soft per segment;
-                            #   extend = drop a function into SEGMENTS
-    .claude-plugin/plugin.json
-    bin/mk-statusline.js
-    tests/mk-statusline.test.js  # 16 checks incl. normalization math
+  statusline/               # Segment-based statusline — settings-level wiring, fail-soft per
+                            #   segment, extend = drop a function into SEGMENTS.
+                            #   See plugins/statusline/CLAUDE.md.
 
-  verifiability-lens/       # Auto-classifier: sorts work A (verifiable) / B (guess) / U (can't-tell),
-                            #   surfaces only important + actionable + fully-contextualized decisions
-    .claude-plugin/plugin.json
-    agents/
-      verifiability-lens.md # read-only classifier + surfacing triager (the substance)
-    references/rubric.md    # CANON — A/B/U classification + surfacing triage + recipient profile
-    defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded;
-                            #   optional focus: list = what "best achievable" means per project.
-                            #   Project override: .claude/verifiability-lens/profile.yaml;
-                            #   agent reads it ONCE per dispatch (never per item)
-    defaults/presets/       # copyable per-project profiles: game-project, plugin-repo, research-data
-    commands/verifiability.md        # /verifiability [target] — manual trigger
-    hooks/
-      hooks.json            # Stop hook registration
-      scripts/verifiability-stop.{sh,js}  # auto-trigger (opt-in OFF) + fire-once loop guard
-    tests/verifiability-stop.test.js
+  verifiability-lens/       # Work-quality guardian: A/B/U verifiability + completeness +
+                            #   quality-bar checks, actively verified; surfacing triage tuned
+                            #   by a recipient profile. Carries NO hook since 0.5.0 — automatic
+                            #   firing is turn-end's quality-lens duty, opt-in OFF.
+                            #   See plugins/verifiability-lens/CLAUDE.md.
 
-  reuse-gate/               # Reuse-first reminder at the moment code is written (hooks-only)
-    .claude-plugin/plugin.json
-    hooks/
-      hooks.json            # PreToolUse (Write|Edit|MultiEdit|NotebookEdit) registration
-      scripts/reuse-gate.js # once/user-message (dedupe on prompt_id) on first SOURCE write — injects
-                            #   reminder via hookSpecificOutput.additionalContext (check codebase/glossary +
-                            #   packages before writing new). Never blocks; opt-in OFF; fail-open; no permissionDecision
-    tests/reuse-gate.test.js
+  reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
+                            #   once per user message; never blocks, opt-in OFF, fail-open)
 
-  steward/                  # Living-model keeper — "the guy behind the inbox" (design source:
-                            #   design/continuous-transformation.md v3). Per project: .steward/ model
-                            #   (vision/state/parts/questions/tasks/log/briefing + inbox/) that the
-                            #   steward agent RECOMPUTES on every input (add/edit/DELETE, cascade
-                            #   pivots) and diffs visibly. Ambient interface, zero commands to
-                            #   remember; owner-present work only (absent-owner = inbox staging,
-                            #   permanently). Carries a hook — standalone, not in mk-cc-all
-    .claude-plugin/plugin.json
-    agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/
-    skills/steward/         # ambient session protocol + workflows/seed.md (existing-project onboarding)
-    commands/               # seed | brief | sync | next | fleet — optional aliases only
-    bin/steward-fleet.js    # fleet briefing renderer — all steward projects at a glance;
-                            #   registry ~/.claude/steward/fleet.json auto-populated by the hook
-    hooks/
-      hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
-      scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
-                            #   silent without .steward/; fail-open
-    tests/steward-brief.test.js  # 25 checks, isolated fake home, no framework
+  steward/                  # Living-model keeper — per-project .steward/ model the steward
+                            #   agent RECOMPUTES on every input (cascade pivots) and diffs
+                            #   visibly; SessionStart briefing hook; owner-present work only.
+                            #   Standalone, not in mk-cc-all. See plugins/steward/CLAUDE.md.
 
-  turn-end/                 # THE single blocking Stop hook, so nothing else needs one.
-                            #   Plugins ship DUTIES, not hooks; one runner checks each against
-                            #   real state and emits ONE consolidated message per user request
-                            #   (two duties = one tail with two items, never two tails).
-                            #   Exists because two blocking Stop hooks re-armed each other —
-                            #   each one's mandated response was fresh work for the other, so
-                            #   the allow-gap never landed on an idle turn (measured: scribe
-                            #   blocked 6 + lens fired 3 in one sitting over ONE request;
-                            #   another session ran 8 passes). Stop hooks run in PARALLEL with
-                            #   no ordering and blocking is fail-closed, so runtime negotiation
-                            #   between hooks is racy by construction; one runner has no race.
-    .claude-plugin/plugin.json
-    lib/runner.js           # PURE policy: registry walk -> applies/satisfied -> ONE emission.
-                            #   TERMINATION IS STRUCTURAL — a duty ends the loop by becoming
-                            #   satisfied against real state, never by a counter. The fire
-                            #   budget is only the backstop for a satisfaction check that is
-                            #   WRONG, sits strictly under the platform's 8-consecutive-block
-                            #   cap, and NAMES the duties it abandons (a silent give-up reads
-                            #   identical to success). Escalation: additionalContext first
-                            #   (continues the turn, labelled "Stop hook feedback", no hook
-                            #   error) -> decision:block only for a severity:block duty still
-                            #   unmet after that nudge
-    lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the life of a
-                            #   fire, so a duty cannot see a tree a sibling moved. Whole-turn
-                            #   transcript extraction (last-message-only silently never fires).
-                            #   list(rel) is the generic tree primitive — typed, sorted, and
-                            #   deliberately UNFILTERED, since duties disagree about which
-                            #   entries count; hasFilesIn derives from it, one readdir for both
-    lib/ledger.js           # per-`prompt_id` state — THE unit. The hooks this replaces keyed
-                            #   on a hash of the TURN's text, so every correction looked new
-                            #   and the guard never matched; prompt_id is the user-request span
-    lib/duties/             # extension surface: index.js registry + one module per duty.
-                            #   TWO KINDS, because a turn ends badly two ways — work left
-                            #   undone, or an answer built without knowledge the project
-                            #   already had:
-                            #     DEMAND {id,title,severity:'block'|'advise',priority,
-                            #             applies(ctx),satisfied(ctx),ask(ctx)->string}
-                            #     SUPPLY {kind:'supply', …, supply(ctx)->{material}} — hands
-                            #             the session MATERIAL instead of an instruction
-                            #   supply() is the ONLY impure step, so the pure runner just
-                            #   reports it is due (`supplyDue`) and the ADAPTER executes it:
-                            #   plan (pure) -> execute (impure) -> compose (pure), which is
-                            #   what keeps the whole policy testable without a session.
-                            #   Shipped: context-recall (the recall half — see lib/sources),
-                            #   session-digest (from kb — Agent/Task deliberately NOT producing
-                            #   work, which is what closes the re-arm chain by definition),
-                            #   quality-lens (from verifiability-lens — at most ONE ask per
-                            #   request; `advise` because it cannot yet tell advancing from
-                            #   oscillating; its meta-loop guard judges the ROLLUP'S SHAPE, not
-                            #   the plugin's NAME — matching the bare name made a turn that
-                            #   merely DISCUSSED the lens suppress the duty),
-                            #   steward-sync (from steward — a staged .steward/inbox/ note must
-                            #   be RECOMPUTED into the model, not merely written; `advise`,
-                            #   SESSION span because its ask spawns the steward agent. An item
-                            #   is a top-level non-dot `.md` file, so done/ and .gitkeep stay
-                            #   out of a count that would read 4 against a real inbox of 3 and
-                            #   never reach zero).
-                            #   Add one = one require, no runner change
-    lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
-                            #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
-                            #   TWO-PHASE and the split is load-bearing: index() emits titles+
-                            #   ids and NEVER bodies, the judge picks ids, fetch() returns the
-                            #   files' own text. The judge CHOOSES; it never SUMMARISES — so
-                            #   the session gets the file, not a recollection, and the call
-                            #   stays small however much the project has written. markdown-dir
-                            #   is the generic TYPE; every shipped source is CONFIG over it
-                            #   (kb-captures, kb-extracted, steward-model). A configured dir
-                            #   that does not exist is simply empty — that is the silence rule
-    lib/judges/             # judgment surface. `claude -p` adapter, plan-billed, four measured
-                            #   constraints encoded: argv-not-stdin (stdin is refused as prompt
-                            #   injection), never shell:true (Windows cmd.exe hangs on
-                            #   multi-line argv), MK_TURN_END_DEPTH guard (the -p child fires
-                            #   its own Stop hooks; `recursion_depth` does NOT exist), and
-                            #   --bare is unusable ("Not logged in"). USED BY context-recall on
-                            #   every turn end (owner directive: no pre-filter — a gate deciding
-                            #   when recall matters is itself a thing that can be wrong).
-                            #   MEASURED 46s per fire against a real corpus, not the ~11s the
-                            #   tiny experiment prompt suggested
-    hooks/                  # the one Stop registration; the adapter holds ZERO policy beyond
-                            #   executing due supply duties
-    tests/turn-end.test.js  # 110 checks, own temp fixtures. Three replay measured failures
-                            #   (ten work turns do not oscillate; lens asked once per request;
-                            #   done/ + .gitkeep are not inbox items);
-                            #   one asserts a VERBATIM marker from a note body survives into
-                            #   the injected material. check() REJECTS a promise-returning body
-                            #   — a sync harness counted three async tests as passing before
-                            #   their assertions ran
+  turn-end/                 # THE single blocking Stop hook — plugins ship DUTIES, not hooks;
+                            #   one runner checks each against real state, ONE consolidated
+                            #   tail per user request. Duty kinds: DEMAND (ask) + SUPPLY
+                            #   (material). Shipped duties: context-recall, session-digest,
+                            #   quality-lens, steward-sync. See plugins/turn-end/CLAUDE.md.
 
-  kb/                       # The project's queryable knowledge base — the PULL side of the
-                            #   long-lens tools (steward + lens PUSH a fixed briefing at open;
-                            #   kb lets a session ask for what it needs, when it needs it).
-                            #   0.5.0 adds the awareness surface: hooks/kb-pull.js
-                            #   (UserPromptSubmit — deterministic ranker over the prompt,
-                            #   score-floored one-line hints + rolling session-digest
-                            #   injection, machine-text guarded, fail-open, config
-                            #   off-switch), per-call JSONL traces (.claude/kb/trace.jsonl),
-                            #   pattern split mode for non-heading ledgers, seed
-                            #   depth+autonomy. kb CARRIES TWO HOOKS since 0.9.0: kb-pull
-                            #   (UserPromptSubmit — subject-matched hints + session-digest
-                            #   injection) and kb-session-start (SessionStart — archives the
-                            #   previous sitting's digest, one-time seed cue). The kb-scribe
-                            #   Stop hook is RETIRED — the enforced write side now ships as
-                            #   turn-end's `session-digest` duty, because two plugins each
-                            #   owning a blocking Stop hook re-armed each other (scribe's
-                            #   PRODUCE_TOOLS included `Agent`, so the lens's mandated dispatch
-                            #   turn read as fresh work). Script + 42 tests kept one release,
-                            #   marked RETIRED in the header. Both live hooks are PRESENCE-gated: a
-                            #   project keeping no curated memory is never blocked and never
-                            #   written into. Hooks register at INSTALL time — update the plugin
-                            #   + restart, then check .claude/kb/trace.jsonl. Standalone install
-                            #   for hooks+MCP; bundle ships only its skills.
-                            #   Two ORTHOGONAL axes, never collapsed into one enum:
-                            #   KIND (which catalog — episodic/semantic/procedural/working, the
-                            #   CoALA taxonomy, arXiv 2309.02427) x CASTE (which scope tier,
-                            #   ORDERED narrow->wide — session/thread/project/fleet/owner; the
-                            #   ordering is the only thing engine logic knows, which is what makes
-                            #   `--caste X --wider` work without naming a tier in code).
-                            #   The ENGINE stays read-only permanently; writes come from the
-                            #   skills + hooks (extracted/, captures/, session digest) and are
-                            #   indexed like any other markdown store.
-    .claude-plugin/plugin.json
-    defaults/config.json    # shipped axes + the source set for this ecosystem (steward
-                            #   model/log/inbox, handoffs, kickoff prompts, CLAUDE.md).
-                            #   A configured dir that doesn't exist is simply empty.
-    lib/
-      registry.js           # the KIND x CASTE axes; castesFrom() = the widening primitive
-      entry.js              # THE contract — one shape sources emit and adapters read;
-                            #   `path` mandatory (a memory you can't open is a rumour)
-      dates.js              # timestamp recovery: filename first (stable across copies), mtime second
-      config.js             # defaults + .claude/kb.json; sources merge BY ID, enabled:false removes;
-                            #   malformed config THROWS (silent revert-to-defaults looks like data loss)
-      query.js              # caller request -> normalised Query; validates + throws (a false
-                            #   empty reads as "we know nothing about that")
-      engine.js             # filter -> rank -> NARROWING HINTS. Pure: no disk/network/clock
-      rankers/              # scoring extension surface: index.js registry + term-overlap.js
-                            #   (deterministic, title/theme weighted, coverage beats repetition;
-                            #   0.4.0: light stemming both sides, edit-distance-1 typo tier at
-                            #   0.7x weight, owner-declared alias groups via config `aliases`)
-      sources/              # ingestion extension surface: index.js registry + markdown-dir.js
-                            #   (the generic TYPE — every shipped source is CONFIG over it;
-                            #   split:'h2' gives each ledger section its own entry + timestamp;
-                            #   skipThinPreamble drops boilerplate-only preamble entries)
-      kb.js                 # THE FACADE — every adapter binds here; nothing reaches past it
-    .mcp.json               # wires the MCP server on plugin install; alwaysLoad:true keeps
-                            #   tool schemas in context EVERY turn (never deferred behind tool
-                            #   search) — the property that makes kb self-serve, ReAct-style
-    bin/kb.js               # CLI adapter (query | stat | coverage | axes | sources) —
-                            #   `coverage` prints the top-up map a re-seed reads first;
-                            #   a PEER of the MCP adapter, not its parent;
-                            #   both hold zero retrieval logic so they cannot drift
-    mcp/kb-mcp-server.js    # MCP stdio adapter: kb_query (hints ride in the tool result) /
-                            #   kb_read (full entry by id) / kb_overview. Hand-rolled JSON-RPC
-                            #   (tools-only = 3 methods, zero deps); corpus refreshed per call;
-                            #   misuse -> isError content the model reads and self-corrects
-    skills/kb/SKILL.md      # reach-surface: model-driven ("ask before re-deriving"); description
-                            #   names the QUESTIONS, not the mechanism, or it never fires
-    skills/kb-seed/         # CREATE: extraction seeder for existing projects — sweep docs/git
-                            #   history/code, owner confirms, one cited file per finding ->
-                            #   .claude/kb/extracted/ (re-runs top up, never overwrite)
-    skills/kb-capture/      # MAINTAIN: one memory at a time -> .claude/kb/captures/;
-                            #   steward-MODEL changes route to .steward/inbox/ instead (recompute
-                            #   rule — a record of deciding is a capture; the new plan is steward's)
-    commands/               # kb.md | kb-seed.md | kb-capture.md — owner-driven aliases
-    tests/kb.test.js        # 256 checks, own temp fixtures (never reads the host repo)
-    tests/kb-mcp.test.js    # 44 checks — tool contract + handlers + stdio e2e + traces
-    tests/kb-footprint.test.js # 33 checks — fs-import + write-site audit, no-write-in-unseeded
-    tests/kb-pull.test.js   # 37 checks — hook guards, score floor, digest, trace
-    tests/kb-session.test.js # 56 checks — presence, rotation + loss-safety, seed cue
-    tests/kb-scribe.test.js # 42 checks — the enforced write side (block, fire-once, turn)
+  kb/                       # Queryable knowledge base — the PULL side of the long-lens tools
+                            #   (steward + lens PUSH a fixed briefing at open). Two orthogonal
+                            #   axes, never collapsed: KIND (episodic/semantic/procedural/
+                            #   working — CoALA) x CASTE (session→thread→project→fleet→owner,
+                            #   ordered narrow→wide). Read-only engine; MCP adapter with
+                            #   alwaysLoad (schemas never deferred); CLI; skills kb / kb-seed /
+                            #   kb-capture; TWO hooks since 0.9.0 (kb-pull, kb-session-start —
+                            #   the kb-scribe Stop hook is RETIRED into turn-end's
+                            #   session-digest duty). See plugins/kb/CLAUDE.md.
 ```
-
-**kb narrowing loop** — Claude Code does **not** support MCP sampling (verified: zero mentions
-across the MCP reference), so a knowledge base can never borrow the client's model to
-disambiguate a request on its own. Rather than add a second agent with its own context to keep
-in sync, every result reports `matched` / `truncated` plus which facet separates the entries it
-held back — and the session, which already holds a model, re-asks with a narrower query. The
-conversation *is* the retrieval loop: no extra tokens, nothing to sync. A zero-match result
-lists what *is* available under the filters for the same reason.
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
 
-**verifiability-lens** (design source: `design/verifiability-awareness.md`) — a strict, opinionated work-quality guardian. Two pillars. *Detection — three checks, actively verified* (agent tools: Read/Grep/Glob/WebSearch/WebFetch/context7 + Serena semantic trio find_symbol/find_referencing_symbols/get_symbols_overview/search_for_pattern for tracing code paths, fallback to Read/Grep — it confirms/refutes, not just flags): (1) verifiability A/B/U (A = a cheap accurate check exists or was run, B = genuine guess, U = can't tell; never let a U pass as A — the false-clean; capability-relative); (2) completeness (was everything meant to be done done, or an arbitrary stop — presses to continue + finish); (3) quality bar (tested, requirements met, robust, best achievable; rejects half-assed/missing-requirement/untested work). *Delivery:* a surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands the user ONLY important + actionable + fully-contextualized decisions and absorbs the rest — hard rule: never a context-less decision; auto-resolutions always logged. Generalizes essense-flow's `unknowns[]` (input-side) to the output-side, and extends librarian.md's surface-at-gate protocol. **Since 0.5.0 this plugin carries NO hook.** Automatic firing comes from turn-end's `quality-lens` duty, still **opt-in OFF by default** (`.claude/verifiability-lens.json` `{"enabled":true}`) and now scoped to `prompt_id` — at most one ask per user request. Its own Stop hook is retired: the "fire-exactly-once guard" at `verifiability-stop.js:148` bounded *consecutive* blocks, not total fires (10 simulated work turns → block/allow/block/allow, 5 fires, unbounded), and identity was a hash of the turn's text, so every correction turn looked new. The duty ships as `advise` rather than `block` because it cannot yet tell an advancing pass from one repairing its own earlier characterisation — the validation set for that classifier exists (passes 1–3 advancing, 4–8 oscillating, crossover at 3–4) but is deliberately unbuilt.
-
 ## essense-flow Pipeline
-
-The headline plugin. State machine + per-phase skills + verification discipline.
 
 ```
 /init → /elicit → /research → /triage → /architect → [/organize] → /build → [/glossary] → /review → /verify → complete
 ```
 
-| Phase | Command | Output | Next |
-|-------|---------|--------|------|
-| Elicit | `/elicit` | `.pipeline/elicitation/SPEC.md` | `/research` |
-| Research | `/research` | `.pipeline/requirements/REQ.md` | `/triage` or `/architect` |
-| Triage | `/triage` | `.pipeline/triage/TRIAGE-REPORT.md` | Routes to earliest needed phase |
-| Architecture | `/architect` | `.pipeline/architecture/ARCH.md` (incl. "Existing functionality considered" reuse ledger when a functionality map exists) + task specs + sprint manifest | `/build` (or `/organize`) |
-| Organize *(optional)* | `/organize` | `.pipeline/architecture/ORGANIZE-REPORT.md` + consolidated task specs (originals archived to `_pre-organize/`) | `/build` |
-| Build | `/build` | `.pipeline/build/sprints/<n>/` completion records + `SPRINT-REPORT.md` | `/review` (or `/glossary`) |
-| Glossary *(optional)* | `/glossary` | `.pipeline/glossary/GLOSSARY.{yaml,md}` (propose-only) + `MAP.md` functionality map (consulted by /architect + /build) + `DIFF.md` drift report on re-runs (prior run snapshotted to `history/`) | `/review` (exit cue also surfaces `/dry-refactor` previews) |
-| Review | `/review` | `.pipeline/review/sprints/<n>/QA-REPORT.md` | `/triage` or `/verify` |
-| Verify | `/verify` | `.pipeline/verify/VERIFICATION-REPORT.md` | `complete` or `/triage` |
-| Heal | `/heal` | State recovery via legal transitions | Returns to correct phase |
+Per-phase commands, outputs, and hook details: `plugins/essense-flow/CLAUDE.md`. `/organize`
+and `/glossary` require plugin-toolkit (the code-glossary engine) — hard stop with install hint
+when absent; both phases are autopilot human gates.
 
-`/organize` and `/glossary` require plugin-toolkit (the code-glossary engine) — hard stop with install hint when absent. Both phases are autopilot human gates.
-
-State is artifacts-authoritative: `.pipeline/state.yaml` is a derived cache. `state-reconcile` (CLI op) compares cache vs artifact inference (`lib/infer-phase.cjs`) — report-only by default, `--apply` rebuilds from disk; a missing cache auto-rebuilds inside ordinary ops. Artifact shapes single-source from `references/schemas/*.schema.yaml` (validators + templates + agent-def shape blocks derive; `npm run render-schemas`; drift-tested). Producer agents follow the librarian protocol (`references/librarian.md`): research first, declare structured `unknowns[]` in every return, masters surface them at phase gates via AskUserQuestion (`register-add --kind unknown`).
-
-### Hooks (all fail-soft — never block tool calls)
-
-| Hook | Event | Purpose |
-|------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first). Silent in repos that never ran the pipeline (no `.pipeline/`); parse-corrupt state.yaml renders a VISIBLE degraded banner |
-| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml |
+State is artifacts-authoritative: `.pipeline/state.yaml` is a derived cache. `state-reconcile`
+(CLI op) compares cache vs artifact inference (`lib/infer-phase.cjs`) — report-only by default,
+`--apply` rebuilds from disk; a missing cache auto-rebuilds inside ordinary ops. Producer agents
+follow the librarian protocol (`references/librarian.md`): research first, declare structured
+`unknowns[]` in every return, masters surface them at phase gates via AskUserQuestion.
 
 ## Session Lifecycle
 
-Five skills for cross-session continuity and workflow self-improvement.
-
-| Skill | Trigger | What it does |
-|-------|---------|-------------|
-| `/handoff` | Session end | Captures what was done, what remains, critical context, blockers → a permanent `.claude/handoffs/handoff-<ts>.md` + `INDEX.md` ledger (append-only history), with `.claude/handoff.md` as the latest-alias. Critical Context is quality-gated: must name ≥1 rejected approach/gotcha/constraint with its why (or a reasoned "none") or the handoff isn't done. Triggers `/claude-md-sync` if CLAUDE.md stale. |
-| `/resume` | Session start | Reads the `.claude/handoff.md` alias, validates branch/pipeline state, reports discrepancies, suggests first action. Marks consumed but **preserves** the `.claude/handoffs/` history (migrates a pre-1.2.0 single-file handoff into it). |
-| `/claude-md-sync` | After changes | Scans git diff, identifies stale CLAUDE.md sections, proposes edits for approval. Callable standalone or by handoff. |
-| `/retro` | After sprint/session | Metrics-driven retrospective. Gaps before strengths. Accepts `sprint-N`, `session`, or `all`. |
-| `/meta-review` | Periodically | Diagnose session friction — multi-step workflow chains, skill friction, plugin coverage gaps. Diagnostic only. |
+| Skill | Trigger | Notes |
+|-------|---------|-------|
+| `/handoff` | Session end | Append-only history: permanent `.claude/handoffs/handoff-<ts>.md` + `INDEX.md` ledger, `.claude/handoff.md` latest-alias. Critical Context is quality-gated: ≥1 rejected approach/gotcha/constraint with its why, or a reasoned "none". Triggers `/claude-md-sync` if stale. |
+| `/resume` | Session start | Reads the alias, validates branch/pipeline state, reports discrepancies; **preserves** the handoffs history. |
+| `/claude-md-sync` | After changes | Proposes CLAUDE.md edits from git diff; per-section approval. |
+| `/retro` | After sprint/session | Metrics-driven; gaps before strengths. |
+| `/meta-review` | Periodically | Diagnoses session friction. Diagnostic only. |
 
 ## Plugin Toolkit
 
-Six composable skills for working ON plugins (and the codebases they ship in).
+Skills for working ON plugins (one-liners in the tree above; detail in
+`plugins/plugin-toolkit/CLAUDE.md`), plus three repo-level gates run from the toolkit dir:
 
-| Skill | Trigger | What it does |
-|-------|---------|-------------|
-| `/skill-heal <plugin>` | Reviewing a plugin's skill quality | Dispatches parallel review agents, scores skills against rubric (Anthropic best practices + token efficiency + architecture coherence), produces per-skill scorecard + ranked fixes. Diagnostic only. |
-| `/plugin-scaffold <name> <skills>` | Starting a new plugin | Generates directory tree + plugin.json + SKILL.md skeletons + marketplace.json entry + bundle update + README/CLAUDE.md additions + RELEASE-NOTES. |
-| `/version-bump <plugin> <type>` | Shipping changes | Cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES. Composable with `@ship`. |
-| `/docs-audit [plugin\|all]` | Verifying doc consistency | Cross-checks CLAUDE.md + README + marketplace.json against disk. Finds drift, proposes fixes per file. |
-| `/code-glossary [path]` | Auditing a codebase for DRY violations | v2: deterministic Python engine (`code_glossary/` package — Python/TS/JS/C# via stdlib AST + tree-sitter; 5-signal fingerprints; Pass A clustering; frozen-schema render via `python -m code_glossary.runner`) + in-session sub-agents (labeling against 147-verb vocab, Pass B cluster review with composite verdicts from deterministic `composed_of_candidates`, deterministic judge candidates via `runner near-misses`, Pass C substrate-verify). Optional `--scan-blocks` surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema v1) + GLOSSARY.md; `runner diff --old --new` tracks duplication drift between runs ({(file, function)} identity, 6 classes); `runner map` renders MAP.md — mermaid module graph + lossless machine index, the consult-before-designing artifact essense-flow /architect + /build inject into briefs; `runner coupling` (engine 2.4.0) enforces DECOUPLED by measuring coupling — scope-aware call graph from records (a call binds to a same-module definition when one exists, so duplicated private names don't fabricate phantom edges), threshold-free binary violations (cross-module dependency cycles + reach-ins into a module's internal surface), writes COUPLING.yaml (each violation named file:function), `--fail-on-violation` CI gate; `runner extensibility` (engine 2.5.0, C#-only MVP) enforces OPEN-FOR-EXTENSION by measuring dispatch — per axis (an enum, or a declared growth axis from /elicit's ledger) it counts the add-one-instance edit-sites (`switch`/switch-expression/if-ladder/dict that enumerate the axis's instances; sites bind by ≥2 case-label overlap, no type inference), writes EXTENSIBILITY.yaml (each site named file:line), edit-count is a measurement while a declared-OPEN axis carrying a dispatch site is the binary gate (`--fail-on-violation`); intrinsic enums are advisory. Pure model `extensibility.py` + impure `indexer/dispatch_scanner.py`; design source `EXTENSIBILITY-MEASURE-DESIGN.md`. Glossary-only — does not execute refactors. Tests: `uv run pytest tests/` from the skill folder. **SCOPE LIMIT, measured 2026-07-28:** both `runner coupling` and cross-file clustering assume ONE codebase whose modules genuinely import each other. Run across a marketplace of independently-installed packages they mislead — coupling reported `alert-sounds → kb` and a 5-module cycle between plugins that import nothing from one another, and clustering flagged `readPayload` (6× across 5 plugins) as extractable when extraction would pin separately-versioned plugins to each other. Run per-plugin, or apply package-boundary judgement before acting; see `.claude/kb/captures/20260728-0430-cross-plugin-duplication-is-correct-do-not-extract.md`. |
-| `node bin/repo-guard.js` | Before a push, or when a defect class keeps coming back | Runs every registered detector over the tracked files + git history in ONE context snapshot. Catches what is invisible from inside a round: machine-specific absolute paths, injected shell whose failure is indistinguishable from empty success, and fix-the-fix commit chains (the same file rewritten by a run of fix commits in a short window). Exit 1 on blocking findings — usable as a pre-push gate. Extend by dropping a module into `lib/detectors/`. |
-| `node bin/test-all.js` | Before a push, or any time "is the repo green?" is answerable only from memory | Runs EVERY suite in every plugin in one command with one verdict — 30 suites, ~1600 checks, ~75s. Discovery is by shape, so a new suite is covered the day it lands. Names the units shipping no suite at all, and flags a suite that exits 0 while printing failures instead of counting it green. Exit 1 on any red, suspect, or could-not-run. |
-| `node bin/registry-check.js` | Before a push, or after any version change | Verifies the CLAIMS the marketplace, bundle manifest and doc tables make about the repo, against disk: row-vs-manifest versions, plugin list in both directions, versions quoted in doc tables, bundle paths that resolve, and files a CI step invokes. Checks rather than generates — the prose in those files is written for a human, only its facts are derivable. Exit 1 on drift. |
-| `/dry-refactor <glossary.yaml> <gloss-id>` | Planning an extraction the glossary proposed | v3 MVP: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) via `python -m code_glossary.dry_refactor.runner`, then a dry-run plan — synthesized helper + per-site edit list. **Zero source writes**; live execution ships later behind its own gate. |
+| Gate | When | One verdict |
+|------|------|-------------|
+| `node bin/repo-guard.js` | Before a push, or when a defect class keeps coming back | Every registered detector over tracked files + git history in ONE snapshot: leaked machine paths, silenced shell failures, fix-the-fix commit chains. Exit 1 on blocking findings. |
+| `node bin/test-all.js` | Before a push, or when "is the repo green?" is answerable only from memory | Every suite in every plugin, discovery by shape (a new suite is covered the day it lands); names units shipping no suite; a suite that exits 0 while printing failures is SUSPECT, never green. Exit 1 on any red/suspect/could-not-run. |
+| `node bin/registry-check.js` | Before a push, or after any version change | Verifies the CLAIMS marketplace/bundle/doc tables make about the repo against disk — checks, never generates. Exit 1 on drift. |
 
-Composition: `@ship` references `/version-bump` + `/docs-audit`. `/skill-heal` hints at `/docs-audit` when description quality is weak across skills. `/code-glossary`'s engine powers essense-flow's `/organize` (spec mode) + `/glossary` (code mode) phases; GLOSSARY.yaml is the input contract `/dry-refactor` consumes (Appendix A of DESIGN-V2.md; MVP = preflight + dry-run, built in v2.2).
+**code-glossary scope limit (measured 2026-07-28):** `runner coupling` and cross-file clustering
+assume ONE codebase whose modules genuinely import each other — run across this marketplace of
+independently-installed plugins they mislead (phantom cross-plugin coupling; extraction proposals
+that would pin separately-versioned plugins to each other). Run per-plugin, or apply
+package-boundary judgement; see `.claude/kb/captures/20260728-0430-cross-plugin-duplication-is-correct-do-not-extract.md`.
+
+Composition: `@ship` references `/version-bump` + `/docs-audit`. `/code-glossary`'s engine powers
+essense-flow's `/organize` (spec mode) + `/glossary` (code mode); GLOSSARY.yaml is the input
+contract `/dry-refactor` consumes.
 
 ## Cross-Reference Patterns
 
@@ -505,26 +146,11 @@ When changing files that follow these patterns, CHECK the related files for cons
 | Workflow routing | Adding a workflow file to a skill | The skill's SKILL.md `<routing>` section | Routing table must reference new workflow |
 | essense-flow hooks | Adding/changing context injection | `plugins/essense-flow/hooks/` | All 4 hooks must stay consistent |
 | Session-lifecycle interop | Changing handoff output format | `plugins/session-lifecycle/skills/resume/SKILL.md` | Resume reads what handoff writes |
-
-## Dependency Highlights
-
-| Component | Dependencies |
-|-----------|-------------|
-| essense-flow | Node.js (CommonJS modules in `lib/`); /organize + /glossary additionally need plugin-toolkit (code-glossary engine) |
-| essense-autopilot | Node.js (reads essense-flow state) |
-| plugin-toolkit (code-glossary engine) | Python >= 3.11 via uv; pyyaml, tree-sitter + tree-sitter-typescript + tree-sitter-c-sharp; pytest (dev) |
-| session-lifecycle | None (pure SKILL.md + `!`command`` shell injection) |
-| schema-scout (CLI tool) | Python >= 3.10, openpyxl >= 3.1, typer >= 0.9, rich >= 13.0 |
-| kb | None (Node CommonJS, stdlib only — no dependencies) |
-| thorough-mode | None (hooks-only, stdlib JS) |
-| project-note-tracker | Python >= 3.10, openpyxl (via uvx) |
-| alert-sounds | Python >= 3.10, stdlib only (platform-native audio/notifications) |
-| Build system | hatchling (schema-scout packaging) |
+| Plugin CLAUDE.md notes | Changing a plugin's behavior/shape | `plugins/<name>/CLAUDE.md` | Deep notes live with the plugin; root stays orientation-only |
 
 ## Conventions
 
 - **Skill definitions** use YAML frontmatter + XML-like section tags (`<objective>`, `<context>`, `<instructions>`)
-- **Python source** (schema-scout) requires Python >= 3.10, uses openpyxl + typer + rich
 - **Named constants** over magic numbers (thresholds in `analyzer.py`)
 - **All paths** normalized to forward slashes (Windows compatibility)
 - **Metadata convention** — pipeline template outputs include a blockquote metadata block as first content. Core fields: `type`, `output_path`, `key_decisions`, `open_questions`. Format: `> **field_name:** value`

@@ -70,7 +70,10 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
   allowlist is the honest ledger of the debt instead.
 - **Reachability is part of "shipped."** A capability that no install can resolve does
   not exist for the owner, however good the checkout is. Instructions may only name
-  paths an install provides, or must probe first.
+  paths an install provides, or must probe first. Since plugin-toolkit 1.9.0 this is
+  MEASURED, not argued: registry-check's `capability-reach` claim source reads the
+  installed cache and reports what a bundle install does not carry (informational —
+  which install the owner uses is their call, not a wrong fact).
 
 ## Invariants (must stay true)
 
@@ -92,7 +95,12 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    upkeep; one that doesn't is never touched) — never on per-project wiring the owner
    must remember to switch on.
 7. **Decoupled + open-for-extension code**, enforced by measurement (`runner coupling`,
-   `runner extensibility`), not by instruction.
+   `runner extensibility`), not by instruction. SCOPE LIMIT, measured 2026-07-28: the
+   coupling model assumes ONE codebase whose modules genuinely import each other — run
+   across this marketplace of independently-installed plugins it fabricates edges (a
+   5-module "cycle" between plugins that import nothing from one another). Run per
+   project; cross-plugin duplication (`readPayload` ×6) is CORRECT, never extract it —
+   extraction would pin separately-versioned plugins to each other.
 8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they
    don't apply. The ONE hook that may block blocks the turn's END, never a tool call,
    and fails open on every path.
@@ -117,6 +125,10 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
   an instrument here: pull replaces push wherever a session can ask instead of being fed,
   and turn-end's per-`prompt_id` scoping already collapsed the lens from N fires per
   sitting to at most one ask per user request.
+- **"Pure runner over a drop-in registry" is now the house gate pattern**, instantiated
+  three times in plugin-toolkit alone (repo-guard detectors · test-all suite-runners ·
+  registry-check claim sources) — one context gathered once, silence is a finding, a
+  crashed member is reported not skipped. New gates should take this shape.
 - **turn-end has three drop-in surfaces** (add one = one `require`, no runner change):
   DUTIES (`lib/duties/` — demand or supply), SOURCES of recallable knowledge
   (`lib/sources/` — `markdown-dir` is the generic TYPE; every shipped source is config

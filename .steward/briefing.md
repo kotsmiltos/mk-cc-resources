@@ -1,10 +1,9 @@
-# mk-cc-resources — briefing (2026-07-27, post turn-end)
-Ship: local main == origin/main == eee1b35, PUSHED. NEW plugin turn-end 0.2.4 — THE single blocking Stop hook; kb 0.10.1 and verifiability-lens 0.5.0 retired theirs into duties. Also plugin-toolkit 1.8.0 (repo-guard), thorough-mode 1.11.1, steward 0.2.1, marketplace 2.44.5.
-IT IS LIVE — the old "nothing is live" line was true at kb 0.3.0, not now. turn-end trace: 13 fires, advise→block proven on one prompt_id, context-recall handing a session .steward/parts.md + questions.md. kb trace: session-start + "digest":true lines.
-Last change: 0.2.4 — satisfaction must be a DISK fact; the digest duty asked HOW the work was done, so a digest written with Bash never satisfied it.
+# mk-cc-resources — briefing (2026-07-31, /doctor item integrated)
+Ship: refs both 8d5cab6, pushed — but the tree is NOT clean: the /doctor restructure is uncommitted (root CLAUDE.md 50k→11.5k chars; deep notes now in plugins/<name>/CLAUDE.md, 5 new files; kb+lens patched). Next commit carries it + this model recompute together.
+Distribution moved (your /doctor approvals): mk-cc-all DISABLED, plugin-toolkit 1.10.0 installed standalone @ HEAD — the three gates travel for the first time. Picker-duplication objection voided only while the bundle stays off; layout ratification is still yours (#1).
+Q11 sharpened: turn-end's own timeout:30 (hooks.json:12) kills the 46s judge — 36/162 measured fires dead at ~31s, recall material LOST on exactly those turns. Updated default: raise/remove the timeout + one measured pass (fixes the config contradiction without re-taking the policy — that stays yours).
 Next 3 tasks:
-1. Distribution — the installed bundle is pinned at ab1ba82 and still ships the pre-fix `ls -d plugins/*/`; plugin-toolkit isn't installed at all, so repo-guard exists only in this checkout. Update, prove the cached text moved, then decide how lib/bin/defaults reach a project.
-2. Extract autopilot's decide() into a duty — it still owns a blocking Stop hook and is installed: the one hole in "one blocking tail".
-3. steward-sync duty — on disk and registered, never fired, undocumented anywhere. Document it, then catch a trace line.
-Decisions waiting: Q10 (who forces the RECOMPUTE) — a steward-sync duty already exists, advise + session span; the open part is ratify vs harden to block vs widen the trigger. Your own answer is being staged separately.
-Watch: the kb MCP leg needs a restart to prove which build answers; essense-flow ledger-compaction still red; repo-guard exits 0 only because plugins/essense-flow/test/ is allowlisted.
+1. Distribution [needs you] — ratify bundle-off + standalone (or change it); prove one gate runs from another project.
+2. Autopilot decide() extraction — the last competing blocking Stop hook.
+3. steward-sync first fire — inbox empties again now; the next staged note is the probe.
+Decisions waiting: Q11 (now two measured numbers) · Q12 (CI revert deliberate? default: yes, fix the stale RELEASE-NOTES claim).

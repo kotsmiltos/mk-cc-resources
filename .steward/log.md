@@ -6,6 +6,79 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-07-31 · /doctor item integrated at 8d5cab6 — distribution moved, Q11 got its second number, the drift list shrank
+One inbox item (owner-approved /doctor outcomes, per-group AskUserQuestion), every claim
+re-verified on disk before integration.
+- **Distribution state CHANGED under task #1 (not closed):** mk-cc-all DISABLED +
+  plugin-toolkit 1.10.0 installed STANDALONE at user scope @ `8d5cab6` — read this pass
+  from the installed-plugins registry + user settings. The picker-duplication objection is
+  voided ONLY while the bundle stays off; the stale `ab1ba82` bundle cache is dormant, not
+  fixed. All three gates now travel; none yet RUN from another project. #1 rewritten from
+  blocked-structural-fork to ratify + prove-the-reach.
+- **Q11 second measured number:** `turn-end/hooks/hooks.json:12` sets `timeout: 30` (read
+  this pass) vs the 46s judge — 50-session scan: 162 Stop fires, 36 killed at ~31–32s,
+  p50 182ms; recall material LOST exactly where the judge runs. Config self-contradiction,
+  not lag. Q11's default UPDATED (Claude's): fix the contradiction (raise/remove the
+  timeout + one measured pass) without re-taking the policy — the old "change nothing"
+  default preserved a config that defeats the chosen policy. Capture 20260731-1950 holds
+  the substrate fact.
+- **Root CLAUDE.md restructured 50,247 → 11,491 chars** — deep notes moved VERBATIM to
+  `plugins/<name>/CLAUDE.md` (5 new files verified on disk; kb + lens patches
+  grep-verified). ALL UNCOMMITTED — HEAD unchanged at `8d5cab6` while the files exist;
+  the next commit carries the restructure + this model recompute together.
+- **Drift ledger recomputed, both directions:** CLOSED — kb + lens CLAUDE.md retired-hook
+  drift (patched at source), root-vs-kb per-file counts (root no longer states any).
+  STANDING — README turn-end row re-read this pass, still three duties. NEW class —
+  references aimed at the old monolithic root may point at moved content (→ #6 sweep).
+  New cross-reference law in parts.md: a plugin change edits its OWN CLAUDE.md.
+- Environment facts to the log (owner-approved): blender MCP off for this project ·
+  `defaultMode=auto` · 12 stale user-scope essense-flow agent copies removed (shadow-risk
+  gone) · CC 2.1.220 current.
+- Tasks recomputed 19 → 19: #1 rewritten, #6 instances swapped (2 closed, 1 class added),
+  #17 carries both Q11 numbers; numbering stable, nothing appended without reconciling.
+  Checks this pass: refs both `8d5cab6`; enabledPlugins + installed registry read;
+  hooks.json:12 read; kb/lens CLAUDE.md + README row grepped; inbox = exactly 1 item.
+
+## 2026-07-31 · Four inbox items integrated at 8d5cab6 — Q10 resolved, and disk overruled two captures
+Items 2029 / 2030 / 2035 (07-27) + 0130 (07-28), reconciled against each other AND against
+disk; disk won twice.
+- **Q10 RESOLVED → ledger:** the recompute is enforced as turn-end's `steward-sync` duty on
+  the owner's terms (advise · session span · silent on empty). Recorded as a DISSOLUTION,
+  not a pick: the question priced enforcement as "a fourth blocking hook"; turn-end removed
+  that price, so steward keeps its no-hook design AND enforcement exists. `advise` is
+  deliberately weaker than the kb precedent — owner's explicit call, visible in the ledger.
+  Open remainder flagged: the duty only sees STAGED notes (the second staleness signal is
+  unbuilt, unrequested → Phase B question).
+- **The 2030 item corrected the 2029 world, and disk corrected both** — third measured
+  instance of "an integration is a snapshot of a moving tree." turn-end 0.3.0 (not 0.2.4),
+  110 checks (measured), steward-sync documented in plugin README/RELEASE-NOTES/marketplace
+  row/root CLAUDE.md. NEW from disk, in neither capture: **the installed turn-end is 0.3.0
+  since 07-27T17:31Z** — so "never fired" can no longer be explained by the install alone:
+  three trace fires (07-28) with four items staged show ZERO `steward-sync` mentions.
+  Tasks #3 rewritten from wait-for-update to verify-or-debug.
+- **Disk refuted the 0130 capture's CI claim:** checks.yml did NOT survive — `3633ff7`
+  reverted it 289s after 1.9.0, and the tree now holds ZERO workflows while the revert's
+  subject claims a restore that is not on disk. Q12 opened (deliberate? default: yes, fix
+  the stale RELEASE-NOTES 1.9.0 claim). The "CI will be red" pressure on ledger-compaction
+  died with it.
+- **plugin-toolkit gates integrated:** 1.9.0 test-all + registry-check (house pattern named
+  in vision: pure runner over a drop-in registry, ×3), 1.10.0 skipped-test fix — shipped
+  with NO RELEASE-NOTES entry (new counts-class instance). Five first-contact measurements
+  recorded, incl. 613 undocumented Python checks, cross-plugin duplication ruled CORRECT
+  (do-not-extract), and the coupling scope limit → vision invariant 7.
+- **Q11 opened (owner verbatim):** re-take the context-recall firing policy — 46s measured
+  vs the 11s it was chosen on; correcting the RECORD of a laundered choice did not re-open
+  the CHOICE. Deliberately inert default; any alternative must bring its own measured
+  number.
+- **Distribution #1 sharpened:** standalone plugin-toolkit install DISPROVEN (six skills
+  already bundled → picker duplicates); real fix is a layout change, parked for the owner;
+  `capability-reach` now measures the gap. New corroborating datum for #5: a real `kb_read`
+  call at 07-26T23:01Z (4 min after the trace write shipped) produced no server line.
+- Tasks recomputed: 19 → 19, #3 rewritten, #1/#5/#6/#15/#16/#17 updated; nothing appended
+  without reconciling. Checks this pass: refs both `8d5cab6`; versions read from
+  plugin.json + marketplace rows; installed set from `installed_plugins.json`; traces
+  grepped, not remembered.
+
 ## 2026-07-27 · Three inbox items integrated at eee1b35 — the model had a DEAD front page
 Items 0035 / 0300 / 0700, written hours apart, each superseding the one before. Reconciled
 against each other AND against disk; where disk disagreed with a capture, disk won.
