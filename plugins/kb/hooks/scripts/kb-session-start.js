@@ -63,6 +63,42 @@ const CUE_REGISTRY_REL = path.join('.claude', 'kb', 'cued.json');
 const CONTINUING_SOURCES = new Set(['resume', 'compact', 'fork']);
 const SESSION_MARKER_REL = path.join('.claude', 'kb', 'digest-session.json');
 
+/*
+ * FRESHNESS GUARD (0.10.2). The id-guard alone cannot protect the digest from SPAWNED
+ * sessions: turn-end's `claude -p` judge and background Agent dispatches are full sessions,
+ * each firing SessionStart with a genuinely NEW session_id — so they read as new sittings
+ * even when the marker is perfectly maintained. Measured 2026-07-31: three mid-sitting
+ * rotations in one evening, the two losses correlating with background agent dispatches
+ * (see .claude/kb/captures/20260731-2025-judge-child-session-rotates-the-live-digest.md).
+ * A live digest touched minutes ago is the sitting's own heartbeat: whatever fired this
+ * hook, the sitting is demonstrably still going, and rotating would destroy its working
+ * memory. The 45-minute window is Claude's default, not owner-set: turn-end's digest duty
+ * refreshes the file per user request, so during active work its mtime stays minutes-fresh,
+ * while a genuinely new sitting normally begins against a digest hours old.
+ */
+const FRESH_DIGEST_MS = 45 * 60 * 1000;
+
+/** True when the live digest was modified within the freshness window. */
+function digestIsFresh(root, now = Date.now()) {
+  try {
+    const st = fs.statSync(path.join(root, DIGEST_REL));
+    return now - st.mtimeMs < FRESH_DIGEST_MS;
+  } catch (_e) {
+    return false; // no digest — nothing to protect
+  }
+}
+
+/*
+ * A spawned judgment child is never a new sitting. turn-end publishes MK_TURN_END_DEPTH in
+ * the env of every `claude -p` judge it spawns (its own recursion guard); on sight of it
+ * this hook does NOTHING — no rotation, no marker churn, no cue. Background agent sessions
+ * carry no such variable, which is why the freshness guard above exists as the general case.
+ */
+const SPAWNED_CHILD_VARS = ['MK_TURN_END_DEPTH'];
+function isSpawnedChild(env = process.env) {
+  return SPAWNED_CHILD_VARS.some((v) => Boolean(env[v]));
+}
+
 /** The session_id this digest was last seen under, or null when never recorded. */
 function readDigestSession(root) {
   try {
@@ -81,7 +117,13 @@ function readDigestSession(root) {
  */
 function writeDigestSession(root, sessionId) {
   try {
-    if (!fs.existsSync(path.join(root, DIGEST_REL))) return;
+    // Gate on the KB DIRECTORY, not the live digest (0.10.2). The old digest-must-exist gate
+    // met the rotation order (rotate first, record second) and therefore could never record
+    // on exactly the fires that rotated — the marker went four days stale, and every
+    // non-continuing SessionStart that found a digest rotated it (measured 2026-07-31).
+    // A project that keeps .claude/kb/ is one kb already serves, so the footprint promise
+    // (never write into a project kb does not serve) holds unchanged.
+    if (!fs.existsSync(path.join(root, '.claude', 'kb'))) return;
     fs.writeFileSync(
       path.join(root, SESSION_MARKER_REL),
       JSON.stringify({ sessionId: sessionId || null, at: new Date().toISOString() })
@@ -90,8 +132,12 @@ function writeDigestSession(root, sessionId) {
 }
 
 /** Pure decision, exported for tests. `knownSessionId` null = never recorded. */
-function shouldRotate({ source, sessionId, knownSessionId }) {
+function shouldRotate({ source, sessionId, knownSessionId, digestFresh }) {
   if (CONTINUING_SOURCES.has(source)) return false;
+  // The sitting's own heartbeat outranks every identity signal: a digest touched minutes
+  // ago means the sitting is still live, whoever is asking. Unsure -> DO NOT ROTATE, same
+  // trade as ever: a stale line costs a sentence, rotating mid-sitting costs the memory.
+  if (digestFresh) return false;
   // No session_id at all: the better signal is unavailable, so fall back to `source` alone —
   // the pre-existing behaviour. Refusing to rotate here would be the OPPOSITE failure, a new
   // sitting silently inheriting yesterday's "now", which is what rotation exists to prevent.
@@ -208,6 +254,9 @@ function trace(root, record) {
 }
 
 async function main() {
+  // A spawned judgment child fires SessionStart like any full session — stand down entirely.
+  if (isSpawnedChild()) return process.exit(0);
+
   const payload = await readPayload();
   const root = process.cwd();
   const source = String(payload.source || 'startup');
@@ -215,7 +264,7 @@ async function main() {
 
   const sessionId = payload.session_id || null;
   const knownSessionId = readDigestSession(root);
-  if (shouldRotate({ source, sessionId, knownSessionId })) {
+  if (shouldRotate({ source, sessionId, knownSessionId, digestFresh: digestIsFresh(root) })) {
     const archived = rotateDigest(root);
     if (archived) {
       out.push(`<kb-session>previous session digest archived -> ${archived} (still queryable; this session starts a fresh one)</kb-session>`);
@@ -263,5 +312,6 @@ if (require.main === module) {
 module.exports = {
   rotateDigest, cueOnce, cueRegistryPath, stampFor,
   shouldRotate, readDigestSession, writeDigestSession,
+  digestIsFresh, isSpawnedChild, FRESH_DIGEST_MS, SPAWNED_CHILD_VARS,
   CONTINUING_SOURCES, DIGEST_REL, ARCHIVE_DIR_REL, CUE_REGISTRY_REL, SESSION_MARKER_REL,
 };

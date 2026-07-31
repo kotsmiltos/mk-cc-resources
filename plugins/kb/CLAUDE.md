@@ -75,7 +75,11 @@ hooks/scripts/kb-scribe-stop.js # RETIRED (0.9.0) — kept one release, marked R
                              #   Fire-once + hash-skip + fail-open (lens contract); IMPORTANT
                              #   defined inline, sharpened per project by scribe.focus;
                              #   PRESENCE-gated — silent where no curated memory exists
-hooks/scripts/kb-session-start.js # keeps "now" honest: archives the previous sitting's
+hooks/scripts/kb-session-start.js # keeps "now" honest (0.10.2: spawned sessions cannot steal
+                             #   the live digest — sitting marker gated on .claude/kb/ presence
+                             #   so it records on rotating fires; a minutes-fresh digest never
+                             #   rotates; MK_TURN_END_DEPTH children stand down):
+                             #   archives the previous sitting's
                              #   digest to .claude/kb/digests/ (still indexed, honestly
                              #   dated) on startup/clear — resume/compact/fork keep it; plus a
                              #   ONE-time /kb-seed cue (remembered in ~/.claude/kb/cued.json,

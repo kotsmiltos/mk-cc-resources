@@ -240,6 +240,11 @@ function runHook(cwd, payload) {
     ['resume', 'compact', 'fork'].every((s) => session.CONTINUING_SOURCES.has(s))
       && !session.CONTINUING_SOURCES.has('startup') && !session.CONTINUING_SOURCES.has('clear'));
 
+  // The scenario this simulates is a NEW sitting finding the PREVIOUS sitting's digest —
+  // which on a real disk is hours old. Since 0.10.2 a minutes-fresh digest is the live
+  // sitting's heartbeat and never rotates, so the fixture must be honest about its age.
+  const past = new Date(Date.now() - 2 * session.FRESH_DIGEST_MS);
+  fs.utimesSync(path.join(root, '.claude', 'kb', 'session-digest.md'), past, past);
   const started = runHook(root, { source: 'startup' });
   check('startup rotates the digest', !fs.existsSync(path.join(root, '.claude', 'kb', 'session-digest.md')));
   check('startup reports the archive', started.stdout.includes('previous session digest archived'));
@@ -331,6 +336,81 @@ function runHook(cwd, payload) {
     fs.existsSync(path.join(bare, '.claude', 'kb')) === false);
 }
 
+
+// ---- REGRESSION (0.10.2): spawned sessions must not steal the live digest ----
+// Measured 2026-07-31: three mid-sitting rotations in one evening. turn-end's `claude -p`
+// judge and background Agent dispatches are full sessions with genuinely NEW session_ids,
+// so the id-guard reads them as new sittings; and the marker could never self-repair
+// because the old writeDigestSession gate (digest must exist) met the rotation order
+// (rotate first, record second) — the marker sat four days stale. Evidence:
+// .claude/kb/captures/20260731-2025-judge-child-session-rotates-the-live-digest.md
+{
+  const s = require('../hooks/scripts/kb-session-start');
+
+  // The freshness guard: the sitting's own heartbeat outranks identity.
+  check('a FRESH digest survives a new-id startup (spawned-session replay)',
+    s.shouldRotate({ source: 'startup', sessionId: 'CHILD-1', knownSessionId: 'S1', digestFresh: true }) === false);
+  check('a STALE digest with a new id still rotates (a real new sitting)',
+    s.shouldRotate({ source: 'startup', sessionId: 'S2', knownSessionId: 'S1', digestFresh: false }) === true);
+  check('freshness even overrides a missing marker (first-run case)',
+    s.shouldRotate({ source: 'startup', sessionId: 'S1', knownSessionId: null, digestFresh: true }) === false);
+
+  // digestIsFresh reads the live file's mtime.
+  const froot = tmp('kb-fresh-');
+  check('no digest -> not fresh (nothing to protect)', s.digestIsFresh(froot) === false);
+  writeDigest(froot, '# now');
+  check('a just-written digest is fresh', s.digestIsFresh(froot) === true);
+  const old = new Date(Date.now() - 2 * s.FRESH_DIGEST_MS);
+  fs.utimesSync(path.join(froot, '.claude', 'kb', 'session-digest.md'), old, old);
+  check('a digest older than the window is not fresh', s.digestIsFresh(froot) === false);
+
+  // The marker must be maintainable on exactly the fires that rotate: kb dir present,
+  // live digest ABSENT (just rotated) -> the marker is still recorded. The old gate
+  // returned silently here, which is how it went four days stale.
+  const mroot = tmp('kb-marker-fix-');
+  fs.mkdirSync(path.join(mroot, '.claude', 'kb'), { recursive: true });
+  s.writeDigestSession(mroot, 'SITTING-NEW');
+  check('marker recorded even when the live digest is absent (stale-marker defect killed)',
+    s.readDigestSession(mroot) === 'SITTING-NEW');
+
+  // Spawned-child stand-down: turn-end's judge publishes MK_TURN_END_DEPTH.
+  check('MK_TURN_END_DEPTH marks a spawned child', s.isSpawnedChild({ MK_TURN_END_DEPTH: '1' }) === true);
+  check('a clean env is not a spawned child', s.isSpawnedChild({}) === false);
+
+  // e2e replay of the measured loss: fresh digest + brand-new session id -> digest SURVIVES.
+  const e2e = tmp('kb-spawn-e2e-');
+  writeDigest(e2e, '- the sitting is mid-flight\n');
+  fs.writeFileSync(path.join(e2e, '.claude', 'kb', 'digest-session.json'),
+    JSON.stringify({ sessionId: 'REAL-SITTING' }));
+  runHook(e2e, { source: 'startup', session_id: 'AGENT-CHILD-9' });
+  check('e2e: a new-id startup against a fresh digest leaves it alive',
+    fs.existsSync(path.join(e2e, '.claude', 'kb', 'session-digest.md')));
+
+  // e2e: the judge child does nothing at all, even against a STALE digest.
+  const child = tmp('kb-child-e2e-');
+  writeDigest(child, '- stale but not the child\'s to take\n');
+  const oldT = new Date(Date.now() - 2 * s.FRESH_DIGEST_MS);
+  fs.utimesSync(path.join(child, '.claude', 'kb', 'session-digest.md'), oldT, oldT);
+  spawnSync('node', [HOOK], {
+    cwd: child, input: JSON.stringify({ source: 'startup', session_id: 'JUDGE-1' }),
+    encoding: 'utf8', timeout: 15000,
+    env: { ...process.env, MK_TURN_END_DEPTH: '1' },
+  });
+  check('e2e: a judge child (MK_TURN_END_DEPTH) never rotates, stale or not',
+    fs.existsSync(path.join(child, '.claude', 'kb', 'session-digest.md')));
+
+  // Negative control: a genuinely new sitting — stale digest, new id — still rotates.
+  const fresh = tmp('kb-newsit-e2e-');
+  writeDigest(fresh, '- yesterday\n');
+  fs.utimesSync(path.join(fresh, '.claude', 'kb', 'session-digest.md'), oldT, oldT);
+  fs.writeFileSync(path.join(fresh, '.claude', 'kb', 'digest-session.json'),
+    JSON.stringify({ sessionId: 'YESTERDAY' }));
+  const r = runHook(fresh, { source: 'startup', session_id: 'TODAY' });
+  check('e2e: a real new sitting still rotates the stale digest',
+    !fs.existsSync(path.join(fresh, '.claude', 'kb', 'session-digest.md')) && r.stdout.includes('archived'));
+  check('e2e: rotation now records the NEW sitting in the marker (self-repair)',
+    s.readDigestSession(fresh) === 'TODAY');
+}
 
 console.log(`\n${total - failures}/${total} checks passed`);
 if (failures) process.exit(1);
