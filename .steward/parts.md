@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.3.0) — THE single blocking Stop hook
+## turn-end (0.3.1) — THE single blocking Stop hook
 
 - **Exposes:** one `Stop` registration for the whole toolkit. Plugins ship DUTIES; the
   runner checks each applicable duty against real state and emits ONE consolidated message
@@ -45,11 +45,19 @@ capability reach) — it CHECKS, never generates.
   advise, session span, silent on empty inbox; satisfied per its README when the inbox is
   empty OR the steward agent was dispatched OR it already asked this sitting; an item is a
   top-level non-dot `.md`, so `done/` and `.gitkeep` never inflate the count. Documented
-  since 0.3.0 in the plugin README/RELEASE-NOTES/marketplace row/root CLAUDE.md — the root
-  README's turn-end ROW still lists only three duties, a drift instance. **Never yet
-  observed firing — a LIVE check, see state.md**) · `quality-lens` (advise, from
-  verifiability-lens; its meta-loop guard judges the ROLLUP'S SHAPE, not the plugin's
-  NAME).
+  everywhere since the 0.3.x cascade — the root README's turn-end ROW now names all FOUR
+  duties (read 2026-08-01; that drift instance is CLOSED). **Never yet observed firing — a
+  LIVE check, see state.md**) · `quality-lens` (advise, from verifiability-lens; its
+  meta-loop guard judges the ROLLUP'S SHAPE, not the plugin's NAME).
+- **IN FLIGHT (2026-08-01, owner-directed): `self-check`** — a fifth duty, default-ON
+  DEMAND: a turn that produced work must carry verification evidence (a check actually
+  RUN, or the check + result NAMED, in the work's own medium) before it may yield.
+  Deterministic evidence detectors, NO judge — quality-lens stays the opt-in deep tier;
+  this deliberately does not re-take lens economics. Owner set: default-on, the
+  before-done guarantee (vision invariant 10, verbatim there); detector specifics /
+  severity / span are the executor's to choose and record as Claude's. Not on disk yet
+  (duties dir globbed 2026-08-01: four duties). Tasks #1 carries the build + the doc
+  cascade, incl. the README-row law below.
 - **Sources** (`lib/sources/`) — WHERE recallable knowledge lives, the second extension
   surface. `{id,title,available,index,fetch}`, TWO-PHASE and the split is load-bearing:
   `index()` emits titles + ids and NEVER bodies, the judge picks ids, `fetch()` returns the
@@ -60,13 +68,18 @@ capability reach) — it CHECKS, never generates.
   constraints encoded (argv-not-stdin, never `shell:true`, a depth guard the platform does
   not provide, `--bare` unusable). Used by `context-recall` on every turn end by owner
   choice — no pre-filter, because a gate deciding when recall matters is itself a thing
-  that can be wrong.
-- **MEASURED DEFECT (2026-07-31) — the hook budget kills its own judge:**
-  `hooks/hooks.json:12` sets `"timeout": 30` on the Stop registration while the judge
-  measures 46s. 50-session transcript scan: 162 fires, 36 killed at ~31–32s
-  (`hook_cancelled`, `timedOut:true`); p50 182ms — fast path fine, the kill lands exactly
-  where the judge runs and the recall material is LOST there. Config self-contradiction,
-  not lag. Q11 evidence; capture `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
+  that can be wrong. The depth guard's env, `MK_TURN_END_DEPTH`, is since kb 0.10.2 ALSO
+  a cross-plugin contract: kb-session-start stands down when it sees it, so a judge child
+  can never rotate the live digest.
+- **FIXED in 0.3.1 (2026-07-31) — the hook budget no longer kills its own judge:**
+  `hooks/hooks.json` now sets `"timeout": 90` (read 2026-08-01). Invariant the old 30
+  violated: **the hook budget must exceed the judge budget** — the judge carries its own
+  60s execFile timeout and degrades to a NAMED no-verdict, and that budget can only
+  govern if the platform doesn't kill the whole runner first (a platform kill loses EVERY
+  duty's output, recorded only in the transcript). Measured before: 39/52 in-window fires
+  died at ~31s across 4 projects, crowd-game 0 completions. Measured after: one real
+  fire, judge ran, clean verdict, 40.6s, exit 0. Evidence: RELEASE-NOTES 0.3.1 + capture
+  `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
 - **Termination:** structural. `MAX_FIRES_PER_PROMPT = 3` (`lib/runner.js:37`) is only the
   backstop for a satisfaction check that is WRONG; it sits strictly under the platform's
   8-consecutive-block cap (`:38`) so exhaustion is REPORTED by us — a silent platform cut
@@ -130,7 +143,7 @@ capability reach) — it CHECKS, never generates.
   original path; the SESSION deletes the stubs after each integration. Undeleted stubs lie
   twice now: to the brief hook's inbox counter AND to turn-end's `steward-sync` duty.
 
-## kb (0.10.1) — the memory organ: pull core + ambient push
+## kb (0.10.2) — the memory organ: pull core + ambient push
 
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a second
@@ -146,9 +159,15 @@ capability reach) — it CHECKS, never generates.
   - **kb-pull** (`UserPromptSubmit`) — score-floored hint lines + session-digest injection;
     machine-text guard, fail-open, `{"pull":{...}}` off-switch;
   - **kb-session-start** (`SessionStart`) — rotates the previous sitting's digest to
-    `.claude/kb/digests/` (archive verified on disk BEFORE the live file is deleted; only
-    startup/clear rotate). 0.10.1: `/reload-plugins` was archiving the LIVE sitting's
-    digest.
+    `.claude/kb/digests/` (archive verified on disk BEFORE the live file is deleted).
+    0.10.2 — the mid-sitting digest-theft fix, BOTH defects of the 2030 inbox item: the
+    sitting marker records on EVERY fire (gate = `.claude/kb/` presence, so a stale
+    marker self-repairs — the old gate needed the live digest, which rotation had just
+    deleted); a digest touched <45 min is the live sitting's heartbeat and NEVER rotates
+    (window is Claude's default, not owner-set); a child carrying `MK_TURN_END_DEPTH`
+    (turn-end's judge env) does nothing at all. Unsure still defaults to DO-NOT-ROTATE.
+    kb-session suite 62 → 78, incl. e2e replays of the measured triple loss + the
+    negative control.
   Writable stores, all session-written markdown the engine merely indexes: `extracted/`
   (/kb-seed, cited + regenerable), `captures/` (/kb-capture, one at a time),
   `session-digest.md` + `digests/` (the working/session pair; UNCAPPED since 0.10.0).
@@ -238,8 +257,9 @@ capability reach) — it CHECKS, never generates.
   travel for the first time. The picker-duplication objection is voided ONLY because the
   bundle is off — both enabled at once would double-list six skills again. Final layout
   (what a public user installs; whether the owner keeps bundle-off permanently; the
-  parked executables-inside-a-declared-surface move) remains the owner's call — tasks #1
-  is a ratification, not closed.
+  parked executables-inside-a-declared-surface move) remains the owner's call — tasks #2
+  is a ratification, not closed. NEW 2026-08-01: the install now LAGS HEAD by three
+  commits (@ `8d5cab6`; its cache lacks its own per-plugin CLAUDE.md).
 - **Skill shell blocks** now open with an explicit resolve-and-fallback —
   `ROOT="${CLAUDE_PROJECT_DIR}"; [ -d "$ROOT/plugins" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"`
   — which needs no answer about whether Claude Code substitutes the variable inside a
@@ -311,7 +331,7 @@ capability reach) — it CHECKS, never generates.
 `plugins/<name>/CLAUDE.md`; root CLAUDE.md is orientation-only (~11.5k chars) and carries
 a cross-reference row for the pattern.** A plugin behavior/shape change → edit the
 plugin's OWN CLAUDE.md; the root gets one-liners. References written against the old
-monolithic root may now point at moved content — an un-swept class (tasks #6).
+monolithic root may now point at moved content — an un-swept class (tasks #7).
 
 Plugin format changes → check all plugin.json; **new plugin → marketplace.json + the root
 bundle `.claude-plugin/plugin.json` DESCRIPTION + README + CLAUDE.md** (the bundle
@@ -320,7 +340,9 @@ format → resume reads it; **a retired hook → the plugin's own CLAUDE.md and 
 description** (drifted for kb and verifiability-lens; both CLAUDE.md sides FIXED in the
 restructure); **a version bump → a RELEASE-NOTES entry** (1.10.0 shipped without one);
 **a new duty → the root README's plugin-table row, not only the plugin's own docs** (the
-turn-end row still lists three duties at 0.3.0 — re-read 2026-07-31).
+turn-end row lagged at three duties through 0.3.0; fixed by the 0.3.1 cascade, re-read
+2026-08-01 — the law stands, the instance is closed; `self-check` re-triggers it when it
+lands).
 
 **Counts are never remembered, only re-derived.** Every hand-written test count, entry
 count or version in prose is a defect waiting to happen — the class has now produced

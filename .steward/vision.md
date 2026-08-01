@@ -111,6 +111,15 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    names what it abandons. Currently holds everywhere except a project running
    essense-autopilot, which still owns its own blocking Stop hook (tasks: extract its
    `decide()`).
+10. **Never hand the owner an unverified "DONE."** (Owner, verbatim, 2026-08-01: *"just
+    arbitrarily calling 'DONE' — can we make sure this has happened before finishing and
+    me having to ask?"*) A turn that produced work must carry verification evidence — a
+    check actually RUN, or the check + result NAMED — before it may yield, and the check
+    must live in the work's own medium: visual work gets LOOKED at, code gets run.
+    "Verifiably correct" is not "checked." Enforced by mechanism per invariant 3:
+    turn-end's default-ON `self-check` DEMAND duty (deterministic evidence detectors, no
+    judge). Two tiers on purpose: self-check is the cheap always-on floor; quality-lens
+    stays the opt-in deep tier — this does NOT re-take lens economics (Phase C).
 
 ## Declared growth axes (change expected here)
 

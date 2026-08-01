@@ -6,6 +6,90 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-08-02 · steward 0.3.0 budgets the loop + self-check hardened by owner pass 2 and the lens
+Two owner directives, same sitting, both executed:
+- **steward 0.3.0** (owner: "fires too often and for too long"; measured 12.5 min / 137k
+  tokens / 54 tool uses for two items + two 07-27 moving-tree re-runs): ONE background
+  integration pass per sitting (captures/landings accumulate; explicit "sync" outranks),
+  agent Economy section (verify only what it writes, snapshot-don't-chase, diff ≤15 lines,
+  minutes not quarter-hours). Recompute discipline untouched.
+  **Check:** `node tests/steward-brief.test.js` → 27/27; registry-check → exit 0.
+- **self-check pass 2** (owner: run must be OBSERVED with enough logs, compared vs the ASK,
+  and probed to BREAK, not happy-path only): `ran-and-looked` (exec + Read after; git/cat/…
+  never count as runs), named-check result-tense-only, ask teaches run→LOOK→compare→break.
+- **Lens verify pass over the build (3 escalations, 2 fixed now):** post-block boundary
+  reset — a decision:block reason arrives as a USER-role "Stop hook feedback:" entry and
+  ERASED the judged turn, silently dissolving the hard rung (machine-prefixed entries no
+  longer boundaries; real-shaped replay test); planning-prose regex hole closed. Escalation 3
+  OPEN: 0.4.0 unproven-live — needs one full-ladder live fire after plugin update + restart.
+  **Check:** `node tests/turn-end.test.js` → 130/130.
+- Inbox: 2 new captures accumulating (steward economics; look/log/break) — next pass batches.
+
+## 2026-08-02 · Task #1 LANDED — turn-end 0.4.0 ships `self-check`, the no-arbitrary-DONE duty
+Owner directive executed same sitting. New default-ON `severity:block` duty: a turn that
+changed real files may not yield until one EVIDENCE detector passes (check-shaped command
+AFTER the last change / ran-what-it-wrote / lens dispatched / check NAMED with observed
+result — the escape hatch that makes block safe). Zero tokens; quality-lens economics NOT
+re-taken. `extractTurn` gained ordered `toolCalls` (the "after" fact). Bookkeeping trees
+(.claude/.steward/.pipeline + tmp) excluded per the re-arm rule; snapshot absent → silent.
+- **Checks:** `node tests/turn-end.test.js` → 126/126 (was 110; ladder nudge→comply→allow,
+  ignore→block, before-the-edit check rejected, adapter E2E both halves);
+  `registry-check` → exit 0 (caught + fixed the stale README 0.3.1 row).
+- Cascade carried: plugin.json 0.4.0, RELEASE-NOTES (owner-set vs Claude-chosen split),
+  README row, marketplace row+description, plugin CLAUDE.md, root CLAUDE.md tree line.
+- INTEGRATED stubs deleted; inbox empty — steward-sync first-fire probe re-armed.
+- Not yet: commit; installs get the duty only after `claude plugin update turn-end` + restart.
+
+## 2026-08-01 · Two inbox items integrated at 1c978fd — disk had already closed item 1; item 2 is owner law + today's work
+Items 20260731-2030 (digest-rotation double defect) + 20260801-2349 (owner: self-check
+before done), each verified against disk before integration.
+- **Item 1 arrived FIXED — integrated as DONE, zero new tasks.** Both defects shipped the
+  same evening the note was written (kb 0.10.2, `1c978fd`): defect 1 (stale sitting
+  marker) — records on every fire, gate = `.claude/kb/` presence, self-repair tested;
+  defect 2 (judge child's new session_id — the "future hazard") — 45-min freshness
+  heartbeat + the `MK_TURN_END_DEPTH` stand-down. The cross-plugin env contract the
+  capture parked as an owner call was taken by Claude in the /doctor sitting; recorded as
+  such in parts. kb-session 62 → 78. Verified in `kb-session-start.js` source +
+  RELEASE-NOTES, not from the commit message alone. The item's Q11 rider (every judge
+  fire is a digest hazard) died with the stand-down.
+- **Item 2 → vision invariant 10 (owner verbatim: never an unverified "DONE") + tasks #1
+  IN FLIGHT** (executor: main session, today): default-ON `self-check` DEMAND duty in
+  turn-end — deterministic evidence detectors (check RUN, or check + result NAMED, in the
+  work's own medium), NO judge; quality-lens stays the opt-in deep tier. Weighed against
+  Q11's frame: does NOT reopen it (no judge, negligible cost) — joins the Phase C
+  economics ledger (#18). Not on disk yet (duties dir globbed: four duties, no
+  self-check).
+- **Q11 shrank to the policy re-take alone:** turn-end 0.3.1 executed the previous
+  recommended default — timeout 30 → 90 (read), invariant "the hook budget must exceed
+  the judge budget", measured pass 40.6s exit 0. The ~31s-stall-with-lost-recall cost is
+  GONE; only every-turn-vs-cheaper/rarer/overlapped/gated remains, and it is the owner's.
+- **Drift ledger moved:** README turn-end row CLOSED (four duties @ 0.3.1, read this
+  pass) · plugin-toolkit 1.10.0 RELEASE-NOTES entry still missing (re-verified) ·
+  checks.yml claim standing (re-read, Q12) · NEW light: marketplace metadata 2.47.0
+  unmoved while two rows moved · NEW tension: the session-reported test-all 31/31 (1681)
+  vs the believed-red ledger-compaction — both cannot be true; adjudication is now
+  tasks #10.
+- **Install lag inverted:** turn-end 0.3.1 + kb 0.10.2 @ HEAD (07-31T18:27Z, registry
+  read); plugin-toolkit now 3 commits BEHIND (@ `8d5cab6`, its cache lacks its own
+  CLAUDE.md). The /doctor restructure is COMMITTED (`5fb74b7`) — last pass's
+  tree-not-clean concern closed; tree now clean except this recompute.
+- Tasks recomputed 19 → 20: `self-check` inserted at #1, all former numbers +1;
+  README-row sub-item DELETED from #4 (fixed at source); #5 notes the fixes arrive by
+  user-scope install; #10 rewritten as the adjudication; #17 gains the
+  already-fixed-item adversarial shape; #18 carries the grown stack. Housekeeping: the
+  session's appended /doctor-fix log entry relocated from the file bottom to its
+  chronological slot below, text verbatim.
+- Checks this pass: refs both `1c978fd`; kb/turn-end plugin.json + marketplace rows read;
+  `kb-session-start.js` guards read in source; hooks.json timeout read (90); turn-end
+  duties dir globbed (no self-check); README turn-end + kb rows read; RELEASE-NOTES
+  0.3.1 / 0.10.2 / 1.9.0 read; installed registry read (three entries); inbox = exactly
+  2 items.
+
+## 2026-07-31 — /doctor session: two measured defects fixed and shipped
+- turn-end 0.3.1: hook timeout 30->90 (budget must exceed the judge's 60s; 39/52 in-window fires died at 30s, crowd-game 0 completions). Measured pass: real fire, judge ran, 40.6s, exit 0. Tests 110/110.
+- kb 0.10.2: spawned sessions can't steal the live digest (marker self-repairs, freshness guard, MK_TURN_END_DEPTH stand-down; 3 mid-sitting rotations measured before fix). kb-session 78/78, all kb suites green.
+- Both pushed (1946341, 1c978fd) after the docs restructure (5fb74b7); installs updated to 0.3.1/0.10.2 — restart pending to load them. Gates: repo-guard 0, registry-check 0, test-all 31/31 (1681).
+
 ## 2026-07-31 · /doctor item integrated at 8d5cab6 — distribution moved, Q11 got its second number, the drift list shrank
 One inbox item (owner-approved /doctor outcomes, per-group AskUserQuestion), every claim
 re-verified on disk before integration.

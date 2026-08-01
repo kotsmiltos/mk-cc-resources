@@ -65,13 +65,19 @@ plugins/
   steward/                  # Living-model keeper — per-project .steward/ model the steward
                             #   agent RECOMPUTES on every input (cascade pivots) and diffs
                             #   visibly; SessionStart briefing hook; owner-present work only.
-                            #   Standalone, not in mk-cc-all. See plugins/steward/CLAUDE.md.
+                            #   Budgeted since 0.3.0: ONE background integration pass per
+                            #   sitting; agent verifies only what it writes, routine diff
+                            #   ≤15 lines. Standalone, not in mk-cc-all.
+                            #   See plugins/steward/CLAUDE.md.
 
   turn-end/                 # THE single blocking Stop hook — plugins ship DUTIES, not hooks;
                             #   one runner checks each against real state, ONE consolidated
                             #   tail per user request. Duty kinds: DEMAND (ask) + SUPPLY
                             #   (material). Shipped duties: context-recall, session-digest,
-                            #   quality-lens, steward-sync. See plugins/turn-end/CLAUDE.md.
+                            #   quality-lens, steward-sync, self-check (0.4.0 — default-ON,
+                            #   severity:block: a turn that changed real files may not yield
+                            #   until a check ran AFTER the last change or the final message
+                            #   names the check + result). See plugins/turn-end/CLAUDE.md.
 
   kb/                       # Queryable knowledge base — the PULL side of the long-lens tools
                             #   (steward + lens PUSH a fixed briefing at open). Two orthogonal

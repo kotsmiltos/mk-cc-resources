@@ -17,17 +17,14 @@ measured **46s** (source: `.claude/kb/captures/20260727-0830-invented-constraint
 The attribution was corrected in code (turn-end 0.2.3), but fixing the *record* of a
 laundered choice does not re-open the *choice*; it is still standing on the bad number.
 
-**NEW measured evidence (2026-07-31 — Claude's finding, /doctor transcript scan + disk
-read; capture `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`):** the hook's
-own registration caps it at 30s — `plugins/turn-end/hooks/hooks.json:12` sets
-`"timeout": 30` (re-read at integration) — so the platform KILLS the 46s judge mid-flight.
-Across 50 sessions (07-27→07-31): 162 Stop fires, **36 hit the timeout** (`hook_cancelled`,
-`timedOut:true`, ~31–32s); p50 182ms, so the fast path is unaffected — the kill lands
-exactly on the fires where the judge runs, and the recall material is LOST on those turns.
-Not a code-vs-disk lag: the running hook matches disk; the config contradicts itself. So
-the policy as it actually executes is not "unconditional recall at 46s" — it is a ~31s
-dead stall on ~22% of turn-ends with the payload lost on exactly those. **The
-no-silent-miss property the policy was chosen FOR is already violated by its own config.**
+**The config contradiction that sharpened this on 07-31 is FIXED — the previous
+recommended default was EXECUTED (turn-end 0.3.1, same evening):** `hooks.json` timeout
+raised 30 → 90 (read 2026-08-01), restoring the invariant *the hook budget must exceed
+the judge budget* (the judge carries its own 60s execFile timeout + a NAMED degradation).
+Before-numbers: 39/52 in-window fires died at ~31s across 4 projects, crowd-game 0
+completions. Measured pass after: real fire, judge ran, clean verdict, 40.6s, exit 0.
+The ~31s-stall-with-lost-payload cost is GONE; the policy the owner chose (every-turn
+recall, no silent misses) now executes as chosen. Only the RE-TAKE itself remains.
 
 **What a re-take has to preserve** (the original argument, intact and not a cost claim):
 any gate deciding when recall matters can itself be wrong, and its failure mode is
@@ -38,16 +35,21 @@ rarer · let the 46s overlap the turn instead of terminating it · gate on a sig
 misses are visible. The owner pays the 46s and knows what a missed note costs — the
 decision is theirs.
 
-**Recommended default (Claude's — UPDATED by the timeout evidence; the previous "change
-nothing" default preserved a config that defeats the chosen policy):** fix the
-CONTRADICTION without re-taking the POLICY — raise or remove `timeout: 30` (the platform
-default 60s clears a 46s judge) and record one measured pass, which meets your rule that
-any alternative arrives with its own measured number. That restores the policy you chose
-(every-turn recall, no silent misses) as actually executed; the policy re-take itself
-(every-turn vs cheaper / rarer / overlapped / visibly-gated) stays open and is yours.
+**Weighed 2026-08-01 (two riders, neither reopens the frame):** (1) the digest-hazard
+rider from the 2030 inbox item — every judge fire spawns a child SessionStart — died
+before it could bear on this: kb 0.10.2's `MK_TURN_END_DEPTH` stand-down means a judge
+fire can no longer touch the digest. (2) The new owner-directed `self-check` duty adds a
+default-ON demand to producing turn-ends, but it is deterministic with NO judge —
+negligible cost, so it does not re-take this question; it joins the Phase C economics
+ledger (tasks #18).
 
-**Blocks:** nothing — but until touched it costs a ~31s dead stall on ~22% of turn-ends
-AND loses the recall material on exactly those.
+**Recommended default (Claude's):** with the contradiction fixed and one measured pass
+recorded, change nothing further — the chosen policy now actually executes. Re-open only
+if the 46s per producing turn-end annoys in practice; any alternative arrives with its
+own measured number (your rule).
+
+**Blocks:** nothing — the standing cost is the 46s judge per turn-end, which is the
+policy as originally chosen, now genuinely delivered.
 
 ---
 
@@ -65,13 +67,13 @@ predates or missed the revert. Meanwhile plugin-toolkit's RELEASE-NOTES 1.9.0 st
 the workflow "is replaced by `.github/workflows/checks.yml`" — false on disk.
 
 **Options:** (a) **No CI, on purpose** — fix the RELEASE-NOTES claim and done; the gates
-stay laptop-run (they only exist in this checkout anyway, see tasks #1). (b) **Re-add
-checks.yml** — recoverable from `51f139e` in minutes; note it will be RED from its first
-run until the ledger-compaction archive is authored (tasks #9). (c) Re-add later, gated
-behind #9 going green.
+stay laptop-run (they now travel via the standalone install, see tasks #2). (b) **Re-add
+checks.yml** — recoverable from `51f139e` in minutes; note the ledger-compaction suite's
+status is now UNCERTAIN (tasks #10 adjudicates whether it is red or test-all misses it).
+(c) Re-add later, gated behind #10 going green.
 
 **Recommended default (Claude's): (a).** The revert survived a push in the same sitting, so
-treat it as deliberate; correct the stale prose (folds into tasks #6). Re-adding is cheap
+treat it as deliberate; correct the stale prose (folds into tasks #7). Re-adding is cheap
 whenever wanted.
 
 **Blocks:** nothing.
@@ -96,7 +98,7 @@ whenever wanted.
   **Open remainder, flagged not proposed:** the duty only sees STAGED notes; a sitting that
   changes the project's shape with no capture written leaves the model stale and the inbox
   empty, and nothing fires (Q10's second staleness signal, unbuilt, not asked for). First
-  observed fire still outstanding — tasks #3.
+  observed fire still outstanding — tasks #4.
   Provenance: `inbox/done/20260727-2029-q10-resolution-enforced-recompute-as-a-turn-end-duty.md`.
 - **Q1 · Phase 0 pilot → mk-cc-resources (THIS repo)**, not crowd-game. The toolkit pilots
   itself; crowd-game seeding became a later task (Phase D), not the gate.
@@ -137,3 +139,13 @@ whenever wanted.
   it… not just numbers but in general not speaking and doing things in my voice."* Now law
   for this model too: every default records whether it was owner-set, measured (with the
   command), or Claude's choice.
+- **Owner directive (2026-08-01, being EXECUTED same day): work must be self-checked
+  before Claude reports done.** Verbatim: *"can we make sure that when claude comes back
+  with his work, it has already checked it's own work? … just arbitrarily calling 'DONE'
+  — can we make sure this has happened before finishing and me having to ask?"* Sparked by
+  a terrain-project incident: Claude authored blind, verified by sampling numbers, never
+  rendered/looked, shipped "verifiably correct" instead of "looks right". Now vision
+  invariant 10 + tasks #1 (in-flight: default-ON deterministic `self-check` DEMAND duty in
+  turn-end, no judge; quality-lens stays the opt-in deep tier — deliberately NOT a re-take
+  of lens economics or Q11). Provenance:
+  `inbox/done/20260801-2349-self-check-before-done.md`.
