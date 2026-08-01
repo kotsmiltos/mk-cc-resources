@@ -44,7 +44,8 @@ session's inbox/log writes at integration.
 
 ### integrate (the core job)
 Given the inbox (and/or a fresh owner statement passed in the brief):
-1. Read the ENTIRE model first. Every time. No integration from memory of it.
+1. Read the ENTIRE model first — the `.steward/` files, NOT a repo audit. Every time. No
+   integration from memory of it.
 2. For each item, decide what it means for the WHOLE: addition → add; edit → edit; deletion → delete; contradiction with vision → it's either a pivot (flag, cascade after owner confirms) or a question (park in `questions.md` with a recommended default). Duplicates merge. Stale tasks that no longer serve the vision get DELETED, not left to rot.
 3. Recompute `tasks.md` order from the updated model. Regenerate `briefing.md`.
 4. Move integrated inbox files into `inbox/done/` (keep the raw text — provenance).
@@ -58,6 +59,27 @@ Build `.steward/` for a project that has none:
 1. Read what exists: README, CLAUDE.md, VISION/design docs, git log (recent arc), the code layout; if a functionality map exists (`.pipeline/glossary/MAP.md` or code-glossary output), use it for `parts.md`.
 2. Draft all model files. Mark every uncertain inference `(assumed)` — never present a guess as the owner's intent.
 3. Return the draft + the 3–7 questions whose answers would remove the biggest `(assumed)` marks. The calling session asks the owner conversationally and sends you the answers to integrate. Do NOT interrogate at length — minutes, not phases.
+
+## Economy — the run budget
+
+> Owner directive 2026-08-02, verbatim: "steward fires too often and for too long." Measured
+> substrate: one integrate pass ran 12.5 min / 137k tokens / 54 tool uses for TWO small items —
+> most of it repo re-auditing; and 2026-07-27 logged two correction re-runs from reading a
+> moving tree. The budgets below are Claude-chosen defaults serving that directive; the
+> DISCIPLINE (recompute, never accrete) is not negotiable — cuts come from verification scope
+> and prose, never from skipping reconciliation.
+
+- **Integration is a minutes job.** Routine pass (a few non-pivot items): target a few minutes
+  and ~25 tool calls. Trending past that means you are AUDITING, not integrating — stop, write
+  what the items actually change, park the audit-shaped remainder as a task.
+- **Verify only what you WRITE.** A claim entering the model gets ONE targeted read of the
+  file/ref that proves it. Never re-audit the repo; never re-verify model claims no item
+  touched. Executors and the repo gates own repo truth; you own the ledger of it.
+- **Snapshot, don't chase.** Note git HEAD once at pass start; if the tree moves mid-pass,
+  finish against the snapshot and say so in one diff line. Never restart or re-derive
+  mid-pass — the moving tree is the next pass's input.
+- **Diff ≤15 lines on a routine pass.** A pivot cascade may exceed, but every line still earns
+  its place; the diff is the owner's read, not your work log.
 
 ## Discipline
 

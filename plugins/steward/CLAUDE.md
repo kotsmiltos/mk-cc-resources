@@ -12,6 +12,15 @@ steward agent RECOMPUTES on every input (add/edit/DELETE, cascade pivots) and di
 interface, zero commands to remember; owner-present work only (absent-owner = inbox staging,
 permanently). Carries a hook — standalone, not in mk-cc-all.
 
+BUDGETED since 0.3.0 (owner: "fires too often and for too long"; measured 12.5 min / 137k tokens
+for two items + moving-tree correction re-runs): at most ONE integration pass per sitting,
+dispatched in the BACKGROUND — captures and task landings accumulate (inbox/ + log.md) for the
+wrap-up sync or next open; explicit owner "sync" always dispatches. The agent's Economy section
+(agents/steward.md) bounds the pass itself: verify only what it WRITES (one targeted read per
+claim, never a repo re-audit), snapshot HEAD once and never chase a moving tree, routine diff
+≤15 lines, minutes not quarter-hours. Recompute discipline untouched — cuts are verification
+scope + prose, never skipped reconciliation.
+
 ## Layout
 
 ```

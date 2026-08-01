@@ -63,8 +63,9 @@ const PROTOCOL = [
   '- Owner messages that are ideas/wishes/direction (not immediate work instructions): capture verbatim to .steward/inbox/<YYYYMMDD-HHmm>-<slug>.md, acknowledge in one line, move on.',
   '- "where are we"/"what\'s next" -> answer from .steward/ (model is the source, not code re-derivation).',
   '- "do it"/"work on X" -> execute now, owner watching: small step -> fast tests -> show result + named check. One build pass + deterministic checks + max ONE review pass; unresolved -> park, never loop.',
-  '- "sync"/"wrap up"/session-end signals -> dispatch the steward agent (job: integrate), show the owner the returned diff.',
-  '- If unintegrated inbox items are reported below: integrate FIRST (steward agent), show the diff, then proceed.',
+  '- "sync"/"wrap up"/session-end signals -> dispatch the steward agent (job: integrate), show the owner the returned diff. This is the sitting\'s ONE batch point.',
+  '- If unintegrated inbox items are reported below: dispatch the steward agent (job: integrate) in the BACKGROUND, proceed with the owner\'s ask meanwhile, show the diff when it returns. Never block the owner on integration.',
+  '- Steward runs are BATCHED — at most ONE integration pass per sitting. Mid-sitting captures and task landings ACCUMULATE (inbox/ + log.md appends) for the wrap-up sync or the next session\'s pass; never a fresh dispatch per capture or per landing. An explicit owner "sync" always dispatches.',
   '- Writer rule: the steward agent is the only writer of the MODEL files (vision/state/parts/questions/tasks/briefing). The session MAY write .steward/inbox/ captures and append .steward/log.md outcomes; the steward reconciles them. No work absent the owner.',
   '</steward-protocol>'
 ].join('\n');
@@ -112,7 +113,7 @@ function main() {
     const pending = fs.readdirSync(path.join(root, 'inbox'))
       .filter((f) => f.endsWith('.md'));
     if (pending.length > 0) {
-      pendingNote = `inbox: ${pending.length} UNINTEGRATED item(s) from a previous session — integrate first (steward agent), show the diff, then proceed.`;
+      pendingNote = `inbox: ${pending.length} UNINTEGRATED item(s) from a previous session — dispatch the steward agent (job: integrate) in the background, proceed meanwhile, show the diff when it returns.`;
     }
   } catch (_) { /* no inbox dir yet — fine */ }
 

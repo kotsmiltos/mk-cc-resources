@@ -1,5 +1,32 @@
 # steward — Release Notes
 
+## 0.3.0 — The loop goes on a budget: one background pass per sitting, minutes not quarter-hours
+
+Owner directive, verbatim: "steward fires too often and for too long." The numbers behind it:
+one integrate pass ran **12.5 min / 137k tokens / 54 tool uses for TWO small inbox items** —
+most of it re-auditing the repo rather than integrating; an earlier sitting logged **three
+passes**, two of them correction re-runs caused by reading a tree that moved mid-pass. The
+protocol also mandated a dispatch per task landing and a blocking integrate-first at session
+open, so a busy sitting multiplied 12-minute passes.
+
+Frequency — **one batched pass per sitting**: mid-sitting captures and task landings
+ACCUMULATE (inbox/ files + log.md appends); the batch points are the wrap-up sync or the next
+session's open, and the open-pass now dispatches in the BACKGROUND — the owner is never made
+to wait on integration. An explicit owner "sync" always dispatches; the owner outranks the
+cadence. (SKILL.md cadence section, hook protocol text, routing table.)
+
+Duration — the agent gains an **Economy section** (agents/steward.md): verify only what you
+WRITE (one targeted read per claim entering the model — never a repo re-audit; executors and
+the repo gates own repo truth), snapshot HEAD once and finish against it (a moving tree is the
+next pass's input, never a mid-pass restart), routine diff ≤15 lines, routine pass targeted at
+minutes / ~25 tool calls — past that you are auditing, not integrating.
+
+The recompute discipline is deliberately untouched: reconcile every item against the whole
+MODEL, never accrete. The cuts come from verification scope and prose. Budgets are
+Claude-chosen defaults serving the directive, marked as such in the mandate.
+
+27/27 hook tests pass (protocol strings reworded around the pinned assertions).
+
 ## 0.2.1 — An over-budget briefing now says how much of it you are not seeing
 
 The SessionStart hook capped the injected briefing at 2000 chars and appended the word
