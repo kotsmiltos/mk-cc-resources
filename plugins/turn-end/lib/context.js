@@ -63,6 +63,31 @@ function makeDisk(cwd) {
   };
 }
 
+/*
+ * A user-ROLE transcript entry is not always the USER talking. A `decision:block` reason
+ * comes back as {"type":"user","message":{"role":"user","content":"Stop hook feedback:\n…"}}
+ * — measured on a real transcript — and treating it as a turn boundary ERASES the very turn
+ * the block was judging: the post-block fire then sees zero tool calls, every applies() goes
+ * false, and the ladder's hard rung silently dissolves (a refusal reads identical to
+ * success). kb-pull and thorough-mode already classify these prefixes as machine text for
+ * prompts; boundary detection applies the same rule here. The entries STAY in the transcript
+ * — they are only not boundaries. Prefix-at-start only: a user legitimately pasting one
+ * mid-message is still the user.
+ */
+const MACHINE_TEXT_PREFIXES = [
+  '[SYSTEM NOTIFICATION',
+  '<task-notification>',
+  'Stop hook feedback:',
+  '<local-command',
+  '<command-name>',
+  '<system-reminder>',
+];
+
+function isMachineText(text) {
+  const head = String(text || '').replace(/^\s+/, '').slice(0, 200);
+  return MACHINE_TEXT_PREFIXES.some((m) => head.startsWith(m));
+}
+
 /**
  * Aggregate the CURRENT TURN from the transcript: every assistant message since the last
  * genuine user prompt, with the tools used and the paths written.
@@ -76,7 +101,7 @@ function makeDisk(cwd) {
  * from the payload is carried separately and preferred for the final text.
  */
 function extractTurn(transcriptPath) {
-  const EMPTY = { text: '', toolNames: [], toolTargets: [], userRequest: '' };
+  const EMPTY = { text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '' };
   if (!transcriptPath) return EMPTY;
   let raw;
   try {
@@ -98,6 +123,7 @@ function extractTurn(transcriptPath) {
     let text = '';
     const tools = [];
     const targets = [];
+    const calls = [];
     let hasToolResult = false;
     if (typeof content === 'string') {
       text = content;
@@ -107,12 +133,23 @@ function extractTurn(transcriptPath) {
         if (c.type === 'text' && typeof c.text === 'string') text += `${c.text}\n`;
         else if (c.type === 'tool_use' && c.name) {
           tools.push(c.name);
-          if (c.input && typeof c.input.file_path === 'string') targets.push(c.input.file_path);
-          if (c.input && typeof c.input.subagent_type === 'string') targets.push(`agent:${c.input.subagent_type}`);
+          // The ORDERED record as well: "did a check run AFTER the last change?" is an
+          // ordering fact, and the flat name/target lists cannot express it (self-check).
+          const call = { name: c.name };
+          if (c.input && typeof c.input.file_path === 'string') {
+            targets.push(c.input.file_path);
+            call.target = c.input.file_path;
+          }
+          if (c.input && typeof c.input.subagent_type === 'string') {
+            targets.push(`agent:${c.input.subagent_type}`);
+            call.target = `agent:${c.input.subagent_type}`;
+          }
+          if (c.input && typeof c.input.command === 'string') call.command = c.input.command;
+          calls.push(call);
         } else if (c.type === 'tool_result') hasToolResult = true;
       }
     }
-    msgs.push({ role, text: text.trim(), tools, targets, hasToolResult });
+    msgs.push({ role, text: text.trim(), tools, targets, calls, hasToolResult });
   }
   if (!msgs.length) return EMPTY;
 
@@ -121,7 +158,7 @@ function extractTurn(transcriptPath) {
   let start = 0;
   let userRequest = '';
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult) {
+    if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult && !isMachineText(msgs[i].text)) {
       start = i + 1;
       // The ASK itself. A judge deciding "what context was this answer missing?" needs the
       // question, not only the answer — an answer can look complete and still address the
@@ -134,13 +171,15 @@ function extractTurn(transcriptPath) {
   let text = '';
   let toolNames = [];
   let toolTargets = [];
+  let toolCalls = [];
   for (let i = start; i < msgs.length; i++) {
     if (msgs[i].role !== 'assistant') continue;
     if (msgs[i].text) text += `${msgs[i].text}\n`;
     toolNames = toolNames.concat(msgs[i].tools);
     toolTargets = toolTargets.concat(msgs[i].targets);
+    toolCalls = toolCalls.concat(msgs[i].calls);
   }
-  return { text: text.trim(), toolNames, toolTargets, userRequest };
+  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest };
 }
 
 /**
@@ -170,4 +209,4 @@ function buildContext(payload, cwd, ledger) {
   return Object.freeze(ctx);
 }
 
-module.exports = { buildContext, extractTurn, makeDisk };
+module.exports = { buildContext, extractTurn, makeDisk, isMachineText, MACHINE_TEXT_PREFIXES };

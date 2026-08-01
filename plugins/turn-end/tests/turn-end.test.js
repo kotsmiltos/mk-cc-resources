@@ -31,6 +31,7 @@ const sessionDigest = require('../lib/duties/session-digest');
 const qualityLens = require('../lib/duties/quality-lens');
 const stewardSync = require('../lib/duties/steward-sync');
 const contextRecall = require('../lib/duties/context-recall');
+const selfCheck = require('../lib/duties/self-check');
 const claudeP = require('../lib/judges/claude-p');
 const duties = require('../lib/duties');
 const sources = require('../lib/sources');
@@ -359,6 +360,38 @@ check('extractTurn on a missing transcript returns empty, never throws', () => {
   assert.deepStrictEqual(t.toolNames, []);
 });
 
+check("extractTurn: a block's own feedback is NOT a turn boundary (lens-found, real shape)", () => {
+  // Measured on a live transcript: a decision:block reason is recorded as a USER-role entry
+  // whose content starts "Stop hook feedback:". Treating it as a boundary erased the turn the
+  // block was judging — the post-block fire saw zero tool calls and every duty released.
+  const dir = tmpdir('transcript-block-feedback');
+  const f = path.join(dir, 't.jsonl');
+  fs.writeFileSync(f, [
+    JSON.stringify({ message: { role: 'user', content: 'fix the parser' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } }),
+    JSON.stringify({ type: 'user', message: { role: 'user', content: 'Stop hook feedback:\n[turn-end] still unmet after a prior nudge — do these before yielding:\n1. (self-check) …' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'no.' }] } }),
+  ].join('\n'));
+  const turn = extractTurn(f);
+  assert.ok(turn.toolNames.includes('Edit'), 'the judged turn survives the block feedback');
+  assert.strictEqual(turn.userRequest, 'fix the parser', 'the boundary is the genuine prompt');
+});
+
+check('extractTurn: ordered toolCalls carry target and command — "after" is an ordering fact', () => {
+  const dir = tmpdir('transcript-calls');
+  const f = path.join(dir, 't.jsonl');
+  fs.writeFileSync(f, [
+    JSON.stringify({ message: { role: 'user', content: 'build and check it' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: '/a/gen.js' } }] } }),
+    JSON.stringify({ message: { role: 'user', content: [{ type: 'tool_result' }] } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: { command: 'node /a/gen.js --check' } }] } }),
+  ].join('\n'));
+  assert.deepStrictEqual(extractTurn(f).toolCalls, [
+    { name: 'Write', target: '/a/gen.js' },
+    { name: 'Bash', command: 'node /a/gen.js --check' },
+  ]);
+});
+
 check('disk reads are MEMOIZED so every duty sees the same tree', () => {
   const dir = tmpdir('memo');
   const f = path.join(dir, 'x.txt');
@@ -389,6 +422,155 @@ check('buildContext carries stop_hook_active and prompt_id off the payload', () 
 check('buildContext freezes the context', () => {
   const ctx = buildContext({ cwd: TMP }, TMP, null);
   assert.ok(Object.isFrozen(ctx));
+});
+
+// ---------- duty: self-check ----------
+
+// Ordered-call shorthand for the fixtures below.
+const wCall = (target) => ({ name: 'Write', target });
+const eCall = (target) => ({ name: 'Edit', target });
+const bCall = (command) => ({ name: 'Bash', command });
+
+function selfCheckCtx(calls, over = {}) {
+  return fakeCtx({
+    lastAssistantMessage: 'done with that',
+    ...over,
+    turn: {
+      text: 'work',
+      toolNames: calls.map((c) => c.name),
+      toolTargets: [],
+      toolCalls: calls,
+      ...(over.turn || {}),
+    },
+  });
+}
+
+check('self-check: applies when the turn changed a real file', () => {
+  assert.strictEqual(selfCheck.applies(selfCheckCtx([eCall('/src/app.js')])), true);
+});
+
+check('self-check: silent on a turn that only read and ran', () => {
+  const ctx = selfCheckCtx([{ name: 'Read', target: '/src/app.js' }, bCall('git status')]);
+  assert.strictEqual(selfCheck.applies(ctx), false);
+});
+
+check("self-check: another duty's mandated bookkeeping is NOT fresh work", () => {
+  // The registry rule: digests, inbox captures, pipeline state are mandated output; counting
+  // them as work would re-arm this duty off its siblings' asks.
+  const ctx = selfCheckCtx([
+    wCall('/proj/.claude/kb/session-digest.md'),
+    wCall('/proj/.steward/inbox/note.md'),
+    wCall('/proj/.pipeline/state.yaml'),
+  ]);
+  assert.strictEqual(selfCheck.applies(ctx), false);
+});
+
+check('self-check: a snapshot without ordered calls stays SILENT (fail toward silence)', () => {
+  // fakeCtx carries toolNames but no toolCalls — evidence is undecidable there, and
+  // undecidable must never become a demand.
+  assert.strictEqual(selfCheck.applies(fakeCtx()), false);
+});
+
+check('self-check: a test command AFTER the change satisfies', () => {
+  const ctx = selfCheckCtx([eCall('/src/app.js'), bCall('node tests/app.test.js')]);
+  assert.strictEqual(selfCheck.satisfied(ctx), true);
+});
+
+check('self-check: a check run BEFORE the last change verifies nothing', () => {
+  const ctx = selfCheckCtx([bCall('npm test'), eCall('/src/app.js')], {
+    lastAssistantMessage: 'fixed it, all good now',
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
+});
+
+check('self-check: run + LOOK satisfies (the terrain loop: write render script, RUN it, look)', () => {
+  const ctx = selfCheckCtx(
+    [
+      wCall('/tools/render-map.py'),
+      bCall('python /tools/render-map.py --out map.png'),
+      { name: 'Read', target: '/tools/map.png' },
+    ],
+    { lastAssistantMessage: 'rendered the map' }
+  );
+  assert.strictEqual(selfCheck.satisfied(ctx), true);
+});
+
+check('self-check: a run NOBODY LOOKED at is not evidence (owner: "needs ways to look")', () => {
+  const ctx = selfCheckCtx(
+    [wCall('/tools/render-map.py'), bCall('python /tools/render-map.py --out map.png')],
+    { lastAssistantMessage: 'rendered the map' }
+  );
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
+});
+
+check('self-check: git naming the file is NOT a run (lens-found hole)', () => {
+  // edit -> commit -> DONE is this repo's most common turn shape; the commit message names
+  // the file, and a later Read exists — neither may count as having RUN the work.
+  const ctx = selfCheckCtx(
+    [
+      eCall('/src/app.js'),
+      bCall('git add /src/app.js'),
+      bCall('git commit -m "fix app.js"'),
+      { name: 'Read', target: '/src/README.md' },
+    ],
+    { lastAssistantMessage: 'committed' }
+  );
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
+});
+
+check('self-check: planning prose "make sure the tests pass" is NOT a named check (lens-found)', () => {
+  const ctx = selfCheckCtx([eCall('/src/app.js')], {
+    lastAssistantMessage: "I'll make sure the tests pass before we ship this.",
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
+});
+
+check('self-check: naming the check + observed result in the final message satisfies', () => {
+  const ctx = selfCheckCtx([eCall('/src/app.js')], {
+    lastAssistantMessage: 'Check: node tests/app.test.js → 42/42 pass',
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), true);
+});
+
+check('self-check: "should work" prose is NOT evidence', () => {
+  const ctx = selfCheckCtx([eCall('/src/app.js')], {
+    lastAssistantMessage: 'Refactored the parser, should work now.',
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
+});
+
+check('self-check: dispatching the verifiability lens satisfies (deep tier supersedes)', () => {
+  const ctx = selfCheckCtx([eCall('/src/app.js')], {
+    turn: { toolTargets: ['agent:verifiability-lens'] },
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), true);
+});
+
+check("self-check: severity is block — enforcement was the owner's explicit ask", () => {
+  assert.strictEqual(selfCheck.severity, 'block');
+});
+
+check('self-check: the ask NAMES the unverified files', () => {
+  const ask = selfCheck.ask(selfCheckCtx([eCall('/src/terrain.cs'), wCall('/src/heightmap.py')]));
+  assert.ok(ask.includes('terrain.cs') && ask.includes('heightmap.py'), ask);
+});
+
+check('self-check: full ladder — nudge, comply with a real check, allow', () => {
+  let ledger = ledgerStore.emptyLedger('req-sc-1');
+  const first = decide(selfCheckCtx([eCall('/src/app.js')], { ledger }), [selfCheck]);
+  assert.strictEqual(first.action, 'advise', 'first fire nudges, never blocks');
+  ledger = ledgerStore.advance(ledger, first.unsatisfied);
+  const complied = selfCheckCtx([eCall('/src/app.js'), bCall('node tests/app.test.js')], {
+    ledger,
+    stopHookActive: true,
+  });
+  assert.strictEqual(decide(complied, [selfCheck]).action, 'allow', 'evidence ends the loop structurally');
+});
+
+check('self-check: ignoring the nudge hardens to a real block', () => {
+  const ledger = { promptId: 'req-sc-2', fires: 1, asked: ['self-check'] };
+  const r = decide(selfCheckCtx([eCall('/src/app.js')], { ledger, stopHookActive: true }), [selfCheck]);
+  assert.strictEqual(r.action, 'block');
 });
 
 // ---------- duty: session-digest ----------
@@ -1073,6 +1255,34 @@ check('E2E: the hook emits additionalContext for an unmet duty', () => {
   assert.ok(parsed.hookSpecificOutput, 'emitted additionalContext');
   assert.ok(parsed.hookSpecificOutput.additionalContext.includes('session-digest'));
   assert.ok(fs.existsSync(path.join(dir, ledgerStore.LEDGER_REL)), 'ledger written');
+});
+
+check('E2E: unchecked work is nudged; the same work WITH its check passes silently', () => {
+  // The owner's directive end-to-end through the real adapter: a turn that changed a file and
+  // named no check may not yield unnoticed; the identical turn whose transcript shows the
+  // check running AFTER the change is not bothered at all.
+  const dir = tmpdir('e2e-self-check');
+  const transcript = path.join(dir, 't.jsonl');
+  const editMsg = JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } });
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'fix the parser' } }),
+    editMsg,
+  ].join('\n'));
+  const payload = (pid) => JSON.stringify({
+    cwd: dir, prompt_id: pid, stop_hook_active: false,
+    last_assistant_message: 'fixed it', transcript_path: transcript, hook_event_name: 'Stop',
+  });
+  const script = path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js');
+  const nudged = execFileSync(process.execPath, [script], { input: payload('e2e-sc-1'), encoding: 'utf8' });
+  assert.ok(JSON.parse(nudged).hookSpecificOutput.additionalContext.includes('(self-check)'), 'unchecked work is named');
+
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'fix the parser' } }),
+    editMsg,
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: { command: 'node tests/app.test.js' } }] } }),
+  ].join('\n'));
+  const clean = execFileSync(process.execPath, [script], { input: payload('e2e-sc-2'), encoding: 'utf8' });
+  assert.strictEqual(clean.trim(), '', 'checked work yields untouched');
 });
 
 check('E2E: a staged steward inbox is named in the tail, and recorded against the SITTING', () => {

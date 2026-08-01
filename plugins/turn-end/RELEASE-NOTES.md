@@ -1,5 +1,65 @@
 # turn-end — release notes
 
+## 0.4.0 — 2026-08-01 — self-check: no more "DONE" without a check
+
+A fifth duty, and the first default-ON blocking one. Owner directive (verbatim in
+`.steward/inbox/20260801-2349-self-check-before-done.md`): "when claude comes back with his
+work, it has already checked it's own work … just arbitrarily calling 'DONE' … make sure this
+has happened before finishing and me having to ask." The triggering incident, another project:
+terrain authored blind — verified by sampling numbers, never rendered, never looked at;
+"verifiably correct" shipped where "looks right" was the bar, and the owner had to ask.
+
+`self-check` is the CHEAP tier of that guarantee: zero tokens, pure scans over the turn
+snapshot. A turn that changed real files may not yield until ONE evidence detector passes: a
+check-shaped command ran AFTER the last change (test/lint/typecheck/build runners), the turn
+executed what it wrote AND LOOKED at the output (a render script run then its output Read;
+vcs/file-plumbing commands never count as runs), the verifiability lens was dispatched (the
+deep tier supersedes), or the final message NAMES the check with its observed result
+("Check: node tests/x.test.js → 110/110 pass"). The last is the universal escape hatch —
+whatever exotic check the work needed, one sentence satisfies — and it is what makes
+`severity: block` safe: compliance is never more than a sentence away, and a false "Check:" is
+an EXPLICIT claim the deep tier or the owner can catch, strictly better than the silent
+no-check this duty kills. quality-lens stays opt-in (~70k tokens a pass, firing economics
+deliberately parked): the tiers are complementary, not competing.
+
+**Set by the owner:** that the guarantee exists, default-on, before-yield ("me having to ask"
+is the failure mode). **Chosen by Claude, not requested:** the tier split, `block`, priority 15,
+the four starter detectors, the internal-tree exclusions (`.claude` / `.steward` / `.pipeline` +
+tmp — mandated bookkeeping is not fresh work, the registry's re-arm rule), and fail-toward-
+silence when the ordered snapshot is absent. Demote or disable per project:
+`.claude/turn-end.json` → `{"duties":{"self-check":{"severity":"advise"}}}` / `{"enabled":false}`.
+
+Ordering is load-bearing — a check that ran before the last edit verifies nothing about the
+edit — so `extractTurn` now also emits ORDERED `toolCalls` `[{name, target?, command?}]`; the
+flat name/target lists cannot express "after". Evidence detectors are an open registry
+(`EVIDENCE`): a new modality is a new detector, never a runner change.
+
+**Second owner pass, same day (verbatim):** "this needs to have ways to look right? it needs
+to have used enough logs for it to be able to understand what happened … and it also should
+check that it tested to break it and not only happy paths." Bare execution refused:
+`ran-and-looked` requires a Read AFTER the run; non-executing command heads (`git`, `cat`,
+`rm`, …) never count as runs; the ask now teaches the full loop — run with enough logging
+that the output SAYS what happened (can't-read-it is a finding, not a pass), compare observed
+vs ASKED, and at least one break attempt off the happy path. What no regex can judge (were
+the breaks real, was it what was asked) stays the deep tier's job.
+
+**Lens pass over the build found two more, both fixed:** (1) a `decision:block` reason lands
+in the transcript as a USER-role `Stop hook feedback:` entry and reset `extractTurn`'s turn
+boundary — the post-block fire saw an empty turn and every duty silently released, so the
+ladder's hard rung dissolved and a refusal read identical to success; boundary detection now
+skips machine-prefixed user entries (the same prefix rule kb-pull and thorough-mode already
+apply), with a real-shaped replay test. (2) The named-check regex accepted the planning
+phrase "make sure the tests pass" — result tense only now.
+
+130/130 checks (was 110): the full ladder replayed (nudge → comply → allow; ignore → block),
+before-the-edit checks rejected, run-without-look rejected, git-naming-the-file rejected,
+planning prose rejected, block-feedback boundary replayed with the real transcript shape,
+bookkeeping writes not counted as work, old snapshots silent, plus an adapter E2E.
+
+Duties register at install time — `claude plugin update turn-end@mk-cc-resources` + restart
+before expecting the new duty. **0.4.0 is unproven-live until one full-ladder live fire is on
+record** (edit a scratch file, yield unchecked, ignore the nudge, confirm block → comply).
+
 ## 0.3.1 — 2026-07-31 — the hook budget no longer kills its own judge
 
 `hooks.json` set `timeout: 30` while a real context-recall fire measures ~40–46s against a real

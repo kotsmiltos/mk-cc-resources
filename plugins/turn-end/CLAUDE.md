@@ -31,7 +31,14 @@ lib/runner.js           # PURE policy: registry walk -> applies/satisfied -> ONE
                         #   unmet after that nudge
 lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the life of a
                         #   fire, so a duty cannot see a tree a sibling moved. Whole-turn
-                        #   transcript extraction (last-message-only silently never fires).
+                        #   transcript extraction (last-message-only silently never fires);
+                        #   emits flat toolNames/toolTargets AND ordered toolCalls
+                        #   [{name,target?,command?}] — "a check ran AFTER the last change"
+                        #   is an ordering fact the flat lists cannot express. Machine-
+                        #   prefixed USER-role entries ("Stop hook feedback:" etc.) are NOT
+                        #   turn boundaries — a decision:block reason arrives as one and
+                        #   previously ERASED the judged turn, dissolving the ladder's hard
+                        #   rung (lens-found, real-transcript-proven).
                         #   list(rel) is the generic tree primitive — typed, sorted, and
                         #   deliberately UNFILTERED, since duties disagree about which
                         #   entries count; hasFilesIn derives from it, one readdir for both
@@ -63,7 +70,21 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   SESSION span because its ask spawns the steward agent. An item
                         #   is a top-level non-dot `.md` file, so done/ and .gitkeep stay
                         #   out of a count that would read 4 against a real inbox of 3 and
-                        #   never reach zero).
+                        #   never reach zero),
+                        #   self-check (0.4.0, owner directive "no arbitrary DONE" — the first
+                        #   default-ON severity:block duty. A turn that changed real files may
+                        #   not yield until ONE evidence detector passes: check-shaped command
+                        #   AFTER the last change / ran-AND-LOOKED (exec of own artifact + a
+                        #   Read after; git/cat/rm/… heads never count as runs — owner pass 2:
+                        #   a run nobody observed is half a check) / lens dispatched / check
+                        #   NAMED with observed result in the final message — the universal
+                        #   escape hatch that makes block safe; result tense only ("passed",
+                        #   never planning "pass"). The ask teaches run -> LOOK -> compare vs
+                        #   ASKED -> try to BREAK it. Zero tokens; the EVIDENCE registry is
+                        #   the extension surface (new modality = new detector). Excludes
+                        #   .claude/.steward/.pipeline + tmp writes — mandated bookkeeping is
+                        #   not fresh work. Needs ctx.turn.toolCalls, the ORDERED snapshot;
+                        #   absent -> silent, never a demand).
                         #   Add one = one require, no runner change
 lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
                         #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
@@ -91,9 +112,13 @@ hooks/                  # the one Stop registration; the adapter holds ZERO poli
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 110 checks, own temp fixtures. Three replay measured failures
+tests/turn-end.test.js  # 130 checks, own temp fixtures. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
-                        #   done/ + .gitkeep are not inbox items);
+                        #   done/ + .gitkeep are not inbox items); self-check's ladder is
+                        #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;
+                        #   a check BEFORE the last edit rejected; run-without-look, git-
+                        #   naming-the-file, and planning prose all rejected; the block-
+                        #   feedback boundary replayed with the real transcript shape);
                         #   one asserts a VERBATIM marker from a note body survives into
                         #   the injected material. check() REJECTS a promise-returning body
                         #   — a sync harness counted three async tests as passing before
