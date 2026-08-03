@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.3.1) — THE single blocking Stop hook
+## turn-end (0.4.1) — THE single blocking Stop hook
 
 - **Exposes:** one `Stop` registration for the whole toolkit. Plugins ship DUTIES; the
   runner checks each applicable duty against real state and emits ONE consolidated message
@@ -49,15 +49,22 @@ capability reach) — it CHECKS, never generates.
   duties (read 2026-08-01; that drift instance is CLOSED). **Never yet observed firing — a
   LIVE check, see state.md**) · `quality-lens` (advise, from verifiability-lens; its
   meta-loop guard judges the ROLLUP'S SHAPE, not the plugin's NAME).
-- **IN FLIGHT (2026-08-01, owner-directed): `self-check`** — a fifth duty, default-ON
-  DEMAND: a turn that produced work must carry verification evidence (a check actually
-  RUN, or the check + result NAMED, in the work's own medium) before it may yield.
-  Deterministic evidence detectors, NO judge — quality-lens stays the opt-in deep tier;
-  this deliberately does not re-take lens economics. Owner set: default-on, the
-  before-done guarantee (vision invariant 10, verbatim there); detector specifics /
-  severity / span are the executor's to choose and record as Claude's. Not on disk yet
-  (duties dir globbed 2026-08-01: four duties). Tasks #1 carries the build + the doc
-  cascade, incl. the README-row law below.
+- **SHIPPED 0.4.0 (owner directive + pass 2, 2026-08-01/02): `self-check`** — the fifth
+  duty, the first default-ON `severity:block` DEMAND: a turn that changed real files may
+  not yield until ONE evidence detector passes — check-shaped command run AFTER the last
+  change (needs the ordered `toolCalls` snapshot; absent → silent, never a demand) /
+  `ran-and-looked` (exec of its own artifact + a Read after; git/cat/… heads never count
+  as runs) / lens dispatched / check + observed result NAMED in the final message, result
+  tense only — the escape hatch that makes block safe. The ask teaches run → LOOK →
+  compare vs the ASK → try to BREAK it (owner pass 2: a run nobody observed is half a
+  check; happy-path-only is not a check — semantic halves stay quality-lens's job). Zero
+  tokens, NO judge; the EVIDENCE registry is the extension surface. Bookkeeping trees
+  (`.claude/`, `.steward/`, `.pipeline/`, tmp) excluded per the re-arm rule. Lens verify
+  pass fixed two build defects pre-release: machine-prefixed USER entries ("Stop hook
+  feedback:") are no longer turn boundaries (a block reason ERASED the judged turn,
+  silently dissolving the hard rung — real-shaped replay test), and the planning-prose
+  regex hole. **LIVE PROOF STILL OPEN** — one full-ladder live fire after push + plugin
+  update + restart (tasks #1).
 - **Sources** (`lib/sources/`) — WHERE recallable knowledge lives, the second extension
   surface. `{id,title,available,index,fetch}`, TWO-PHASE and the split is load-bearing:
   `index()` emits titles + ids and NEVER bodies, the judge picks ids, `fetch()` returns the
@@ -80,6 +87,15 @@ capability reach) — it CHECKS, never generates.
   died at ~31s across 4 projects, crowd-game 0 completions. Measured after: one real
   fire, judge ran, clean verdict, 40.6s, exit 0. Evidence: RELEASE-NOTES 0.3.1 + capture
   `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
+- **FIXED in 0.4.1 (2026-08-02/03) — runtime state no longer follows the shell's cwd:**
+  ALL state (config / ledger / trace) anchors to `resolveProjectRoot` — nearest ancestor
+  with `.git`, never HOME or above; raw cwd only when none exists. `payload.cwd` follows
+  the shell's last `cd` (measured twice in one sitting: stray `plugins/*/.claude/` trees
+  after running tests/gates; the per-request ledger SPLIT across directories, so a
+  session-span duty re-asked from the split bucket). Also trims the steward-sync ask
+  (part of the 08-03 injection diet). This defect is the new best CANDIDATE for why
+  `steward-sync` was never observed firing — unproven until a post-0.4.1 live probe
+  (tasks #4).
 - **Termination:** structural. `MAX_FIRES_PER_PROMPT = 3` (`lib/runner.js:37`) is only the
   backstop for a satisfaction check that is WRONG; it sits strictly under the platform's
   8-consecutive-block cap (`:38`) so exhaustion is REPORTED by us — a silent platform cut
@@ -95,25 +111,40 @@ capability reach) — it CHECKS, never generates.
   tool drops in out of every count.
 - **Files:** `plugins/turn-end/{lib/{runner,context,ledger}.js, lib/duties/,
   lib/sources/, lib/judges/, hooks/, defaults/config.json}` · **Tests:**
-  `node plugins/turn-end/tests/turn-end.test.js` — 110 checks (measured run recorded in the
-  2029 inbox item; was 95 at 0.2.4). Three tests replay measured failures: ten work turns
-  do not oscillate, the lens is asked at most once per request, and `done/` + `.gitkeep`
-  are not inbox items.
+  `node plugins/turn-end/tests/turn-end.test.js` — 131 checks (measured 2026-08-02/03;
+  was 110 at 0.3.1). Replays of measured failures include: ten work turns do not
+  oscillate, the lens is asked at most once per request, `done/` + `.gitkeep` are not
+  inbox items, and self-check's full ladder end-to-end (nudge → comply → allow; ignore →
+  block; a check BEFORE the last edit rejected; the block-feedback boundary replayed with
+  the real transcript shape).
 - **Ledger:** `.claude/turn-end/ledger.json` — per-`prompt_id` `asked`/`fires` plus a
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
   mtime comparison. Trace: `.claude/turn-end/trace.jsonl`.
 
-## steward (0.2.1) — the active thrust
+## steward (0.3.1) — the active thrust
 
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
   capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
   `/steward:fleet` — cross-project briefing aggregation (`bin/steward-fleet.js`,
   deterministic) over `~/.claude/steward/fleet.json`, auto-registered at SessionStart.
+- **BUDGETED 0.3.0 · LIGHTER 0.3.1 (owner, twice in two days: "fires too often and for
+  too long" → "can we make the steward lighter? it is unbearable right now"):** at most
+  ONE background integration pass per sitting — captures and task landings ACCUMULATE
+  (`inbox/` + `log.md`) for the wrap-up sync or next open; an explicit owner "sync"
+  always outranks. The agent's Economy section bounds the pass itself: verify only what
+  it WRITES (one targeted read per claim, never a repo re-audit), snapshot HEAD once and
+  never chase a moving tree, routine diff ≤10 lines, minutes not quarter-hours. 0.3.1
+  halves the standing owner-visible injection (measured ~3.7k chars of steward material
+  at session open): protocol block 9 bullets → 4 dense lines (full protocol stays in the
+  skill, on demand), briefing spec ≤6 lines / cap 900 chars, one-line inbox note.
+  Recompute discipline UNTOUCHED by design — cuts come from verification scope + prose,
+  never skipped reconciliation (the complaint priced the loop, not the discipline).
 - **Consumes:** project docs/code/history at seed; `design/continuous-transformation.md`
   v3 as design source; MAP.md/`runner map` for parts-vs-code honesty (planned, Phase A).
 - **Files:** `plugins/steward/{agents/steward.md, hooks/scripts/steward-brief.js,
   bin/steward-fleet.js, skills/steward/, commands/}` · **Tests:**
-  `node plugins/steward/tests/*.test.js` (RELEASE-NOTES 0.2.1: 25 checks, was 17).
+  `node plugins/steward/tests/*.test.js` (27 checks — measured run 2026-08-02; the
+  plugin's own CLAUDE.md still says 25, a counts-class instance → tasks #7).
 - **Contract:** the steward agent is the ONLY writer of model files; the session writes
   `inbox/` captures and appends `log.md` outcomes only; **no Stop/per-turn hook of its own,
   by design — and that design SURVIVED the enforcement question.** Q10 is RESOLVED: the
@@ -131,8 +162,9 @@ capability reach) — it CHECKS, never generates.
   the kb-capture skill (the kb-scribe hook that used to enforce this is retired; the
   enforcing half is now turn-end's `session-digest` duty).
 - **Briefing budget (delivery channel, FIXED at injection):** `steward-brief.js` enforces
-  `BRIEFING_MAX_LINES = 12` (spec is ≤10, two lines of slack) and
-  `BRIEFING_MAX_CHARS = 2000`, cuts on line boundaries, and the marker names
+  `BRIEFING_MAX_LINES = 8` (spec is ≤6, two lines of slack) and
+  `BRIEFING_MAX_CHARS = 900` (both read this pass — the 0.3.1 diet cut them from 12/2000),
+  cuts on line boundaries, and the marker names
   `dropped N line(s) / M chars` plus the remedy. kb keeps its own copy of this logic
   (`lib/cap-block.js`) ON PURPOSE: plugins install standalone, so a shared module across
   plugin boundaries would make one plugin's install a dependency of another's.

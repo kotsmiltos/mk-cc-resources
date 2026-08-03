@@ -1,9 +1,5 @@
-# mk-cc-resources — briefing (2026-08-01, self-check directive + digest-bug items integrated)
-Ship: refs both 1c978fd, pushed, tree clean — the /doctor restructure AND both measured-defect fixes are IN: turn-end 0.3.1 (hook budget 90s no longer kills the 46s judge; measured pass) + kb 0.10.2 (spawned sessions can't steal the live digest — the staged digest-bug note arrived already fixed; integrated as DONE, zero new tasks).
-IN FLIGHT today — your directive, now vision invariant 10: never an unverified "DONE". Turn-end gets a default-ON `self-check` duty: a producing turn must carry verification evidence (check RUN, or check + result NAMED, in the work's own medium) before it may yield. Deterministic, no judge; quality-lens stays the opt-in deep tier.
-Installs: turn-end 0.3.1 + kb 0.10.2 @ HEAD (a restart loads them); plugin-toolkit now 3 commits behind.
-Next 3 tasks:
-1. Ship the self-check duty (in-flight, main session) — detectors + tests + full doc cascade incl. the README row.
-2. Distribution [needs you] — ratify bundle-off + standalone, or change it; prove one gate runs from another project.
-3. Autopilot decide() extraction — the last competing blocking Stop hook.
-Decisions waiting: Q11 (timeout contradiction FIXED — only the policy re-take remains: every-turn 46s judge vs cheaper/rarer/overlapped/gated; default: keep as chosen) · Q12 (CI revert deliberate? default: yes, fix the stale claim).
+# mk-cc-resources — briefing (2026-08-03)
+Ship: local 83cea6e AHEAD of origin f796962 — self-check SHIPPED (turn-end 0.4.0/0.4.1) + steward dieted (0.3.0/0.3.1); push needs your word, installs blind until then (reload got 0.4.0/0.3.0 only).
+Your three directives executed: no arbitrary DONE (default-ON block duty; run→LOOK→compare-vs-ask→BREAK) · one background steward pass per sitting · injection halved (this briefing now ≤6 lines/900 chars). Bonus fix: turn-end state no longer follows the shell's cwd.
+Next: 1. push+update+restart, watch one full self-check ladder live (also the clean steward-sync probe). 2. Ratify distribution [you]. 3. Autopilot decide() extraction.
+Waiting: Q13 NEW — steward integrates on sonnet, ~5x cheaper (default: try it) · Q11 recall re-take (default: keep) · Q12 CI revert (default: deliberate).

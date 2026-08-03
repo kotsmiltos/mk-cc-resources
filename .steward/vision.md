@@ -88,7 +88,9 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    turn, code, project, and this repo's own design docs.
 5. **Per-task cost budget:** one build pass + deterministic checks + max one review
    pass. Nothing loops. Tool quality×cost is a first-class design constraint —
-   deterministic > LLM, fold > add, fire conditionally.
+   deterministic > LLM, fold > add, fire conditionally. Standing injections are part
+   of the price: injected text is a per-session tax the owner reads — every line earns
+   its place (owner, 2026-08-03: "make the steward lighter — unbearable").
 6. **Zero added memory load.** Interfaces attach to motions the owner already makes;
    slash commands are optional aliases, never required vocabulary. Corollary proven by
    kb 0.7.0: a tool SELF-ACTIVATES on presence (a project that keeps curated memory gets
@@ -118,7 +120,10 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
     must live in the work's own medium: visual work gets LOOKED at, code gets run.
     "Verifiably correct" is not "checked." Enforced by mechanism per invariant 3:
     turn-end's default-ON `self-check` DEMAND duty (deterministic evidence detectors, no
-    judge). Two tiers on purpose: self-check is the cheap always-on floor; quality-lens
+    judge — SHIPPED 0.4.0). Sharpened by owner pass 2 (2026-08-02): a run counts only if
+    OBSERVED (output actually looked at, with logs enough to understand what happened),
+    COMPARED against what was ASKED, and probed to BREAK — happy-path-only is not a
+    check. Two tiers on purpose: self-check is the cheap always-on floor; quality-lens
     stays the opt-in deep tier — this does NOT re-take lens economics (Phase C).
 
 ## Declared growth axes (change expected here)

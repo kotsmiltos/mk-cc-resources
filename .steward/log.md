@@ -6,6 +6,29 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-08-03 · Four items integrated at 83cea6e — all arrived EXECUTED; one new question (Q13)
+Items 0011 + 0040 (08-02), 0105 (08-02 defect), 2142 (08-03). The whole batch was executed
+before integration; the model catches up, and the only fresh task is the live proof.
+- **Economics ×2 → steward 0.3.0 + 0.3.1** ("fires too often and for too long" →
+  "unbearable, make it lighter"): one background pass/sitting + agent Economy; standing
+  injection halved (protocol 4 lines; briefing spec ≤6/900 — constants read this pass:
+  8/900 with slack; one-line inbox note; diff ≤10). Parked owner lever → **NEW Q13**:
+  sonnet override for integrates (default: try it — the diff is the safety net).
+- **Self-check pass 2 → vision invariant 10 sharpened** (observed + compared-vs-ask +
+  probed-to-break); shipped in turn-end 0.4.0 (first default-ON block duty; lens verify
+  pass fixed 2 build defects pre-release). **0.4.1** anchors ALL runtime state to the
+  project root (measured cwd-follow defect: stray subdir ledgers, split-bucket re-asks) —
+  and that defect is the new best CANDIDATE for steward-sync's never-observed fire (#4).
+- **Ship position:** local `83cea6e` AHEAD of origin `f796962` (refs read); 0.4.1 + 0.3.1
+  on disk with a clean tracked tree, so the local commit carries them. Push = owner word;
+  installs (08-03 reload: steward 0.3.0 + turn-end 0.4.0) stay blind until then.
+- **Tasks recomputed 20 → 20:** #1 REPLACED (ship self-check → LANDED) by the live-proof
+  task (push → update → restart → full-ladder fire + litter + diet checks); #4 gains the
+  root-cause candidate; #18 records the first executed injection cut. NEW counts-class
+  instance → #7: steward CLAUDE.md "25 checks" vs measured 27.
+- Checks this pass: both refs read · steward/turn-end plugin.json read (0.3.1/0.4.1) ·
+  duties dir globbed (`self-check.js` present) · briefing constants read (8/900).
+
 ## 2026-08-02 · steward 0.3.0 budgets the loop + self-check hardened by owner pass 2 and the lens
 Two owner directives, same sitting, both executed:
 - **steward 0.3.0** (owner: "fires too often and for too long"; measured 12.5 min / 137k

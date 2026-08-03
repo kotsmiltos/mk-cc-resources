@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-08-01 · self-check directive in flight · HEAD 1c978fd, tree clean)
+# Tasks — ordered, executor-ready (recomputed 2026-08-03 · self-check SHIPPED, steward dieted · local 83cea6e AHEAD of origin f796962)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,40 +6,35 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale.** NEW #1: the owner's self-check directive is being executed TODAY
-(main session is the executor) — an in-flight owner directive outranks everything, so all
-former numbers shift +1. The 2030 digest-bug item produced ZERO tasks: both defects were
-already fixed and shipped (kb 0.10.2) before integration — a proposal for the task list
-that disk had already emptied. Distribution ratification stays next [needs owner]; the
-autopilot extraction remains the last hole in invariant 9; `steward-sync` first-fire is
-armed again the moment this integration empties the inbox. Q11 shrank to the policy
-re-take alone (0.3.1 executed the old default) — still no task until the owner answers.
-A new adjudication rides #10: the 07-31 test-all 31/31 verdict vs the believed-red
-ledger-compaction suite cannot both be true.
+**Ordering rationale.** All four 08-02/08-03 items arrived EXECUTED (self-check 0.4.0 +
+pass 2, steward 0.3.0/0.3.1, cwd fix 0.4.1) — so old #1 is DELETED as landed and its slot
+becomes the one fresh task the batch left: PROVE the shipped stack live (push [owner
+word] → update installs → restart → full-ladder fire). Numbering below #1 is unchanged.
+`steward-sync` first-fire (#4) gains its first credible root-cause candidate: the 0.4.1
+cwd-anchoring fix. Distribution ratification stays [needs owner]; autopilot extraction
+remains the last invariant-9 hole; #10's adjudication stands. Q13 (sonnet override) is a
+question, not a task, until answered.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives.
 
-## 1. Ship the `self-check` duty — owner directive, IN FLIGHT (executor: main session, today)
+## 1. Prove the shipped stack LIVE — push, update, restart, one full-ladder fire
 
-- **Why #1:** owner, verbatim (2026-08-01): work must be self-checked before Claude
-  reports done — *"just arbitrarily calling 'DONE' — can we make sure this has happened
-  before finishing and me having to ask?"* Now vision invariant 10.
-- **What:** a fifth turn-end duty, `lib/duties/self-check.js` — default-ON DEMAND: applies
-  when the turn produced work; satisfied when the turn carries verification evidence —
-  a check actually RUN, or the check + result NAMED, in the work's own medium (visual
-  work looked at, code run/tested). Deterministic evidence detectors, NO judge —
-  quality-lens stays the opt-in deep tier (this is NOT a lens-economics re-take). Owner
-  set: default-on + the before-done guarantee; detector specifics / severity / span are
-  the executor's choices — record them as Claude's in the duty header (the
-  owner's-voice law). Honor the duty contract: `satisfied` answers from real state; no
-  duty counts another duty's mandated output as fresh work.
-- **Done-check:** `self-check.js` on disk, registered in `lib/duties/index.js`, enabled
-  by default; tests replay a producing turn WITHOUT evidence (asks) and WITH evidence
-  (silent); doc cascade complete — version bump + RELEASE-NOTES entry + plugin CLAUDE.md
-  + marketplace row + **root README turn-end row now names five duties** (the new-duty
-  law); one live fire observed or the miss root-caused.
+- **Why #1:** three shipped versions are unproven live: turn-end 0.4.0 (self-check — the
+  lens verify pass's escalation 3 is exactly this open proof) + 0.4.1 (root anchor) and
+  steward 0.3.1 (injection diet). Local main (`83cea6e`) is AHEAD of origin (`f796962`);
+  the marketplace installs from GitHub, so NO install anywhere sees 0.4.1/0.3.1 until
+  the push — and pushing needs the owner's word, never assumed.
+- **What:** (1) push on owner word; (2) update turn-end + steward installs, restart;
+  (3) drive one producing turn and watch the full self-check ladder LIVE (nudge →
+  comply → allow; or ignore → block) — read the trace, not the vibe; (4) confirm the
+  session-open steward material actually lands lighter (protocol block + briefing under
+  the diet budget); (5) run a plugin's tests from its subdir, then confirm NO stray
+  `plugins/*/.claude/` tree appears and the ledger stays at the project root.
+- **Done-check:** trace lines showing self-check asked then satisfied on a real turn;
+  ledger + trace at project root ONLY after a subdir run; injected steward block
+  measured within budget. All three, or name which leg stays open and why.
 
 ## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
 
@@ -78,16 +73,17 @@ detail here — name projects, not drives.
 
 ## 4. `steward-sync`: catch the first fire — or debug why fires keep skipping it
 
-- **What:** the duty is installed (turn-end 0.3.1 @ HEAD since 07-31T18:27Z) and
-  documented everywhere incl. the root README row (fixed by the 0.3.1 cascade) — yet no
-  trace line has EVER named it, including fires made while staged items sat in
-  `.steward/inbox/`. Unproven explanations: sittings launched on pre-update code · a
-  satisfied arm (steward dispatched / asked-this-sitting) absorbed it silently · it
-  under-fires. This integration empties the inbox again, so: stage the next capture
-  normally, end the turn, read the trace. If it fires — done, and Q10's evidence gate for
-  hardening to `block` is open. If it does not — read `lib/runner.js` +
-  `lib/duties/steward-sync.js` against the live ledger and find why (root cause, no
-  patch-on-patch).
+- **What:** the duty is installed (turn-end 0.4.0 since the 08-03 reload) and documented
+  everywhere — yet no trace line has EVER named it, including fires made while staged
+  items sat in `.steward/inbox/`. NEW BEST CANDIDATE, fixed but unproven: the 0.4.1
+  cwd-follow defect — state anchored to raw `payload.cwd`, so a fire from a subdir cwd
+  read the wrong `.steward/` and the wrong ledger bucket (the same split measurably made
+  quality-lens re-ask). Older unproven explanations still on the table: pre-update code ·
+  a satisfied arm absorbed it silently · it under-fires. The clean probe is POST-0.4.1
+  (rides #1's restart): stage the next capture normally, end the turn, read the trace.
+  If it fires — done, and Q10's evidence gate for hardening to `block` is open. If not —
+  read `lib/runner.js` + `lib/duties/steward-sync.js` against the live ledger and find
+  why (root cause, no patch-on-patch).
 - **Done-check:** a trace line naming `steward-sync` while items sit in the inbox, and a
   later line where it is absent after integration; or a root-caused fix with a test
   replaying the miss.
@@ -252,8 +248,11 @@ detail here — name projects, not drives.
   timeout-kill contradiction that masked it is FIXED in 0.3.1, so the cost is now real
   and fully delivered). The stack GREW 2026-08-01: the default-ON `self-check` duty —
   deterministic, no judge, negligible latency, but part of every producing turn-end and
-  therefore part of this ledger. The re-take is the owner's; the no-silent-miss property
-  is the constraint; before-numbers exist for any AFTER measurement.
+  therefore part of this ledger. FIRST EXECUTED CUT in this ledger (2026-08-03): the
+  steward standing injection halved by the 0.3.1 diet (~3.7k chars of session-open
+  steward material → protocol 4 lines + briefing capped 900); Q13 (sonnet override) is
+  the next candidate lever, owner's call. The re-take is the owner's; the no-silent-miss
+  property is the constraint; before-numbers exist for any AFTER measurement.
 - **Done-check:** measured AFTER numbers against the 2026-07-21 baseline with zero missed
   hand-back failures; each injector fires only where its trigger holds; per-prompt and
   per-turn-end cost recorded.

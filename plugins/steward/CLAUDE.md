@@ -40,5 +40,5 @@ hooks/
   hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
   scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
                         #   silent without .steward/; fail-open
-tests/steward-brief.test.js  # 25 checks, isolated fake home, no framework
+tests/steward-brief.test.js  # 27 checks, isolated fake home, no framework
 ```

@@ -80,6 +80,29 @@ whenever wanted.
 
 ---
 
+## Q13 · Steward agent model override — run routine integrates on sonnet?
+
+**Context.** Third economics escalation in two days (owner: *"steward fires too often and
+for too long"* → *"can we make the steward lighter? it is unbearable right now"*). Steward
+0.3.0/0.3.1 already cut fires (one background pass per sitting), pass scope (agent Economy
+budget) and standing injected text (halved). The remaining big lever is the MODEL the
+steward agent itself runs on: a `model: sonnet` override would cut integrate cost roughly
+5x and speed the pass up (Claude's estimate, not measured here). Not taken silently,
+because recompute quality is the plugin's soul and the trade is the owner's.
+
+**Options:** (a) try sonnet for routine integrates and watch the diffs — the visible diff
+is the built-in safety net that exposes a weak pass, and `inbox/done/` provenance makes
+any pass re-runnable; (b) keep the default model — pay full price for full quality on
+every pass; (c) split by job — sonnet for routine integrates, default model for
+pivots/seed (the dispatching session chooses per job).
+
+**Recommended default (Claude's): (a)** — try it. The diff discipline exists precisely to
+make lazy or shallow recomputes visible; reverting is one line.
+
+**Blocks:** nothing.
+
+---
+
 ## Resolved ledger (provenance — these answers are now law in the model)
 
 - **Q10 · Who forces the RECOMPUTE? → RESOLVED 2026-07-27: the `steward-sync` turn-end
@@ -149,3 +172,19 @@ whenever wanted.
   turn-end, no judge; quality-lens stays the opt-in deep tier — deliberately NOT a re-take
   of lens economics or Q11). Provenance:
   `inbox/done/20260801-2349-self-check-before-done.md`.
+- **Owner pass 2 on self-check (2026-08-02, EXECUTED in turn-end 0.4.0 pre-release):** a
+  run is a check only if OBSERVED (*"it needs to have used enough logs for it to be able
+  to understand what happened"*), COMPARED vs the ASK (*"and if it was what was asked"*),
+  and probed to BREAK (*"tested to break it and not only happy paths"*). Executed:
+  `ran-and-looked` detector, result-tense-only named checks, ask teaches
+  run→LOOK→compare→break. Vision invariant 10 sharpened. Provenance:
+  `inbox/done/20260802-0040-self-check-must-look-log-and-break.md`.
+- **Owner economics directives (2026-08-02 + 2026-08-03, both EXECUTED same sitting):**
+  *"steward fires too often and for too long"* → steward 0.3.0 (ONE background pass per
+  sitting + the agent Economy budget); *"can we make the steward lighter? it is
+  unbearable right now"* → steward 0.3.1 (standing injection halved: 4-line protocol,
+  briefing ≤6 lines / 900 chars, one-line inbox note, diff ≤10) + the turn-end 0.4.1 ask
+  trim. Discipline preserved by design — the complaint priced the LOOP, not the
+  recompute. Residual owner lever parked as Q13 (sonnet override). Provenance:
+  `inbox/done/20260802-0011-steward-fires-too-often-too-long.md` +
+  `inbox/done/20260803-2142-steward-still-unbearable-make-lighter.md`.
