@@ -38,17 +38,22 @@ const TRACE_REL = path.join('.claude', 'turn-end', 'trace.jsonl');
  * never adopts the HOME directory or anything above it — a dotfiles repo at ~ would
  * otherwise swallow every non-git working dir on the machine, including test tempdirs.
  */
-function resolveProjectRoot(start) {
+function resolveProjectRoot(start, home) {
   const os = require('os');
   const fallback = path.resolve(start);
-  const home = path.resolve(os.homedir());
+  const homeDir = path.resolve(home || os.homedir());
+  // Windows paths are case-insensitive but string compare is not: a payload cwd arriving as
+  // c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a dotfiles
+  // .git — the exact hazard the guard exists for.
+  const same = (a, b) =>
+    process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
   let dir = fallback;
-  while (dir !== home) {
+  while (!same(dir, homeDir)) {
     try {
       if (fs.existsSync(path.join(dir, '.git'))) return dir;
     } catch (_e) { return fallback; }
     const parent = path.dirname(dir);
-    if (parent === dir) return fallback;
+    if (same(parent, dir)) return fallback;
     dir = parent;
   }
   return fallback;

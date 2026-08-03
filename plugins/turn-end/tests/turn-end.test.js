@@ -1284,6 +1284,31 @@ check('E2E: state anchors to the project root, not the shell cwd (no subdir litt
   assert.strictEqual(fs.existsSync(path.join(sub, '.claude')), false, 'no stray state in the subdir');
 });
 
+check('resolveProjectRoot: the home boundary holds under Windows case mismatch', () => {
+  // Windows compares paths case-insensitively; the guard must too, or c:\users\… vs
+  // C:\Users\… walks past home and adopts a dotfiles .git.
+  const adapter = require('../hooks/scripts/turn-end.js');
+  const home = tmpdir('case-home');
+  fs.mkdirSync(path.join(home, '.git'), { recursive: true });
+  const sub = path.join(home, 'work', 'proj');
+  fs.mkdirSync(sub, { recursive: true });
+  const swapped = process.platform === 'win32' ? sub.toLowerCase() : sub;
+  const homeArg = process.platform === 'win32' ? home.toUpperCase() : home;
+  const resolved = adapter.resolveProjectRoot(swapped, homeArg);
+  assert.strictEqual(resolved.toLowerCase(), path.resolve(swapped).toLowerCase(),
+    'home (holding a .git) is never adopted — fallback to the start dir');
+});
+
+check('resolveProjectRoot: adopts the nearest .git ancestor below home', () => {
+  const base = tmpdir('anchor-below-home');
+  const repo = path.join(base, 'repo');
+  fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+  const sub = path.join(repo, 'plugins', 'x');
+  fs.mkdirSync(sub, { recursive: true });
+  const adapter = require('../hooks/scripts/turn-end.js');
+  assert.strictEqual(adapter.resolveProjectRoot(sub, base), repo);
+});
+
 check('E2E: unchecked work is nudged; the same work WITH its check passes silently', () => {
   // The owner's directive end-to-end through the real adapter: a turn that changed a file and
   // named no check may not yield unnoticed; the identical turn whose transcript shows the
