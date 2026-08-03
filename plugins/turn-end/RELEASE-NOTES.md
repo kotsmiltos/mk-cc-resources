@@ -15,7 +15,9 @@ root and no stray state.
 steward-sync's ask cut from a six-line recompute sermon to two lines naming the items and the
 action (owner directive, "make the steward lighter") — the recompute discipline lives in the
 steward agent's own mandate, not re-prosed on every fire. It also now says the batching rule
-out loud: dispatch only if the sitting's one background pass has not run. 131/131 checks.
+out loud: dispatch only if the sitting's one background pass has not run. The home-boundary
+guard compares case-insensitively on Windows (c:\users\… vs C:\Users\… walked past the
+boundary and could adopt a dotfiles .git). 133/133 checks.
 
 ## 0.4.0 — 2026-08-01 — self-check: no more "DONE" without a check
 
