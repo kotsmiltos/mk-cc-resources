@@ -10,6 +10,11 @@ artifacts/scope/
 .claude/mk-flow/*
 !.claude/mk-flow/intents.yaml
 
+# turn-end runtime state written by PRE-0.4.1 installed hooks that still key on the shell's
+# cwd — regenerates in plugin subdirs until every machine updates + restarts; carries session
+# UUIDs and must never ride a `git add -A` into the marketplace (lens-found, 2026-08-03)
+plugins/*/.claude/
+
 # macOS
 .DS_Store
 

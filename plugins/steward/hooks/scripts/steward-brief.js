@@ -26,9 +26,9 @@ const BRIEFING_MAX_LINES = 8;   // the spec is ≤6; two lines of slack before t
  *
  * The old cap sliced mid-word and said only "truncated" — a reader could not tell whether
  * one line or half the file went missing, and the steward agent (which regenerates the
- * file) got no number to aim at. Both budgets are the spec: ≤10 lines is the real rule,
- * the char cap guards a single monster line. Cuts land on line boundaries, and the marker
- * always names what was dropped.
+ * file) got no number to aim at. Both budgets are the spec: ≤6 lines is the rule (the line
+ * cap grants 2 of slack), the char cap guards a single monster line. Cuts land on line
+ * boundaries, and the marker always names what was dropped.
  *
  * kb carries the same logic in its own `lib/cap-block.js` for the session digest. That
  * duplication is deliberate: plugins must install standalone, so a shared module across
