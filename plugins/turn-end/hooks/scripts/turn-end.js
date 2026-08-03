@@ -28,6 +28,32 @@ const claudeP = require('../../lib/judges/claude-p');
 const CONFIG_REL = path.join('.claude', 'turn-end.json');
 const TRACE_REL = path.join('.claude', 'turn-end', 'trace.jsonl');
 
+/*
+ * Anchor ALL state to the PROJECT root, not the shell's cwd. payload.cwd follows the
+ * session's last `cd` — measured twice in one sitting (2026-08-02): running a plugin's tests
+ * left a stray plugins/<name>/.claude/ ledger, and the per-session ledger SPLIT across those
+ * buckets, so a session-span duty that had already asked re-asked from a fresh bucket. The
+ * nearest ancestor holding .git (dir OR file — worktrees) is the project; without one, the
+ * raw cwd stands, which keeps every existing non-git behavior and test unchanged. The walk
+ * never adopts the HOME directory or anything above it — a dotfiles repo at ~ would
+ * otherwise swallow every non-git working dir on the machine, including test tempdirs.
+ */
+function resolveProjectRoot(start) {
+  const os = require('os');
+  const fallback = path.resolve(start);
+  const home = path.resolve(os.homedir());
+  let dir = fallback;
+  while (dir !== home) {
+    try {
+      if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    } catch (_e) { return fallback; }
+    const parent = path.dirname(dir);
+    if (parent === dir) return fallback;
+    dir = parent;
+  }
+  return fallback;
+}
+
 function readPayload() {
   return new Promise((resolve) => {
     let data = '';
@@ -78,7 +104,7 @@ async function main() {
   if (claudeP.isNested()) return process.exit(0);
 
   const payload = await readPayload();
-  const cwd = payload.cwd || process.cwd();
+  const cwd = resolveProjectRoot(payload.cwd || process.cwd());
   const config = readConfig(cwd);
 
   if (config.enabled === false) return process.exit(0);
@@ -150,4 +176,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { readConfig, writeTrace, CONFIG_REL, TRACE_REL };
+module.exports = { readConfig, writeTrace, resolveProjectRoot, CONFIG_REL, TRACE_REL };

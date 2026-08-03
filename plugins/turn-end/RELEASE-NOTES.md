@@ -1,5 +1,22 @@
 # turn-end — release notes
 
+## 0.4.1 — 2026-08-03 — state anchors to the project root; the steward ask goes terse
+
+Measured twice in one sitting: `payload.cwd` follows the shell's `cd`, so running a plugin's
+tests left a stray `plugins/<name>/.claude/` ledger AND split the session-span ledger across
+cwd buckets — a duty that had already asked re-asked from the fresh bucket, which the owner
+met as a duplicate quality-lens demand. All state (config, ledger, trace) now anchors to the
+nearest ancestor holding `.git` (dir or file — worktrees included), never adopting HOME or
+anything above it (a dotfiles repo at `~` would otherwise swallow every non-git dir on the
+machine, including test tempdirs); with no `.git` the raw cwd stands, so non-git behavior and
+every existing fixture are unchanged. New E2E: a fire from a subdir writes ONE ledger at the
+root and no stray state.
+
+steward-sync's ask cut from a six-line recompute sermon to two lines naming the items and the
+action (owner directive, "make the steward lighter") — the recompute discipline lives in the
+steward agent's own mandate, not re-prosed on every fire. It also now says the batching rule
+out loud: dispatch only if the sitting's one background pass has not run. 131/131 checks.
+
 ## 0.4.0 — 2026-08-01 — self-check: no more "DONE" without a check
 
 A fifth duty, and the first default-ON blocking one. Owner directive (verbatim in

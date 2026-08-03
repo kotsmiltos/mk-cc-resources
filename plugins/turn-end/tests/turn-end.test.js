@@ -1257,6 +1257,33 @@ check('E2E: the hook emits additionalContext for an unmet duty', () => {
   assert.ok(fs.existsSync(path.join(dir, ledgerStore.LEDGER_REL)), 'ledger written');
 });
 
+check('E2E: state anchors to the project root, not the shell cwd (no subdir litter, one ledger)', () => {
+  // Measured twice in one sitting: cwd followed the shell into plugins/<name>/, the hook
+  // wrote a stray .claude/ there, and the session-span ledger SPLIT — an already-asked duty
+  // asked again from the fresh bucket.
+  const root = tmpdir('e2e-root-anchor');
+  fs.mkdirSync(path.join(root, '.git'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.steward', 'state.md'), 'curated');
+  const sub = path.join(root, 'plugins', 'somewhere');
+  fs.mkdirSync(sub, { recursive: true });
+  const transcript = path.join(root, 't.jsonl');
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/a/b.js' } }] } }),
+  ].join('\n'));
+  const payload = JSON.stringify({
+    cwd: sub, prompt_id: 'e2e-anchor-1', stop_hook_active: false,
+    last_assistant_message: 'changed a file', transcript_path: transcript, hook_event_name: 'Stop',
+  });
+  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js')], {
+    input: payload, encoding: 'utf8',
+  });
+  assert.ok(JSON.parse(out).hookSpecificOutput, 'the duty set still evaluates (steward model seen from the root)');
+  assert.ok(fs.existsSync(path.join(root, ledgerStore.LEDGER_REL)), 'ledger written at the PROJECT root');
+  assert.strictEqual(fs.existsSync(path.join(sub, '.claude')), false, 'no stray state in the subdir');
+});
+
 check('E2E: unchecked work is nudged; the same work WITH its check passes silently', () => {
   // The owner's directive end-to-end through the real adapter: a turn that changed a file and
   // named no check may not yield unnoticed; the identical turn whose transcript shows the

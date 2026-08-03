@@ -61,13 +61,13 @@ function pendingItems(ctx) {
 function ask(ctx) {
   const items = pendingItems(ctx);
   const named = items.length ? ` — ${items.join(', ')}` : '';
+  // Terse by owner directive (2026-08-03, "make the steward lighter"): the ask names the
+  // items and the action; the recompute discipline lives in the steward agent's own mandate,
+  // not re-prosed here on every fire.
   return (
-    `${items.length} unintegrated item(s) in ${INBOX_REL}${named}. Dispatch the steward agent ` +
-    '(Agent tool, subagent_type: steward, job: integrate) and have it recompute the WHOLE model ' +
-    'against them — an addition adds, a correction edits, a superseded fact is deleted, a pivot ' +
-    'cascades through vision/state/parts/tasks — then show the owner the returned diff and ' +
-    'regenerate briefing.md. Until that runs, every model file answers "where are we" from ' +
-    'before these items existed.'
+    `${items.length} unintegrated steward item(s)${named}. If this sitting's ONE background ` +
+    'integration pass has not run yet, dispatch it (Agent tool, subagent_type: steward, job: ' +
+    'integrate) and show the diff on return; otherwise let them accumulate for the next batch point.'
   );
 }
 
