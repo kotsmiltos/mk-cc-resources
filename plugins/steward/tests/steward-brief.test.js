@@ -79,7 +79,7 @@ fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), `${'y'.repeat(4000
 const oneLine = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
 check('a single over-cap line is still trimmed', oneLine.includes('briefing over budget'));
 
-const okBriefing = Array.from({ length: 9 }, (_, i) => `line ${i}`).join('\n');
+const okBriefing = Array.from({ length: 5 }, (_, i) => `line ${i}`).join('\n');
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), okBriefing);
 const within = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
 check('a within-spec briefing is untouched',
@@ -87,7 +87,7 @@ check('a within-spec briefing is untouched',
 
 // Edges that were correct but unasserted: an exactly-at-budget briefing must pass through,
 // and CRLF (this repo's working-tree line ending) must survive split/join intact.
-const exact = 'z'.repeat(2000);
+const exact = 'z'.repeat(900);
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), exact);
 check('exactly at the char budget is not cut',
   !JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext.includes('over budget'));
@@ -101,8 +101,8 @@ check('CRLF briefing within budget is untouched', crlfOut.includes('alpha\r\nbet
 const many = Array.from({ length: 40 }, (_, i) => `line ${i} of the briefing`).join('\n');
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), many);
 const capped = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
-check('line-count overage is reported', /dropped (?:2[0-9]|3[0-9]) line\(s\)/.test(capped));
-check('the cut lands on a line boundary', capped.includes('line 11 of the briefing'));
+check('line-count overage is reported', /dropped 3[0-9] line\(s\)/.test(capped));
+check('the cut lands on a line boundary', capped.includes('line 7 of the briefing'));
 
 // 6. Garbage stdin → fail-open (falls back to process.cwd(); from this test dir there is no .steward/, so silence)
 const garbage = execFileSync(process.execPath, [SCRIPT], { input: 'not json', encoding: 'utf8', cwd: bare });

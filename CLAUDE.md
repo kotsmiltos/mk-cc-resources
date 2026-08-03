@@ -67,7 +67,9 @@ plugins/
                             #   visibly; SessionStart briefing hook; owner-present work only.
                             #   Budgeted since 0.3.0: ONE background integration pass per
                             #   sitting; agent verifies only what it writes, routine diff
-                            #   ≤15 lines. Standalone, not in mk-cc-all.
+                            #   ≤10 lines. 0.3.1 halves the standing injection (protocol 4
+                            #   lines, briefing ≤6 / 900 chars) — injected text is a
+                            #   per-session tax. Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
   turn-end/                 # THE single blocking Stop hook — plugins ship DUTIES, not hooks;

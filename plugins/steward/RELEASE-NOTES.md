@@ -1,5 +1,21 @@
 # steward — Release Notes
 
+## 0.3.1 — Lighter: the standing injection halved
+
+Owner, verbatim, the night 0.3.0 went live: "dude canwe make the steaward lighter? it is
+unbearable right now." 0.3.0 budgeted the AGENT; what the owner feels every single session is
+the STANDING TEXT. Measured: the protocol block alone injected ~1.7k chars at every session
+open (and 0.3.0's added cadence bullet had made it bigger), the briefing was capped at 2000
+chars, plus a long inbox note — ~3.7k chars of steward material before the first keystroke.
+
+Now: protocol 9 bullets → 4 dense lines (~0.75k — the full protocol lives in the steward
+skill and loads on demand), briefing spec **≤6 lines / hard cap 900 chars** (the agent
+regenerates to the new spec at its next integration; until then the cap trims with a named
+overage), inbox note one line, routine diff ≤10 lines, capture acknowledgments fold into the
+reply instead of their own ceremony. Principle now stated in the agent's Economy section:
+injected text is a per-session tax — prefer cutting a line over compressing more into denser
+prose. 27/27 hook tests (cap fixtures re-pinned to the new budget).
+
 ## 0.3.0 — The loop goes on a budget: one background pass per sitting, minutes not quarter-hours
 
 Owner directive, verbatim: "steward fires too often and for too long." The numbers behind it:

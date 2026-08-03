@@ -17,8 +17,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const BRIEFING_MAX_CHARS = 2000; // hard cap: briefing.md is spec'd ≤10 lines; cap guards a rotten file from flooding context
-const BRIEFING_MAX_LINES = 12;   // the spec is ≤10; two lines of slack before the cut, so a
+const BRIEFING_MAX_CHARS = 900; // hard cap: briefing.md is spec'd ≤6 lines (owner 2026-08-03: "make the steward lighter" — injected text is a per-session tax); cap guards a rotten file from flooding context
+const BRIEFING_MAX_LINES = 8;   // the spec is ≤6; two lines of slack before the cut, so a
                                  // briefing that is merely a little long is not mangled
 
 /**
@@ -54,19 +54,19 @@ function capBriefing(text) {
   const droppedLines = lines.length - kept.length;
   const droppedChars = text.length - keptText.length;
   return `${keptText}\n… (briefing over budget — dropped ${droppedLines} line(s) / ${droppedChars} chars; ` +
-    `spec is ≤10 lines and ${BRIEFING_MAX_CHARS} chars. Steward: regenerate it shorter.)`;
+    `spec is ≤6 lines and ${BRIEFING_MAX_CHARS} chars. Steward: regenerate it shorter.)`;
 }
+/*
+ * FOUR dense lines, not nine bullets. Measured 2026-08-03: this block alone injected ~1.7k
+ * chars into EVERY session open, and the owner called the loop "unbearable" the same night.
+ * Standing injections are a per-session tax; the full protocol lives in the steward skill
+ * and loads on demand. Every line here must earn its place.
+ */
 const PROTOCOL = [
   '<steward-protocol>',
-  'This project runs the steward loop (plugin: steward — see its steward skill for the full protocol).',
-  'Behave ambiently; the owner memorizes nothing:',
-  '- Owner messages that are ideas/wishes/direction (not immediate work instructions): capture verbatim to .steward/inbox/<YYYYMMDD-HHmm>-<slug>.md, acknowledge in one line, move on.',
-  '- "where are we"/"what\'s next" -> answer from .steward/ (model is the source, not code re-derivation).',
-  '- "do it"/"work on X" -> execute now, owner watching: small step -> fast tests -> show result + named check. One build pass + deterministic checks + max ONE review pass; unresolved -> park, never loop.',
-  '- "sync"/"wrap up"/session-end signals -> dispatch the steward agent (job: integrate), show the owner the returned diff. This is the sitting\'s ONE batch point.',
-  '- If unintegrated inbox items are reported below: dispatch the steward agent (job: integrate) in the BACKGROUND, proceed with the owner\'s ask meanwhile, show the diff when it returns. Never block the owner on integration.',
-  '- Steward runs are BATCHED — at most ONE integration pass per sitting. Mid-sitting captures and task landings ACCUMULATE (inbox/ + log.md appends) for the wrap-up sync or the next session\'s pass; never a fresh dispatch per capture or per landing. An explicit owner "sync" always dispatches.',
-  '- Writer rule: the steward agent is the only writer of the MODEL files (vision/state/parts/questions/tasks/briefing). The session MAY write .steward/inbox/ captures and append .steward/log.md outcomes; the steward reconciles them. No work absent the owner.',
+  'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to .steward/inbox/<YYYYMMDD-HHmm>-<slug>.md, ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
+  'Integration is BATCHED: at most ONE steward-agent pass per sitting, dispatched in the BACKGROUND (never make the owner wait); captures/landings accumulate until wrap-up or next open; an explicit owner "sync" always dispatches.',
+  'The steward agent is the only writer of the model files; the session writes only inbox/ + log.md. No work absent the owner.',
   '</steward-protocol>'
 ].join('\n');
 
@@ -113,7 +113,7 @@ function main() {
     const pending = fs.readdirSync(path.join(root, 'inbox'))
       .filter((f) => f.endsWith('.md'));
     if (pending.length > 0) {
-      pendingNote = `inbox: ${pending.length} UNINTEGRATED item(s) from a previous session — dispatch the steward agent (job: integrate) in the background, proceed meanwhile, show the diff when it returns.`;
+      pendingNote = `inbox: ${pending.length} UNINTEGRATED item(s) — background steward pass (job: integrate) when convenient; diff on return.`;
     }
   } catch (_) { /* no inbox dir yet — fine */ }
 

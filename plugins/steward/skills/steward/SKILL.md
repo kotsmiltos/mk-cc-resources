@@ -46,7 +46,9 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
   session's start pass — never a fresh dispatch per capture or per landing.
 - An explicit owner **"sync" always dispatches** — the owner outranks the cadence.
 - The agent carries its own run budget (see its Economy section): routine pass in minutes,
-  verification scoped to what it writes, diff ≤15 lines unless a pivot cascaded.
+  verification scoped to what it writes, diff ≤10 lines unless a pivot cascaded.
+- Capture acknowledgments fold INTO the reply ("→ inbox"), never a separate ceremony; relayed
+  diffs and steward status stay terse — the owner reads outcomes, not process narration.
 
 ## While the owner talks (capture — the inbox)
 - Owner messages that are **ideas, wishes, doubts, complaints, or direction** — not an immediate
