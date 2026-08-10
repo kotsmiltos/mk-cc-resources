@@ -1,5 +1,40 @@
 # turn-end — release notes
 
+## 0.5.0 — 2026-08-10 — request-closure: end by answering the user, not the last agent
+
+A sixth duty. Owner symptom (verbatim in
+`.steward/inbox/20260810-1914-final-message-must-answer-original-request.md`): "if agents fire
+and things happen then at the end i should get a neat message answering my first thing, not
+what the last agent did." The mechanism was already measured
+(`.claude/kb/captures/20260727-0800-a-background-agent-completion-is-a-new-prompt.md`): a
+backgrounded agent finishing wakes the session as a NEW prompt, the model perceives the
+task-notification as the request and reports the agent's return; the user's actual question is
+turns back. The extraction always saw through this — wake entries are non-boundaries, so
+`ctx.turn.userRequest` still held the genuine ask — but nothing handed that fact back to the
+model at the moment it yields, and no duty policed the ANSWER (all five police work
+discipline).
+
+`request-closure` applies when the span was woken by an agent or dispatched one, and its ask
+embeds the user's VERBATIM request plus the span's agent activity: lead with the answer to
+THAT, then one who-did-what line per agent, machinery notes last. PROMPT span deliberately —
+the inverse of quality-lens's reasoning: every wake is a new prompt_id, so the prompt bucket
+resets and the duty re-nudges at EVERY wake-yield, each of which is a user-visible resting
+state. Safe because this ask spawns nothing — it can never manufacture the prompt that
+re-arms it, so the session-span rule for agent-asking duties does not bind. Satisfaction is
+asked-once-per-prompt from the ledger: whether prose "answers" a request is not decidable
+without a judge, and this duty is deliberately zero-tokens — compliance trusted after one
+nudge, `advise` by default, promotable per project.
+
+New turn fact `turn.wakeCount`: machine-classified `<task-notification>` user entries in the
+span. `WAKE_MARKERS` is the open surface — a scheduled wake-up becomes a new marker, not new
+code; a user pasting a marker mid-message leads with their own text and never counts.
+
+**Set by the owner:** that the guarantee exists; severity default left to Claude's
+recommendation. **Chosen by Claude, not requested:** `advise` first, prompt span (diverging
+from the lens-review suggestion of a third request-span ledger bucket — unnecessary once the
+per-wake cadence is the desired one), priority 40, the 600-char excerpt clip. 143/143 checks
+(10 new, including the full nudge→release→re-arm replay and junk-transcript robustness).
+
 ## 0.4.1 — 2026-08-03 — state anchors to the project root; the steward ask goes terse
 
 Measured twice in one sitting: `payload.cwd` follows the shell's `cd`, so running a plugin's

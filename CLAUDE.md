@@ -79,7 +79,10 @@ plugins/
                             #   quality-lens, steward-sync, self-check (0.4.0 — default-ON,
                             #   severity:block: a turn that changed real files may not yield
                             #   until a check ran AFTER the last change or the final message
-                            #   names the check + result). See plugins/turn-end/CLAUDE.md.
+                            #   names the check + result), request-closure (0.5.0 — a span
+                            #   woken by / dispatching agents must END by answering the
+                            #   user's verbatim original request + who-did-what, not the
+                            #   last agent's return). See plugins/turn-end/CLAUDE.md.
 
   kb/                       # Queryable knowledge base — the PULL side of the long-lens tools
                             #   (steward + lens PUSH a fixed briefing at open). Two orthogonal

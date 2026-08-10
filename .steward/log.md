@@ -557,3 +557,14 @@ RELEASE-NOTES).
   handoff quality gate (tm 1.8.1, pt 1.7.1, sl 1.3.0)
 - 4449028 thorough-mode 1.8.0 — protocol-shaped injections (@thorough/@fresh/@prompt)
 - bf1cbe2 essense-flow 0.25.0 — generativity protocol (design forks → open model)
+
+## 2026-08-10 — request-closure shipped (turn-end 0.5.0)
+- Owner symptom → duty, same sitting: spans woken by background agents must end answering the
+  owner's verbatim request + who-did-what, not the last agent's return.
+- lib/duties/request-closure.js (advise, prompt span — deliberate: every wake-yield renudges;
+  ask spawns nothing so it cannot re-arm itself) + context.js turn.wakeCount (WAKE_MARKERS
+  open surface) + registry require.
+- Checks this pass: turn-end suite 133→143/143 · test-all 4/4 suites, 764 checks ·
+  registry-check consistent (README + marketplace bumped 0.4.1→0.5.0).
+- Inbox item 20260810-1914 stays staged for the sitting's integration pass (design context
+  now partly superseded by the shipped implementation — steward should reconcile both).

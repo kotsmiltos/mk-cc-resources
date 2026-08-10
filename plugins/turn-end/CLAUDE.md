@@ -34,7 +34,11 @@ lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the l
                         #   transcript extraction (last-message-only silently never fires);
                         #   emits flat toolNames/toolTargets AND ordered toolCalls
                         #   [{name,target?,command?}] — "a check ran AFTER the last change"
-                        #   is an ordering fact the flat lists cannot express. Machine-
+                        #   is an ordering fact the flat lists cannot express. 0.5.0 adds
+                        #   turn.wakeCount: machine-classified `<task-notification>` user
+                        #   entries in the span (WAKE_MARKERS is the open surface — a
+                        #   scheduled wake-up is a new marker, not new code; a user pasting
+                        #   one mid-message leads with their own text, so it never counts). Machine-
                         #   prefixed USER-role entries ("Stop hook feedback:" etc.) are NOT
                         #   turn boundaries — a decision:block reason arrives as one and
                         #   previously ERASED the judged turn, dissolving the ladder's hard
@@ -84,7 +88,19 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   the extension surface (new modality = new detector). Excludes
                         #   .claude/.steward/.pipeline + tmp writes — mandated bookkeeping is
                         #   not fresh work. Needs ctx.turn.toolCalls, the ORDERED snapshot;
-                        #   absent -> silent, never a demand).
+                        #   absent -> silent, never a demand),
+                        #   request-closure (0.5.0, owner symptom "answer my first thing,
+                        #   not what the last agent did" — an agent wake arrives as a NEW
+                        #   prompt, so the model answers the task-notification instead of
+                        #   the user. Applies when the span was woken or dispatched agents;
+                        #   ask embeds the VERBATIM userRequest + span agent activity:
+                        #   answer THAT first, then who-did-what per agent, machinery last.
+                        #   PROMPT span deliberately — every wake resets the asked bucket,
+                        #   so every wake-yield gets its own nudge (each is a user-visible
+                        #   resting state); safe because the ask spawns nothing, so the
+                        #   session-span rule for agent-asking duties does not bind.
+                        #   Satisfied = asked-once-per-prompt from the ledger; advise,
+                        #   zero tokens, no judge).
                         #   Add one = one require, no runner change
 lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
                         #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
@@ -116,7 +132,7 @@ hooks/                  # the one Stop registration; the adapter holds ZERO poli
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 133 checks, own temp fixtures. Three replay measured failures
+tests/turn-end.test.js  # 143 checks, own temp fixtures. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

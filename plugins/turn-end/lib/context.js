@@ -88,6 +88,20 @@ function isMachineText(text) {
   return MACHINE_TEXT_PREFIXES.some((m) => head.startsWith(m));
 }
 
+/*
+ * WAKE markers — the subset of machine text that means "something other than the user resumed
+ * this session". Today that is a background agent finishing (`<task-notification>`); scheduled
+ * wake-ups or remote triggers would land here as new markers. A wake matters because the model
+ * on a wake turn perceives the notification as the request and answers IT — the measured
+ * mechanism behind agent-report-as-final-answer (request-closure duty). Counted only inside
+ * machine-classified entries, so a user legitimately pasting a marker mid-message never counts.
+ */
+const WAKE_MARKERS = ['<task-notification>'];
+
+function isWakeText(text) {
+  return isMachineText(text) && WAKE_MARKERS.some((m) => String(text).includes(m));
+}
+
 /**
  * Aggregate the CURRENT TURN from the transcript: every assistant message since the last
  * genuine user prompt, with the tools used and the paths written.
@@ -101,7 +115,7 @@ function isMachineText(text) {
  * from the payload is carried separately and preferred for the final text.
  */
 function extractTurn(transcriptPath) {
-  const EMPTY = { text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '' };
+  const EMPTY = { text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '', wakeCount: 0 };
   if (!transcriptPath) return EMPTY;
   let raw;
   try {
@@ -172,14 +186,18 @@ function extractTurn(transcriptPath) {
   let toolNames = [];
   let toolTargets = [];
   let toolCalls = [];
+  let wakeCount = 0;
   for (let i = start; i < msgs.length; i++) {
+    // Wake entries are user-ROLE but machine-authored (non-boundaries, see above); counting
+    // them tells a duty this span was resumed by something other than the user.
+    if (msgs[i].role === 'user' && !msgs[i].hasToolResult && isWakeText(msgs[i].text)) wakeCount++;
     if (msgs[i].role !== 'assistant') continue;
     if (msgs[i].text) text += `${msgs[i].text}\n`;
     toolNames = toolNames.concat(msgs[i].tools);
     toolTargets = toolTargets.concat(msgs[i].targets);
     toolCalls = toolCalls.concat(msgs[i].calls);
   }
-  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest };
+  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest, wakeCount };
 }
 
 /**
@@ -209,4 +227,4 @@ function buildContext(payload, cwd, ledger) {
   return Object.freeze(ctx);
 }
 
-module.exports = { buildContext, extractTurn, makeDisk, isMachineText, MACHINE_TEXT_PREFIXES };
+module.exports = { buildContext, extractTurn, makeDisk, isMachineText, isWakeText, MACHINE_TEXT_PREFIXES, WAKE_MARKERS };

@@ -1425,6 +1425,101 @@ check('E2E: config off-switch silences the runner', () => {
   assert.strictEqual(out.trim(), '');
 });
 
+// ---------- duty: request-closure ----------
+
+const requestClosure = require('../lib/duties/request-closure');
+
+// The real wake shape: a user-ROLE entry, machine-authored, wrapping a task-notification.
+const WAKE_ENTRY = JSON.stringify({ type: 'user', message: { role: 'user', content:
+  '[SYSTEM NOTIFICATION - NOT USER INPUT]\nThis is an automated background-task event.\n<task-notification>\n<task-id>abc</task-id>\n<status>completed</status>\n</task-notification>' } });
+
+check('extractTurn counts agent wake-ups and keeps the genuine request across them', () => {
+  const dir = tmpdir('transcript-wake');
+  const f = path.join(dir, 't.jsonl');
+  fs.writeFileSync(f, [
+    JSON.stringify({ message: { role: 'user', content: 'audit the parser' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Agent', input: { subagent_type: 'verifiability-lens' } }] } }),
+    WAKE_ENTRY,
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'lens returned clean' }] } }),
+  ].join('\n'));
+  const turn = extractTurn(f);
+  assert.strictEqual(turn.wakeCount, 1, 'one wake entry in the span');
+  assert.strictEqual(turn.userRequest, 'audit the parser', 'wake is not a boundary');
+});
+
+check('extractTurn: a USER pasting a task-notification is the user, not a wake', () => {
+  const dir = tmpdir('transcript-wake-paste');
+  const f = path.join(dir, 't.jsonl');
+  fs.writeFileSync(f, [
+    JSON.stringify({ message: { role: 'user', content: 'why does <task-notification> appear in my logs?' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'because…' }] } }),
+  ].join('\n'));
+  const turn = extractTurn(f);
+  assert.strictEqual(turn.wakeCount, 0, 'their own text leads, so it is a genuine prompt');
+  assert.ok(turn.userRequest.startsWith('why does'), 'and it is the boundary');
+});
+
+check('request-closure applies on a wake turn with a recovered request', () => {
+  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 } });
+  assert.strictEqual(requestClosure.applies(ctx), true);
+});
+
+check('request-closure applies when the turn dispatched agents, even without a wake', () => {
+  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 0, toolTargets: ['agent:verifiability-lens'] } });
+  assert.strictEqual(requestClosure.applies(ctx), true);
+});
+
+check('request-closure is silent on a plain turn — no wakes, no agents', () => {
+  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 0 } });
+  assert.strictEqual(requestClosure.applies(ctx), false);
+});
+
+check('request-closure is silent when no genuine request was recovered', () => {
+  const ctx = fakeCtx({ turn: { userRequest: '', wakeCount: 2 } });
+  assert.strictEqual(requestClosure.applies(ctx), false);
+});
+
+check('request-closure ask carries the VERBATIM request and the span activity', () => {
+  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1, toolTargets: ['agent:steward'] } });
+  const ask = requestClosure.ask(ctx);
+  assert.ok(ask.includes('audit the parser'), 'verbatim request embedded');
+  assert.ok(ask.includes('agent:steward'), 'who-did-what raw material named');
+  assert.ok(ask.includes('1 background completion'), 'wake count stated');
+});
+
+check('request-closure clips a wall-of-text request instead of burying its own instruction', () => {
+  const long = 'x'.repeat(requestClosure.MAX_REQUEST_EXCERPT + 50);
+  const ask = requestClosure.ask(fakeCtx({ turn: { userRequest: long, wakeCount: 1 } }));
+  assert.ok(!ask.includes(long), 'full wall not embedded');
+  assert.ok(ask.includes('x'.repeat(requestClosure.MAX_REQUEST_EXCERPT) + '…'), 'clipped with ellipsis');
+});
+
+check('request-closure terminates: asked once this prompt -> satisfied, decide allows', () => {
+  const unasked = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 } });
+  const r1 = decide(unasked, [requestClosure]);
+  assert.strictEqual(r1.action, 'advise', 'fire 1 nudges');
+  assert.ok(r1.emission.hookSpecificOutput.additionalContext.includes('audit the parser'));
+  const asked = fakeCtx({
+    stopHookActive: true,
+    turn: { userRequest: 'audit the parser', wakeCount: 1 },
+    ledger: { promptId: 'prompt-1', fires: 1, asked: ['request-closure'] },
+  });
+  const r2 = decide(asked, [requestClosure]);
+  assert.strictEqual(r2.action, 'allow', 'fire 2 reads the ledger and releases');
+});
+
+check('request-closure re-arms on the NEXT wake because a wake is a new prompt_id', () => {
+  // The cadence claim from the design: each wake resets the prompt bucket, so every
+  // wake-yield gets its own nudge. Ledger behavior + duty satisfaction, chained.
+  const before = { promptId: 'wake-1', sessionId: 's', fires: 1, asked: ['request-closure'], sessionAsked: [], startedAt: 1 };
+  const dir = tmpdir('ledger-wake');
+  ledgerStore.writeLedger(dir, before);
+  const after = ledgerStore.readLedger(dir, 'wake-2', 's');
+  assert.deepStrictEqual(after.asked, [], 'new prompt id drops the prompt bucket');
+  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 }, ledger: after });
+  assert.strictEqual(requestClosure.satisfied(ctx), false, 'so the duty asks again at the next yield');
+});
+
 // ---------- report ----------
 
 // Async checks resolve after the sync pass, so the report waits on them — otherwise a failing
