@@ -69,7 +69,11 @@ plugins/
                             #   sitting; agent verifies only what it writes, routine diff
                             #   ≤10 lines. 0.3.1 halves the standing injection (protocol 4
                             #   lines, briefing ≤6 / 900 chars) — injected text is a
-                            #   per-session tax. Standalone, not in mk-cc-all.
+                            #   per-session tax. 0.4.0: the briefing computes its own
+                            #   FRESHNESS at injection (⚠ line naming events newer than it)
+                            #   and every read anchors to the nearest .git ancestor — a
+                            #   subdir shell briefs from and captures to the REAL model.
+                            #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
   turn-end/                 # THE single blocking Stop hook — plugins ship DUTIES, not hooks;
@@ -84,7 +88,9 @@ plugins/
                             #   user's verbatim original request + who-did-what, not the
                             #   last agent's return). See plugins/turn-end/CLAUDE.md.
 
-  kb/                       # Queryable knowledge base — the PULL side of the long-lens tools
+  kb/                       # (0.10.3: both hooks root-anchored via lib/project-root.js —
+                            #   a subdir shell no longer reads/rotates another project's
+                            #   kb state.) Queryable knowledge base — the PULL side of the long-lens tools
                             #   (steward + lens PUSH a fixed briefing at open). Two orthogonal
                             #   axes, never collapsed: KIND (episodic/semantic/procedural/
                             #   working — CoALA) x CASTE (session→thread→project→fleet→owner,
@@ -131,8 +137,8 @@ Skills for working ON plugins (one-liners in the tree above; detail in
 | Gate | When | One verdict |
 |------|------|-------------|
 | `node bin/repo-guard.js` | Before a push, or when a defect class keeps coming back | Every registered detector over tracked files + git history in ONE snapshot: leaked machine paths, silenced shell failures, fix-the-fix commit chains. Exit 1 on blocking findings. |
-| `node bin/test-all.js` | Before a push, or when "is the repo green?" is answerable only from memory | Every suite in every plugin, discovery by shape (a new suite is covered the day it lands); names units shipping no suite; a suite that exits 0 while printing failures is SUSPECT, never green. Exit 1 on any red/suspect/could-not-run. |
-| `node bin/registry-check.js` | Before a push, or after any version change | Verifies the CLAIMS marketplace/bundle/doc tables make about the repo against disk — checks, never generates. Exit 1 on drift. |
+| `node bin/test-all.js --root <REPO ROOT>` | Before a push, or when "is the repo green?" is answerable only from memory | Every suite in every plugin, discovery by shape (a new suite is covered the day it lands); names units shipping no suite; a suite that exits 0 while printing failures is SUSPECT, never green. Exit 1 on any red/suspect/could-not-run. **`--root` is REQUIRED from the toolkit dir** — without it discovery defaults to cwd and silently sweeps ONLY plugin-toolkit (measured 2026-08-23: 764 checks reported vs 1723 real; the historical "764 green" gate records were toolkit-scoped, not repo-wide). |
+| `node bin/registry-check.js --root <REPO ROOT>` | Before a push, or after any version change | Verifies the CLAIMS marketplace/bundle/doc tables make about the repo against disk — checks, never generates. Exit 1 on drift. (`--root` required from the toolkit dir — without it the marketplace read fails loudly.) |
 
 **code-glossary scope limit (measured 2026-07-28):** `runner coupling` and cross-file clustering
 assume ONE codebase whose modules genuinely import each other — run across this marketplace of

@@ -6,6 +6,43 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-08-23 · Item 20260810-1914 integrated at 28cc0c7 — arrived EXECUTED, and the build superseded part of its design
+One item (owner symptom, verbatim: *"at the end i should get a neat message answering my
+first thing, not what the last agent did"*). The same sitting shipped it as turn-end 0.5.0
+`request-closure` and PUSHED on owner "@ship it" — the item integrates as DONE; the model
+catches up, zero fresh tasks beyond the live watch #1 already carried.
+- **Disk superseded the capture's "settled" span constraint:** the item held a THIRD
+  ledger bucket (request-span key) as required; the build chose PROMPT span on purpose —
+  every agent wake resets the asked bucket, so every wake-yield gets its own nudge (each
+  a user-visible resting state), safe because the ask spawns nothing. Constraint
+  DISSOLVED, not violated; recorded in parts so the reasoning survives.
+- **Claim 3 (model-answers-the-agent) still never observed in a transcript** — folded
+  into #1's live watch: one real wake-turn with the duty ON, confirm the tail answers the
+  original request.
+- **Ship position moved:** push blocker CLEARED (origin `f796962` → `28cc0c7`, both refs
+  read); tasks #1 loses its push leg, keeps update + restart + four-leg live watch.
+- Parts: turn-end 0.4.1 → 0.5.0 · sixth duty · `turn.wakeCount`/`WAKE_MARKERS` · tests
+  131 → 143 (incl. the Windows case-guard +2).
+- Checks this pass: refs both `28cc0c7` · turn-end plugin.json read (0.5.0) · duties dir
+  globbed (`request-closure.js` present) · `wakeCount` grepped in context.js · inbox =
+  exactly 1 item.
+- Housekeeping: the session's 08-10 log entry relocated from the file bottom to its
+  chronological slot below, text verbatim.
+
+## 2026-08-10 — request-closure shipped (turn-end 0.5.0)
+- Owner symptom → duty, same sitting: spans woken by background agents must end answering the
+  owner's verbatim request + who-did-what, not the last agent's return.
+- lib/duties/request-closure.js (advise, prompt span — deliberate: every wake-yield renudges;
+  ask spawns nothing so it cannot re-arm itself) + context.js turn.wakeCount (WAKE_MARKERS
+  open surface) + registry require.
+- Checks this pass: turn-end suite 133→143/143 · test-all 4/4 suites, 764 checks ·
+  registry-check consistent (README + marketplace bumped 0.4.1→0.5.0).
+- Inbox item 20260810-1914 stays staged for the sitting's integration pass (design context
+  now partly superseded by the shipped implementation — steward should reconcile both).
+- SHIPPED same sitting on owner "@ship it": 28cc0c7 pushed, origin f796962->28cc0c7 — carries
+  the five backlog commits (self-check 0.4.0/0.4.1, steward 0.3.0/0.3.1) + request-closure
+  0.5.0. Standing push blocker CLEARED; next = plugin update + restart + live ladder watch.
+
 ## 2026-08-03 · Four items integrated at 83cea6e — all arrived EXECUTED; one new question (Q13)
 Items 0011 + 0040 (08-02), 0105 (08-02 defect), 2142 (08-03). The whole batch was executed
 before integration; the model catches up, and the only fresh task is the live proof.
@@ -558,13 +595,25 @@ RELEASE-NOTES).
 - 4449028 thorough-mode 1.8.0 — protocol-shaped injections (@thorough/@fresh/@prompt)
 - bf1cbe2 essense-flow 0.25.0 — generativity protocol (design forks → open model)
 
-## 2026-08-10 — request-closure shipped (turn-end 0.5.0)
-- Owner symptom → duty, same sitting: spans woken by background agents must end answering the
-  owner's verbatim request + who-did-what, not the last agent's return.
-- lib/duties/request-closure.js (advise, prompt span — deliberate: every wake-yield renudges;
-  ask spawns nothing so it cannot re-arm itself) + context.js turn.wakeCount (WAKE_MARKERS
-  open surface) + registry require.
-- Checks this pass: turn-end suite 133→143/143 · test-all 4/4 suites, 764 checks ·
-  registry-check consistent (README + marketplace bumped 0.4.1→0.5.0).
-- Inbox item 20260810-1914 stays staged for the sitting's integration pass (design context
-  now partly superseded by the shipped implementation — steward should reconcile both).
+## 2026-08-23 · Strike 1 SHIPPED — briefing freshness + root anchoring (steward 0.4.0, kb 0.10.3)
+Owner "go" on design/stack-a-blueprint.md (Plan 2 + strike 1). Both mechanisms were
+prototype-proven against the four real ships before building.
+- **steward 0.4.0:** steward-brief.js computes freshness at injection (⚠ line naming events
+  newer than briefing.md — pending inbox, log.md, git HEAD ref; fs-only) and anchors briefing
+  read + inbox count + fleet registration to the nearest .git ancestor; protocol line now
+  names <git root>/.steward/inbox/ as the only capture path. Checks: 34/34 hook tests (7 new);
+  LIVE smoke on this repo — the hook flagged the real briefing stale by exactly today's 3
+  inbox items, from repo root AND from plugins/kb as cwd (identical output).
+- **kb 0.10.3:** new lib/project-root.js; kb-pull + kb-session-start anchor to it (payload
+  cwd preferred). Checks: 47/47 + 33/33 + 78/78 on touched suites (subdir hint test, orphan
+  silence, footprint entry).
+- **Gates:** test-all --root repo = 31/31 suites, 1723 checks (one transient essense-flow
+  red on first parallel run; re-ran twice green, direct run green — not reproduced);
+  registry-check exit 0 after README rows 19/21 updated. Marketplace + RELEASE-NOTES +
+  plugin CLAUDE.mds + README updated.
+- **FOUND during gating:** the documented test-all invocation (from toolkit dir, no --root)
+  silently sweeps ONLY plugin-toolkit — 764 checks vs 1723 real; historical "test-all 764"
+  gate records were toolkit-scoped. Root CLAUDE.md gate table now mandates --root for both
+  gates. Filed for integration.
+- Not pushed; installs unchanged (0.4.0/0.10.3 reach sessions after owner push + update +
+  restart). Next: Plan 2 pilot (status.json + instruments + statusline + kb status-join).

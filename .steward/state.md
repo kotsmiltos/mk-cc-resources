@@ -1,4 +1,4 @@
-# State — current truth (2026-08-03 · four items integrated, all pre-executed · local 83cea6e AHEAD of origin f796962)
+# State — current truth (2026-08-23 · request-closure integrated, arrived shipped+PUSHED · origin == local 28cc0c7)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,22 +8,35 @@
 
 ## Ship position
 
-**local main `83cea6e` is AHEAD of origin/main `f796962`** (both refs read this pass).
-The 08-02 sitting shipped and PUSHED `dfe1686` (turn-end 0.4.0), `b79fc1c` (steward
-0.3.0) and `f796962`; the 0.4.1 + 0.3.1 work is COMMITTED locally, not pushed — versions
-on disk read 0.4.1/0.3.1 while the tracked tree is clean except `.steward/`, so the local
-commit carries them. **Push awaits the owner's word.** The marketplace installs from
-GitHub, so no install anywhere sees 0.4.1/0.3.1 until the push (tasks #1).
+**local main == origin/main == `28cc0c7`** (both refs read this pass). The 08-10 sitting
+shipped `request-closure` (turn-end 0.5.0) and PUSHED the whole backlog on owner "@ship
+it": self-check 0.4.0/0.4.1 (+ the Windows case-guard fix, checks 131→133), steward
+0.3.0/0.3.1, the lens-escalation fixes (`af9a6e7`), request-closure 0.5.0. **The
+standing push blocker is CLEARED.** Installs stay blind until plugin update + restart —
+that is now the whole of tasks #1.
 
 ## Versions on disk
 
-Moved this arc: **turn-end 0.4.1 · steward 0.3.1** (both plugin.json read this pass).
-Unchanged, not re-read (no item touched them): kb 0.10.2 · plugin-toolkit 1.10.0 ·
+Moved this arc: **turn-end 0.5.0** (plugin.json read this pass; README + marketplace row
+bumped per the 08-10 log entry, registry-check consistent). steward 0.3.1 unchanged since
+08-03. Unchanged, not re-read (no item touched them): kb 0.10.2 · plugin-toolkit 1.10.0 ·
 thorough-mode 1.11.1 · verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · essense-flow
 0.26.1 · essense-autopilot 0.4.0 · schema-scout 1.2.1 · project-note-tracker 1.8.0 ·
 alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2.26.0.
 
-## SHIPPED this arc (2026-08-02/03) — all four inbox items arrived already executed
+## SHIPPED 2026-08-10 — this pass's one item arrived EXECUTED and PUSHED
+
+- **turn-end 0.5.0 — `request-closure`** (owner symptom: *"answering my first thing, not
+  what the last agent did"*): sixth duty — a span woken by agents / dispatching agents
+  must END by answering the owner's VERBATIM original request + who-did-what, machinery
+  last. `advise`, PROMPT span deliberate (every wake-yield renudges; safe — the ask
+  spawns nothing); `turn.wakeCount` + `WAKE_MARKERS` in context.js. The capture's
+  third-ledger-bucket constraint DISSOLVED (see parts). Tests 133 → 143; test-all 4/4
+  suites per the sitting's log. **Unproven live** — claim 3 (a wake-turn tail actually
+  answering the agent, not the owner) has still never been observed in a transcript;
+  #1's watch closes it.
+
+## SHIPPED the prior arc (2026-08-02/03) — all four inbox items arrived already executed
 
 - **turn-end 0.4.0 — `self-check`**, the no-arbitrary-DONE duty (vision invariant 10;
   first default-ON `severity:block`). Owner pass 2 amended it pre-release: evidence =
@@ -44,8 +57,8 @@ alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2
 ## LIVE — installed set
 
 - The 08-03 `/reload-plugins` picked up **steward 0.3.0 + turn-end 0.4.0** (per the 2142
-  capture). **0.3.1 / 0.4.1 are installed NOWHERE until push + update + restart** — the
-  diet and the cwd fix are on disk only.
+  capture). **0.3.1 / 0.4.1 / 0.5.0 are installed NOWHERE until plugin update + restart**
+  — origin now carries them all (the 08-10 push), so the last gap is the update itself.
 - **`steward-sync` still never observed firing** — but it now has its first credible
   root-cause candidate: the 0.4.1 cwd-follow defect (a subdir-cwd fire read the wrong
   `.steward/`). Clean probe rides #1's restart (tasks #4).
@@ -55,8 +68,9 @@ alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2
 
 ## Known-broken / known-gaps
 
-- **Self-check + 0.4.1 + diet unproven LIVE** — the batch's one fresh task (#1: push
-  [owner word] → update → restart → full-ladder fire + litter check + diet check).
+- **Self-check + 0.4.1 + request-closure + diet unproven LIVE** — the one fresh task
+  (#1: update → restart → full-ladder fire + one wake-turn closure watch + litter check
+  + diet check; the push leg LANDED 08-10).
 - **Invariant 9 hole:** essense-autopilot still owns a blocking Stop hook, installed;
   `decide()` welded into `main()`. Tasks #3.
 - **Q11 unchanged** (policy re-take, owner's) · **Q12 unchanged** (CI revert) · **Q13
@@ -77,9 +91,9 @@ alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2
 
 ## Working tree
 
-Clean except `.steward/` — this recompute, the session's log append, and four INTEGRATED
-inbox stubs awaiting session deletion (undeleted stubs lie to the brief hook's counter
-AND to the steward-sync duty).
+Clean except `.steward/` — this recompute, the session's 08-10 log append (relocated to
+its chronological slot), and ONE INTEGRATED inbox stub awaiting session deletion
+(undeleted stubs lie to the brief hook's counter AND to the steward-sync duty).
 
 ## Outside-repo (log-only context)
 

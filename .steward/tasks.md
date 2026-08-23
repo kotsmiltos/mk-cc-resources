@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-08-03 · self-check SHIPPED, steward dieted · local 83cea6e AHEAD of origin f796962)
+# Tasks — ordered, executor-ready (recomputed 2026-08-23 · request-closure SHIPPED+PUSHED · origin == local 28cc0c7)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,35 +6,39 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale.** All four 08-02/08-03 items arrived EXECUTED (self-check 0.4.0 +
-pass 2, steward 0.3.0/0.3.1, cwd fix 0.4.1) — so old #1 is DELETED as landed and its slot
-becomes the one fresh task the batch left: PROVE the shipped stack live (push [owner
-word] → update installs → restart → full-ladder fire). Numbering below #1 is unchanged.
-`steward-sync` first-fire (#4) gains its first credible root-cause candidate: the 0.4.1
-cwd-anchoring fix. Distribution ratification stays [needs owner]; autopilot extraction
-remains the last invariant-9 hole; #10's adjudication stands. Q13 (sonnet override) is a
-question, not a task, until answered.
+**Ordering rationale.** The 08-10 item arrived EXECUTED **and PUSHED** (request-closure
+= turn-end 0.5.0; origin == local `28cc0c7` on owner "@ship it") — so #1 loses its push
+leg and gains the request-closure live watch (the capture's claim 3 has never been
+observed in a transcript; the restart is the first chance to measure it). Numbering
+unchanged. `steward-sync` first-fire (#4) still rides #1's restart. Distribution
+ratification stays [needs owner]; autopilot extraction remains the last invariant-9
+hole; #10's adjudication stands. Q13 (sonnet override) is a question, not a task, until
+answered.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives.
 
-## 1. Prove the shipped stack LIVE — push, update, restart, one full-ladder fire
+## 1. Prove the shipped stack LIVE — update installs, restart, watch it fire
 
-- **Why #1:** three shipped versions are unproven live: turn-end 0.4.0 (self-check — the
-  lens verify pass's escalation 3 is exactly this open proof) + 0.4.1 (root anchor) and
-  steward 0.3.1 (injection diet). Local main (`83cea6e`) is AHEAD of origin (`f796962`);
-  the marketplace installs from GitHub, so NO install anywhere sees 0.4.1/0.3.1 until
-  the push — and pushing needs the owner's word, never assumed.
-- **What:** (1) push on owner word; (2) update turn-end + steward installs, restart;
-  (3) drive one producing turn and watch the full self-check ladder LIVE (nudge →
-  comply → allow; or ignore → block) — read the trace, not the vibe; (4) confirm the
-  session-open steward material actually lands lighter (protocol block + briefing under
-  the diet budget); (5) run a plugin's tests from its subdir, then confirm NO stray
-  `plugins/*/.claude/` tree appears and the ledger stays at the project root.
+- **Why #1:** four shipped versions are unproven live: turn-end 0.4.0 (self-check — the
+  lens verify pass's escalation 3 is exactly this open proof) + 0.4.1 (root anchor) +
+  0.5.0 (request-closure — the capture's claim 3, model-answers-the-agent, has never
+  been OBSERVED in a transcript) and steward 0.3.1 (injection diet). The push leg
+  LANDED 2026-08-10 (origin == local `28cc0c7`, owner "@ship it") — origin carries
+  everything; the installs are the last gap.
+- **What:** (1) update turn-end + steward installs, restart; (2) drive one producing
+  turn and watch the full self-check ladder LIVE (nudge → comply → allow; or ignore →
+  block) — read the trace, not the vibe; (3) on the next agent-dispatching request,
+  confirm the final tail answers the ORIGINAL request + who-did-what (request-closure
+  observed; claim 3 measured at last); (4) confirm the session-open steward material
+  actually lands lighter (protocol block + briefing under the diet budget); (5) run a
+  plugin's tests from its subdir, then confirm NO stray `plugins/*/.claude/` tree
+  appears and the ledger stays at the project root.
 - **Done-check:** trace lines showing self-check asked then satisfied on a real turn;
-  ledger + trace at project root ONLY after a subdir run; injected steward block
-  measured within budget. All three, or name which leg stays open and why.
+  one wake-turn tail observed answering the user's request; ledger + trace at project
+  root ONLY after a subdir run; injected steward block measured within budget. All
+  four, or name which leg stays open and why.
 
 ## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
 

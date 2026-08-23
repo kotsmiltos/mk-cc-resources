@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.4.1) — THE single blocking Stop hook
+## turn-end (0.5.0) — THE single blocking Stop hook
 
 - **Exposes:** one `Stop` registration for the whole toolkit. Plugins ship DUTIES; the
   runner checks each applicable duty against real state and emits ONE consolidated message
@@ -63,8 +63,26 @@ capability reach) — it CHECKS, never generates.
   pass fixed two build defects pre-release: machine-prefixed USER entries ("Stop hook
   feedback:") are no longer turn boundaries (a block reason ERASED the judged turn,
   silently dissolving the hard rung — real-shaped replay test), and the planning-prose
-  regex hole. **LIVE PROOF STILL OPEN** — one full-ladder live fire after push + plugin
-  update + restart (tasks #1).
+  regex hole. **LIVE PROOF STILL OPEN** — one full-ladder live fire after plugin update +
+  restart (the push leg landed 2026-08-10; tasks #1).
+- **SHIPPED 0.5.0 (owner symptom, 2026-08-10): `request-closure`** — the sixth duty. Owner
+  verbatim: *"at the end i should get a neat message answering my first thing, not what
+  the last agent did."* An agent completion wakes the session as a NEW prompt (kb capture
+  20260727-0800), so on a wake turn the model answers the task-notification instead of the
+  owner. Applies when the request span was woken or dispatched agents; the ask embeds the
+  VERBATIM `ctx.turn.userRequest` + span agent activity — answer THAT first, then
+  who-did-what per agent, machinery last. `advise`, PROMPT span DELIBERATE (Claude-chosen):
+  every wake resets the asked bucket, so every wake-yield gets its own nudge — each is a
+  user-visible resting state — and that is safe because the ask spawns nothing, so the
+  session-span rule for agent-asking duties does not bind. **The capture's "third ledger
+  bucket keyed on the request span" constraint DISSOLVED rather than being built:** it was
+  needed only if per-wake re-asking were harmful; here it is the wanted behavior, so no
+  new bucket exists. `context.js` gains `turn.wakeCount` (grep-verified this pass;
+  `WAKE_MARKERS` is the open surface — a scheduled wake is a new marker, not new code; a
+  user pasting one leads with their own text and never counts). Zero tokens, NO judge.
+  **LIVE PROOF OPEN** — rides #1's restart: one real wake-turn observed ending on the
+  owner's request (also finally measures the capture's claim 3, never yet seen in a
+  transcript).
 - **Sources** (`lib/sources/`) — WHERE recallable knowledge lives, the second extension
   surface. `{id,title,available,index,fetch}`, TWO-PHASE and the split is load-bearing:
   `index()` emits titles + ids and NEVER bodies, the judge picks ids, `fetch()` returns the
@@ -89,7 +107,8 @@ capability reach) — it CHECKS, never generates.
   `20260731-1950-turn-end-stop-timeout-kills-its-own-judge.md`.
 - **FIXED in 0.4.1 (2026-08-02/03) — runtime state no longer follows the shell's cwd:**
   ALL state (config / ledger / trace) anchors to `resolveProjectRoot` — nearest ancestor
-  with `.git`, never HOME or above; raw cwd only when none exists. `payload.cwd` follows
+  with `.git`, never HOME or above (home-boundary guard case-insensitive on Windows since
+  `1318e9a`, checks 131 → 133); raw cwd only when none exists. `payload.cwd` follows
   the shell's last `cd` (measured twice in one sitting: stray `plugins/*/.claude/` trees
   after running tests/gates; the per-request ledger SPLIT across directories, so a
   session-span duty re-asked from the split bucket). Also trims the steward-sync ask
@@ -111,12 +130,13 @@ capability reach) — it CHECKS, never generates.
   tool drops in out of every count.
 - **Files:** `plugins/turn-end/{lib/{runner,context,ledger}.js, lib/duties/,
   lib/sources/, lib/judges/, hooks/, defaults/config.json}` · **Tests:**
-  `node plugins/turn-end/tests/turn-end.test.js` — 131 checks (measured 2026-08-02/03;
-  was 110 at 0.3.1). Replays of measured failures include: ten work turns do not
-  oscillate, the lens is asked at most once per request, `done/` + `.gitkeep` are not
-  inbox items, and self-check's full ladder end-to-end (nudge → comply → allow; ignore →
-  block; a check BEFORE the last edit rejected; the block-feedback boundary replayed with
-  the real transcript shape).
+  `node plugins/turn-end/tests/turn-end.test.js` — 143 checks (measured 2026-08-10 per
+  its log entry; was 131 at 0.4.1 — +2 the Windows case-guard fix, +10 the 0.5.0 arc).
+  Replays of measured failures include: ten work turns do not oscillate, the lens is
+  asked at most once per request, `done/` + `.gitkeep` are not inbox items, and
+  self-check's full ladder end-to-end (nudge → comply → allow; ignore → block; a check
+  BEFORE the last edit rejected; the block-feedback boundary replayed with the real
+  transcript shape).
 - **Ledger:** `.claude/turn-end/ledger.json` — per-`prompt_id` `asked`/`fires` plus a
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
   mtime comparison. Trace: `.claude/turn-end/trace.jsonl`.
