@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.5.0) — THE single blocking Stop hook
+## turn-end (0.6.0) — THE single blocking Stop hook
 
 - **Exposes:** one `Stop` registration for the whole toolkit. Plugins ship DUTIES; the
   runner checks each applicable duty against real state and emits ONE consolidated message
@@ -97,10 +97,12 @@ capability reach) — it CHECKS, never generates.
   a cross-plugin contract: kb-session-start stands down when it sees it, so a judge child
   can never rotate the live digest. **Fragility measured 2026-08-23: three live judge
   ETIMEDOUTs in one sitting.** Owner ruling (Q2, quality over speed): the judge STAYS
-  default; a dead fire is a QUALITY failure, so Phase 1 adds a fail-open deterministic
-  ranker FALLBACK — recall never silently delivers nothing, and the injected output NAMES
-  which engine chose. Recall improvement means QUALITY measurement (chosen-files-actually-
-  used rate, Phase 3 stats), never latency.
+  default; a dead fire is a QUALITY failure. **SHIPPED 0.6.0 (Phase 1 item 6):** fail-open
+  deterministic ranker FALLBACK — a judge death (ETIMEDOUT/spawn) means the own-ranker
+  picks instead, recall never silently delivers nothing, and the trace `engine` field
+  NAMES which engine chose (146/146 at ship). Recall improvement means QUALITY measurement
+  (chosen-files-actually-used rate, Phase 3 stats), never latency; the dogfood week counts
+  fallback fires.
 - **FIXED in 0.3.1 (2026-07-31) — the hook budget no longer kills its own judge:**
   `hooks/hooks.json` now sets `"timeout": 90` (read 2026-08-01). Invariant the old 30
   violated: **the hook budget must exceed the judge budget** — the judge carries its own
@@ -135,8 +137,8 @@ capability reach) — it CHECKS, never generates.
   tool drops in out of every count.
 - **Files:** `plugins/turn-end/{lib/{runner,context,ledger}.js, lib/duties/,
   lib/sources/, lib/judges/, hooks/, defaults/config.json}` · **Tests:**
-  `node plugins/turn-end/tests/turn-end.test.js` — 143 checks (measured 2026-08-10 per
-  its log entry; was 131 at 0.4.1 — +2 the Windows case-guard fix, +10 the 0.5.0 arc).
+  `node plugins/turn-end/tests/turn-end.test.js` — 146 checks (per the 0.6.0 landing;
+  143 at 0.5.0, 131 at 0.4.1).
   Replays of measured failures include: ten work turns do not oscillate, the lens is
   asked at most once per request, `done/` + `.gitkeep` are not inbox items, and
   self-check's full ladder end-to-end (nudge → comply → allow; ignore → block; a check
@@ -146,7 +148,7 @@ capability reach) — it CHECKS, never generates.
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
   mtime comparison. Trace: `.claude/turn-end/trace.jsonl`.
 
-## steward (0.4.0) — the active thrust
+## steward (0.5.0) — the active thrust
 
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
   capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
@@ -159,9 +161,15 @@ capability reach) — it CHECKS, never generates.
   (the class turn-end fixed in 0.4.1, now fixed for steward's own hook); the protocol
   line names `<git root>/.steward/inbox/` as the only capture path. Hook tests 34/34
   (7 new); live smoke flagged this repo's real briefing stale by exactly the day's 3
-  inbox items, from root AND subdir cwd. **Phase 1 (planned, owner go pending):** the
-  agent becomes single writer of `status.json` (lifecycle + `groups[]`) at integration;
-  done/-moves stop; brief hook gains computed `[instr]` lines + cursor staleness.
+  inbox items, from root AND subdir cwd.
+- **SHIPPED 0.5.0 (2026-08-23, blueprint §6b Phase 1 — pushed `303c00c`, INSTALLED +
+  [instr] verified in a real injection same day):** the agent is single writer of
+  `status.json` (contract: `design/status-contract.md` v1, 10 rules) — lifecycle +
+  `groups[]` at integration, files NEVER move, "new" DERIVED (file present, id absent),
+  briefing regenerated LAST, no authored volatile facts. `lib/status.js` tolerant reader
+  (13/13) · brief hook cursor staleness + computed `[instr]` lines (hook tests 40/40) ·
+  `bin/steward-backfill.js` absent-only seeder (run twice = no-op). Pilot seeded on this
+  ship: 29 items, cursors at 20260823-1520. Dogfood week gates Phase 2 (tasks #1).
 - **BUDGETED 0.3.0 · LIGHTER 0.3.1 (owner, twice in two days: "fires too often and for
   too long" → "can we make the steward lighter? it is unbearable right now"):** at most
   ONE background integration pass per sitting — captures and task landings ACCUMULATE
@@ -177,9 +185,9 @@ capability reach) — it CHECKS, never generates.
 - **Consumes:** project docs/code/history at seed; `design/continuous-transformation.md`
   v3 as design source; MAP.md/`runner map` for parts-vs-code honesty (planned, Phase A).
 - **Files:** `plugins/steward/{agents/steward.md, hooks/scripts/steward-brief.js,
-  bin/steward-fleet.js, skills/steward/, commands/}` · **Tests:**
-  `node plugins/steward/tests/*.test.js` (27 checks — measured run 2026-08-02; the
-  plugin's own CLAUDE.md still says 25, a counts-class instance → tasks #7).
+  bin/steward-fleet.js, bin/steward-backfill.js, lib/status.js, skills/steward/,
+  commands/}` · **Tests:** `node plugins/steward/tests/*.test.js` (40 hook + 13 status
+  checks per the 0.5.0 landing; the plugin CLAUDE.md count line → tasks #6).
 - **Contract:** the steward agent is the ONLY writer of model files; the session writes
   `inbox/` captures and appends `log.md` outcomes only; **no Stop/per-turn hook of its own,
   by design — and that design SURVIVED the enforcement question.** Q10 is RESOLVED: the
@@ -204,24 +212,25 @@ capability reach) — it CHECKS, never generates.
   (`lib/cap-block.js`) ON PURPOSE: plugins install standalone, so a shared module across
   plugin boundaries would make one plugin's install a dependency of another's.
   **Residual:** nothing checks at WRITE time that a real `briefing.md` is inside budget.
-- **Known limitation (integration mechanics) — now measured fleet-wide:** the steward
-  agent's toolset (Read/Grep/Glob/Write/Edit) cannot delete or move files — "move to
-  inbox/done/" is executed as verbatim COPY to `done/` + a one-line "INTEGRATED — DELETE
-  ME" stub at the original path; the SESSION deletes the stubs. The 08-23 audit found the
-  litter in THREE projects (crowd: undeleted stub beside its done/ copy; twin: baked a
-  local workaround into its own README) and the CONSUMED marker is specified nowhere
-  (T3 — must be pinned in `agents/steward.md`). Phase 1 retires the whole ritual:
+- **Integration mechanics — the done/-move ritual is RETIRED on contract ships (0.5.0):**
   status.json owns lifecycle, files never move, "new" is DERIVED (file present, id
-  absent), which also keeps the agent the single writer with no write race.
+  absent) — which also keeps the agent the single writer with no write race, and kills
+  the stub-litter class the 08-23 audit measured in THREE projects (crowd: undeleted stub
+  beside its done/ copy; twin: a local workaround baked into its own README; the T3
+  CONSUMED marker is moot where the contract runs). Pre-contract ships keep the old
+  copy-plus-stub ritual (the agent's toolset cannot delete/move) until a session runs
+  `bin/steward-backfill.js` — Phase 2 (#12) backfills the fleet.
 
-## kb (0.10.3) — the memory organ: pull core + ambient push
+## kb (0.11.0) — the memory organ: pull core + ambient push
 
 - **0.10.3 (2026-08-23, strike 1 — installed same day):** new `lib/project-root.js`;
   kb-pull + kb-session-start anchor to the nearest `.git` ancestor (payload cwd
   preferred) — a subdir shell no longer reads/rotates another project's kb state.
-  Touched suites 47+33+78. **Phase 1 (planned):** status-join — status/groups from
-  `status.json` injected as THEMES at collect time, zero engine change; a first-class
-  facet only if evidence later demands it.
+  Touched suites 47+33+78.
+- **SHIPPED 0.11.0 (2026-08-23, Phase 1):** status-join — `lib/status-join.js` injects
+  `status:`/`group:` from `status.json` as THEMES at collect time (9/9; full sweep
+  33+44+47+42+78+9+273), zero engine change; a first-class facet only if evidence later
+  demands it.
 
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a second
@@ -399,12 +408,12 @@ capability reach) — it CHECKS, never generates.
 - **schema-scout (1.2.1):** data-file schema CLI (`scout`), Python package.
 - **project-note-tracker (1.8.0):** per-handler question tracker, Excel backend.
 - **alert-sounds (1.1.1):** cross-platform event alerts, stdlib Python.
-- **statusline (0.1.0):** segment-based statusline (model | task | dir | steward
+- **statusline (0.2.0):** segment-based statusline (model | task | dir | steward
   anchor+inbox | context counter); settings-level wiring, no hooks/skills, not a plugin
-  install; extend = drop a function into SEGMENTS. `segSteward` carries the same
-  naive-count bug the brief hook had (counts every inbox `.md`, tombstones included —
-  `mk-statusline.js:58-68`); Phase 1 rewrites it to read `status.json` (⚓N✱▲M),
-  fail-soft to today's anchor.
+  install; extend = drop a function into SEGMENTS. **0.2.0 (Phase 1): `segSteward` v2**
+  reads `status.json` (⚓N✱ ▲M), root-anchored, tolerant reader, fail-soft to the naive
+  anchor when the ledger is absent/corrupt (20/20) — the tombstone-counting bug class is
+  dead where the contract runs.
 
 ## Cross-reference discipline (from CLAUDE.md)
 

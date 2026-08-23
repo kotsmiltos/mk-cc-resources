@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-08-23 · audit + §6 rulings in · origin == local e6760ad)
+# Tasks — ordered, executor-ready (recomputed 2026-08-23 · Phase 1 shipped + live · origin == local e6528e0)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,38 +6,33 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale.** Four tasks CLOSED on observation this sitting: old #1 (all four
-live-watch legs seen — trace/ledger per the digest), old #4 (`steward-sync` first fire),
-old #13 (T4 measured the follow-rates the watch waited for), old #14 (the four-project
-audit IS the Phase 0 validation — verdict SUCCESS, residual owned by Phase 1). The
-blueprint §6b phases enter as tasks: Phase 1 pilot is the new #1 (owner "go" pending),
-Phase 2/3 slot before the v3 phases, which resume AFTER them on the honest substrate.
-Blueprint Phase 4 is a parking lot (evidence-gated), not a task. Renumbered 1–19.
+**Ordering rationale.** The Phase 1 status-spine pilot (old #1) is BUILT, PUSHED
+(`303c00c`) and INSTALLED-verified — its slot is now the dogfood week its own done-check
+demanded: the build is done, the TRUTH of the instruments is not yet measured. #1 gates
+Phase 2 (#12); Phase 3 (#13) follows; the v3 phases resume AFTER them on the honest
+substrate. Blueprint Phase 4 stays a parking lot (evidence-gated), not a task.
+Numbering 1–19 unchanged.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives.
 
-## 1. Phase 1 — status-spine pilot on THIS repo [needs owner "go"] (~2 evenings)
+## 1. Dogfood week — measure the live status spine (gates Phase 2, #12)
 
-- **Why #1:** blueprint §6b plan of record; kills the audit's four steward defect classes
-  at the root (briefing staleness → instruments/cursors; stub litter → done/-moves
-  retired; verify-scope → contract line; recall dead-fires → fallback). Strike 1 (Phase
-  0) is DONE and live.
-- **What:** (1) contract page: `status.json` schema v1 — items `{id, type, status,
-  groups, log, check}` + view cursors; (2) steward agent writes status.json at
-  integration (SINGLE writer; "new" is DERIVED = file-present-id-absent), briefing
-  regenerated last, done/-moves STOP (this repo only); (3) brief hook: computed `[instr]`
-  lines (git position, installs, counts) + cursor-based staleness replacing the mtime
-  heuristic; (4) statusline `segSteward` v2: ⚓N✱▲M from status.json, fail-soft to
-  today's ⚓; (5) kb status-join: status/groups injected as themes at collect; (6) recall
-  fail-open ranker fallback (Q11 resolution) + engine NAMED in trace; (7) idempotent
-  backfill script seeding status.json from `inbox/done/` + log. ALSO the two agent-
-  contract lines the audit demands: every claim REWRITTEN into briefing/state counts as
-  "written" (one read each), and the CONSUMED marker pinned in `agents/steward.md` (T3).
-- **Done-check:** one dogfood week of real sittings — staleness accuracy, statusline
-  truth, no false integrated/install claims, fallback fire count; backfill run twice is
-  a no-op; steward + statusline + kb suites green.
+- **Why #1:** Phase 1 is BUILT, PUSHED (`303c00c`) and INSTALLED — verified live (the
+  `[instr]` line fired in a real briefing injection). Its done-check was never the build:
+  it was one week of real sittings proving the spine tells the TRUTH. The suites-green
+  and backfill-idempotence legs already passed at ship (test-all `--root` 33/33 / 1758;
+  absent-only seeder); the accuracy legs need live days, not work.
+- **What (collect during normal sittings — a watch, not a build):** (a) **staleness
+  accuracy** — the brief hook's FRESH/⚠ + cursor verdict vs reality at each open;
+  (b) **fallback fire count** — turn-end trace `engine` field: how often the ranker
+  answered for a dead judge, and whether the recalled material held up; (c) **ledger
+  truth** — no false integrated/install claims; "new" derivation correct (a fresh inbox
+  drop counts, an integrated id stops counting); (d) **statusline correctness** — ⚓N✱ ▲M
+  matches status.json at a glance. Any failed leg becomes an inbox item, not a hotfix.
+- **Done-check:** a week of sittings with each leg observed at least once and zero
+  unexplained instrument lies (or every lie filed + root-caused); then #12 unblocks.
 
 ## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
 
@@ -79,9 +74,9 @@ detail here — name projects, not drives.
   post-restart. Today's plugin update + restart means the answer is now collectable:
   a stdio server keeps the code it was launched with, so `kb_overview` should report
   the freshly-installed build.
-- **Done-check:** one `kb_overview` call reports `version: 0.10.3` AND a
-  `kb_query`/`kb_read` line with a post-restart timestamp appears in the trace. Both,
-  or the leg is not closed.
+- **Done-check:** one `kb_overview` call reports `version: 0.11.0` (the 18:36 install +
+  restart supersedes the earlier 0.10.3 expectation) AND a `kb_query`/`kb_read` line with
+  a post-restart timestamp appears in the trace. Both, or the leg is not closed.
 
 ## 5. Crowd-game: commit its config, run the DEEP seed, and collect the post-fix turn-end data
 
@@ -110,14 +105,14 @@ detail here — name projects, not drives.
   counts computed at read); this sweep keeps the STATIC prose half. Open instances, each
   read from the file that claims it: test-all totals (re-run
   `node plugins/plugin-toolkit/bin/test-all.js --root <repo>` and let ITS output be the
-  number — today's truth is 31 suites / 1723 checks; historical "764" records were
+  number — today's truth is 33 suites / 1758 checks; historical "764" records were
   toolkit-scoped) · plugin-toolkit 1.10.0 RELEASE-NOTES entry (last verified missing
   08-01) · RELEASE-NOTES 1.9.0 checks.yml claim (wording per Q12's answer) · bundle
   description drift · 613 Python glossary-engine checks in no documented total ·
   moved-content references from the 07-31 restructure · marketplace metadata non-bump
   convention (decide, then bump-or-drop) · steward CLAUDE.md test-count line (re-derive
-  against the 0.4.0 suite before touching). Prefer printing the command over the number
-  wherever the number earns nothing.
+  against the current 0.5.0 suite before touching). Prefer printing the command over the
+  number wherever the number earns nothing.
 - **Done-check:** a check (registry-check claim source or peer) fails on today's
   instances and passes after correction; one command re-verifies every documented count
   and hook claim.
@@ -133,12 +128,13 @@ detail here — name projects, not drives.
 - **Done-check:** the entry deleted AND `node plugins/plugin-toolkit/bin/repo-guard.js`
   still exits 0 AND `node plugins/essense-flow/test/run-all.cjs` reports zero failures.
 
-## 8. Enforce the briefing budget at WRITE time (fold into Phase 1's brief-hook work)
+## 8. Enforce the briefing budget at WRITE time (small standalone; Phase 1 did NOT land it)
 
 - **What:** injection side fixed (steward 0.2.1); nothing checks that a real
   `briefing.md` is inside budget at write time — the agent's contract text is the only
-  guard, the "rule, not mechanism" shape invariant 3 rejects. Phase 1 item (3) rebuilds
-  the brief hook anyway — land the write-time check in the same pass.
+  guard, the "rule, not mechanism" shape invariant 3 rejects. The Phase 1 brief-hook
+  rebuild shipped WITHOUT this check, so it no longer rides another pass — it is its own
+  small task (a deterministic check in the steward suite, or a repo-guard-style gate).
 - **Done-check:** a deterministic check FAILS on a deliberately over-budget
   `.steward/briefing.md` fixture and passes on this repo's real one; steward suite green.
 
