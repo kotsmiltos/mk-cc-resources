@@ -672,3 +672,11 @@ recomputed), stubs deleted, then Phase 1 in full:
   + README + marketplace + CLAUDE.mds consistent).
 - NOT pushed — owner word pending; installs see Phase 1 only after push + update + restart.
   Dogfood week starts at the first post-install session.
+
+## 2026-08-23 · Phase 1 PUSHED — origin e6760ad -> 303c00c (owner "@ship it")
+One commit, 38 files (+1662/−418): four plugin bumps (steward 0.5.0 / kb 0.11.0 /
+statusline 0.2.0 / turn-end 0.6.0), contract page, seeded pilot status.json, sync-pass
+model recompute. Pre-ship: leak grep clean · repo-guard exit 0 (July revert-chains
+informational) · test-all --root 33/33 / 1758 · registry-check consistent. Next: owner
+updates installs (steward, kb, statusline, turn-end) + restart → dogfood week begins;
+first post-install open should show [instr] line + calm ⚓ on this ship.
