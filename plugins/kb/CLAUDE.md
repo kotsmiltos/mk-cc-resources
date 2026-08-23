@@ -48,6 +48,11 @@ lib/
   sources/
     index.js                 # source-type registry + collectAll (isolates + reports errors)
     markdown-dir.js          # the generic source TYPE; every shipped source is config over it
+  project-root.js            # 0.10.3: nearest-.git-ancestor walk (HOME-guarded, Windows
+                             #   case-insensitive) — BOTH hooks anchor here so a subdir
+                             #   shell can no longer read/rotate a different project's kb
+                             #   state. kb's own copy of turn-end's 0.4.1 walk on purpose:
+                             #   shared modules couple independently-installed plugins
   kb.js                      # THE FACADE — every adapter binds here, nothing reaches past it
 bin/kb.js                    # CLI adapter (one caller among peers)
 mcp/kb-mcp-server.js         # MCP stdio adapter — kb_query/kb_read/kb_overview; hand-rolled
@@ -88,8 +93,9 @@ commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
 tests/kb.test.js             # 273 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 42 checks — guards, floor, digest, traces, precision fixture
-tests/kb-session.test.js     # 56 checks — presence rule, rotation + loss-safety, cue
+tests/kb-pull.test.js        # 47 checks — guards, floor, digest, traces, precision fixture,
+                             #   subdir root-anchoring + orphan-dir silence (0.10.3)
+tests/kb-session.test.js     # 78 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 42 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
 tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site

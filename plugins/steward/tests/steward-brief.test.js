@@ -141,5 +141,46 @@ check('fleet shows top task', fleetOut.includes('Fix the thing'));
 check('fleet reports vanished project pruned', fleetOut.includes('no longer exists'));
 check('fleet registry pruned on disk', JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.every((p) => p !== path.resolve(goneProj)));
 
+// 9. Staleness line (strike 1, 2026-08-23): a briefing older than an inbox item must say
+// so; the freshest briefing must stay silent. The audit measured all four live ships
+// injecting stale briefings with no marker — this is that class's regression guard.
+const staleProj = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-stale-'));
+fs.mkdirSync(path.join(staleProj, '.steward', 'inbox'), { recursive: true });
+const briefPath = path.join(staleProj, '.steward', 'briefing.md');
+fs.writeFileSync(briefPath, 'Ship: stale test.\n');
+const past = (Date.now() - 100000) / 1000;
+fs.utimesSync(briefPath, past, past); // briefing 100s in the past
+fs.writeFileSync(path.join(staleProj, '.steward', 'inbox', '20260823-1600-newer-thought.md'), 'x\n');
+const staleCtx = JSON.parse(runHook(staleProj)).hookSpecificOutput.additionalContext;
+check('stale briefing carries the warning line', staleCtx.includes('newer than this briefing'));
+check('warning names the newer event', staleCtx.includes('inbox:20260823-1600-newer-thought'));
+
+fs.unlinkSync(path.join(staleProj, '.steward', 'inbox', '20260823-1600-newer-thought.md'));
+const now = Date.now() / 1000;
+fs.utimesSync(briefPath, now, now); // briefing is now the newest thing
+const freshCtx = JSON.parse(runHook(staleProj)).hookSpecificOutput.additionalContext;
+check('fresh briefing carries no warning', !freshCtx.includes('newer than this briefing'));
+
+// log.md newer than the briefing counts as an event; git-HEAD too (fs-only ref read).
+fs.writeFileSync(path.join(staleProj, '.steward', 'log.md'), 'entry\n');
+fs.utimesSync(briefPath, past, past);
+const logStale = JSON.parse(runHook(staleProj)).hookSpecificOutput.additionalContext;
+check('newer log.md flagged', logStale.includes('log.md'));
+fs.mkdirSync(path.join(staleProj, '.git', 'refs', 'heads'), { recursive: true });
+fs.writeFileSync(path.join(staleProj, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+fs.writeFileSync(path.join(staleProj, '.git', 'refs', 'heads', 'main'), 'abc123\n');
+const gitStale = JSON.parse(runHook(staleProj)).hookSpecificOutput.additionalContext;
+check('newer git-HEAD flagged', gitStale.includes('git-HEAD'));
+
+// 10. Root anchoring (strike 1): a session opened in a SUBDIR must brief from the repo
+// root's model — the aithseis build-and-sell/.steward orphan class, killed at the hook.
+const deep = path.join(staleProj, 'sub', 'deeper');
+fs.mkdirSync(deep, { recursive: true });
+const subCtx = JSON.parse(runHook(deep)).hookSpecificOutput.additionalContext;
+check('subdir cwd still finds the root model', subCtx.includes('Ship: stale test.'));
+// Break case: a dir with NO .git ancestor below home falls back to itself — no .steward
+// there, so silence (never a phantom briefing from some unrelated ancestor).
+check('non-repo subdir without model stays silent', runHook(bare) === '');
+
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

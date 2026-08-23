@@ -39,6 +39,15 @@ bin/steward-fleet.js    # fleet briefing renderer — all steward projects at a 
 hooks/
   hooks.json            # SessionStart registration (no Stop/per-turn hooks by design)
   scripts/steward-brief.js  # deterministic briefing+inbox injection + fleet auto-registration;
-                        #   silent without .steward/; fail-open
-tests/steward-brief.test.js  # 27 checks, isolated fake home, no framework
+                        #   silent without .steward/; fail-open. 0.4.0 (strike 1): anchors
+                        #   EVERY read to the nearest .git ancestor (own copy of turn-end's
+                        #   0.4.1 walk — cross-plugin duplication deliberate) and computes
+                        #   briefing FRESHNESS at injection — one ⚠ line naming events newer
+                        #   than briefing.md (pending inbox, log.md, git HEAD ref; fs-only).
+                        #   Audit 2026-08-23: the briefing was stale in ALL FOUR live ships,
+                        #   silently — the most-injected surface may be old, never a liar.
+                        #   Agent regenerates briefing LAST in a pass so same-pass writes
+                        #   never false-flag. Protocol line names <git root>/.steward/inbox/
+                        #   as the only capture path (aithseis build-and-sell orphan class)
+tests/steward-brief.test.js  # 34 checks, isolated fake home, no framework
 ```

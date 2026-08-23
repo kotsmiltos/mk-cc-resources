@@ -1,5 +1,31 @@
 # steward — Release Notes
 
+## 0.4.0 — The briefing stops lying about its age; everything anchors to the repo root
+
+Strike 1 of design/stack-a-blueprint.md (owner "go", 2026-08-23). The four-project audit
+measured the same defect on every live ship: the briefing — the ONE surface injected at every
+session open — was stale in all four projects, silently (this repo: a false install claim the
+same morning; twin-game: 8 commits behind at session close; aithseis: wrong at every open for
+12 days). And a session whose shell sat in a subdirectory captured to a SECOND `.steward/`
+the real model never saw (measured: aithseis `build-and-sell/.steward`, 2026-08-13).
+
+Two mechanisms, both deterministic, both prototype-proven against the four real ships before
+being built:
+
+- **Freshness at injection.** The hook stats the briefing against pending inbox items,
+  `log.md`, and the git HEAD ref (fs-only — no child process) and, when anything is newer,
+  prefixes ONE line: `⚠ N event(s) newer than this briefing (…named…) — position claims may
+  be stale; a sync refreshes it.` A briefing may be old; it may not lie about it. The agent
+  regenerates `briefing.md` LAST in a pass, so same-pass writes never false-flag.
+- **Root anchoring.** `resolveProjectRoot` (this plugin's own copy of the walk turn-end
+  0.4.1 proved; duplication across plugins is deliberate) anchors the briefing read, the
+  inbox count, and fleet registration to the nearest `.git` ancestor — HOME-guarded,
+  case-insensitive on Windows. The injected protocol line now names
+  `<PROJECT GIT ROOT>/.steward/inbox/` as the only capture path.
+
+34/34 hook tests (7 new: stale/fresh/log/git-HEAD flagging, subdir anchoring, non-repo
+fallback silence).
+
 ## 0.3.1 — Lighter: the standing injection halved
 
 Owner, verbatim, the night 0.3.0 went live: "dude canwe make the steaward lighter? it is

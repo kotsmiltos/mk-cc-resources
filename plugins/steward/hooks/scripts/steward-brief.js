@@ -17,6 +17,83 @@
 const fs = require('fs');
 const path = require('path');
 
+/*
+ * Root anchoring (2026-08-23, owner "go" on stack-a-blueprint strike 1): the capture
+ * protocol resolves .steward/ against the shell's cwd, and a session sitting in a subdir
+ * spawned a SECOND .steward/ the real model never saw (measured: aithseis
+ * build-and-sell/.steward, 2026-08-13). Same class turn-end fixed in its 0.4.1 —
+ * this is this plugin's own copy of the walk (duplication ACROSS plugins is deliberate:
+ * a shared module would couple independently-installed plugins).
+ */
+function resolveProjectRoot(start, home) {
+  const os = require('os');
+  const fallback = path.resolve(start);
+  const homeDir = path.resolve(home || os.homedir());
+  // Windows paths are case-insensitive but string compare is not: a payload cwd arriving
+  // as c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a
+  // dotfiles .git — the exact hazard the guard exists for.
+  const same = (a, b) =>
+    process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  let dir = fallback;
+  while (!same(dir, homeDir)) {
+    try {
+      if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    } catch (_e) { return fallback; }
+    const parent = path.dirname(dir);
+    if (same(parent, dir)) return fallback;
+    dir = parent;
+  }
+  return fallback;
+}
+
+/*
+ * Briefing freshness, computed at injection (2026-08-23 strike 1). The audit measured the
+ * briefing WRONG in all four steward projects — the most-injected surface was the most
+ * often stale, silently. A briefing may be old; it may not lie about it. fs-only (stat
+ * calls + .git ref reads), no child process — the hook stays cheap. The steward agent
+ * regenerates briefing.md LAST in an integration pass, so same-pass log/model writes land
+ * BEFORE it and never count as "newer".
+ */
+function gitHeadMtime(root) {
+  try {
+    const headFile = path.join(root, '.git', 'HEAD');
+    const head = fs.readFileSync(headFile, 'utf8').trim();
+    if (head.startsWith('ref: ')) {
+      const refPath = path.join(root, '.git', ...head.slice(5).trim().split('/'));
+      if (fs.existsSync(refPath)) return fs.statSync(refPath).mtimeMs;
+      const packed = path.join(root, '.git', 'packed-refs');
+      if (fs.existsSync(packed)) return fs.statSync(packed).mtimeMs;
+    }
+    return fs.statSync(headFile).mtimeMs;
+  } catch (_e) { return null; }
+}
+
+const STALENESS_NAME_CAP = 3; // named events before "+N more" — the warning must stay one line
+
+function stalenessLine(projectRoot, stewardRoot) {
+  let briefT;
+  try { briefT = fs.statSync(path.join(stewardRoot, 'briefing.md')).mtimeMs; } catch (_e) { return ''; }
+  const newer = [];
+  try {
+    for (const f of fs.readdirSync(path.join(stewardRoot, 'inbox'))) {
+      if (!f.endsWith('.md') || f.startsWith('.')) continue;
+      try {
+        const st = fs.statSync(path.join(stewardRoot, 'inbox', f));
+        if (st.isFile() && st.mtimeMs > briefT) newer.push(`inbox:${f.replace(/\.md$/, '')}`);
+      } catch (_e) { /* unreadable entry — skip, never block */ }
+    }
+  } catch (_e) { /* no inbox dir — fine */ }
+  try {
+    if (fs.statSync(path.join(stewardRoot, 'log.md')).mtimeMs > briefT) newer.push('log.md');
+  } catch (_e) { /* no log — fine */ }
+  const g = gitHeadMtime(projectRoot);
+  if (g && g > briefT) newer.push('git-HEAD');
+  if (!newer.length) return '';
+  const shown = newer.slice(0, STALENESS_NAME_CAP).join(', ') +
+    (newer.length > STALENESS_NAME_CAP ? ` +${newer.length - STALENESS_NAME_CAP} more` : '');
+  return `⚠ ${newer.length} event(s) newer than this briefing (${shown}) — position claims may be stale; a sync refreshes it.`;
+}
+
 const BRIEFING_MAX_CHARS = 900; // hard cap: briefing.md is spec'd ≤6 lines (owner 2026-08-03: "make the steward lighter" — injected text is a per-session tax); cap guards a rotten file from flooding context
 const BRIEFING_MAX_LINES = 8;   // the spec is ≤6; two lines of slack before the cut, so a
                                  // briefing that is merely a little long is not mangled
@@ -64,7 +141,7 @@ function capBriefing(text) {
  */
 const PROTOCOL = [
   '<steward-protocol>',
-  'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to .steward/inbox/<YYYYMMDD-HHmm>-<slug>.md, ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
+  'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to <PROJECT GIT ROOT>/.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md (always the repo root — never resolve against a subdir cwd), ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
   'Integration is BATCHED: at most ONE steward-agent pass per sitting, dispatched in the BACKGROUND (never make the owner wait); captures/landings accumulate until wrap-up or next open; an explicit owner "sync" always dispatches.',
   'The steward agent is the only writer of the model files; the session writes only inbox/ + log.md. No work absent the owner.',
   '</steward-protocol>'
@@ -80,7 +157,10 @@ function main() {
     }
   } catch (_) { /* stdin optional — keep process.cwd() */ }
 
-  const root = path.join(cwd, '.steward');
+  // Anchor to the project root, not the shell's position — a session opened in a subdir
+  // must still brief from (and count) the REAL model at the repo root.
+  const projectRoot = resolveProjectRoot(cwd);
+  const root = path.join(projectRoot, '.steward');
   if (!fs.existsSync(root)) return; // not a steward project — total silence
 
   // Fleet auto-registration: opening a steward project records it in the user-global
@@ -92,7 +172,7 @@ function main() {
     let fleet = { projects: [] };
     try { fleet = JSON.parse(fs.readFileSync(fleetFile, 'utf8')); } catch (_) { /* first run */ }
     if (!Array.isArray(fleet.projects)) fleet.projects = [];
-    const norm = path.resolve(cwd);
+    const norm = path.resolve(projectRoot); // register the ROOT, not wherever the shell sat
     if (!fleet.projects.some((p) => path.resolve(p) === norm)) {
       fleet.projects.push(norm);
       fs.mkdirSync(fleetDir, { recursive: true });
@@ -117,8 +197,10 @@ function main() {
     }
   } catch (_) { /* no inbox dir yet — fine */ }
 
+  const stale = stalenessLine(projectRoot, root);
   const context = [
     '<steward-briefing>',
+    ...(stale ? [stale] : []),
     briefing,
     '',
     pendingNote,

@@ -258,7 +258,12 @@ async function main() {
   if (isSpawnedChild()) return process.exit(0);
 
   const payload = await readPayload();
-  const root = process.cwd();
+  // Anchor to the project root: the shell's cwd follows `cd`, and a subdir session
+  // previously rotated/marked the wrong project's digest (see lib/project-root.js).
+  const { resolveProjectRoot } = require('../../lib/project-root');
+  const root = resolveProjectRoot(
+    (typeof payload.cwd === 'string' && payload.cwd) || process.cwd()
+  );
   const source = String(payload.source || 'startup');
   const out = [];
 

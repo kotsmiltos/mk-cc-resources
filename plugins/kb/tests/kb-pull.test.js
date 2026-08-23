@@ -251,5 +251,27 @@ check('plain text not machine', !hook.isMachineText('why did we reject the porte
   check('digest entry is working-kind session-caste', st.byKind.working === 1 && st.byCaste.session === 1);
 }
 
+// ---- root anchoring (strike 1, 2026-08-23): a hook fired from a SUBDIR must serve the
+// repo-root project's kb, not silently find nothing (the wrong-root class that stranded
+// state under .steward/inbox/.claude/ before turn-end 0.4.1 fixed its own copy). The
+// fixture gains a .git marker so the walk has something to find; the payload carries the
+// subdir as cwd exactly like a real drifted session.
+{
+  const root = fixture();
+  fs.mkdirSync(path.join(root, '.git'), { recursive: true });
+  const deep = path.join(root, 'src', 'nested');
+  fs.mkdirSync(deep, { recursive: true });
+  const r = runHook(deep, JSON.stringify({
+    cwd: deep,
+    prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?'
+  }));
+  check('subdir session still gets root-project hints', r.stdout.includes('rejected-porter-ferry'));
+  // Break case: no .git anywhere below home -> falls back to the subdir itself, which
+  // keeps no memory -> presence gate holds, total silence (never a phantom hit).
+  const orphan = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-orphan-'));
+  const r2 = runHook(orphan, JSON.stringify({ cwd: orphan, prompt: 'porter ferry caste transfers rejected?' }));
+  check('non-repo dir with no memory stays silent', (r2.stdout || '') === '');
+}
+
 console.log(`\n${total - failures}/${total} checks passed`);
 if (failures) process.exit(1);

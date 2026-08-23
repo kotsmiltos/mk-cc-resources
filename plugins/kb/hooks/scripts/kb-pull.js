@@ -140,14 +140,20 @@ function trace(root, record) {
 async function main() {
   const input = await readStdin();
   let prompt = '';
+  let payloadCwd = '';
   try {
-    prompt = String(JSON.parse(input).prompt || '').trimStart();
+    const payload = JSON.parse(input);
+    prompt = String(payload.prompt || '').trimStart();
+    if (typeof payload.cwd === 'string') payloadCwd = payload.cwd;
   } catch (_e) {
     process.exit(0); // not hook JSON — nothing to do
   }
   if (!prompt || prompt.length < MIN_PROMPT_CHARS || isMachineText(prompt)) process.exit(0);
 
-  const root = process.cwd();
+  // Anchor to the project root: the shell's cwd follows `cd`, and a subdir session
+  // previously read/wrote the wrong project's kb state (see lib/project-root.js).
+  const { resolveProjectRoot } = require('../../lib/project-root');
+  const root = resolveProjectRoot(payloadCwd || process.cwd());
   const { openKb } = require('../../lib/kb');
   const kb = openKb(root);
   const cfg = pullConfig(kb.config);
