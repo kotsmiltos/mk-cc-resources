@@ -50,7 +50,8 @@ plugins/
                             #   UserPromptSubmit hooks; per-event config.json toggles)
 
   statusline/               # Segment-based statusline — settings-level wiring, fail-soft per
-                            #   segment, extend = drop a function into SEGMENTS.
+                            #   segment, extend = drop a function into SEGMENTS. 0.2.0:
+                            #   segSteward v2 — ⚓N✱ ▲M from the status contract, root-anchored.
                             #   See plugins/statusline/CLAUDE.md.
 
   verifiability-lens/       # Work-quality guardian: A/B/U verifiability + completeness +
@@ -73,6 +74,9 @@ plugins/
                             #   FRESHNESS at injection (⚠ line naming events newer than it)
                             #   and every read anchors to the nearest .git ancestor — a
                             #   subdir shell briefs from and captures to the REAL model.
+                            #   0.5.0: STATUS CONTRACT — status.json lifecycle ledger
+                            #   (agent = only writer, new is derived, files never move),
+                            #   computed [instr] briefing lines, cursor staleness, backfill.
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
@@ -83,14 +87,17 @@ plugins/
                             #   quality-lens, steward-sync, self-check (0.4.0 — default-ON,
                             #   severity:block: a turn that changed real files may not yield
                             #   until a check ran AFTER the last change or the final message
-                            #   names the check + result), request-closure (0.5.0 — a span
+                            #   names the check + result), context-recall fallback (0.6.0 —
+                            #   judge death → own-ranker picks, engine named; judge stays
+                            #   default per owner quality-over-speed law), request-closure (0.5.0 — a span
                             #   woken by / dispatching agents must END by answering the
                             #   user's verbatim original request + who-did-what, not the
                             #   last agent's return). See plugins/turn-end/CLAUDE.md.
 
   kb/                       # (0.10.3: both hooks root-anchored via lib/project-root.js —
                             #   a subdir shell no longer reads/rotates another project's
-                            #   kb state.) Queryable knowledge base — the PULL side of the long-lens tools
+                            #   kb state. 0.11.0: status-join — steward ledger status/groups
+                            #   ride as searchable themes.) Queryable knowledge base — the PULL side of the long-lens tools
                             #   (steward + lens PUSH a fixed briefing at open). Two orthogonal
                             #   axes, never collapsed: KIND (episodic/semantic/procedural/
                             #   working — CoALA) x CASTE (session→thread→project→fleet→owner,

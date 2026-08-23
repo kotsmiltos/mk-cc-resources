@@ -55,15 +55,61 @@ function segDir(data) {
   return DIM(path.basename(dir));
 }
 
+/*
+ * Root anchoring + status-contract reading for segSteward (Phase 1,
+ * design/status-contract.md). Both are this plugin's OWN copies — cross-plugin imports
+ * would couple independently-installed plugins (the readPayload x6 rule). Tolerant
+ * reader: absent/corrupt status.json degrades to counting inbox files, exactly the
+ * pre-contract display.
+ */
+function stewardRoot(start) {
+  const os = require('os');
+  const fallback = path.resolve(start);
+  const homeDir = path.resolve(os.homedir());
+  const same = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  let dir = fallback;
+  while (!same(dir, homeDir)) {
+    try { if (fs.existsSync(path.join(dir, '.git'))) return dir; } catch (_) { return fallback; }
+    const parent = path.dirname(dir);
+    if (same(parent, dir)) return fallback;
+    dir = parent;
+  }
+  return fallback;
+}
+
 function segSteward(data) {
-  // Anchor marker in steward projects: ⚓ (+ inbox count when items wait).
+  // Anchor marker in steward projects: ⚓N✱ ▲M — N = new items (derived: inbox file whose
+  // id status.json does not record; without status.json every inbox file counts, tombstone
+  // dirs and dotfiles excluded), ✱ = charts stale, ▲M = recorded items past the briefing
+  // cursor. Old display (⚓ / ⚓N) survives wherever the contract file is absent.
   try {
-    const dir = data.workspace?.current_dir || process.cwd();
-    const inbox = path.join(dir, '.steward', 'inbox');
-    if (!fs.existsSync(path.join(dir, '.steward'))) return '';
-    let n = 0;
-    try { n = fs.readdirSync(inbox).filter((f) => f.endsWith('.md')).length; } catch (_) { /* no inbox */ }
-    return n > 0 ? `\x1b[36m⚓${n}\x1b[0m` : '\x1b[36m⚓\x1b[0m';
+    const root = stewardRoot(data.workspace?.current_dir || process.cwd());
+    const sw = path.join(root, '.steward');
+    if (!fs.existsSync(sw)) return '';
+    let ids = [];
+    try {
+      ids = fs.readdirSync(path.join(sw, 'inbox'))
+        .filter((f) => f.endsWith('.md') && !f.startsWith('.'))
+        .map((f) => f.slice(0, -3));
+    } catch (_) { /* no inbox */ }
+    let recorded = new Set(), cursor = null, later = 0;
+    try {
+      const st = JSON.parse(fs.readFileSync(path.join(sw, 'status.json'), 'utf8'));
+      if (Array.isArray(st.items)) {
+        for (const i of st.items) if (i && typeof i.id === 'string') recorded.add(i.id);
+        cursor = st.views?.briefing?.derived_through ?? null;
+        if (typeof cursor === 'string') {
+          later = [...recorded].filter((id) => id > cursor).length;
+        }
+      }
+    } catch (_) { /* absent or corrupt — degrade to plain counting */ }
+    const fresh = ids.filter((id) => !recorded.has(id)).length;
+    const stale = fresh > 0 || later > 0;
+    let out = '⚓';
+    if (fresh > 0) out += String(fresh);
+    if (stale) out += '✱';
+    if (later > 0) out += ` ▲${later}`;
+    return `\x1b[36m${out}\x1b[0m`;
   } catch (_) { return ''; }
 }
 

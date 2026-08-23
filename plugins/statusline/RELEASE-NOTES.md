@@ -6,6 +6,17 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 0.2.0 — segSteward v2: the anchor tells the truth
+
+Phase 1 of the status contract (design/status-contract.md). The steward marker becomes
+⚓N✱ ▲M — N = derived-new items (an inbox file the ledger does not record; without a ledger
+every top-level non-dot .md counts, which is the old display minus its tombstone miscount),
+✱ = charts stale, ▲M = recorded items past the briefing cursor. Root-anchored (own copy of
+the nearest-.git walk — cross-plugin imports would couple independently-installed plugins);
+tolerant reader (corrupt/absent status.json degrades to plain counting, never crashes).
+Zero-token ambient truth: the owner sees ship honesty every turn without one injected char.
+20/20 checks (5 new incl. corrupt-ledger break case).
+
 ## 0.1.0 — 2026-07-22
 
 Initial release, owner-requested after the GSD uninstall took its statusline along: the context

@@ -53,6 +53,9 @@ lib/
                              #   shell can no longer read/rotate a different project's kb
                              #   state. kb's own copy of turn-end's 0.4.1 walk on purpose:
                              #   shared modules couple independently-installed plugins
+  status-join.js             # 0.11.0: steward status.json joined at collect — status:/group:
+                             #   themes on recorded entries (search stays in ONE engine, owner
+                             #   ruling); tolerant, corrupt ledger = visible per-source error
   kb.js                      # THE FACADE — every adapter binds here, nothing reaches past it
 bin/kb.js                    # CLI adapter (one caller among peers)
 mcp/kb-mcp-server.js         # MCP stdio adapter — kb_query/kb_read/kb_overview; hand-rolled
@@ -97,6 +100,7 @@ tests/kb-pull.test.js        # 47 checks — guards, floor, digest, traces, prec
                              #   subdir root-anchoring + orphan-dir silence (0.10.3)
 tests/kb-session.test.js     # 78 checks — presence rule, rotation + loss-safety, cue
 tests/kb-scribe.test.js      # 42 checks — worthiness, fire-once, transcript turn, e2e block
+tests/kb-status-join.test.js # 9 checks — join facets, themes filter, absent/corrupt ledger
 tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
 tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
                              #   audit (negative-controlled) +

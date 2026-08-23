@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-08-23 · request-closure SHIPPED+PUSHED · origin == local 28cc0c7)
+# Tasks — ordered, executor-ready (recomputed 2026-08-23 · audit + §6 rulings in · origin == local e6760ad)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,39 +6,38 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale.** The 08-10 item arrived EXECUTED **and PUSHED** (request-closure
-= turn-end 0.5.0; origin == local `28cc0c7` on owner "@ship it") — so #1 loses its push
-leg and gains the request-closure live watch (the capture's claim 3 has never been
-observed in a transcript; the restart is the first chance to measure it). Numbering
-unchanged. `steward-sync` first-fire (#4) still rides #1's restart. Distribution
-ratification stays [needs owner]; autopilot extraction remains the last invariant-9
-hole; #10's adjudication stands. Q13 (sonnet override) is a question, not a task, until
-answered.
+**Ordering rationale.** Four tasks CLOSED on observation this sitting: old #1 (all four
+live-watch legs seen — trace/ledger per the digest), old #4 (`steward-sync` first fire),
+old #13 (T4 measured the follow-rates the watch waited for), old #14 (the four-project
+audit IS the Phase 0 validation — verdict SUCCESS, residual owned by Phase 1). The
+blueprint §6b phases enter as tasks: Phase 1 pilot is the new #1 (owner "go" pending),
+Phase 2/3 slot before the v3 phases, which resume AFTER them on the honest substrate.
+Blueprint Phase 4 is a parking lot (evidence-gated), not a task. Renumbered 1–19.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives.
 
-## 1. Prove the shipped stack LIVE — update installs, restart, watch it fire
+## 1. Phase 1 — status-spine pilot on THIS repo [needs owner "go"] (~2 evenings)
 
-- **Why #1:** four shipped versions are unproven live: turn-end 0.4.0 (self-check — the
-  lens verify pass's escalation 3 is exactly this open proof) + 0.4.1 (root anchor) +
-  0.5.0 (request-closure — the capture's claim 3, model-answers-the-agent, has never
-  been OBSERVED in a transcript) and steward 0.3.1 (injection diet). The push leg
-  LANDED 2026-08-10 (origin == local `28cc0c7`, owner "@ship it") — origin carries
-  everything; the installs are the last gap.
-- **What:** (1) update turn-end + steward installs, restart; (2) drive one producing
-  turn and watch the full self-check ladder LIVE (nudge → comply → allow; or ignore →
-  block) — read the trace, not the vibe; (3) on the next agent-dispatching request,
-  confirm the final tail answers the ORIGINAL request + who-did-what (request-closure
-  observed; claim 3 measured at last); (4) confirm the session-open steward material
-  actually lands lighter (protocol block + briefing under the diet budget); (5) run a
-  plugin's tests from its subdir, then confirm NO stray `plugins/*/.claude/` tree
-  appears and the ledger stays at the project root.
-- **Done-check:** trace lines showing self-check asked then satisfied on a real turn;
-  one wake-turn tail observed answering the user's request; ledger + trace at project
-  root ONLY after a subdir run; injected steward block measured within budget. All
-  four, or name which leg stays open and why.
+- **Why #1:** blueprint §6b plan of record; kills the audit's four steward defect classes
+  at the root (briefing staleness → instruments/cursors; stub litter → done/-moves
+  retired; verify-scope → contract line; recall dead-fires → fallback). Strike 1 (Phase
+  0) is DONE and live.
+- **What:** (1) contract page: `status.json` schema v1 — items `{id, type, status,
+  groups, log, check}` + view cursors; (2) steward agent writes status.json at
+  integration (SINGLE writer; "new" is DERIVED = file-present-id-absent), briefing
+  regenerated last, done/-moves STOP (this repo only); (3) brief hook: computed `[instr]`
+  lines (git position, installs, counts) + cursor-based staleness replacing the mtime
+  heuristic; (4) statusline `segSteward` v2: ⚓N✱▲M from status.json, fail-soft to
+  today's ⚓; (5) kb status-join: status/groups injected as themes at collect; (6) recall
+  fail-open ranker fallback (Q11 resolution) + engine NAMED in trace; (7) idempotent
+  backfill script seeding status.json from `inbox/done/` + log. ALSO the two agent-
+  contract lines the audit demands: every claim REWRITTEN into briefing/state counts as
+  "written" (one read each), and the CONSUMED marker pinned in `agents/steward.md` (T3).
+- **Done-check:** one dogfood week of real sittings — staleness accuracy, statusline
+  truth, no false integrated/install claims, fallback fire count; backfill run twice is
+  a no-op; steward + statusline + kb suites green.
 
 ## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
 
@@ -47,17 +46,16 @@ detail here — name projects, not drives.
   picker-duplication objection is voided only while the bundle stays off; the stale
   `ab1ba82` bundle cache is DORMANT and returns the day it is re-enabled; what a PUBLIC
   marketplace user should install (README/marketplace prose still centers the bundle) was
-  not decided. NEW fact: the toolkit install now LAGS (1.10.0 @ `8d5cab6`, three commits
-  behind; its cache lacks its own per-plugin CLAUDE.md).
+  not decided. The toolkit install LAGGED HEAD when last read (08-01).
 - **What:** (1) decide with the owner: keep bundle-off + per-plugin standalone as THE
   layout (then reposition README/marketplace prose), OR restore a slimmed bundle (drop
   the six toolkit skills so both coexist), OR revisit the parked
   executables-inside-a-declared-surface move; (2) prove the reach: run ONE gate
-  (repo-guard or test-all) from a DIFFERENT project via the installed toolkit — update
-  the install first so the run exercises current code; (3) if the bundle ever returns:
-  bump its version first so the `ab1ba82` cache updates, then read the CACHED skill text;
-  (4) the repo-guard detector for instruction-names-unreachable-path remains a candidate
-  (Claude's proposal, unrequested).
+  (repo-guard or test-all `--root`) from a DIFFERENT project via the installed toolkit —
+  update the install first; (3) if the bundle ever returns: bump its version first so the
+  `ab1ba82` cache updates, then read the CACHED skill text; (4) the repo-guard detector
+  for instruction-names-unreachable-path remains a candidate (Claude's proposal,
+  unrequested).
 - **Done-check:** (1) decision recorded in log.md with its reason; (2) one gate run
   recorded from a different project (command + exit code); (3) README + marketplace
   prose match the chosen layout.
@@ -75,76 +73,56 @@ detail here — name projects, not drives.
   the turn-end duty returns the same verdict for the same state; autopilot's `hooks.json`
   no longer registers a Stop hook; a pipeline project shows ONE tail with both items.
 
-## 4. `steward-sync`: catch the first fire — or debug why fires keep skipping it
+## 4. Prove which kb MCP build is answering (restart happened — collect the evidence)
 
-- **What:** the duty is installed (turn-end 0.4.0 since the 08-03 reload) and documented
-  everywhere — yet no trace line has EVER named it, including fires made while staged
-  items sat in `.steward/inbox/`. NEW BEST CANDIDATE, fixed but unproven: the 0.4.1
-  cwd-follow defect — state anchored to raw `payload.cwd`, so a fire from a subdir cwd
-  read the wrong `.steward/` and the wrong ledger bucket (the same split measurably made
-  quality-lens re-ask). Older unproven explanations still on the table: pre-update code ·
-  a satisfied arm absorbed it silently · it under-fires. The clean probe is POST-0.4.1
-  (rides #1's restart): stage the next capture normally, end the turn, read the trace.
-  If it fires — done, and Q10's evidence gate for hardening to `block` is open. If not —
-  read `lib/runner.js` + `lib/duties/steward-sync.js` against the live ledger and find
-  why (root cause, no patch-on-patch).
-- **Done-check:** a trace line naming `steward-sync` while items sit in the inbox, and a
-  later line where it is absent after integration; or a root-caused fix with a test
-  replaying the miss.
+- **What:** no server-side `kb_query`/`kb_read` trace line has ever been confirmed
+  post-restart. Today's plugin update + restart means the answer is now collectable:
+  a stdio server keeps the code it was launched with, so `kb_overview` should report
+  the freshly-installed build.
+- **Done-check:** one `kb_overview` call reports `version: 0.10.3` AND a
+  `kb_query`/`kb_read` line with a post-restart timestamp appears in the trace. Both,
+  or the leg is not closed.
 
-## 5. Crowd-game: commit its config, then run the DEEP seed (first foreign corpus)
+## 5. Crowd-game: commit its config, run the DEEP seed, and collect the post-fix turn-end data
 
-- **What:** in the crowd-game project: (a) commit the written-but-uncommitted
-  `.claude/kb.json`; port its `scribe.focus` (names a RETIRED hook) to
-  `.claude/turn-end.json` `duties.session-digest.important` if it should still apply;
-  (b) restart there — the user-scope installs already carry turn-end 0.3.1 + kb 0.10.2,
-  which fix the two defects crowd-game measured (0 turn-end completions = the 30s
-  timeout; digest theft); (c) re-run `/kb-seed` under the depth mandate, running
-  `kb coverage` FIRST — the first real test that re-seed is incremental BY MECHANISM;
-  (d) copy the `game-project.yaml` lens preset into
-  `.claude/verifiability-lens/profile.yaml`; (e) delete the stray
+- **What:** crowd-game is DORMANT since 08-02 — it has ZERO post-fix turn-end data (the
+  "did the judge start completing there" watch is unprovable until it wakes). Next
+  crowd-game session: (a) commit the written-but-uncommitted `.claude/kb.json`; port its
+  `scribe.focus` (names a RETIRED hook) to `.claude/turn-end.json`
+  `duties.session-digest.important` if it should still apply; (b) the user-scope installs
+  now carry the timeout + digest-theft + root-anchor fixes — watch the first real fires;
+  (c) re-run `/kb-seed` under the depth mandate, running `kb coverage` FIRST — the first
+  real test that re-seed is incremental BY MECHANISM; (d) copy the `game-project.yaml`
+  lens preset into `.claude/verifiability-lens/profile.yaml`; (e) delete the stray
   `.claude/prompts/.claude/verifiability-lens/state.json`.
-- **Also record while there** (the evidence #12 gates on): every hand-driven query that
-  MISSES, classified — splitter / vocabulary / ranking / genuinely-absent.
+- **Also record while there:** every hand-driven query that MISSES, classified —
+  splitter / vocabulary / ranking / genuinely-absent (feeds #11).
 - **Done-check:** config committed there; `kb coverage` shows previously-uncovered
-  substrate now cited; entry counts before/after read from the tool; a hand-driven query
-  finds a fact only the deep sweep could reach; the miss list exists in writing, even if
-  it reads "none found".
+  substrate now cited; a turn-end trace line with a completed judge verdict; a
+  hand-driven query finds a fact only the deep sweep could reach; the miss list exists
+  in writing, even if it reads "none found".
 
-## 6. Prove which MCP build is answering (restart-gated)
-
-- **What:** no server-side `kb_query`/`kb_read` trace line exists. Corroborating datum:
-  the 07-26T23:01Z scribe line lists `mcp__plugin_kb_kb__kb_read` among that turn's
-  tools — a real call four minutes AFTER the trace write shipped, and no server line
-  appeared. A stdio server keeps the code it was launched with, and retrieval works, so
-  there is no symptom.
-- **Done-check:** after a full restart, one `kb_overview` call reports `version: 0.10.2`
-  AND a `kb_query`/`kb_read` line with a post-restart timestamp appears in the trace.
-  Both, or the leg is not closed.
-
-## 7. Make documented counts and claims derivable, not remembered
+## 6. Make documented counts and claims derivable, not remembered
 
 - **What:** registry-check covers versions/listings/paths — extend the same pattern to
-  what it does not cover: test counts and hook-registration prose. Open instances, each
-  read from the file that claims it: test-all totals now have THREE numbers (docs
-  30/~1600 · 0130 capture 31/1663 · 07-31 run 31/1681 — re-run
-  `node plugins/plugin-toolkit/bin/test-all.js` and let ITS output be the number, or stop
-  printing the number) · plugin-toolkit 1.10.0 has NO RELEASE-NOTES entry (re-verified
-  2026-08-01) · RELEASE-NOTES 1.9.0 claims `.github/workflows/checks.yml` exists (false
-  since `3633ff7`; wording per Q12's answer) · bundle description drift (dormant while
-  the bundle is off, but the prose ships publicly regardless) · 613 Python
-  glossary-engine checks in no documented total · the moved-content reference class from
-  the 07-31 restructure (sweep README, `design/`, plugin READMEs for pointers into
-  root-CLAUDE.md sections that now live in `plugins/<name>/CLAUDE.md`) · light: the
-  marketplace metadata version did not move while two rows did (2.47.0 — decide whether
-  the convention is real, then either bump-or-drop it). CLOSED, drop from the sweep: the
-  root README turn-end row (four duties @ 0.3.1, read 2026-08-01). Prefer printing the
-  command over the number wherever the number earns nothing.
+  what it does not cover: test counts and hook-registration prose. NOTE: Phase 1's
+  `[instr]` lines subsume the VOLATILE half of this class (installs, git position,
+  counts computed at read); this sweep keeps the STATIC prose half. Open instances, each
+  read from the file that claims it: test-all totals (re-run
+  `node plugins/plugin-toolkit/bin/test-all.js --root <repo>` and let ITS output be the
+  number — today's truth is 31 suites / 1723 checks; historical "764" records were
+  toolkit-scoped) · plugin-toolkit 1.10.0 RELEASE-NOTES entry (last verified missing
+  08-01) · RELEASE-NOTES 1.9.0 checks.yml claim (wording per Q12's answer) · bundle
+  description drift · 613 Python glossary-engine checks in no documented total ·
+  moved-content references from the 07-31 restructure · marketplace metadata non-bump
+  convention (decide, then bump-or-drop) · steward CLAUDE.md test-count line (re-derive
+  against the 0.4.0 suite before touching). Prefer printing the command over the number
+  wherever the number earns nothing.
 - **Done-check:** a check (registry-check claim source or peer) fails on today's
   instances and passes after correction; one command re-verifies every documented count
   and hook claim.
 
-## 8. Retire the leaked-path allowlist entry (the absolute-path debt, expressed as a gate)
+## 7. Retire the leaked-path allowlist entry (the absolute-path debt, expressed as a gate)
 
 - **What:** `plugins/essense-flow/test/` is the one entry in repo-guard's `leaked-path`
   allowlist, self-described as *"Known debt, NOT exempt by design"*. Those files carry
@@ -155,30 +133,31 @@ detail here — name projects, not drives.
 - **Done-check:** the entry deleted AND `node plugins/plugin-toolkit/bin/repo-guard.js`
   still exits 0 AND `node plugins/essense-flow/test/run-all.cjs` reports zero failures.
 
-## 9. Enforce the briefing budget at WRITE time (residual of the fixed cap defect)
+## 8. Enforce the briefing budget at WRITE time (fold into Phase 1's brief-hook work)
 
 - **What:** injection side fixed (steward 0.2.1); nothing checks that a real
   `briefing.md` is inside budget at write time — the agent's contract text is the only
-  guard, the "rule, not mechanism" shape invariant 3 rejects.
+  guard, the "rule, not mechanism" shape invariant 3 rejects. Phase 1 item (3) rebuilds
+  the brief hook anyway — land the write-time check in the same pass.
 - **Done-check:** a deterministic check FAILS on a deliberately over-budget
   `.steward/briefing.md` fixture and passes on this repo's real one; steward suite green.
 
-## 10. Adjudicate ledger-compaction: red, fixed, or invisible to test-all?
+## 9. Adjudicate ledger-compaction: red, fixed, or invisible to test-all?
 
 - **What:** two claims cannot both be true: the model holds
   `plugins/essense-flow/tests/ledger-compaction.test.js` red on a clean tree (calendar
-  drift, governance entries past the 30-day archive threshold), and the 07-31 session
-  reported test-all **31/31 green (1681)**. Run the suite DIRECTLY first. If red: author
-  the archive sibling (the root fix; raising the threshold re-fires in 30 days) AND find
-  why test-all's shape-discovery missed the suite — that is a test-all gap to close with
-  a test (a suite outside discovery is exactly the silence-is-a-finding case). If green:
-  find what fixed it and record it. Also the precondition for Q12(b)/(c) if the owner
-  wants CI back.
+  drift, governance entries past the 30-day archive threshold), yet repo-wide `test-all
+  --root` runs report all-green (08-23: 31 suites / 1723 checks). NEW datum 08-23: one
+  TRANSIENT essense-flow red on the first parallel sweep (stale-lock timing suspect),
+  not reproduced across two re-runs + a direct run. Run the suite DIRECTLY first. If
+  red: author the archive sibling (the root fix; raising the threshold re-fires in 30
+  days) AND find why test-all's shape-discovery missed it. If green: find what fixed it
+  and record it. Also the precondition for Q12(b)/(c) if the owner wants CI back.
 - **Done-check:** the suite green on a clean tree AND still green with the system date
-  advanced 60 days AND `test-all` demonstrably counts it (or the discovery gap closed
-  with a test). Run `tests/` explicitly; `test/run-all` says nothing about it.
+  advanced 60 days AND `test-all --root` demonstrably counts it (or the discovery gap
+  closed with a test). Run `tests/` explicitly; `test/run-all` says nothing about it.
 
-## 11. Diploma residual: confirm the corrupt-state banner (next Diploma session)
+## 10. Diploma residual: confirm the corrupt-state banner (next Diploma session)
 
 - **What:** essense-flow 0.26.1's parse-corrupt DEGRADED banner is only observable IN
   Diploma. First minutes of the next Diploma session: launch, expect the banner, fix the
@@ -186,90 +165,91 @@ detail here — name projects, not drives.
 - **Done-check:** banner observed (or its absence investigated as a 0.26.1 bug); Diploma
   `state.yaml` parses clean afterward.
 
-## 12. Decide kb retrieval rungs 2/3 on the deep-seed evidence (after #5)
+## 11. Decide kb retrieval rung 2 — the evidence gate is now MET [needs owner]
 
-- **What:** read #5's classified miss list: build rung 2 (characterization pass) ONLY if
-  vocabulary-mismatch misses actually appear; otherwise record "rung 1 + splitters
-  suffice — 2/3 parked WITH evidence".
-- **Done-check:** decision in log.md citing concrete misses by name (or their documented
-  absence); if built: enrich job cached + incremental, ranker tests green, previously
-  missing queries hit.
+- **What:** the aithseis kb-probe capture satisfied the rung-2 evidence gate (the first
+  real vocabulary-class datum after the splitter-class false alarm). Per blueprint
+  Phase 4 this is parked BEHIND the owner's call, not auto-built. Bring the evidence +
+  the Q9 ladder to the owner; #5's crowd-game miss list adds the second corpus either
+  way. Build the characterization pass ONLY on a yes.
+- **Done-check:** decision in log.md citing the concrete misses by name; if built:
+  enrich job cached + incremental, ranker tests green, previously missing queries hit.
 
-## 13. Dogfood watch — do the ambient surfaces actually change the work? (passive)
+## 12. Phase 2 — fleet rollout of the status spine (~1 evening, after #1's dogfood week)
 
-- **What:** T13 is still the sharpest datum. Two instruments exist:
-  `.claude/kb/trace.jsonl` and `.claude/turn-end/trace.jsonl`. Post-0.3.1 traces are the
-  first where recall material actually survives long judge runs — earlier windows
-  under-count by construction.
-- **Done-check:** across ~5 real sessions — hints carried / hints followed by a read /
-  recalls the answer actually used; ≥1 logged case where recalled material changed the
-  work. **A zero is still a result** (it points at hint/selection quality, not
-  awareness).
+- **What:** backfill twin-game / crowd-game / aithseis (the aithseis 10-item backlog and
+  its 12-day-frozen model are the first customers); done/-moves retired fleet-wide;
+  harbor: `~/.claude/kb/fleet/` fleet-caste source (+ `~` expansion + the
+  missing-dir-is-silently-empty loudness fix from T5); fleet table — `steward fleet`
+  reads status.json + instruments, SESSION-ONLY per the Q3 ruling. Surfaces the
+  per-ship git-policy divergence (aithseis commits nothing — owner call per project).
+- **Done-check:** the fleet table matches a spot audit on all four ships; one downstream
+  friction event reaches this repo via harbor instead of waiting for an audit.
 
-## 14. Phase 0 validation — passive, on THIS repo (live)
+## 13. Phase 3 — Stack B instruments, behind ONE measured gate (~2 evenings)
 
-- **What:** keep using this repo through the steward loop.
-- **Done-check:** design §5 Phase 0 checks measured HERE — zero pasted context at open;
-  diffs read correctly; ~0 steering turns; ≥1 direction-change lands as thought →
-  recompute → diff → rebuilt part. Data so far: the kb thread, the turn-end arc, Q10
-  resolving through the loop, and the 2030 item arriving already-fixed (the loop's
-  capture outran its own integration — disk won, correctly).
+- **What:** `stats` command over traces + transcripts (duty fire/satisfy rates,
+  hint-follow rate — T4's 3/3, 5/6, 3/3, 0/0 is the baseline; staleness distribution;
+  recall quality judge-vs-fallback + chosen-files-actually-used); PostToolUse evidence
+  recorder; PreCompact digest guard. The old dogfood-watch question ("does ambient
+  surface change the work?") lives here as a computed number instead of a vigil —
+  T4 already answered the hint half YES; the self-initiated-query gap is what stats
+  tracks next.
+- **Done-check (the gate):** run stats ONCE over real data; the owner picks which
+  numbers earn a standing place. Nothing ships as always-on without that pick.
 
-## 15. Crowd-game steward evaluation (~5 sessions or ~1 week after its deep seed)
+## 14. Crowd-game steward evaluation (~5 sessions or ~1 week after its deep seed)
 
 - **What:** re-run the 2026-07-21 audit methodology on crowd-game transcripts; 5 signals,
   full rules preserved verbatim in
-  `.steward/inbox/done/20260721-2345-eval-measurement-recipe.md`.
+  `.steward/inbox/done/20260721-2345-eval-measurement-recipe.md`. The 08-23 four-project
+  audit covers the OTHER ships; this is the crowd-specific before/after.
 - **Done-check:** before/after table with confidence notes. **Owner annoyance = veto
   regardless of numbers.** Unlocks the deferred drop-channel decision (Q8).
 
-## 16. Phase A — wire the gates (on this repo)
+## 15. Phase A — wire the gates (on this repo; v3 resumes here, after the spine phases)
 
 - **What:** coupling/extensibility + tests into every executor step; a deterministic
   model-vs-code drift check (parts.md contracts vs `runner map`). test-all +
-  registry-check are the harness family #7 extends — reuse, don't re-derive. Respect the
-  coupling scope limit: per project, never across the marketplace.
+  registry-check are the harness family #6 extends — reuse, don't re-derive. Respect the
+  coupling scope limit: per project, never across the marketplace. Phase 0 validation is
+  CLOSED (the audit); the remaining precondition is #1's honest substrate.
 - **Done-check:** a deliberate reach-in fails a hand-back; a stale parts.md entry is
-  flagged. (Gated on #14 showing the loop holds here.)
+  flagged.
 
-## 17. Phase B — harden the steward
+## 16. Phase B — harden the steward
 
 - **What:** adversarial inbox suite (pivot, vision-contradiction, deletion, duplicate,
-  items superseding each other — AND the newest shape: an item whose defects disk has
-  already fixed, which must integrate as DONE with zero tasks, not as fresh work);
-  recurring spot-check re-injection; verbs /discuss /test /work. Candidate from Q10's
-  open remainder: the second staleness signal (model untouched across N producing
-  turns) — unbuilt, owner never asked; bring it as a question, not a build.
+  items superseding each other, an item whose defects disk already fixed — integrates as
+  DONE with zero tasks); recurring spot-check re-injection; verbs /discuss /test /work.
+  RECONCILED vs the blueprint: the orphan-`.steward/` detector + frontmatter warnings +
+  digest size guard live in blueprint Phase 4, not here; Q10's second-staleness-signal
+  remainder is SUPERSEDED by Phase 1 cursors.
 - **Done-check:** each adversarial item produces a correct diff incl. cascaded deletions;
   spot-check fires periodically in normal use.
 
-## 18. Phase C — injection-layer economics [Q11 lands here]
+## 17. Phase C — injection-layer economics, under the quality-over-speed law
 
-- **What:** REMAINING lens work: hand-back + risk-triggered firing. BROADENED per owner:
-  the same economics for the whole per-prompt stack plus the per-turn-end stack.
-  **Q11 is the named instance, now cleanly priced:** context-recall fires a judge on
-  EVERY turn end at a measured 46s (policy chosen on a wrong 11s estimate; the
-  timeout-kill contradiction that masked it is FIXED in 0.3.1, so the cost is now real
-  and fully delivered). The stack GREW 2026-08-01: the default-ON `self-check` duty —
-  deterministic, no judge, negligible latency, but part of every producing turn-end and
-  therefore part of this ledger. FIRST EXECUTED CUT in this ledger (2026-08-03): the
-  steward standing injection halved by the 0.3.1 diet (~3.7k chars of session-open
-  steward material → protocol 4 lines + briefing capped 900); Q13 (sonnet override) is
-  the next candidate lever, owner's call. The re-take is the owner's; the no-silent-miss
-  property is the constraint; before-numbers exist for any AFTER measurement.
+- **What:** REMAINING lens work: hand-back + risk-triggered firing, broadened to the
+  whole per-prompt + per-turn-end stack. REFRAMED by the Q11 resolution + vision
+  invariant 11: economics work may cut FIRES and SCOPE (fire conditionally, fold, push
+  to cheaper substrate), never quality — latency alone never motivates a change, and
+  any cut ships with a fail-open path. Executed cuts so far: per-prompt lens → at most
+  one ask per request (turn-end scoping); steward injection halved (0.3.1); ONE
+  background pass per sitting (0.3.0). Ledger keeps per-prompt and per-turn-end cost
+  records; recall-quality numbers arrive from #13.
 - **Done-check:** measured AFTER numbers against the 2026-07-21 baseline with zero missed
-  hand-back failures; each injector fires only where its trigger holds; per-prompt and
-  per-turn-end cost recorded.
+  hand-back failures; each injector fires only where its trigger holds.
 
-## 19. Phase D — generalization pass
+## 18. Phase D — generalization pass
 
-- **What:** extract anything mk-cc-resources-specific from the loop after the #15 eval;
+- **What:** extract anything mk-cc-resources-specific from the loop after the #14 eval;
   verb set + model structure prove open or get fixed; /kb-seed generalization rides the
   same pass. Then EMDE/psience.
 - **Done-check:** the next project onboards by steward-seeding + kb-seeding alone — no
   tooling code changes.
 
-## 20. Phase E — retire ceremony officially [Q4, Q5 land here]
+## 19. Phase E — retire ceremony officially [Q4, Q5 land here]
 
 - **What:** docs + marketplace reposition; classic pipeline preserved; essense-autopilot
   retires (Q4 — #3 may make this a deletion rather than a migration). Absorption fodder:

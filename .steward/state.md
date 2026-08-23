@@ -1,4 +1,4 @@
-# State — current truth (2026-08-23 · request-closure integrated, arrived shipped+PUSHED · origin == local 28cc0c7)
+# State — current truth (2026-08-23 · audit + re-derivation + §6 rulings integrated · origin == local e6760ad)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,96 +8,88 @@
 
 ## Ship position
 
-**local main == origin/main == `28cc0c7`** (both refs read this pass). The 08-10 sitting
-shipped `request-closure` (turn-end 0.5.0) and PUSHED the whole backlog on owner "@ship
-it": self-check 0.4.0/0.4.1 (+ the Windows case-guard fix, checks 131→133), steward
-0.3.0/0.3.1, the lens-escalation fixes (`af9a6e7`), request-closure 0.5.0. **The
-standing push blocker is CLEARED.** Installs stay blind until plugin update + restart —
-that is now the whole of tasks #1.
+**local main == origin/main == `e6760ad`** (both refs read this pass). The 08-23 sitting
+shipped strike 1 on owner "go" + "@ship it": **steward 0.4.0** (freshness ⚠ at injection +
+root anchoring + git-root protocol line) and **kb 0.10.3** (both hooks root-anchored via
+`lib/project-root.js`) — commits `4ef7a37` (plugin trees) + `2891859` (registry/docs/design
+corpus/model) + `e6760ad` (log). **Installs UPDATED + restarted the same day:** the plugin
+cache reads steward 0.4.0 · kb 0.10.3 · turn-end 0.5.0 (globbed this pass), and the 0.4.0
+freshness ⚠ line fired LIVE on this repo's own briefing at session open.
 
 ## Versions on disk
 
-Moved this arc: **turn-end 0.5.0** (plugin.json read this pass; README + marketplace row
-bumped per the 08-10 log entry, registry-check consistent). steward 0.3.1 unchanged since
-08-03. Unchanged, not re-read (no item touched them): kb 0.10.2 · plugin-toolkit 1.10.0 ·
-thorough-mode 1.11.1 · verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · essense-flow
-0.26.1 · essense-autopilot 0.4.0 · schema-scout 1.2.1 · project-note-tracker 1.8.0 ·
-alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 · mk-cc-all bundle 2.26.0.
+Moved this arc: **steward 0.4.0** · **kb 0.10.3** (installed cache globbed this pass;
+34/34 steward hook tests and 47+33+78 kb touched-suite checks per the strike-1 log entry).
+turn-end 0.5.0 unchanged since 08-10. Unchanged, not re-read (no item touched them):
+plugin-toolkit 1.10.0 · thorough-mode 1.11.1 · verifiability-lens 0.5.0 · session-lifecycle
+1.3.1 · essense-flow 0.26.1 · essense-autopilot 0.4.0 · schema-scout 1.2.1 ·
+project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0 · statusline 0.1.0 ·
+mk-cc-all bundle 2.26.0.
 
-## SHIPPED 2026-08-10 — this pass's one item arrived EXECUTED and PUSHED
+## LIVE — proven this sitting (the old task #1 CLOSED)
 
-- **turn-end 0.5.0 — `request-closure`** (owner symptom: *"answering my first thing, not
-  what the last agent did"*): sixth duty — a span woken by agents / dispatching agents
-  must END by answering the owner's VERBATIM original request + who-did-what, machinery
-  last. `advise`, PROMPT span deliberate (every wake-yield renudges; safe — the ask
-  spawns nothing); `turn.wakeCount` + `WAKE_MARKERS` in context.js. The capture's
-  third-ledger-bucket constraint DISSOLVED (see parts). Tests 133 → 143; test-all 4/4
-  suites per the sitting's log. **Unproven live** — claim 3 (a wake-turn tail actually
-  answering the agent, not the owner) has still never been observed in a transcript;
-  #1's watch closes it.
+All four live-watch legs observed (trace + ledger evidence recorded in the session digest):
+**self-check** live block (08-10) · **`steward-sync` FIRST live fire** — the 07-27 mystery
+closes on the 0.4.1 root-anchor candidate · **request-closure** fire (a 0.5.0-only duty) ·
+lighter session-open text + the freshness ⚠. The kb MCP version-proof leg stays open —
+today's restart means one `kb_overview` should now report `version: 0.10.3` (tasks #4).
 
-## SHIPPED the prior arc (2026-08-02/03) — all four inbox items arrived already executed
+## Audit verdicts (measured 2026-08-23 — four projects, three Explore agents + local read)
 
-- **turn-end 0.4.0 — `self-check`**, the no-arbitrary-DONE duty (vision invariant 10;
-  first default-ON `severity:block`). Owner pass 2 amended it pre-release: evidence =
-  OBSERVED + COMPARED vs the ask + probed to BREAK (`ran-and-looked`, result-tense named
-  checks). Lens verify pass fixed two build defects pre-release (block-feedback boundary
-  erasure; planning-prose hole). Zero tokens, no judge.
-- **turn-end 0.4.1 — state anchored to project root** (`resolveProjectRoot`: nearest
-  `.git` ancestor, never HOME or above). Kills the measured cwd-follow defect: stray
-  `plugins/*/.claude/` trees + split ledger buckets (quality-lens re-asked from one).
-  Tests **131/131** (was 110 at 0.3.1). Also trims the steward-sync ask.
-- **steward 0.3.0 — the loop budgeted** (owner: "fires too often and for too long"; the
-  measured 12.5-min/137k-token pass is the substrate): ONE background pass per sitting +
-  the agent Economy section. Tests 27/27.
-- **steward 0.3.1 — the injection diet** (owner: "unbearable, make it lighter"):
-  standing session-open text halved — protocol 4 lines, briefing spec ≤6 / cap 900
-  (constants read this pass: 8/900 with slack), one-line inbox note, diff ≤10.
-
-## LIVE — installed set
-
-- The 08-03 `/reload-plugins` picked up **steward 0.3.0 + turn-end 0.4.0** (per the 2142
-  capture). **0.3.1 / 0.4.1 / 0.5.0 are installed NOWHERE until plugin update + restart**
-  — origin now carries them all (the 08-10 push), so the last gap is the update itself.
-- **`steward-sync` still never observed firing** — but it now has its first credible
-  root-cause candidate: the 0.4.1 cwd-follow defect (a subdir-cwd fire read the wrong
-  `.steward/`). Clean probe rides #1's restart (tasks #4).
-- **kb MCP leg still open** — restart proves which build answers; expect `version:
-  0.10.2` (tasks #6). plugin-toolkit install still LAGS (1.10.0 @ `8d5cab6`, 07-31 read,
-  not re-read). mk-cc-all bundle still DISABLED (07-31 read).
+- **steward: SUCCESS in all four** — recompute mechanically proven (twin git numstat model
+  churn vs log +N/−0; crowd T25/T27 deleted; aithseis grep-verified deletions + a
+  self-caught false check retracted in the permanent log).
+- **kb: entry quality uniformly high; deliberate pull rare** (auto:manual — twin 89:15,
+  aithseis 76:5, crowd 122:0). Push→pull funnel WORKS: reads-following-hints 3/3, 5/6,
+  3/3, 0/0 (T4); the gap is self-INITIATED querying → a Phase 3 stats metric.
+- **turn-end: live-proven post-fix** (twin, entire post-08-10 life: 83 records, 25 real
+  blocks, 0 errors). Crowd has ZERO post-fix data (dormant since 08-02) — a no-data
+  result, not a failure; rides the crowd tasks.
 
 ## Known-broken / known-gaps
 
-- **Self-check + 0.4.1 + request-closure + diet unproven LIVE** — the one fresh task
-  (#1: update → restart → full-ladder fire + one wake-turn closure watch + litter check
-  + diet check; the push leg LANDED 08-10).
-- **Invariant 9 hole:** essense-autopilot still owns a blocking Stop hook, installed;
-  `decide()` welded into `main()`. Tasks #3.
-- **Q11 unchanged** (policy re-take, owner's) · **Q12 unchanged** (CI revert) · **Q13
-  NEW:** steward integrates on sonnet — recommended default: try it.
-- **Absolute-path debt:** unchanged — repo-guard's allowlist entry is the ledger (#8).
-- **Counts and claims in prose — NEW instance:** steward's plugin CLAUDE.md says tests
-  "25 checks"; the measured run is 27 (log 2026-08-02). Folds into #7's sweep alongside
-  the standing instances (plugin-toolkit 1.10.0 RELEASE-NOTES entry missing · 1.9.0
-  checks.yml claim (Q12) · bundle description drift · 613 Python checks undocumented ·
-  moved-content references · marketplace metadata non-bump · test-all totals
-  adjudication).
-- **ledger-compaction status UNCERTAIN** (31/31 green vs believed-red) — tasks #10.
-- **steward briefing: no WRITE-time gate** — unchanged; budget now 8/900 (tasks #9).
-- **kb ambient-availability unproven, instrumented** — T13 stands (tasks #13).
-- **Crowd-game** deep re-seed + config commit pending (#5) · **Diploma** banner check
-  (#11) · **gates still RUN in zero other projects** (#2/#16) · essense-flow
-  slash-command adoption unchanged (Q4/Q5).
+- **Briefing staleness — THE systemic class, all four ships:** the most-injected surface
+  is the most often wrong (here: the 08-23-regenerated briefing claimed installs
+  0.4.0/0.3.0, refuted by the install registry; twin 8 commits behind; aithseis wrong at
+  every open for 12 days). PARTLY CLOSED by steward 0.4.0 (⚠ detection at injection,
+  live-proven). Root fix = Phase 1 instruments + cursors: volatile claims COMPUTED at
+  read, never authored.
+- **Steward verify-scope hole:** the 08-23 pass wrote an install claim without reading
+  install state. Contract fix (Phase 1, folded into tasks #1): every claim REWRITTEN into
+  briefing/state counts as "written". This pass complied — installs read from the cache.
+- **Steward can't delete → stub litter + false counters in three projects**; the CONSUMED
+  marker is specified NOWHERE (T3). Phase 1 retires done/-moves via status.json.
+- **Capture cwd-follow was live for the protocol side until 0.4.0** — aithseis has an
+  orphan `.steward/` holding its newest capture, invisible to its model. 0.4.0's git-root
+  protocol line addresses new captures; the orphan detector is parked (blueprint Phase 4).
+- **No upstream fleet channel:** downstream projects patch plugin defects locally; the
+  friction reached this repo only via the audit. Harbor = Phase 2 (T5 e2e passed with
+  zero code changes; found: a missing source dir is silently empty — violates loudness —
+  and `~` expansion is needed).
+- **Recall judge fragility measured:** three live ETIMEDOUTs this sitting. Under the Q2
+  ruling a dead fire is a QUALITY failure — fail-open ranker fallback + engine named in
+  trace is Phase 1 item (6).
+- **Gate-record correction (measured):** `test-all` without `--root` sweeps ONLY
+  plugin-toolkit (764 vs 1723 checks) — historical "764 green" records were
+  toolkit-scoped; root CLAUDE.md gate table now mandates `--root`. One transient
+  essense-flow red on the first parallel sweep, not reproduced (→ tasks #9 datum).
+- Format drift: frontmatter missing on 1/4 twin + 1/8 aithseis captures; aithseis digest
+  17KB against its own pointer-file rule → blueprint Phase 4 guards.
+- Standing, unchanged: invariant-9 hole (autopilot, #3) · Q12 CI revert · Q13 sonnet ·
+  absolute-path debt (#7) · counts-in-prose sweep (#6) · ledger-compaction UNCERTAIN
+  (#9) · briefing WRITE-time gate (#8) · crowd deep-seed + config (#5) · Diploma banner
+  (#10).
 
 ## Working tree
 
-Clean except `.steward/` — this recompute, the session's 08-10 log append (relocated to
-its chronological slot), and ONE INTEGRATED inbox stub awaiting session deletion
-(undeleted stubs lie to the brief hook's counter AND to the steward-sync duty).
+Clean at pass start except `.steward/` — this recompute; three integrated inbox stubs
+await session deletion (undeleted stubs still lie to the brief hook's counter and the
+steward-sync duty until Phase 1 retires the ritual).
 
 ## Outside-repo (log-only context)
 
-Unchanged from the 08-01 pass, not re-read: marketplace registry GitHub-sourced with
-`autoUpdate: true` · `~/.claude/kb/cued.json`, `~/.claude/steward/fleet.json` real ·
-external hygiene debt (Diploma corrupt state.yaml; psience parked Q8; crowd-game stray
-lens state file → #5).
+Plugin-state git policy diverges per ship (twin commits kb+steward as first-class source;
+crowd partial; aithseis commits NOTHING — 29 days, 1,644 model lines untracked against its
+own open task). Owner call per project; Phase 2 backfill is where it surfaces. Aithseis
+model frozen 12 days with 10 pending inbox items. Marketplace registry GitHub-sourced with
+`autoUpdate: true` — unchanged, not re-read.

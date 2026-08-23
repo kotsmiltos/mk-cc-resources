@@ -228,10 +228,29 @@ module.exports = {
     });
 
     const verdict = claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
-    if (!verdict.ok) return cannotRun(verdict.error);
-
-    const needed = parseVerdict(verdict.text);
-    if (needed === null) return cannotRun('judge returned unparseable output');
+    let needed = null;
+    let judgeDeath = null;
+    if (!verdict.ok) judgeDeath = verdict.error;
+    else {
+      needed = parseVerdict(verdict.text);
+      if (needed === null) judgeDeath = 'judge returned unparseable output';
+    }
+    /*
+     * Fail-open fallback (owner ruling 2026-08-23, stack-a-blueprint §6 Q2 — "we go for
+     * quality, not necessarily speed"): the judge STAYS the default because its choice
+     * quality is the point; but a judge death used to mean the recall material was LOST
+     * (measured: three live ETIMEDOUTs in one sitting, 2026-08-23; before that, 39/52
+     * timeout kills). A dead fire IS a quality failure — so when and only when the judge
+     * cannot deliver, a deterministic term-overlap ranker picks instead, and the injected
+     * material NAMES which engine chose. This is turn-end's own tiny ranker on purpose:
+     * importing kb's would couple independently-installed plugins.
+     */
+    if (judgeDeath) {
+      needed = fallbackPick(ctx, index, limits);
+      if (!needed.length) {
+        return cannotRun(`${judgeDeath}; the fallback ranker found no strongly-matching notes either`);
+      }
+    }
     if (!needed.length) return null; // the strict, common, correct answer
 
     // Cap what the judge asked for only if the project set a limit — and say so if it bites,
@@ -257,14 +276,53 @@ module.exports = {
     }
     if (!items.length) return null;
 
+    const material = renderMaterial(items, limits, clipped);
     return {
       chosen: items.map((i) => i.path),
-      material: renderMaterial(items, limits, clipped),
+      material: judgeDeath
+        ? `[recall via FALLBACK RANKER — the judge could not run (${judgeDeath}); ` +
+          'these notes matched the turn lexically, they were not judged]\n' + material
+        : material,
       error: null,
+      engine: judgeDeath ? 'fallback-ranker' : 'judge',
     };
   },
 };
 
+/*
+ * The fallback's whole vocabulary: lowercase word tokens of 3+ chars from the turn's
+ * request + answer, scored by distinct-overlap against each index entry's title tokens.
+ * Deliberately tiny — it exists to beat "nothing", not to beat the judge. Floor of 2
+ * distinct shared terms so a single common word cannot drag a note in.
+ */
+const FALLBACK_MIN_SHARED_TERMS = 2;
+const FALLBACK_MAX_PICKS = 3;
+
+function fallbackTokens(text) {
+  return new Set(
+    String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3)
+  );
+}
+
+function fallbackPick(ctx, index, limits) {
+  const turnText = `${ctx.turn.userRequest || ''} ${ctx.lastAssistantMessage || ctx.turn.text || ''}`;
+  const turn = fallbackTokens(turnText);
+  if (!turn.size) return [];
+  const scored = [];
+  for (const e of index) {
+    let shared = 0;
+    for (const t of fallbackTokens(e.title)) if (turn.has(t)) shared += 1;
+    if (shared >= FALLBACK_MIN_SHARED_TERMS) scored.push({ id: e.id, shared });
+  }
+  scored.sort((a, b) => b.shared - a.shared);
+  const cap = Math.min(FALLBACK_MAX_PICKS, limits.maxChosen || FALLBACK_MAX_PICKS);
+  return scored.slice(0, cap).map((s) => ({
+    id: s.id,
+    why: `fallback ranker: ${s.shared} shared terms with the turn (judge unavailable)`,
+  }));
+}
+
+module.exports.fallbackPick = fallbackPick;
 module.exports.parseVerdict = parseVerdict;
 module.exports.buildPrompt = buildPrompt;
 module.exports.renderMaterial = renderMaterial;

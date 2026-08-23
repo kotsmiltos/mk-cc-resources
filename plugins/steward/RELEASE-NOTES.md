@@ -1,5 +1,19 @@
 # steward — Release Notes
 
+## 0.5.0 — Phase 1: the status contract — a ledger instead of rituals
+
+Owner 'go' on design/stack-a-blueprint.md §6b Phase 1; contract page: design/status-contract.md.
+.steward/status.json records every item's lifecycle (staged/integrated/superseded/closed +
+free-form groups); the AGENT is its only writer, and 'new' is DERIVED (inbox file present,
+id unrecorded) — so integrated files never move, rename, or grow tombstone stubs again, and
+the write race with the background pass is impossible by construction. The briefing gains
+computed [instr] lines (git position, item counts — the volatile classes the 2026-08-23
+audit caught rotting are now computed at injection, never authored) and CURSOR-based
+staleness (views.briefing.derived_through; the 0.4.0 mtime compare survives as the
+pre-contract fallback, corruption named out loud). bin/steward-backfill.js seeds a
+pre-contract ship in one idempotent absent-only run (29 items seeded on the pilot).
+lib/status.js is the tolerant reader every consumer shares. 40/40 hook + 13/13 status tests.
+
 ## 0.4.0 — The briefing stops lying about its age; everything anchors to the repo root
 
 Strike 1 of design/stack-a-blueprint.md (owner "go", 2026-08-23). The four-project audit

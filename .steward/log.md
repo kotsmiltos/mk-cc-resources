@@ -6,6 +6,64 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 2026-08-23 · Three items integrated at e6760ad — audit, "transformation not patches", §6 rulings; 4 tasks closed on observation
+Items 1330 (four-project usage audit) + 1430 (owner re-derivation directive) + 1520 (four
+§6 rulings). The middle item arrived EXECUTED (logbook-spine → building-blocks catalog →
+stack-a-blueprint; strike 1 shipped, pushed AND installed same day — the 0.4.0 freshness ⚠
+fired live on this repo's own briefing at open).
+- **Owner law → vision invariant 11:** quality over speed (verbatim "46 seconds is not
+  really a problem… we go for quality, not necessarily speed"). **Q11 RESOLVED by that
+  ruling** — judge stays default; fail-open ranker fallback + recall-QUALITY measurement
+  replace the re-take (three live judge ETIMEDOUTs this sitting are the substrate).
+  §6 rulings to the ledger: status.json = lifecycle + groups, kb joins as themes; fleet
+  session-only; status.json committed. Blueprint §6b = plan of record, into vision.
+- **Audit folded:** steward SUCCESS ×4 (recompute mechanically proven); briefing
+  staleness = THE systemic class, partly closed by 0.4.0 (⚠ detection), root fix Phase 1
+  instruments; verify-scope hole + can't-delete litter + CONSUMED-unspecified + fleet
+  channel + format drift → Phase 1/2/4 items; T4 follow-rates answered the ambient
+  question YES (gap = self-initiated querying → Phase 3 stats).
+- **Tasks recomputed 20 → 19:** CLOSED on observation — old #1 (all four live-watch legs,
+  incl. steward-sync FIRST fire + request-closure; trace/ledger per digest), old #4
+  (same fire), old #13 (T4 data), old #14 (the audit IS Phase 0 validation). NEW: Phase 1
+  pilot at #1 [owner go], Phase 2 rollout #12, Phase 3 stats-gate #13; #11 rewritten
+  (rung-2 evidence gate MET — aithseis kb-probe, owner call); v3 phases resume after.
+- Checks this pass: refs both `e6760ad` · installed cache globbed (steward 0.4.0 /
+  kb 0.10.3 / turn-end 0.5.0 — the install claim READ, not authored) · blueprint §6/§6b
+  read · session digest read for the watch-leg evidence · inbox = exactly 3 items.
+- Housekeeping: the session's two strike-1 entries relocated from the file bottom to
+  their chronological slots below, text verbatim.
+
+## 2026-08-23 · Strike 1 PUSHED — origin 28cc0c7 -> 2891859 (owner "@ship it")
+Two commits: 4ef7a37 (steward 0.4.0 + kb 0.10.3, plugin trees) + 2891859 (registry/README/
+gate-table/design corpus/model). Pre-ship: registry-check exit 0 (consistent, 6 claim
+sources) · repo-guard exit 0 (no leaks; July revert-chain warnings informational) ·
+test-all --root 31/31 suites 1723 checks · design docs machine-path grep clean.
+Remaining gap: installs — owner runs plugin update (steward, kb) + restart; first live
+fire after restart is the staleness line on this repo's own briefing (3+ inbox items).
+
+## 2026-08-23 · Strike 1 SHIPPED — briefing freshness + root anchoring (steward 0.4.0, kb 0.10.3)
+Owner "go" on design/stack-a-blueprint.md (Plan 2 + strike 1). Both mechanisms were
+prototype-proven against the four real ships before building.
+- **steward 0.4.0:** steward-brief.js computes freshness at injection (⚠ line naming events
+  newer than briefing.md — pending inbox, log.md, git HEAD ref; fs-only) and anchors briefing
+  read + inbox count + fleet registration to the nearest .git ancestor; protocol line now
+  names <git root>/.steward/inbox/ as the only capture path. Checks: 34/34 hook tests (7 new);
+  LIVE smoke on this repo — the hook flagged the real briefing stale by exactly today's 3
+  inbox items, from repo root AND from plugins/kb as cwd (identical output).
+- **kb 0.10.3:** new lib/project-root.js; kb-pull + kb-session-start anchor to it (payload
+  cwd preferred). Checks: 47/47 + 33/33 + 78/78 on touched suites (subdir hint test, orphan
+  silence, footprint entry).
+- **Gates:** test-all --root repo = 31/31 suites, 1723 checks (one transient essense-flow
+  red on first parallel run; re-ran twice green, direct run green — not reproduced);
+  registry-check exit 0 after README rows 19/21 updated. Marketplace + RELEASE-NOTES +
+  plugin CLAUDE.mds + README updated.
+- **FOUND during gating:** the documented test-all invocation (from toolkit dir, no --root)
+  silently sweeps ONLY plugin-toolkit — 764 checks vs 1723 real; historical "test-all 764"
+  gate records were toolkit-scoped. Root CLAUDE.md gate table now mandates --root for both
+  gates. Filed for integration.
+- Not pushed; installs unchanged (0.4.0/0.10.3 reach sessions after owner push + update +
+  restart). Next: Plan 2 pilot (status.json + instruments + statusline + kb status-join).
+
 ## 2026-08-23 · Item 20260810-1914 integrated at 28cc0c7 — arrived EXECUTED, and the build superseded part of its design
 One item (owner symptom, verbatim: *"at the end i should get a neat message answering my
 first thing, not what the last agent did"*). The same sitting shipped it as turn-end 0.5.0
@@ -595,33 +653,22 @@ RELEASE-NOTES).
 - 4449028 thorough-mode 1.8.0 — protocol-shaped injections (@thorough/@fresh/@prompt)
 - bf1cbe2 essense-flow 0.25.0 — generativity protocol (design forks → open model)
 
-## 2026-08-23 · Strike 1 SHIPPED — briefing freshness + root anchoring (steward 0.4.0, kb 0.10.3)
-Owner "go" on design/stack-a-blueprint.md (Plan 2 + strike 1). Both mechanisms were
-prototype-proven against the four real ships before building.
-- **steward 0.4.0:** steward-brief.js computes freshness at injection (⚠ line naming events
-  newer than briefing.md — pending inbox, log.md, git HEAD ref; fs-only) and anchors briefing
-  read + inbox count + fleet registration to the nearest .git ancestor; protocol line now
-  names <git root>/.steward/inbox/ as the only capture path. Checks: 34/34 hook tests (7 new);
-  LIVE smoke on this repo — the hook flagged the real briefing stale by exactly today's 3
-  inbox items, from repo root AND from plugins/kb as cwd (identical output).
-- **kb 0.10.3:** new lib/project-root.js; kb-pull + kb-session-start anchor to it (payload
-  cwd preferred). Checks: 47/47 + 33/33 + 78/78 on touched suites (subdir hint test, orphan
-  silence, footprint entry).
-- **Gates:** test-all --root repo = 31/31 suites, 1723 checks (one transient essense-flow
-  red on first parallel run; re-ran twice green, direct run green — not reproduced);
-  registry-check exit 0 after README rows 19/21 updated. Marketplace + RELEASE-NOTES +
-  plugin CLAUDE.mds + README updated.
-- **FOUND during gating:** the documented test-all invocation (from toolkit dir, no --root)
-  silently sweeps ONLY plugin-toolkit — 764 checks vs 1723 real; historical "test-all 764"
-  gate records were toolkit-scoped. Root CLAUDE.md gate table now mandates --root for both
-  gates. Filed for integration.
-- Not pushed; installs unchanged (0.4.0/0.10.3 reach sessions after owner push + update +
-  restart). Next: Plan 2 pilot (status.json + instruments + statusline + kb status-join).
-
-## 2026-08-23 · Strike 1 PUSHED — origin 28cc0c7 -> 2891859 (owner "@ship it")
-Two commits: 4ef7a37 (steward 0.4.0 + kb 0.10.3, plugin trees) + 2891859 (registry/README/
-gate-table/design corpus/model). Pre-ship: registry-check exit 0 (consistent, 6 claim
-sources) · repo-guard exit 0 (no leaks; July revert-chain warnings informational) ·
-test-all --root 31/31 suites 1723 checks · design docs machine-path grep clean.
-Remaining gap: installs — owner runs plugin update (steward, kb) + restart; first live
-fire after restart is the staleness line on this repo's own briefing (3+ inbox items).
+## 2026-08-23 · Phase 1 status-spine pilot BUILT + LIVE on this ship (steward 0.5.0, kb 0.11.0, statusline 0.2.0, turn-end 0.6.0)
+Owner "sync first then go" — sync's diff landed (3 items, Q11 resolved by ruling, tasks
+recomputed), stubs deleted, then Phase 1 in full:
+- **Contract**: design/status-contract.md v1 (10 rules, each tied to a measured defect).
+- **steward 0.5.0**: lib/status.js (tolerant reader; 13/13) · brief hook cursor staleness +
+  [instr] computed lines (40/40) · bin/steward-backfill.js (absent-only seeder) · agent
+  protocol now writes the ledger, never moves files, regenerates briefing LAST, authors no
+  volatile facts.
+- **kb 0.11.0**: lib/status-join.js — status:/group: themes at collect (9/9; full sweep
+  33+44+47+42+78+9+273).
+- **statusline 0.2.0**: segSteward v2 ⚓N✱ ▲M, root-anchored, tolerant (20/20).
+- **turn-end 0.6.0**: context-recall fail-open ranker fallback, engine named (146/146) —
+  Q11's ruled shape, substrate: 3 live judge ETIMEDOUTs this sitting.
+- **PILOT SEEDED LIVE**: backfill wrote status.json — 29 items, cursor 20260823-1520;
+  live smoke: brief hook FRESH verdict + "[instr] git: main @ e6760ad"; statusline calm ⚓.
+- Gates: test-all --root 33/33 suites 1758 checks · registry-check exit 0 (all four bumps
+  + README + marketplace + CLAUDE.mds consistent).
+- NOT pushed — owner word pending; installs see Phase 1 only after push + update + restart.
+  Dogfood week starts at the first post-install session.

@@ -70,19 +70,37 @@ function gitHeadMtime(root) {
 
 const STALENESS_NAME_CAP = 3; // named events before "+N more" — the warning must stay one line
 
+/*
+ * Phase 1 (status contract, design/status-contract.md): when .steward/status.json exists,
+ * item staleness comes from the CURSOR (recorded ids above views.briefing.derived_through
+ * + derived-new ids — lexicographic, no clocks); without it, the 0.4.0 mtime compare
+ * stands (tolerant-reader rule 9: degrade to pre-contract behavior, corruption named).
+ * log.md and git HEAD stay mtime signals in both modes — log entries carry no ids.
+ */
 function stalenessLine(projectRoot, stewardRoot) {
   let briefT;
   try { briefT = fs.statSync(path.join(stewardRoot, 'briefing.md')).mtimeMs; } catch (_e) { return ''; }
   const newer = [];
+  let cursorMode = false;
   try {
-    for (const f of fs.readdirSync(path.join(stewardRoot, 'inbox'))) {
-      if (!f.endsWith('.md') || f.startsWith('.')) continue;
-      try {
-        const st = fs.statSync(path.join(stewardRoot, 'inbox', f));
-        if (st.isFile() && st.mtimeMs > briefT) newer.push(`inbox:${f.replace(/\.md$/, '')}`);
-      } catch (_e) { /* unreadable entry — skip, never block */ }
+    const status = require('../../lib/status');
+    const s = status.viewStaleness(projectRoot, 'briefing');
+    if (s.cursor !== null) {
+      cursorMode = true;
+      for (const id of s.behindIds) newer.push(`item:${id}`);
     }
-  } catch (_e) { /* no inbox dir — fine */ }
+  } catch (_e) { /* status lib unavailable — mtime mode */ }
+  if (!cursorMode) {
+    try {
+      for (const f of fs.readdirSync(path.join(stewardRoot, 'inbox'))) {
+        if (!f.endsWith('.md') || f.startsWith('.')) continue;
+        try {
+          const st = fs.statSync(path.join(stewardRoot, 'inbox', f));
+          if (st.isFile() && st.mtimeMs > briefT) newer.push(`inbox:${f.replace(/\.md$/, '')}`);
+        } catch (_e) { /* unreadable entry — skip, never block */ }
+      }
+    } catch (_e) { /* no inbox dir — fine */ }
+  }
   try {
     if (fs.statSync(path.join(stewardRoot, 'log.md')).mtimeMs > briefT) newer.push('log.md');
   } catch (_e) { /* no log — fine */ }
@@ -92,6 +110,50 @@ function stalenessLine(projectRoot, stewardRoot) {
   const shown = newer.slice(0, STALENESS_NAME_CAP).join(', ') +
     (newer.length > STALENESS_NAME_CAP ? ` +${newer.length - STALENESS_NAME_CAP} more` : '');
   return `⚠ ${newer.length} event(s) newer than this briefing (${shown}) — position claims may be stale; a sync refreshes it.`;
+}
+
+/*
+ * INSTRUMENTS — facts computed at injection, never authored (Phase 1; the audit's
+ * false-install-claim class dies here: a volatile fact the agent used to write is now a
+ * line the hook computes). Registry pattern shared with statusline's SEGMENTS: each
+ * instrument is an independent fail-soft function returning '' when it has nothing;
+ * extend = push a function, no other change.
+ */
+function instrGit(projectRoot) {
+  try {
+    const head = fs.readFileSync(path.join(projectRoot, '.git', 'HEAD'), 'utf8').trim();
+    if (!head.startsWith('ref: ')) return `git: detached ${head.slice(0, 7)}`;
+    const refRel = head.slice(5).trim();
+    const branch = refRel.split('/').pop();
+    let sha = '';
+    try {
+      sha = fs.readFileSync(path.join(projectRoot, '.git', ...refRel.split('/')), 'utf8').trim().slice(0, 7);
+    } catch (_e) { /* packed refs — branch alone still informs */ }
+    return `git: ${branch}${sha ? ` @ ${sha}` : ''}`;
+  } catch (_e) { return ''; }
+}
+
+function instrItems(projectRoot) {
+  try {
+    const status = require('../../lib/status');
+    const d = status.derive(projectRoot);
+    const parts = [];
+    if (d.newIds.length) parts.push(`${d.newIds.length} new`);
+    if (d.present && !d.corrupt) {
+      const staged = d.recorded.filter((i) => i && i.status === 'staged').length;
+      if (staged) parts.push(`${staged} staged`);
+    }
+    if (d.corrupt) parts.push(`status.json UNREADABLE (${d.corrupt})`); // loud, per contract rule 9
+    return parts.length ? `items: ${parts.join(' · ')}` : '';
+  } catch (_e) { return ''; }
+}
+
+const INSTRUMENTS = [instrGit, instrItems];
+
+function instrumentLine(projectRoot) {
+  const parts = INSTRUMENTS.map((fn) => { try { return fn(projectRoot); } catch (_e) { return ''; } })
+    .filter(Boolean);
+  return parts.length ? `[instr] ${parts.join(' | ')}` : '';
 }
 
 const BRIEFING_MAX_CHARS = 900; // hard cap: briefing.md is spec'd ≤6 lines (owner 2026-08-03: "make the steward lighter" — injected text is a per-session tax); cap guards a rotten file from flooding context
@@ -198,9 +260,11 @@ function main() {
   } catch (_) { /* no inbox dir yet — fine */ }
 
   const stale = stalenessLine(projectRoot, root);
+  const instr = instrumentLine(projectRoot);
   const context = [
     '<steward-briefing>',
     ...(stale ? [stale] : []),
+    ...(instr ? [instr] : []),
     briefing,
     '',
     pendingNote,

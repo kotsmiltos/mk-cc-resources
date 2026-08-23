@@ -1,5 +1,18 @@
 # turn-end — release notes
 
+## 0.6.0 — context-recall: fail-open ranker fallback (the judge stays)
+
+Owner ruling 2026-08-23, verbatim: '46 seconds is not really a problem… we go for quality,
+not necessarily speed.' The judge STAYS the default engine — its choice quality is the
+point. But a judge death used to lose the whole recall payload (measured: three live
+ETIMEDOUTs in ONE sitting, 2026-08-23; 39/52 timeout kills before 0.3.1), and a dead fire
+IS a quality failure. Now, when and only when the judge cannot deliver, a deliberately tiny
+term-overlap ranker picks instead (floor: 2 shared terms; cap 3) and the injected material
+NAMES the engine ('recall via FALLBACK RANKER — the judge could not run (…)'); supply()
+returns engine: 'judge' | 'fallback-ranker' for the trace. Zero lexical matches still
+reports could-NOT-run naming BOTH engines. The ranker is turn-end's own copy on purpose —
+importing kb's would couple independently-installed plugins. 146/146 (3 new).
+
 ## 0.5.0 — 2026-08-10 — request-closure: end by answering the user, not the last agent
 
 A sixth duty. Owner symptom (verbatim in

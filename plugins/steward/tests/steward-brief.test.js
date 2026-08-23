@@ -182,5 +182,38 @@ check('subdir cwd still finds the root model', subCtx.includes('Ship: stale test
 // there, so silence (never a phantom briefing from some unrelated ancestor).
 check('non-repo subdir without model stays silent', runHook(bare) === '');
 
+// 11. Status contract (Phase 1): cursor-mode staleness + instrument line.
+const statProj = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-status-'));
+fs.mkdirSync(path.join(statProj, '.steward', 'inbox'), { recursive: true });
+fs.mkdirSync(path.join(statProj, '.git', 'refs', 'heads'), { recursive: true });
+fs.writeFileSync(path.join(statProj, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+fs.writeFileSync(path.join(statProj, '.git', 'refs', 'heads', 'main'), 'abc1234def\n');
+const statBrief = path.join(statProj, '.steward', 'briefing.md');
+fs.writeFileSync(statBrief, 'Ship: status test.\n');
+fs.writeFileSync(path.join(statProj, '.steward', 'inbox', '20260823-2100-new-idea.md'), 'x\n');
+fs.writeFileSync(path.join(statProj, '.steward', 'status.json'), JSON.stringify({
+  schema: 1, updated: '20260823-2000', updatedBy: 'steward-agent',
+  items: [
+    { id: '20260823-1900-integrated-earlier', type: 'inbox', status: 'integrated', at: '20260823-2000', log: 'l', check: 'c' },
+    { id: '20260823-2030-integrated-later', type: 'inbox', status: 'integrated', at: '20260823-2035', log: 'l', check: 'c' }
+  ],
+  views: { briefing: { derived_through: '20260823-1900-integrated-earlier' } }
+}));
+// briefing mtime NEWER than everything — mtime mode would say fresh; the CURSOR must not.
+const future = (Date.now() + 5000) / 1000;
+fs.utimesSync(statBrief, future, future);
+const statCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalContext;
+check('cursor mode: item integrated after the cursor flagged despite fresh mtime',
+  statCtx.includes('item:20260823-2030-integrated-later'));
+check('cursor mode: derived-new item flagged', statCtx.includes('item:20260823-2100-new-idea'));
+check('instrument line present with git position', /\[instr\] git: main @ abc1234/.test(statCtx));
+check('instrument line counts new items', statCtx.includes('1 new'));
+
+// BREAK: corrupt status.json — reader degrades to mtime mode AND says so out loud.
+fs.writeFileSync(path.join(statProj, '.steward', 'status.json'), '{broken');
+const corruptCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalContext;
+check('corrupt status named in instruments, never silent', corruptCtx.includes('status.json UNREADABLE'));
+check('corrupt status: hook still briefs (fail-soft)', corruptCtx.includes('Ship: status test.'));
+
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

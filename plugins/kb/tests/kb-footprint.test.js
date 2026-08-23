@@ -79,6 +79,7 @@ const FS_IMPORTERS = {
   'hooks/scripts/kb-session-start.js': 'digest rotation (marker-implied) + home-side cue registry',
   'hooks/scripts/kb-pull.js': 'reads the session digest only',
   'lib/project-root.js': 'read-only existsSync walk to the nearest .git ancestor (root anchoring, strike 1)',
+  'lib/status-join.js': 'reads .steward/status.json only (status contract facets, Phase 1)',
   'lib/config.js': 'reads shipped defaults + project config',
   'lib/sources/markdown-dir.js': 'reads markdown stores',
   'lib/presence.js': 'stats marker paths — reads only',

@@ -1197,6 +1197,66 @@ checkAsync('supply() surfaces a judge failure instead of silently recalling noth
   }
 });
 
+checkAsync('a dead judge falls back to the ranker — material NAMES the engine (Q2 ruling)', async () => {
+  const dir = tmpdir('recall-fallback');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, '.claude', 'kb', 'captures', '20260823-porter-ferry-rejected.md'),
+    '# Porter ferry caste rejected for transfers\nSuperseded by handoff layer. FALLBACK-MARKER-7Q'
+  );
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'unrelated.md'), '# Gardening tips\nsoil');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: false, error: 'spawn ETIMEDOUT' });
+  try {
+    const ctx = fakeCtx({
+      cwd: dir, disk: makeDisk(dir),
+      lastAssistantMessage: 'we should add a porter ferry caste for transfers between nests',
+    });
+    const out = await contextRecall.supply(ctx);
+    assert.ok(out && out.material, 'fallback produced material');
+    assert.ok(out.material.includes('FALLBACK RANKER'), 'engine named in the material');
+    assert.ok(out.material.includes('ETIMEDOUT'), 'the judge death is named, not hidden');
+    assert.ok(out.material.includes('FALLBACK-MARKER-7Q'), 'the note\'s own text still injected');
+    assert.strictEqual(out.engine, 'fallback-ranker');
+    assert.ok(out.chosen.some((p) => p.includes('porter-ferry-rejected')), 'lexical match chosen');
+    assert.ok(!out.chosen.some((p) => p.includes('unrelated')), 'floor keeps unrelated notes out');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+checkAsync('judge death + zero lexical matches still reports could-NOT-run, naming both engines', async () => {
+  const dir = tmpdir('recall-fallback-dry');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# Zebra xylophone\nbody');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: false, error: 'spawn ETIMEDOUT' });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer about nothing related' });
+    const out = await contextRecall.supply(ctx);
+    assert.ok(/could NOT run/.test(out.material), 'still loud');
+    assert.ok(/fallback ranker found no strongly-matching notes/.test(out.error), 'fallback attempt recorded');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+checkAsync('a healthy judge stays the engine — fallback never runs (quality default holds)', async () => {
+  const dir = tmpdir('recall-judge-engine');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'k.md'), '# Kept note\nbody');
+  const realJudge = claudeP.judge;
+  claudeP.judge = () => ({ ok: true, text: '{"needed":[{"id":"kb-captures::.claude/kb/captures/k.md","why":"w"}]}' });
+  try {
+    const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'anything' });
+    const out = await contextRecall.supply(ctx);
+    assert.strictEqual(out.engine, 'judge');
+    assert.ok(!out.material.includes('FALLBACK RANKER'), 'no fallback banner on the judge path');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
 // ---------- sources ----------
 
 check('markdown-dir indexes titles cheaply and fetches bodies exactly', () => {

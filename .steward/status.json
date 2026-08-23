@@ -1,0 +1,276 @@
+{
+  "schema": 1,
+  "updated": "20260823-2058",
+  "updatedBy": "backfill",
+  "items": [
+    {
+      "id": "20260721-2340-crowdgame-seeded-early",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260721-2345-eval-measurement-recipe",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260722-toolset-improvement-candidates",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260724-1100-session-scope-counterpart-and-kb-query-surface",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-0337-kb-seed-should-see-on-its-own",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-0337-retrieval-improvement-direction",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-1335-briefing-overcap-silent-truncation",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-1400-first-retrieval-miss-splitter-class",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-1410-kb-usage-traces-and-retriever-sheet",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-1425-extract-more-session-scope-catalog-injection",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260725-1445-build-directive-kb-050",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-0035-model-facts-contradicted-by-disk",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-0300-verification-legs-closed-and-a-distribution-gap",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-0700-turn-end-shipped-and-what-it-changes",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-2029-q10-resolution-enforced-recompute-as-a-turn-end-duty",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-2030-steward-sync-was-built-during-the-integration-that-recorded-it",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260727-2035-re-take-the-context-recall-firing-policy",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260728-0130-ecosystem-gates-built-and-what-they-measured",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260731-1935-doctor-session-distribution-and-context-changes",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260731-2030-judge-child-rotates-live-digest-bug",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260801-2349-self-check-before-done",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260802-0011-steward-fires-too-often-too-long",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260802-0040-self-check-must-look-log-and-break",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260802-0105-turn-end-state-follows-shell-cwd",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260803-2142-steward-still-unbearable-make-lighter",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260810-1914-final-message-must-answer-original-request",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260823-1330-four-project-plugin-usage-audit-findings",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260823-1430-rethink-whole-design-not-patches",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260823-1520-owner-rulings-on-stack-a-blueprint",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260823-2058",
+      "by": "backfill",
+      "log": "backfilled — integration predates the status contract; see log.md",
+      "check": "copy present in inbox/done/ at backfill"
+    }
+  ],
+  "views": {
+    "briefing": {
+      "derived_through": "20260823-1520-owner-rulings-on-stack-a-blueprint"
+    },
+    "model": {
+      "derived_through": "20260823-1520-owner-rulings-on-stack-a-blueprint"
+    }
+  }
+}

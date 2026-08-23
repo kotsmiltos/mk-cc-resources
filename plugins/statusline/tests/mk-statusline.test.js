@@ -69,6 +69,35 @@ check('inbox count shown', run({ ...base, workspace: { current_dir: proj } }).in
 const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-bare-'));
 check('no anchor without .steward', !run({ ...base, workspace: { current_dir: bare } }).includes('⚓'));
 
+// Steward marker v2 (status contract): ⚓N✱ ▲M from status.json; root-anchored; tolerant.
+{
+  const p2 = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-status-'));
+  fs.mkdirSync(path.join(p2, '.steward', 'inbox'), { recursive: true });
+  fs.mkdirSync(path.join(p2, '.git'), { recursive: true });
+  fs.writeFileSync(path.join(p2, '.steward', 'inbox', '20260823-2100-new.md'), 'x');
+  fs.writeFileSync(path.join(p2, '.steward', 'status.json'), JSON.stringify({
+    schema: 1,
+    items: [
+      { id: '20260823-1900-a', type: 'inbox', status: 'integrated' },
+      { id: '20260823-2030-b', type: 'inbox', status: 'integrated' }
+    ],
+    views: { briefing: { derived_through: '20260823-1900-a' } }
+  }));
+  const v2 = strip(run({ ...base, workspace: { current_dir: p2 } }));
+  check('v2: new count + stale star + behind-cursor count', v2.includes('⚓1✱ ▲1'));
+  // recorded item does NOT count as new
+  fs.writeFileSync(path.join(p2, '.steward', 'inbox', '20260823-1900-a.md'), 'recorded, never moved');
+  const v2b = strip(run({ ...base, workspace: { current_dir: p2 } }));
+  check('v2: recorded-but-present file not counted as new', v2b.includes('⚓1✱ ▲1'));
+  // subdir cwd anchors to the root model
+  const deep = path.join(p2, 'src', 'x'); fs.mkdirSync(deep, { recursive: true });
+  check('v2: subdir cwd anchors to root', strip(run({ ...base, workspace: { current_dir: deep } })).includes('⚓1✱ ▲1'));
+  // BREAK: corrupt status.json degrades to plain counting (2 files present → ⚓2✱), never crashes
+  fs.writeFileSync(path.join(p2, '.steward', 'status.json'), '{broken');
+  const corrupt = strip(run({ ...base, workspace: { current_dir: p2 } }));
+  check('v2 break: corrupt status degrades to file count', corrupt.includes('⚓2✱') && !corrupt.includes('▲'));
+}
+
 // Garbage stdin → silent, exit 0
 const g = execFileSync(process.execPath, [SCRIPT], { input: 'not json', encoding: 'utf8' });
 check('garbage stdin silent', g === '');

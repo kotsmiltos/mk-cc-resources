@@ -43,6 +43,20 @@ TWO LENGTHS:
   it is now a duty inside the one blocking Stop hook, not a hook kb owns — see below.)
 Pull remains the permanent core; push is what makes pull reachable.
 
+Re-derived 2026-08-23 (owner, after the four-project usage audit: *"it feels like you are
+patching things… think about this like a transformation team"*): the audit's verdict —
+steward recompute SUCCEEDS everywhere, but the most-INJECTED surface (briefing) is the
+most often WRONG, in all four projects — forced a whole-system re-derivation instead of
+six local fixes. `design/logbook-spine.md` → `design/stack-a-blueprint.md`; **§6 owner
+rulings + §6b phases are now the PLAN OF RECORD beside v3:** per-ship `status.json`
+(lifecycle + `groups[]`; files NEVER move or rename; kb JOINS status as themes at
+collect, zero engine change), briefings = authored narrative + COMPUTED instruments
+(volatile claims — installs, git position, counts — computed at read, never authored, so
+the false-install-claim class dies by construction), harbor fleet stream at owner scope,
+statusline truth from status.json. Strike 1 (steward 0.4.0 freshness ⚠ + root anchoring ·
+kb 0.10.3 root-anchored hooks) SHIPPED, PUSHED and INSTALLED same day — the ⚠ line fired
+live on this repo's own briefing. The v3 phases resume AFTER, on the honest substrate.
+
 ## The turn-end law (2026-07-27) — one blocking tail
 
 Two plugins each owning a blocking `Stop` hook RE-ARMED each other: each one's mandated
@@ -125,6 +139,14 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
     COMPARED against what was ASKED, and probed to BREAK — happy-path-only is not a
     check. Two tiers on purpose: self-check is the cheap always-on floor; quality-lens
     stays the opt-in deep tier — this does NOT re-take lens economics (Phase C).
+11. **Quality over speed.** (Owner, verbatim, 2026-08-23: *"46 seconds is not really a
+    problem. getting things done to the highest degree is so switch your focus please.
+    if it works we keep it. if we cna enhance we do that. we go for quality, not
+    necessarily speed."*) Latency alone never motivates a change. A mechanism that
+    silently delivers nothing (a dead judge fire, a swallowed recall) is a QUALITY
+    failure — fix fragility with fail-open fallbacks that NAME which engine answered,
+    never with cheaper replacements. Bounds invariant 5: the cost budget prices the
+    loop, never the discipline or the result.
 
 ## Declared growth axes (change expected here)
 
@@ -139,6 +161,9 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
   an instrument here: pull replaces push wherever a session can ask instead of being fed,
   and turn-end's per-`prompt_id` scoping already collapsed the lens from N fires per
   sitting to at most one ask per user request.
+- **The status spine (blueprint §6b):** `status.json` item TYPES (inbox/question/watch/
+  orphan…) and `groups[]` are data, not code — a new lifecycle facet is a JSON field;
+  instruments are the drop-in surface for computed briefing lines.
 - **"Pure runner over a drop-in registry" is now the house gate pattern**, instantiated
   three times in plugin-toolkit alone (repo-guard detectors · test-all suite-runners ·
   registry-check claim sources) — one context gathered once, silence is a finding, a

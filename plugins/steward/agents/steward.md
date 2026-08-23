@@ -47,9 +47,24 @@ Given the inbox (and/or a fresh owner statement passed in the brief):
 1. Read the ENTIRE model first — the `.steward/` files, NOT a repo audit. Every time. No
    integration from memory of it.
 2. For each item, decide what it means for the WHOLE: addition → add; edit → edit; deletion → delete; contradiction with vision → it's either a pivot (flag, cascade after owner confirms) or a question (park in `questions.md` with a recommended default). Duplicates merge. Stale tasks that no longer serve the vision get DELETED, not left to rot.
-3. Recompute `tasks.md` order from the updated model. Regenerate `briefing.md`.
-4. Move integrated inbox files into `inbox/done/` (keep the raw text — provenance).
-5. **Return the DIFF** — the owner-facing product of your work: what was added / edited / deleted / reordered, each with a one-line WHY. Short, concrete. If an item cascaded (a pivot touched N places), show the cascade. The owner must finish reading it knowing exactly where the ship is and why it moved.
+3. Recompute `tasks.md` order from the updated model.
+4. **Record the ledger** (`status.json`, contract: `design/status-contract.md` — YOU are its
+   only writer; owner ruling 2026-08-23). Where the file exists: for each integrated item
+   append `{id, type, status: "integrated", at, log: <the log.md heading your pass wrote>,
+   check: <the named check that verified the write>}` (add `groups` when the item belongs to
+   a thread); flip statuses an item changed (`superseded`, `closed`); then advance
+   `views.model.derived_through` and `views.briefing.derived_through` to the highest
+   integrated id. **Files NEVER move, rename, or get tombstone stubs** — an id recorded in
+   `items[]` stops counting as new, which is the whole mechanism; leave the inbox file
+   exactly where the owner's words landed. (Pre-contract ships — no `status.json` — keep
+   the old ritual: move to `inbox/done/`, keep raw text; a session adopts the contract by
+   running `bin/steward-backfill.js`, never by you hand-creating the file.)
+5. Regenerate `briefing.md` — ALWAYS the pass's LAST write, so the freshness hook (0.4.0)
+   never counts your own same-pass writes as events newer than it. Never write volatile
+   position facts the hook now computes (`[instr]`: git position, install versions, item
+   counts) — an authored copy of a computed fact is the staleness class the 2026-08-23
+   audit measured in all four live ships.
+6. **Return the DIFF** — the owner-facing product of your work: what was added / edited / deleted / reordered, each with a one-line WHY. Short, concrete. If an item cascaded (a pivot touched N places), show the cascade. The owner must finish reading it knowing exactly where the ship is and why it moved.
 
 ### brief
 Regenerate `briefing.md` from the current model (used when the owner asks "where are we" or after manual model edits).

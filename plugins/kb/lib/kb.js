@@ -36,7 +36,17 @@ function openKb(root, overrides) {
   let cached = null;
 
   function collect() {
-    if (!cached) cached = sources.collectAll(config.sources, { root, registry });
+    if (!cached) {
+      cached = sources.collectAll(config.sources, { root, registry });
+      // Status contract join (lib/status-join.js): steward's lifecycle ledger becomes
+      // searchable status:/group: themes. Tolerant — absent ledger is a no-op, a corrupt
+      // one files a visible per-source error. Fail-open: a join crash must never cost
+      // the corpus itself.
+      try {
+        const { joinStatus } = require('./status-join');
+        cached = { ...cached, ...joinStatus(root, cached) };
+      } catch (_e) { /* corpus stands un-joined */ }
+    }
     return cached;
   }
 

@@ -112,7 +112,11 @@ lib/sources/            # WHERE recallable knowledge lives — the second extens
                         #   is the generic TYPE; every shipped source is CONFIG over it
                         #   (kb-captures, kb-extracted, steward-model). A configured dir
                         #   that does not exist is simply empty — that is the silence rule
-lib/judges/             # judgment surface. `claude -p` adapter, plan-billed, four measured
+lib/judges/             # judgment surface. 0.6.0: context-recall carries a fail-open
+                        #   term-overlap FALLBACK (its own tiny ranker — no kb import) for
+                        #   judge deaths only; material NAMES the engine, supply() returns
+                        #   engine judge|fallback-ranker (owner ruling: quality over speed —
+                        #   the judge stays default, a dead fire is a quality failure). `claude -p` adapter, plan-billed, four measured
                         #   constraints encoded: argv-not-stdin (stdin is refused as prompt
                         #   injection), never shell:true (Windows cmd.exe hangs on
                         #   multi-line argv), MK_TURN_END_DEPTH guard (the -p child fires
@@ -132,7 +136,7 @@ hooks/                  # the one Stop registration; the adapter holds ZERO poli
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 143 checks, own temp fixtures. Three replay measured failures
+tests/turn-end.test.js  # 146 checks, own temp fixtures. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

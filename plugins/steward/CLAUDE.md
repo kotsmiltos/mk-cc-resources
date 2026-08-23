@@ -31,8 +31,15 @@ line earns its place.
 
 ```
 .claude-plugin/plugin.json
-agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/
+agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/;
+                        #   0.5.0: ONLY writer of status.json (the lifecycle ledger — record
+                        #   integrated items with log+check refs, advance view cursors, files
+                        #   NEVER move, briefing regenerated LAST, volatile facts never authored)
 skills/steward/         # ambient session protocol + workflows/seed.md (existing-project onboarding)
+lib/status.js           # tolerant reader of design/status-contract.md — derived-new, cursor
+                        #   staleness; consumers: brief hook, backfill, (fleet later)
+bin/steward-backfill.js # one-shot absent-only seeder: done/ copies + INTEGRATED tombstones ->
+                        #   items[], cursors to highest id; adoption is one run, never hand-JSON
 commands/               # seed | brief | sync | next | fleet — optional aliases only
 bin/steward-fleet.js    # fleet briefing renderer — all steward projects at a glance;
                         #   registry ~/.claude/steward/fleet.json auto-populated by the hook
@@ -49,5 +56,6 @@ hooks/
                         #   Agent regenerates briefing LAST in a pass so same-pass writes
                         #   never false-flag. Protocol line names <git root>/.steward/inbox/
                         #   as the only capture path (aithseis build-and-sell orphan class)
-tests/steward-brief.test.js  # 34 checks, isolated fake home, no framework
+tests/steward-brief.test.js  # 40 checks, isolated fake home, no framework
+tests/status.test.js         # 13 checks — contract reader (derive/cursor/corrupt/tolerant)
 ```
