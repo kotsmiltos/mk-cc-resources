@@ -617,3 +617,11 @@ prototype-proven against the four real ships before building.
   gates. Filed for integration.
 - Not pushed; installs unchanged (0.4.0/0.10.3 reach sessions after owner push + update +
   restart). Next: Plan 2 pilot (status.json + instruments + statusline + kb status-join).
+
+## 2026-08-23 · Strike 1 PUSHED — origin 28cc0c7 -> 2891859 (owner "@ship it")
+Two commits: 4ef7a37 (steward 0.4.0 + kb 0.10.3, plugin trees) + 2891859 (registry/README/
+gate-table/design corpus/model). Pre-ship: registry-check exit 0 (consistent, 6 claim
+sources) · repo-guard exit 0 (no leaks; July revert-chain warnings informational) ·
+test-all --root 31/31 suites 1723 checks · design docs machine-path grep clean.
+Remaining gap: installs — owner runs plugin update (steward, kb) + restart; first live
+fire after restart is the staleness line on this repo's own briefing (3+ inbox items).
