@@ -94,6 +94,20 @@ plugins/
                             #   user's verbatim original request + who-did-what, not the
                             #   last agent's return). See plugins/turn-end/CLAUDE.md.
 
+  patterns/                 # Named-seam menu + pre-code pattern check — HFDP's trigger→shape
+                            #   device mechanized ambient (owner directive 2026-08-27: "Claude
+                            #   overall abides"; essense-flow is NOT the home). catalog/
+                            #   patterns.json = single source, 41 entries (GoF/Fowler/POSA/
+                            #   msdocs/Nystrom/HFDP/SOLID), JSON so every consumer JSON.parses
+                            #   zero-dep; menu renders AT RUNTIME (no drift file). Two hooks,
+                            #   default ON, fail-open, advisory-only (no permissionDecision,
+                            #   no exit 2): pattern-menu (UserPromptSubmit, verb∧noun trigger,
+                            #   machine-text + MK_TURN_END_DEPTH guards) + pattern-gate
+                            #   (PreToolUse, once per prompt_id, state HOME-SIDE keyed by
+                            #   project-root hash — never litters repos). /patterns browses.
+                            #   Standalone, not in mk-cc-all (bundle would strip catalog/).
+                            #   See plugins/patterns/CLAUDE.md.
+
   kb/                       # (0.10.3: both hooks root-anchored via lib/project-root.js —
                             #   a subdir shell no longer reads/rotates another project's
                             #   kb state. 0.11.0: status-join — steward ledger status/groups

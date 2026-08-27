@@ -103,6 +103,15 @@ capability reach) — it CHECKS, never generates.
   NAMES which engine chose (146/146 at ship). Recall improvement means QUALITY measurement
   (chosen-files-actually-used rate, Phase 3 stats), never latency; the dogfood week counts
   fallback fires.
+- **KNOWN DEFECT (measured 2026-08-27, → tasks #22): write-demanding duties are not
+  plan-mode-aware.** During a plan-mode span the `session-digest` duty demanded a write to
+  the digest file while plan mode's lock permits editing only the plan file — the
+  satisfaction check (digest mtime vs activity) cannot see the mode, so it demanded the
+  impossible through 8+ nudge cycles in one request span (background-agent wakes re-arm
+  it). Fix direction (Claude's, owner to ratify): mode detection in the runner context,
+  then defer-until-mode-exits or count the plan file as that span's digest surface —
+  generic for any duty whose satisfaction needs a project-file write. Non-writing DEMAND
+  duties (request-closure) stayed satisfiable and are unaffected.
 - **FIXED in 0.3.1 (2026-07-31) — the hook budget no longer kills its own judge:**
   `hooks/hooks.json` now sets `"timeout": 90` (read 2026-08-01). Invariant the old 30
   violated: **the hook budget must exceed the judge budget** — the judge carries its own
@@ -402,6 +411,43 @@ capability reach) — it CHECKS, never generates.
 - **Exposes:** PreToolUse once-per-message reuse-first reminder on first source write;
   opt-in OFF, fail-open. Dedupes on `prompt_id` and is safe there only because injecting a
   reminder spawns nothing. **v3 role:** folds into executor code-write discipline.
+
+## patterns (0.1.0) — ambient named-pattern menu + pre-code check (BUILT 2026-08-27, live after push)
+
+- **Why it exists (owner, two directives):** 08-26 steer — the trigger→shape device must
+  be AMBIENT ("the essense flow aprts are rarely used… i want claude overall to abide");
+  08-27 GO — catalog wider than one book, trusted sources, more examples, paradigm
+  annotations, MVVM/singletons covered, "decoupled is always better". Supersedes task
+  #20's original `generativity-protocol.md` placement; essense-flow will CITE the catalog,
+  never own it (documented drop-in, → #21).
+- **Exposes:** `catalog/patterns.json` — THE single source, JSON on purpose (plan review
+  rejected a YAML-subset parser): 41 entries (15 tier-1 menu / 23 tier-2 / 3 caution —
+  singleton, premature-abstraction, god-object), per entry trigger · `menu_cue` (≤50
+  chars, feeds the menu budget deterministically) · seam · drop-in test · paradigms ·
+  ≥2 examples (C#/Python/TS) · cautions · sources (gof/hfdp/fowler/posa/msdocs/nystrom/
+  solid; refguru cross-check only; online sources verified live at build). Two hooks:
+  **pattern-menu** (UserPromptSubmit — runtime-rendered tier-1 menu, `MENU_MAX_CHARS`
+  1100 enforced by TESTS not silent truncation; machine-text + depth + min-chars +
+  verb∧noun gates, prompt parsed from stdin JSON — never the raw payload, the measured
+  generalize-first cwd-noun misfire) · **pattern-gate** (PreToolUse on source writes,
+  ONCE per prompt_id, `additionalContext` only — no permissionDecision, no exit 2).
+  `/patterns` browses/prints entries.
+- **Contract:** default ON everywhere (owner call at plan approval — deliberate inverse of
+  reuse-gate; opt-outs: env `PATTERNS_ENABLED=0`, project + global `.claude/patterns.json`)
+  · state HOME-SIDE (`~/.claude/patterns/state/<root-hash>.json`, never in-repo — the kb
+  footprint lesson) · **standalone, NOT in mk-cc-all** — load-bearing: hook-carrying AND
+  the bundle ships skills only, a bundled `/patterns` would find no `catalog/` · fail-open
+  everywhere · own copy of the nearest-`.git` walk (cross-plugin duplication deliberate).
+- **Overlap pending (Q15):** fires on the same prompts as the user-global generalize-first
+  hook (~420 tokens combined); slim/retire vs keep is the owner's call AFTER a live fire.
+- **Later drop-ins documented, not built:** turn-end pattern-check duty · review lens ·
+  essense-flow citation.
+- **Files:** `plugins/patterns/{catalog/patterns.json, hooks/, lib/{render-menu,
+  enablement, project-root}.js, skills/patterns/}` · **Tests:**
+  `node plugins/patterns/tests/patterns.test.js` — 37 checks per the plugin notes at pass
+  end (35 at the build log; the suite gained corrupt/absent-catalog fail-open e2e
+  mid-pass): schema, menu cap, gate chains, enablement precedence, root walk, e2e spawns
+  via the `PATTERNS_STATE_DIR` + `PATTERNS_CATALOG_PATH` seams.
 
 ## Orthogonal (unaffected by v3)
 

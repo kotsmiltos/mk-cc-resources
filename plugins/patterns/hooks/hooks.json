@@ -1,0 +1,26 @@
+{
+  "description": "patterns plugin hooks: (1) UserPromptSubmit — on a design-shaped prompt, inject the tier-1 trigger->pattern menu rendered at runtime from catalog/patterns.json; (2) PreToolUse on Write|Edit|MultiEdit|NotebookEdit — once per user message, on the first source-code write, remind to check pattern selection (additionalContext only; no permissionDecision, no block). Both default ON (env PATTERNS_ENABLED / project or global .claude/patterns.json {\"enabled\": false} to opt out), fail-open on any error.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/pattern-menu.js\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/pattern-gate.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

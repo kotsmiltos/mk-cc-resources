@@ -1,7 +1,7 @@
 {
   "name": "mk-cc-all",
-  "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, and kb (the project knowledge base — ask before re-deriving). essense-autopilot, thorough-mode, alert-sounds, verifiability-lens, reuse-gate, steward, and kb carry hooks and must be installed separately (the bundle ships kb's skills only — its three hooks and MCP server need the standalone install). Benched plugins are preserved on the archive/benched-plugins branch.",
-  "version": "2.26.0",
+  "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, and kb (the project knowledge base — ask before re-deriving). essense-autopilot, thorough-mode, alert-sounds, turn-end, reuse-gate, steward, patterns, and kb carry hooks and must be installed separately (the bundle ships kb's skills only — its hooks and MCP server need the standalone install; patterns' catalog travels only in its own install). verifiability-lens no longer carries a hook — its automatic firing comes from turn-end's quality-lens duty. Benched plugins are preserved on the archive/benched-plugins branch.",
+  "version": "2.26.1",
   "author": {
     "name": "kotsmiltos"
   },

@@ -680,3 +680,106 @@ model recompute. Pre-ship: leak grep clean · repo-guard exit 0 (July revert-cha
 informational) · test-all --root 33/33 / 1758 · registry-check consistent. Next: owner
 updates installs (steward, kb, statusline, turn-end) + restart → dogfood week begins;
 first post-install open should show [instr] line + calm ⚓ on this ship.
+
+## 2026-08-23 · Dogfood day 1 — arrival check: three legs observed, zero instrument lies
+First post-install open (tasks.md #1 watch). Evidence per leg:
+- **(a) staleness**: briefing injected "[instr] git: main @ e6528e0" + no ⚠ line. Reality:
+  HEAD e6528e0 (21:28), briefing.md mtime 21:43 (newer than newest event), inbox empty.
+  FRESH verdict honest. PASS.
+- **(c) ledger truth**: status.json 29 items, all integrated-by-backfill; ids match
+  inbox/done/ files 1:1 (backfill's own check field verified against disk). Cursor
+  derived_through 20260823-1520 = max recorded id → derived new = 0, matches the
+  briefing's "inbox: empty". PASS.
+- **(d) statusline**: live render — real status.json piped through bin/mk-statusline.js —
+  emits calm cyan ⚓ alone (byte-decoded U+2693; no N, no ✱, no ▲). Matches ledger. PASS.
+- **(b) fallback fires**: not observable at open — needs a turn-end trace during the week.
+Housekeeping: reconcile-pass model updates committed (902eb2b, 4 files, +118/−120);
+git status clean after. Log entry rides the next push.
+
+## 2026-08-26 · HFDP wish integrated at 902eb2b — invariant 7 re-affirmed owner-wide, gap map corrected at source, Q14 + task #20
+One item (20260826-1446, owner verbatim preserved; the file stays in inbox/, id recorded —
+contract rule 3). The wish is a RE-AFFIRMATION of invariant 7, extended: instance-shaped
+output is a failure on EVERY code-writing surface, ambient included — not a pivot.
+Provenance kept split: wish = owner authority; the capture's gap assessment = Claude
+analysis, verified before entering the model. Verdicts: gap A ("elicit growth_axes never
+executed") REFUTED — essense-flow 0.26.0 shipped the Declared-growth-axes SPEC section +
+protocol fire-points (RELEASE-NOTES read; lens amended the capture on disk mid-pass);
+gap 2 CONFIRMED — zero named pattern shapes in essense-flow references/ (grep, 0 matches);
+gap 3 holds by construction (ambient = injected rule text). Genuinely unbuilt remainder:
+the four extensibility CONSUMERS (glossary EXTENSIBILITY.yaml · review lens · verify items
+· C sweeps — zero `extensib` matches in essense-flow). Model deltas: vision invariant 7
+extended (owner verbatim) · state gap entry + dogfood day-1 legs reconciled · Q14 parked
+(consumers into the dissolving pipeline vs surviving path; default: surviving) · tasks:
+NEW #20 (named trigger→shape catalog at the design moment), #15 scope expanded to ambient
+mechanism, #1 annotated day-1 PASS. Checks: RELEASE-NOTES 0.26.0 read (gap-A refutation) ·
+grep "Strategy|Observer|Decorator|Template Method|Factory" over references/ = 0 matches ·
+coordinator's `extensib`-absence verification adopted with its source line. status.json:
+item integrated, both cursors → 20260826-1446.
+
+## 2026-08-27 · Task #20 BUILT as the standalone `patterns` plugin (0.1.0) — ambient home per owner steer; install blocked on push
+Owner GO (inbox 20260827-1406: richer multi-source catalog, examples, paradigm
+annotations, singletons honest, "decoupled is always better") + plan-mode pass (Explore
+conventions read + adversarial plan review; review REJECTED the YAML-subset parser →
+JSON-canonical catalog, runtime-rendered menu, HOME-SIDE gate state, broadened nouns,
+Type Object added). Shipped: catalog/patterns.json (41 entries — 15 tier-1 menu / 23
+tier-2 / 3 caution; sources gof·hfdp·fowler·posa·msdocs·nystrom·solid, refguru
+cross-check only; online sources verified live: Nystrom contents, Fowler eaaCatalog,
+MS MVVM doc) · pattern-menu UserPromptSubmit hook (runtime-rendered tier-1 menu, 965
+chars ≤ 1100 cap; machine-text + depth + min-chars + verb∧noun gates) · pattern-gate
+PreToolUse hook (once per prompt_id, additionalContext only — no permissionDecision, no
+exit 2; state ~/.claude/patterns/state/<root-hash>.json, never in-repo) · /patterns
+skill · default ON w/ env+project+global opt-outs. Registration: marketplace 2.47.1,
+bundle 2.26.1 (also fixed pre-existing description drift: verifiability-lens listed as
+hook-carrying, turn-end missing), root README row+section, root CLAUDE.md tree entry.
+Checks: tests/patterns.test.js 35/35 · test-all --root 34/34 suites / 1793 checks
+(first sweep showed a transient essense-flow red; direct run 54/54 + re-sweep green) ·
+registry-check exit 0 · repo-guard exit 0. NOT done: live install smoke — marketplace
+source is the GitHub REMOTE (claude plugin marketplace list), so install needs a PUSH
+[owner decision]; July capture "installs read the local checkout" REFUTED for the
+current setup. Post-ship decision parked: slim/retire global generalize-first.sh vs
+accept double injection tax [owner].
+
+## 2026-08-27 · Three items integrated at 902eb2b — patterns landing reconciled, #20 CLOSED as built, Q15 opened, new #22
+Items 20260826-1504 (owner steer: ambient home, essense-flow "rarely used", "claude
+overall" must abide) + 20260827-1406 (owner GO + richer multi-source catalog, "decoupled
+is always better") + 20260827-1440 (Claude-observed turn-end defect). The first two
+arrived largely EXECUTED by the same sitting's build; the model catches up. Provenance
+split kept: owner words = authority; each capture's analysis = Claude, verified on disk.
+- **Owner steer superseded #20's placement BEFORE build** — the built home is the
+  standalone ambient `patterns` plugin, not `generativity-protocol.md`; essense-flow will
+  CITE the catalog, never own it (#21 leg 4). The same words recorded in Q14 as direct
+  evidence for the surviving-path default — Q14 stays OPEN (the consumers half is a
+  distinct decision the steer does not close).
+- **#20 CLOSED as BUILT:** patterns plugin.json read (0.1.0, standalone, default ON,
+  home-side state) · catalog `"id":` count = 41 · marketplace metadata 2.47.1 + bundle
+  2.26.1 read. NOT live: both git refs read — local `902eb2b`, origin `e6528e0`, the
+  build rides the tree UNCOMMITTED, and the marketplace install source is the GitHub
+  remote (measured; the contrary July kb capture corrected on disk, correction capture
+  globbed) — so commit + PUSH gate every install → **NEW Q15** (push now + slim
+  generalize-first after one live fire is the recommended default) + **NEW #21**
+  (go-live: push → install → both-hooks live smoke → Q15 execution → citation lines).
+- **Defect item → NEW #22 + parts.md turn-end defect line:** the `session-digest` duty's
+  satisfaction check is not plan-mode-aware — demanded a write plan mode forbids, 8+
+  wasted nudge cycles in one span. Fix direction (defer vs plan-file-counts) parked for
+  owner ratification; substrate-verify the payload's mode field before coding.
+- **Model deltas:** state — ship position (uncommitted build, push-gated installs),
+  versions (+patterns 0.1.0, marketplace 2.47.1, bundle 2.26.1), generativity gap map
+  (gap 1 BUILT pending live, gap 3 half closed, gap 2 the open remainder), +2 known-gaps
+  · parts — +patterns section, turn-end defect bullet · questions — Q14 evidence, +Q15 ·
+  tasks recomputed 20 → 21 entries (#20 out; #21, #22 in; #15 annotated) · status.json
+  +3 integrated, cursors → 20260827-1440 · briefing regenerated LAST.
+- Checks this pass: patterns plugin.json read (0.1.0) · catalog id count 41 ·
+  marketplace 2.47.1 + bundle 2.26.1 read · both git refs read · correction capture
+  globbed on disk · inbox = exactly 3 unintegrated items, files left in place with ids
+  recorded (contract rule 3).
+
+## 2026-08-27 · Lens audit on the patterns build — two fixes applied, suite now 37/37
+Verifiability-lens deep-read all 13 plugin files + web-verified sources (Fowler quotes
+verbatim-correct, all 7 Nystrom chapter attributions correct). Verdict: build real,
+incomplete-with-stated-reason (install smoke rides the push). Two escalations FIXED same
+sitting: (1) false GoF cites — object-pool (not a GoF pattern) now nystrom+refguru,
+registry-dispatch (Registry is Fowler/PoEAA) now fowler; (2) corrupt-catalog fail-open
+path had no test seam — PATTERNS_CATALOG_PATH seam added + 2 e2e checks (corrupt +
+absent catalog → exit 0, empty stdout, stderr breadcrumb). Check: tests/patterns.test.js
+37/37. Third escalation stands as the done-check: on push approval run the 4-step
+install smoke before calling 0.1.0 live.

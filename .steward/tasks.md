@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-08-23 · Phase 1 shipped + live · origin == local e6528e0)
+# Tasks — ordered, executor-ready (recomputed 2026-08-27 · patterns landing reconciled · numbers are stable ids, file order is the order)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -11,7 +11,13 @@
 demanded: the build is done, the TRUTH of the instruments is not yet measured. #1 gates
 Phase 2 (#12); Phase 3 (#13) follows; the v3 phases resume AFTER them on the honest
 substrate. Blueprint Phase 4 stays a parking lot (evidence-gated), not a task.
-Numbering 1–19 unchanged.
+**2026-08-27 recompute:** #20 is CLOSED as BUILT — the owner's 08-26 steer superseded its
+essense-flow placement BEFORE build, and the sitting shipped it as the standalone ambient
+`patterns` plugin 0.1.0 (log 2026-08-27 holds the record). Its live leg becomes NEW #21,
+slotted second because it is blocked only on the owner's Q15 push call and everything
+after it is minutes. NEW #22 (turn-end plan-mode defect, measured this sitting) slots
+third — small, executor-ready, and it burns nudge cycles in every plan-mode span until
+fixed. Numbering 1–22: numbers are stable ids, never reused.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
@@ -33,6 +39,45 @@ detail here — name projects, not drives.
   matches status.json at a glance. Any failed leg becomes an inbox item, not a hotfix.
 - **Done-check:** a week of sittings with each leg observed at least once and zero
   unexplained instrument lies (or every lie filed + root-caused); then #12 unblocks.
+- **Progress:** day 1 (08-23 first post-install open) — legs a/c/d observed PASS, zero
+  lies; leg (b) fallback fires outstanding, needs a live turn-end trace.
+
+## 21. Patterns 0.1.0 go-live — commit + push [needs owner, Q15], then prove it live
+
+- **Why:** built ≠ shipped — the marketplace install source is the GitHub remote
+  (measured 2026-08-27), the tree past `902eb2b` is uncommitted, and vision says
+  reachability is part of "shipped." Gates were green at build (suite 35/35 · test-all
+  `--root` 34/34 / 1793 · registry-check 0 · repo-guard 0); what remains is owner word
+  plus minutes of proof.
+- **What:** (1) owner Q15 call → commit + push (re-run test-all `--root` +
+  registry-check at push per house rule); (2) install patterns + restart; live smoke:
+  one design-shaped prompt shows the tier-1 menu, the first source write of a session
+  gets ONE gate line, state file appears home-side not in-repo; (3) execute Q15's
+  injection answer (slim the global generalize-first hook, or keep both — only AFTER
+  the live fire); (4) small follow-through: essense-flow `generativity-protocol.md` +
+  `code-conventions.md` gain a one-line citation of the patterns catalog (pipeline
+  points at ambient — the documented drop-in; no ownership move).
+- **Done-check:** a fresh install resolves patterns 0.1.0 from the remote; both hooks
+  observed firing live once each; Q15's injection decision recorded in log.md with its
+  reason; citation lines present or explicitly declined.
+
+## 22. turn-end — make write-demanding duties plan-mode-aware (measured defect 2026-08-27)
+
+- **Why:** measured this sitting — the `session-digest` duty demanded a digest write
+  while plan mode's lock permits only the plan file; 8+ wasted nudge cycles in one
+  request span (background wakes re-arm it). A satisfaction check that demands the
+  impossible is a WRONG check; invariant 9 says the fire budget is only the backstop
+  for exactly this case.
+- **What:** substrate-verify FIRST — read where permission mode actually rides in the
+  Stop-hook payload/context before coding anything. Then, generic for ANY duty whose
+  satisfaction needs a project-file write (never a session-digest special case): either
+  defer silently while the mode holds (queue until it exits, session span), or accept
+  the plan file as that span's digest surface. Non-writing DEMAND duties
+  (request-closure) stayed satisfiable — leave untouched. Owner ratifies the direction
+  (defer vs plan-file-counts) — it changes what a plan-mode sitting leaves behind.
+- **Done-check:** a replay test of the measured 8-cycle plan-mode span yields zero
+  wasted nudges (or one, satisfied by the plan file); turn-end suite green; the trace
+  shows the deferral/satisfaction NAMED, never silent.
 
 ## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
 
@@ -210,8 +255,17 @@ detail here — name projects, not drives.
   registry-check are the harness family #6 extends — reuse, don't re-derive. Respect the
   coupling scope limit: per project, never across the marketplace. Phase 0 validation is
   CLOSED (the audit); the remaining precondition is #1's honest substrate.
+- **EXPANDED by the 2026-08-26 HFDP wish:** ambient (non-pipeline) sessions are in scope —
+  the extensibility/coupling measures as a conditional check on turns that WRITE source,
+  not only executor steps. **Partially delivered 2026-08-27:** patterns 0.1.0 covers the
+  ambient VOCABULARY + pre-write nudge as hooks (mechanism, not rule text); what remains
+  here is the MEASUREMENT half — the actual coupling/extensibility checks on
+  source-writing turns. The essense-flow-side consumers (glossary EXTENSIBILITY.yaml,
+  review extensibility lens, verify items, C sweeps — pure wiring on the existing engine)
+  join this task ONLY if Q14 resolves (b)/(c); default (a) keeps them unbuilt.
 - **Done-check:** a deliberate reach-in fails a hand-back; a stale parts.md entry is
-  flagged.
+  flagged; an ambient turn that adds a closed dispatch on a declared growth axis gets
+  flagged by mechanism, not by rule text.
 
 ## 16. Phase B — harden the steward
 

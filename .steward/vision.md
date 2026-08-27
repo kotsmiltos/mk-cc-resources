@@ -117,6 +117,13 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    5-module "cycle" between plugins that import nothing from one another). Run per
    project; cross-plugin duplication (`readPayload` ×6) is CORRECT, never extract it —
    extraction would pin separately-versioned plugins to each other.
+   **Re-affirmed by owner 2026-08-26 — the HFDP wish** (verbatim: *"we build code too
+   specific for anything I ask. I wanna start building code in a more generic way that
+   allows us to expand and build for the future… avoid dialing into something very
+   specifically and then passing things on and patching things on"*): instance-shaped
+   output is a FAILURE even where no gate flags it, and the invariant covers EVERY
+   code-writing surface — pipeline, executor, AND ambient sessions. Ambient coverage
+   today is injected rule text only, the load-bearing shape invariant 3 rejects.
 8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they
    don't apply. The ONE hook that may block blocks the turn's END, never a tool call,
    and fails open on every path.

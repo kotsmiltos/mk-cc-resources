@@ -1,4 +1,4 @@
-# State — current truth (2026-08-23 · Phase 1 status spine SHIPPED + LIVE · origin == local e6528e0)
+# State — current truth (2026-08-27 · patterns 0.1.0 BUILT, install gated on commit+push · HEAD 902eb2b at pass start)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,21 +8,31 @@
 
 ## Ship position
 
-**local main == origin/main == `e6528e0`** (session-start snapshot, clean tree). The 08-23
-sitting shipped TWICE on owner "@ship it": **strike 1** (steward 0.4.0 + kb 0.10.3 —
-`4ef7a37`/`2891859`/`e6760ad`), then **Phase 1 of blueprint §6b in full** — `303c00c`
-(38 files, +1662/−418: four plugin bumps, contract page `design/status-contract.md`,
-seeded pilot `status.json`, sync-pass model recompute) + `e6528e0` (log). **Installs
-updated 18:36 + restart, VERIFIED live:** the `[instr]` computed line fired in the real
-briefing injection this session.
+**local main @ `902eb2b`, origin @ `e6528e0`** (both refs read this pass). The
+2026-08-27 sitting BUILT task #20 as the standalone **patterns plugin 0.1.0** (ambient
+home per the owner's 08-26 steer — essense-flow explicitly NOT the home: "rarely used",
+"claude overall" must abide). The whole build — plugin tree, marketplace 2.47.1, bundle
+2.26.1 (also fixed pre-existing description drift), README/CLAUDE.md rows — rides the
+working tree **UNCOMMITTED**; commit + push are owner word (Q15), and the push is
+load-bearing: **measured 2026-08-27, the marketplace install source is the GitHub
+REMOTE** (`claude plugin marketplace list`), so NO install can resolve patterns until
+pushed. That measurement confirms the model's standing push-required position and
+REFUTED the July kb capture claiming installs read the local checkout (correction filed
+in kb captures). Gates at build: patterns suite 35/35 · test-all `--root` 34/34 suites /
+1793 checks (one transient essense-flow red; direct run 54/54 + re-sweep green) ·
+registry-check exit 0 · repo-guard exit 0. Phase 1 dogfood week still running (day 1
+legs a/c/d PASS; leg b outstanding).
 
 ## Versions on disk
 
-Moved this arc (all four plugin.json read this pass): **steward 0.5.0** · **kb 0.11.0** ·
-**statusline 0.2.0** · **turn-end 0.6.0**. Unchanged, not re-read (no item touched them):
-plugin-toolkit 1.10.0 · thorough-mode 1.11.1 · verifiability-lens 0.5.0 · session-lifecycle
-1.3.1 · essense-flow 0.26.1 · essense-autopilot 0.4.0 · schema-scout 1.2.1 ·
-project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0 · mk-cc-all bundle 2.26.0.
+Moved this arc (read this pass): **patterns 0.1.0 (NEW)** · **marketplace metadata
+2.47.1** · **mk-cc-all bundle 2.26.1** (description-drift fix; patterns is NOT bundled —
+hook-carrying, standalone by the load-bearing skills-only contract). From the 08-23 arc,
+unchanged: steward 0.5.0 · kb 0.11.0 · statusline 0.2.0 · turn-end 0.6.0. Unchanged, not
+re-read (no item touched them): plugin-toolkit 1.10.0 · thorough-mode 1.11.1 ·
+verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · essense-flow 0.26.1 ·
+essense-autopilot 0.4.0 · schema-scout 1.2.1 · project-note-tracker 1.8.0 ·
+alert-sounds 1.1.1 · reuse-gate 0.1.0.
 
 ## LIVE — the status spine (dogfood week RUNNING, tasks #1)
 
@@ -32,7 +42,10 @@ e6760ad` + calm statusline ⚓; post-install proof THIS session: the `[instr]` l
 the real injection. Gates at push: `test-all --root` **33/33 suites / 1758 checks** ·
 registry-check exit 0 · repo-guard exit 0 (July revert-chains informational) · leak grep
 clean. Earlier same-day live proofs stand: freshness ⚠ · `steward-sync` first fire ·
-self-check block · request-closure fire.
+self-check block · request-closure fire. **Day 1 (08-23 first post-install open): legs
+a/c/d PASS, zero instrument lies** — staleness FRESH verdict honest vs disk · ledger 29
+ids match `done/` 1:1, derived new = 0 · statusline calm ⚓ matches. Leg (b) fallback
+fires still needs a live turn-end trace during the week.
 
 ## Audit verdicts (measured 2026-08-23 — four projects, three Explore agents + local read)
 
@@ -48,6 +61,20 @@ self-check block · request-closure fire.
 
 ## Known-broken / known-gaps
 
+- **Generativity under-delivery — owner-observed (2026-08-26 HFDP wish, authoritative):**
+  *"we build code too specific for anything I ask."* Coverage map, verified against disk
+  this pass: pipeline carries the rung-2 protocol + criteria 8/9 + the elicit
+  Declared-growth-axes SPEC section (essense-flow 0.26.0 — the capture's original "gap A
+  never executed" claim was REFUTED by RELEASE-NOTES + the lens amendment; the model never
+  absorbed it); plugin-toolkit carries the `runner extensibility` engine. The gap map
+  MOVED 2026-08-27: (1) NAMED trigger→shape vocabulary at the design moment — **BUILT**
+  as patterns 0.1.0 (ambient home per owner steer; catalog 41 entries; live only after
+  commit+push+install → #21); (3) ambient MECHANISM — **half closed**: the menu + the
+  pre-write gate ARE hooks now, not rule text; the MEASUREMENT half (coupling/
+  extensibility checks on source-writing turns) stays #15. Still genuinely absent:
+  (2) the extensibility CONSUMERS — /glossary EXTENSIBILITY.yaml, review `extensibility`
+  lens, verify compliance items, C correction sweeps — pure wiring on an engine that
+  already accepts declared axes (→ Q14; owner words 2026-08-26 lean surviving-path).
 - **Briefing staleness — THE systemic class:** root fix SHIPPED (Phase 1 instruments +
   cursors — volatile claims computed at read, never authored). Fixed-by-construction is
   the CLAIM; the dogfood week (#1) is what measures it — accuracy is not assumed.
@@ -69,6 +96,14 @@ self-check block · request-closure fire.
   One transient essense-flow red on a first parallel sweep, not reproduced (→ #9 datum).
 - Format drift: frontmatter missing on 1/4 twin + 1/8 aithseis captures; aithseis digest
   17KB against its own pointer-file rule → blueprint Phase 4 guards.
+- **turn-end `session-digest` duty is not plan-mode-aware (measured 2026-08-27, → #22):**
+  during the patterns plan-mode pass it demanded a digest write that plan mode's lock
+  forbids — 8+ wasted nudge cycles in one request span (background wakes re-arm it). A
+  satisfaction check demanding the impossible is a wrong check (invariant 9's backstop
+  case). DEMAND duties that write nothing stayed satisfiable.
+- **Double design-moment injection (→ Q15):** once patterns installs, its menu hook fires
+  on the same prompts as the user-global generalize-first hook (~420 tokens combined per
+  fire, per the plugin notes) — slim/retire vs keep is the owner's post-live call.
 - Standing, unchanged: invariant-9 hole (autopilot, #3) · Q12 CI revert · Q13 sonnet ·
   absolute-path debt (#7) · counts-in-prose sweep (#6) · ledger-compaction UNCERTAIN
   (#9) · briefing WRITE-time gate (#8 — did NOT land with Phase 1's brief-hook rebuild) ·
@@ -76,8 +111,10 @@ self-check block · request-closure fire.
 
 ## Working tree
 
-Clean at pass start except `.steward/` — this recompute. The sync pass's integrated
-stubs were deleted before the Phase 1 commit; no stub litter remains on this ship.
+Carries the ENTIRE uncommitted patterns build (new `plugins/patterns/` tree + registry/
+README/CLAUDE.md edits) plus `.steward/` (the 08-27 landing log entry + this recompute).
+Everything since `902eb2b` rides the next commit + push — owner word (Q15). No stub
+litter; the contract keeps integrated inbox files in place, ids recorded.
 
 ## Outside-repo (log-only context)
 
@@ -85,4 +122,6 @@ Plugin-state git policy diverges per ship (twin commits kb+steward as first-clas
 crowd partial; aithseis commits NOTHING — 29 days, 1,644 model lines untracked against its
 own open task). Owner call per project; Phase 2 backfill is where it surfaces. Aithseis
 model frozen 12 days with 10 pending inbox items. Marketplace registry GitHub-sourced with
-`autoUpdate: true` — unchanged, not re-read.
+`autoUpdate: true` — now MEASURED, not just configured (2026-08-27: `claude plugin
+marketplace list` shows the remote as source; the contrary July kb capture corrected on
+disk at `20260827-1520` in kb captures).

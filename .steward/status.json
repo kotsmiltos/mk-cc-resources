@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "updated": "20260823-2058",
-  "updatedBy": "backfill",
+  "updated": "20260827-1545",
+  "updatedBy": "steward-agent",
   "items": [
     {
       "id": "20260721-2340-crowdgame-seeded-early",
@@ -263,14 +263,54 @@
       "by": "backfill",
       "log": "backfilled — integration predates the status contract; see log.md",
       "check": "copy present in inbox/done/ at backfill"
+    },
+    {
+      "id": "20260826-1446-code-like-head-first-design-patterns",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260826-1520",
+      "by": "steward-agent",
+      "groups": ["generativity"],
+      "log": "2026-08-26 · HFDP wish integrated at 902eb2b — invariant 7 re-affirmed owner-wide, gap map corrected at source, Q14 + task #20",
+      "check": "RELEASE-NOTES 0.26.0 read (gap-A claim refuted at source); grep pattern-names over essense-flow references/ = 0 matches (gap-2 confirmed)"
+    },
+    {
+      "id": "20260826-1504-pattern-menu-ambient-not-essense-flow",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260827-1545",
+      "by": "steward-agent",
+      "groups": ["generativity"],
+      "log": "2026-08-27 · Three items integrated at 902eb2b — patterns landing reconciled, #20 CLOSED as built, Q15 opened, new #22",
+      "check": "patterns plugin.json read (0.1.0, standalone ambient home) — disk shows the steer's superseding placement built; owner words recorded in Q14 as surviving-path evidence"
+    },
+    {
+      "id": "20260827-1406-build-directive-pattern-plugin-richer-catalog",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260827-1545",
+      "by": "steward-agent",
+      "groups": ["generativity"],
+      "log": "2026-08-27 · Three items integrated at 902eb2b — patterns landing reconciled, #20 CLOSED as built, Q15 opened, new #22",
+      "check": "catalog/patterns.json id count = 41 (multi-source, per-entry paradigms + cautions per plugin notes); marketplace metadata 2.47.1 + bundle 2.26.1 read"
+    },
+    {
+      "id": "20260827-1440-turn-end-digest-duty-not-plan-mode-aware",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260827-1545",
+      "by": "steward-agent",
+      "groups": ["turn-end"],
+      "log": "2026-08-27 · Three items integrated at 902eb2b — patterns landing reconciled, #20 CLOSED as built, Q15 opened, new #22",
+      "check": "no code claim entered the model — defect recorded verbatim-sourced as tasks #22 + parts.md turn-end defect bullet; measurement taken from the capture, fix direction marked Claude's pending owner ratification"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260823-1520-owner-rulings-on-stack-a-blueprint"
+      "derived_through": "20260827-1440-turn-end-digest-duty-not-plan-mode-aware"
     },
     "model": {
-      "derived_through": "20260823-1520-owner-rulings-on-stack-a-blueprint"
+      "derived_through": "20260827-1440-turn-end-digest-duty-not-plan-mode-aware"
     }
   }
 }

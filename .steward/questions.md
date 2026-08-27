@@ -63,6 +63,65 @@ ends the trial immediately; reverting is one line.
 
 ---
 
+## Q14 · Extensibility consumers — build into the dissolving pipeline, or land the craft in the surviving path?
+
+**Context.** The owner's 2026-08-26 HFDP wish re-affirmed invariant 7 and reported the
+outcome gap (*"we build code too specific for anything I ask"*). Of the chain decided
+2026-06-26, disk shows A AND B SHIPPED — essense-flow 0.26.0's Declared-growth-axes SPEC
+section + protocol fire-points, plugin-toolkit's `runner extensibility` engine (the
+capture's "A never executed" claim was refuted at source; the lens amended the capture).
+Genuinely unbuilt (verified: zero `extensib` matches in essense-flow): /glossary emitting
+EXTENSIBILITY.yaml · a review `extensibility` lens · verify compliance items · the C
+correction sweeps — pure consumer wiring on an engine that already accepts declared axes.
+But essense-flow DISSOLVES at Phase E per v3; the craft survives in steward + executor
+protocols, where #15 Phase A wires the same measures.
+
+**Owner-words evidence toward (a), 2026-08-26 (verbatim):** *"the essense flow aprts are
+rarely used so i don't know if it is what we are looking to populate. i want claude
+overall to abide to this."* Said about the pattern menu, not the consumers — so it
+STEERS, it does not close this question — but it is direct owner testimony that
+essense-flow is rarely exercised, and the same reasoning executed: the vocabulary half
+shipped AMBIENT (patterns 0.1.0), not into the pipeline.
+
+**Options:** (a) surviving path only — #15 wires coupling/extensibility into executor
+steps + ambient sessions; the named-shape vocabulary is DONE ambient-side (patterns
+0.1.0); essense-flow keeps rung-2 + criteria 8/9, no new pipeline build. (b) Both sides —
+pipeline projects get the consumers too (~consumer wiring only, the engine exists).
+(c) Execute the 2026-06-26 plan as written, pipeline-first.
+
+**Recommended default (Claude's): (a), now with owner-words support.** Building consumers
+into a plugin slated to dissolve spends budget where the craft is leaving, and the wish
+targets "the way we write code with Claude" GENERALLY — the surviving path's job.
+Reversible: (b) is additive later if a live pipeline project shows the gap.
+
+**Blocks:** the essense-flow half of the wish's scope; #15 proceeds either way.
+
+---
+
+## Q15 · Patterns 0.1.0 is built but unreachable — commit+push? Then: one design-moment injection or two?
+
+**Context.** patterns 0.1.0 sits complete on the working tree (suite 35/35 · test-all
+`--root` 34/34 / 1793 · registry-check 0 · repo-guard 0 at build), but it exists for no
+install: the tree is UNCOMMITTED past `902eb2b`, and the marketplace install source is
+the GitHub REMOTE (measured 2026-08-27 — this also corrected the July "installs read the
+local checkout" kb capture). Vision: reachability is part of "shipped." Once installed,
+its menu hook fires on the same design-shaped prompts as the user-global generalize-first
+hook — ~420 tokens combined per fire, a standing double tax invariant 5 prices.
+
+**Options:** (a) commit + push now; after ONE live-verified fire of both patterns hooks,
+slim the global hook down to what patterns does not carry (the contract-extraction steps
++ anti-signals), dropping the duplicated trigger→shape half. (b) Commit + push now, keep
+both injections whole — redundancy accepted as belt-and-suspenders. (c) Hold the push;
+patterns waits with the rest of the unpushed arc.
+
+**Recommended default (Claude's): (a)** — push is what makes the build real, and the slim
+happens only AFTER a live fire proves the replacement, never before (quality-over-speed:
+no mechanism is retired on the promise of its successor).
+
+**Blocks:** #21 entirely (install smoke, generalize-first decision, essense-flow citation).
+
+---
+
 ## Resolved ledger (provenance — these answers are now law in the model)
 
 - **Q11 · Context-recall firing policy → RESOLVED 2026-08-23 by owner ruling — the SPEED
