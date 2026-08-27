@@ -1,5 +1,18 @@
 # Release notes — plugin-toolkit
 
+## 1.10.1 — repo-guard allowlist catch-up after the first root-scoped run since 08-23
+
+The documented repo-guard invocation (toolkit cwd, no root flag) scans only
+plugin-toolkit's own tracked files — the same cwd trap test-all's `--root` note records.
+The first ROOT-scoped run (2026-08-27, patterns push gate) surfaced 8 pre-existing
+findings the toolkit-cwd runs never saw: turn-end/steward doc comments + fixtures that
+explain the win32 case-insensitive home-boundary guard with an ellipsized
+c-colon-users shape (no real username — the sanctioned exercise-Windows-paths class).
+Five allowlist entries added with a dated note; root CLAUDE.md's gate row now names the
+root-scoped invocation. Two of this sitting's own gate records ("repo-guard exit 0")
+were `$?`-after-pipe mismeasures — the pipe's tail answered, not repo-guard; recorded
+here so the next gate reader distrusts piped exit codes.
+
 ## 1.9.0 — two more gates beside repo-guard: one green verdict, one consistency verdict
 
 Both are the same shape as repo-guard — a pure runner over a drop-in registry, one context

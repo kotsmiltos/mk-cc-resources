@@ -1,13 +1,18 @@
 {
   "detectors": {
     "leaked-path": {
-      "_allow_note": "Each entry is a FILE that must contain drive-shaped strings to do its job: detector source, its tests, and suites whose fixtures exercise Windows path handling. Never allowlist a directory that is a proven leak site — .steward/ was exempted here once and removed, because leaked-path's own header names it as a place the class hid. Known debt, NOT exempt by design: plugins/essense-flow/test/ carries the author's real paths as load-bearing literals (a blanket replace broke 4 suites and was reverted) — remove this entry when that pass lands.",
+      "_allow_note": "Each entry is a FILE that must contain drive-shaped strings to do its job: detector source, its tests, and suites whose fixtures exercise Windows path handling. Never allowlist a directory that is a proven leak site — .steward/ was exempted here once and removed, because leaked-path's own header names it as a place the class hid. Known debt, NOT exempt by design: plugins/essense-flow/test/ carries the author's real paths as load-bearing literals (a blanket replace broke 4 suites and was reverted) — remove this entry when that pass lands. 2026-08-27: five entries added after the first ROOT-scoped run since 08-23 (the documented toolkit-cwd invocation scans only plugin-toolkit, so these sat invisible): turn-end/steward doc comments + fixtures explaining the win32 case-insensitive home-boundary guard with the ellipsized shape c-colon-users (no real username), and patterns' state-hash case test — all the sanctioned exercise-Windows-paths class.",
       "allow": [
         "plugins/essense-flow/test/",
         "plugins/plugin-toolkit/lib/detectors/leaked-path.js",
         "plugins/plugin-toolkit/tests/repo-guard.test.js",
         "plugins/kb/tests/kb-scribe.test.js",
-        "plugins/statusline/tests/mk-statusline.test.js"
+        "plugins/statusline/tests/mk-statusline.test.js",
+        "plugins/patterns/tests/patterns.test.js",
+        "plugins/steward/hooks/scripts/steward-brief.js",
+        "plugins/turn-end/hooks/scripts/turn-end.js",
+        "plugins/turn-end/tests/turn-end.test.js",
+        "plugins/turn-end/RELEASE-NOTES.md"
       ]
     },
     "silenced-failure": {
