@@ -94,6 +94,14 @@ plugins/
                             #   user's verbatim original request + who-did-what, not the
                             #   last agent's return). See plugins/turn-end/CLAUDE.md.
 
+  prism/                    # Multi-perspective panel skill — sole-focus agents, one lens
+                            #   each (asker-named lenses win: the extension surface is the
+                            #   language, zero files), parallel on the session model,
+                            #   session-side synthesis with per-point lens credit, named
+                            #   conflict rulings, delta line. ONE SKILL.md, zero code,
+                            #   stateless — panel rulings recorded in plugins/prism/CLAUDE.md
+                            #   (designed BY its own method, 2026-09-04). Bundle-safe.
+
   patterns/                 # Named-seam menu + pre-code pattern check — HFDP's trigger→shape
                             #   device mechanized ambient (owner directive 2026-08-27: "Claude
                             #   overall abides"; essense-flow is NOT the home). catalog/

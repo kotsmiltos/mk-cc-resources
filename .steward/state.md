@@ -1,4 +1,4 @@
-# State — current truth (2026-08-27 · patterns 0.1.0 BUILT, install gated on commit+push · HEAD 902eb2b at pass start)
+# State — current truth (2026-08-27 · patterns 0.1.0 PUSHED + INSTALLED, menu hook live-verified · HEAD 463baa4 at pass start)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,28 +8,32 @@
 
 ## Ship position
 
-**local main @ `902eb2b`, origin @ `e6528e0`** (both refs read this pass). The
-2026-08-27 sitting BUILT task #20 as the standalone **patterns plugin 0.1.0** (ambient
-home per the owner's 08-26 steer — essense-flow explicitly NOT the home: "rarely used",
-"claude overall" must abide). The whole build — plugin tree, marketplace 2.47.1, bundle
-2.26.1 (also fixed pre-existing description drift), README/CLAUDE.md rows — rides the
-working tree **UNCOMMITTED**; commit + push are owner word (Q15), and the push is
-load-bearing: **measured 2026-08-27, the marketplace install source is the GitHub
-REMOTE** (`claude plugin marketplace list`), so NO install can resolve patterns until
-pushed. That measurement confirms the model's standing push-required position and
-REFUTED the July kb capture claiming installs read the local checkout (correction filed
-in kb captures). Gates at build: patterns suite 35/35 · test-all `--root` 34/34 suites /
-1793 checks (one transient essense-flow red; direct run 54/54 + re-sweep green) ·
-registry-check exit 0 · repo-guard exit 0. Phase 1 dogfood week still running (day 1
+**local main @ `463baa4` = origin @ `463baa4`** (both refs read this pass). Owner "push
+it" → patterns 0.1.0 PUSHED (`e8b9199`), INSTALLED (`claude plugin install patterns`
+resolved 0.1.0 from the remote cache) and PARTIALLY LIVE-VERIFIED: a fresh scratch-dir
+session replied with the menu's first line (the registered UserPromptSubmit hook fired
+live); both installed hook scripts piped clean (965-char menu · correct
+additionalContext JSON, state home-side only). Remaining #21 legs: /patterns try-out +
+a gate fire in the owner's own interactive session after their next restart, then the
+Q15 injection call + citation lines. `463baa4` = repo-guard ROOT-SCOPE catch-up: the
+pre-push root-scoped run surfaced that repo-guard had NEVER scanned the whole repo (the
+documented toolkit-cwd invocation scans only plugin-toolkit — test-all's `--root`
+class) AND that this sitting's earlier "repo-guard exit 0" records were $?-after-a-pipe
+MISMEASURES; 8 pre-existing findings + 2 in the patterns suite → 5 dated allowlist
+entries, **plugin-toolkit 1.10.1** (version read this pass), root CLAUDE.md now
+mandates root cwd + direct exit read. Gates at push: repo-guard 0 (root, direct) ·
+registry-check 0 · test-all `--root` 34/34 suites / 1795 · patterns suite 37/37 (post
+lens fixes). Tree CLEAN at pass snapshot. Phase 1 dogfood week still running (day 1
 legs a/c/d PASS; leg b outstanding).
 
 ## Versions on disk
 
 Moved this arc (read this pass): **patterns 0.1.0 (NEW)** · **marketplace metadata
 2.47.1** · **mk-cc-all bundle 2.26.1** (description-drift fix; patterns is NOT bundled —
-hook-carrying, standalone by the load-bearing skills-only contract). From the 08-23 arc,
-unchanged: steward 0.5.0 · kb 0.11.0 · statusline 0.2.0 · turn-end 0.6.0. Unchanged, not
-re-read (no item touched them): plugin-toolkit 1.10.0 · thorough-mode 1.11.1 ·
+hook-carrying, standalone by the load-bearing skills-only contract) · **plugin-toolkit
+1.10.1** (`463baa4` root-scope catch-up; plugin.json read this pass). From the 08-23
+arc, unchanged: steward 0.5.0 · kb 0.11.0 · statusline 0.2.0 · turn-end 0.6.0.
+Unchanged, not re-read (no item touched them): thorough-mode 1.11.1 ·
 verifiability-lens 0.5.0 · session-lifecycle 1.3.1 · essense-flow 0.26.1 ·
 essense-autopilot 0.4.0 · schema-scout 1.2.1 · project-note-tracker 1.8.0 ·
 alert-sounds 1.1.1 · reuse-gate 0.1.0.
@@ -67,9 +71,9 @@ fires still needs a live turn-end trace during the week.
   Declared-growth-axes SPEC section (essense-flow 0.26.0 — the capture's original "gap A
   never executed" claim was REFUTED by RELEASE-NOTES + the lens amendment; the model never
   absorbed it); plugin-toolkit carries the `runner extensibility` engine. The gap map
-  MOVED 2026-08-27: (1) NAMED trigger→shape vocabulary at the design moment — **BUILT**
-  as patterns 0.1.0 (ambient home per owner steer; catalog 41 entries; live only after
-  commit+push+install → #21); (3) ambient MECHANISM — **half closed**: the menu + the
+  MOVED 2026-08-27: (1) NAMED trigger→shape vocabulary at the design moment — **LIVE**
+  as patterns 0.1.0 (ambient home per owner steer; catalog 41 entries; pushed +
+  installed, menu hook fired in a real session; interactive legs remain → #21); (3) ambient MECHANISM — **half closed**: the menu + the
   pre-write gate ARE hooks now, not rule text; the MEASUREMENT half (coupling/
   extensibility checks on source-writing turns) stays #15. Still genuinely absent:
   (2) the extensibility CONSUMERS — /glossary EXTENSIBILITY.yaml, review `extensibility`
@@ -111,10 +115,11 @@ fires still needs a live turn-end trace during the week.
 
 ## Working tree
 
-Carries the ENTIRE uncommitted patterns build (new `plugins/patterns/` tree + registry/
-README/CLAUDE.md edits) plus `.steward/` (the 08-27 landing log entry + this recompute).
-Everything since `902eb2b` rides the next commit + push — owner word (Q15). No stub
-litter; the contract keeps integrated inbox files in place, ids recorded.
+CLEAN at pass snapshot — the entire patterns build plus the 08-27 steward writes are
+committed AND pushed through `463baa4` (owner "push it", recorded in the log's push
+entry, which the session appended MID-PASS — this recompute reconciled against it). No
+stub litter; the contract keeps integrated inbox files in place — all 4 queued files
+verified present with their ledger ids this pass, derived-new = 0.
 
 ## Outside-repo (log-only context)
 

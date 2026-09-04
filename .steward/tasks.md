@@ -17,7 +17,11 @@ essense-flow placement BEFORE build, and the sitting shipped it as the standalon
 slotted second because it is blocked only on the owner's Q15 push call and everything
 after it is minutes. NEW #22 (turn-end plan-mode defect, measured this sitting) slots
 third — small, executor-ready, and it burns nudge cycles in every plan-mode span until
-fixed. Numbering 1–22: numbers are stable ids, never reused.
+fixed. **2026-08-27 position reconcile (second pass):** the push LANDED mid-sitting
+(both refs `463baa4`; installed + menu hook live-verified per the session's push log
+entry) — #21's owner gate is cleared, only its interactive legs remain and it keeps
+slot two; the 4 queued inbox items were verified ALREADY integrated (ledger current,
+no re-integration). Numbering 1–22: numbers are stable ids, never reused.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
@@ -42,24 +46,24 @@ detail here — name projects, not drives.
 - **Progress:** day 1 (08-23 first post-install open) — legs a/c/d observed PASS, zero
   lies; leg (b) fallback fires outstanding, needs a live turn-end trace.
 
-## 21. Patterns 0.1.0 go-live — commit + push [needs owner, Q15], then prove it live
+## 21. Patterns 0.1.0 go-live — pushed + installed + menu hook live-verified; finish the interactive legs, then Q15's injection call
 
-- **Why:** built ≠ shipped — the marketplace install source is the GitHub remote
-  (measured 2026-08-27), the tree past `902eb2b` is uncommitted, and vision says
-  reachability is part of "shipped." Gates were green at build (suite 35/35 · test-all
-  `--root` 34/34 / 1793 · registry-check 0 · repo-guard 0); what remains is owner word
-  plus minutes of proof.
-- **What:** (1) owner Q15 call → commit + push (re-run test-all `--root` +
-  registry-check at push per house rule); (2) install patterns + restart; live smoke:
-  one design-shaped prompt shows the tier-1 menu, the first source write of a session
-  gets ONE gate line, state file appears home-side not in-repo; (3) execute Q15's
-  injection answer (slim the global generalize-first hook, or keep both — only AFTER
-  the live fire); (4) small follow-through: essense-flow `generativity-protocol.md` +
-  `code-conventions.md` gain a one-line citation of the patterns catalog (pipeline
-  points at ambient — the documented drop-in; no ownership move).
-- **Done-check:** a fresh install resolves patterns 0.1.0 from the remote; both hooks
-  observed firing live once each; Q15's injection decision recorded in log.md with its
-  reason; citation lines present or explicitly declined.
+- **Why:** owner "push it" executed 2026-08-27: pushed (`e8b9199`, refs at `463baa4`),
+  installed from the remote (`claude plugin install patterns` → 0.1.0 in cache), and
+  the menu hook fired live in a fresh scratch-dir session; both installed hook scripts
+  piped clean, state file home-side only. Gates at push: repo-guard 0 (root, DIRECT
+  exit read) · registry-check 0 · test-all `--root` 34/34 / 1795 · patterns suite
+  37/37. What remains needs the OWNER'S OWN session, not a scratch one.
+- **What:** (1) after the owner's next restart: /patterns try-out + one real gate fire
+  (first source write of a session gets ONE additionalContext line) in the owner's
+  interactive session; (2) execute Q15's injection answer [needs owner — slim the
+  global generalize-first hook, or keep both — only AFTER both hooks have fired live];
+  (3) follow-through: essense-flow `generativity-protocol.md` + `code-conventions.md`
+  gain a one-line citation of the patterns catalog (pipeline points at ambient — the
+  documented drop-in; no ownership move).
+- **Done-check:** both hooks observed firing in the owner's interactive session once
+  each; Q15's injection decision recorded in log.md with its reason; citation lines
+  present or explicitly declined.
 
 ## 22. turn-end — make write-demanding duties plan-mode-aware (measured defect 2026-08-27)
 

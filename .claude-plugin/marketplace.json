@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, queryable project knowledge base (kb), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.47.1"
+    "version": "2.47.2"
   },
   "plugins": [
     {
@@ -99,10 +99,16 @@
       "version": "0.1.0"
     },
     {
+      "name": "prism",
+      "source": "./plugins/prism",
+      "description": "Multi-perspective panel: split a question across sole-focus agents — one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name), parallel on the session model, deep digs — then compile the best points of each into ONE plan with per-point lens credit, explicit conflict rulings, and a delta line naming what a solo answer would have missed. Stateless and ambient: no hooks, no state files, no preconditions, no output artifacts — the conversation is the delivery surface. The lens set is open at the language level: naming a new lens at invocation IS the extension surface (zero edits). One skill, zero code. Designed BY its own method: a five-lens panel on the skill's design produced the spec (2026-09-04). Skill-only — also ships in the mk-cc-all bundle.",
+      "version": "0.1.0"
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, kb skills. essense-autopilot, thorough-mode, alert-sounds, turn-end, reuse-gate, steward, patterns, and kb carry hooks and must be installed separately for their hook/MCP surfaces (the bundle ships kb's skills only). verifiability-lens no longer carries a hook — its automatic firing now comes from turn-end's quality-lens duty. statusline is neither (settings-level wiring — see its README). Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.26.1"
+      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, prism, kb skills. essense-autopilot, thorough-mode, alert-sounds, turn-end, reuse-gate, steward, patterns, and kb carry hooks and must be installed separately for their hook/MCP surfaces (the bundle ships kb's skills only). verifiability-lens no longer carries a hook — its automatic firing now comes from turn-end's quality-lens duty. statusline is neither (settings-level wiring — see its README). Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
+      "version": "2.27.0"
     }
   ]
 }

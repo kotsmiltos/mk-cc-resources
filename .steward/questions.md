@@ -98,27 +98,26 @@ Reversible: (b) is additive later if a live pipeline project shows the gap.
 
 ---
 
-## Q15 · Patterns 0.1.0 is built but unreachable — commit+push? Then: one design-moment injection or two?
+## Q15 · Patterns is PUSHED — after the live fire: one design-moment injection or two?
 
-**Context.** patterns 0.1.0 sits complete on the working tree (suite 35/35 · test-all
-`--root` 34/34 / 1793 · registry-check 0 · repo-guard 0 at build), but it exists for no
-install: the tree is UNCOMMITTED past `902eb2b`, and the marketplace install source is
-the GitHub REMOTE (measured 2026-08-27 — this also corrected the July "installs read the
-local checkout" kb capture). Vision: reachability is part of "shipped." Once installed,
-its menu hook fires on the same design-shaped prompts as the user-global generalize-first
-hook — ~420 tokens combined per fire, a standing double tax invariant 5 prices.
+**Context.** The push half of this question is CLOSED: owner "push it" (logged), both
+refs read `463baa4` on 2026-08-27, patterns INSTALLED from the remote and its menu hook
+fired live in a scratch session. What REMAINS is the injection half: the patterns menu
+hook fires on the same design-shaped prompts as the user-global generalize-first hook —
+~420 tokens combined per fire, a standing double tax invariant 5 prices. The decision
+point arrives at the owner's next interactive restart (#21's remaining legs).
 
-**Options:** (a) commit + push now; after ONE live-verified fire of both patterns hooks,
-slim the global hook down to what patterns does not carry (the contract-extraction steps
-+ anti-signals), dropping the duplicated trigger→shape half. (b) Commit + push now, keep
-both injections whole — redundancy accepted as belt-and-suspenders. (c) Hold the push;
-patterns waits with the rest of the unpushed arc.
+**Options:** (a) after ONE live-verified fire of both patterns hooks, slim the global
+hook down to what patterns does not carry (the contract-extraction steps +
+anti-signals), dropping the duplicated trigger→shape half. (b) Keep both injections
+whole — redundancy accepted as belt-and-suspenders.
 
-**Recommended default (Claude's): (a)** — push is what makes the build real, and the slim
-happens only AFTER a live fire proves the replacement, never before (quality-over-speed:
-no mechanism is retired on the promise of its successor).
+**Recommended default (Claude's): (a), only AFTER the live fire proves the
+replacement** — quality-over-speed: no mechanism is retired on the promise of its
+successor.
 
-**Blocks:** #21 entirely (install smoke, generalize-first decision, essense-flow citation).
+**Blocks:** #21 step 2 (the injection decision); the remaining smoke legs proceed
+regardless.
 
 ---
 

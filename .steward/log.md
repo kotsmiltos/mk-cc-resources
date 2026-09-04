@@ -783,3 +783,60 @@ path had no test seam — PATTERNS_CATALOG_PATH seam added + 2 e2e checks (corru
 absent catalog → exit 0, empty stdout, stderr breadcrumb). Check: tests/patterns.test.js
 37/37. Third escalation stands as the done-check: on push approval run the 4-step
 install smoke before calling 0.1.0 live.
+
+## 2026-08-27 · patterns 0.1.0 PUSHED + INSTALLED + LIVE-VERIFIED (e8b9199 + 463baa4 -> origin)
+Owner "push it". Pre-push gates re-run ROOT-scoped — which surfaced that repo-guard had
+NEVER scanned the whole repo: the documented toolkit-cwd invocation scans only
+plugin-toolkit (cwd trap, test-all's --root class), and this sitting's two earlier
+"repo-guard exit 0" records were $?-after-pipe mismeasures. 8 pre-existing findings
+(turn-end/steward win32-case-guard doc comments + fixtures, ellipsized shapes, no real
+usernames) + 2 in the new patterns suite -> 5 allowlist entries (dated note),
+plugin-toolkit 1.10.1, root CLAUDE.md gate row now mandates root cwd + direct exit read.
+Gates at push: repo-guard 0 (root, direct) · registry-check 0 · test-all 34/34 / 1795.
+Pushed e6528e0..463baa4. Marketplace updated, `claude plugin install patterns` OK
+(cache/mk-cc-resources/patterns/0.1.0). LIVE SMOKE: fresh `claude -p --model haiku` in a
+scratch dir replied with the menu's first line — the registered UserPromptSubmit hook
+fired in a real session; installed pattern-menu.js piped: 965-char menu, exit 0;
+installed pattern-gate.js piped: correct additionalContext JSON, exit 0, state file in
+the (overridden) state dir, nothing in the project. Remaining: /patterns skill try-out +
+gate fire in the owner's interactive session after their next restart. Q15's push half
+CLOSED; generalize-first slim/retire half still open.
+
+## 2026-08-27 · Position reconcile at 463baa4 — 4/4 queued inbox items verified already integrated; push/install absorbed into the model
+Dispatched to integrate 4 inbox items; the ledger check found all four ids already in
+status.json as `integrated` (20260826-1446 at 08-26; 1504/1406/1440 at 20260827-1545),
+both cursors at 20260827-1440 — derived-new = 0, files correctly in place per contract
+rule 3. NO re-integration, NO status.json write. What HAD moved was the ship: local =
+origin = `463baa4` (both refs read; `e8b9199` = the patterns build, `463baa4` = the
+repo-guard root-scope catch-up, plugin-toolkit 1.10.1 read from plugin.json). The
+session's push outcome entry (above) landed MID-PASS; this recompute reconciled against
+it rather than the pass-start snapshot: push-gates recorded (repo-guard 0 root/direct ·
+registry-check 0 · test-all 34/34 / 1795), patterns INSTALLED + menu hook live-verified,
+prior same-sitting "repo-guard exit 0" records reclassified as $?-after-pipe
+mismeasures. Model deltas: state (header, ship position, versions +toolkit 1.10.1, gap
+map (1) → LIVE, working tree CLEAN) · parts (patterns header; repo-guard root-cwd +
+direct-exit rules) · questions (Q15 push half CLOSED, narrowed to the injection
+decision) · tasks (rationale + #21 recomputed to interactive legs) · briefing
+regenerated LAST. Checks: both git refs read = 463baa4 · plugin-toolkit plugin.json
+read = 1.10.1 · all four inbox ids matched against status.json items[] · log tail
+re-read after the mid-pass append.
+
+## 2026-09-04 · prism 0.1.0 BUILT — designed BY its own method (five-lens panel, uncommitted)
+Owner: perspective-panel skill directive + "apply that same logic to building what I've
+asked" + doubt datum ("I don't think we've built... really doing anything") — all
+captured verbatim (inbox 20260904-0405). Five sole-focus lenses dispatched in parallel
+on the skill's own design (sustainability, decoupling, performance, extensibility,
+simplicity; ~370k agent tokens total, self-bounded). Synthesis rulings (recorded in
+plugins/prism/CLAUDE.md): simplicity WON the format fork — one SKILL.md, zero code,
+lenses as prose, open set at the LANGUAGE level (asker-named lens = added lens, 0
+edits; stronger drop-in test than a JSON entry); kept the two all-five-converged
+structures (sole-focus charge + fixed 4-section return contract incl. the overreach
+discount channel); economy block in briefs (performance); attribution + delta line as
+the anti-graveyard (sustainability's /research autopsy: ceremony + invisible value);
+no tests/config/modes/scout/debate — each refused with a named future trigger.
+Shipped: plugins/prism/{plugin.json, SKILL.md, CLAUDE.md, README, RELEASE-NOTES};
+registered marketplace 2.47.2 + bundle 2.27.0 (prism IS bundled — skill-only) + README
+row+section + root CLAUDE.md tree. Checks: registry-check 0 · repo-guard 0 · test-all
+34/34 / 1795 (prism correctly NAMED as no-suite unit — informational, per the
+simplicity lens's source-verified prediction). NOT pushed — owner gate. Acceptance
+criterion per sustainability lens: owner invokes /prism again unprompted.

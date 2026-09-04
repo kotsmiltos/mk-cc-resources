@@ -1,0 +1,8 @@
+{
+  "name": "prism",
+  "version": "0.1.0",
+  "description": "Multi-perspective panel: split a question across sole-focus agents — one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name), parallel on the session model, deep digs — then compile the best points of each into ONE plan with per-point lens credit, explicit conflict rulings, and a delta line naming what a solo answer would have missed. Stateless and ambient: no hooks, no state files, no preconditions, no output artifacts — the conversation is the delivery surface. The lens set is open at the language level: naming a new lens at invocation IS the extension surface (zero edits). One skill, zero code. Designed BY its own method: a five-lens panel on the skill's design produced the spec (2026-09-04). Skill-only — safe in the mk-cc-all bundle.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}

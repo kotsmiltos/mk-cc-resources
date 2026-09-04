@@ -309,14 +309,20 @@ capability reach) — it CHECKS, never generates.
   restructure, grep-verified) — that drift instance is CLOSED.
 - **v3 role:** kept, re-economized at Phase C.
 
-## plugin-toolkit (1.10.0) — dev/maintenance + measurement + THREE gates
+## plugin-toolkit (1.10.1) — dev/maintenance + measurement + THREE gates
 
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit, /code-glossary
   (deterministic `code_glossary/` Python engine: glossary, MAP.md,
   `runner diff|coupling|extensibility`), /dry-refactor (preflight + dry-run, zero source
   writes), and three one-command gates, each a pure runner over a drop-in registry:
   - **repo-guard** (`bin/repo-guard.js`, 1.8.0) over `lib/detectors/` — ONE frozen
-    context; exit 0 clean / 1 blocking / 2 cannot-run. Detector contract:
+    context; exit 0 clean / 1 blocking / 2 cannot-run. **Root cwd REQUIRED + read the
+    exit code DIRECT, never after a pipe (measured 2026-08-27, the 1.10.1 catch-up
+    `463baa4`):** run from the toolkit dir it scans ONLY plugin-toolkit — repo-guard
+    had never actually scanned the whole repo, 8 findings elsewhere sat invisible since
+    08-23, and earlier same-sitting "exit 0" records were $?-after-a-pipe mismeasures;
+    8 pre-existing + 2 patterns-suite findings → 5 dated allowlist entries; root
+    CLAUDE.md gate row carries both rules. Detector contract:
     `{id, title, surface:'files'|'history', severity:'block'|'warn', run(ctx, options) -> Finding[]}`,
     a Finding carrying where (openable) + evidence (verbatim) + why. Detectors MODEL
     their subject, never enumerate spellings.
@@ -412,7 +418,7 @@ capability reach) — it CHECKS, never generates.
   opt-in OFF, fail-open. Dedupes on `prompt_id` and is safe there only because injecting a
   reminder spawns nothing. **v3 role:** folds into executor code-write discipline.
 
-## patterns (0.1.0) — ambient named-pattern menu + pre-code check (BUILT 2026-08-27, live after push)
+## patterns (0.1.0) — ambient named-pattern menu + pre-code check (PUSHED + INSTALLED 2026-08-27; menu hook live-verified, interactive legs → #21)
 
 - **Why it exists (owner, two directives):** 08-26 steer — the trigger→shape device must
   be AMBIENT ("the essense flow aprts are rarely used… i want claude overall to abide");
