@@ -51,14 +51,29 @@ const DEFAULT_DIGEST_MAX_CHARS = null;
 const DEFAULT_DIGEST_MAX_LINES = null;
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 
-// Prompts opening with machine markers are not the owner talking.
-const MACHINE_PREFIXES = [
+// CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook
+// in this repo; repo-guard's `machine-guard-drift` detector fails the push when a copy
+// diverges. Prompts opening with one of these are not the owner talking. Audit 2 (2026-09-06)
+// measured this copy one marker short (`<system-reminder>`) and firing 2–12× per
+// background-agent wake.
+const MACHINE_TEXT_MARKERS = [
   '[SYSTEM NOTIFICATION',
   '<task-notification>',
   'Stop hook feedback:',
   '<local-command',
   '<command-name>',
+  '<system-reminder>',
 ];
+const MACHINE_PREFIXES = MACHINE_TEXT_MARKERS; // prior name, kept for callers
+
+/*
+ * turn-end spawns `claude -p` judge children with this variable set. A child is a full
+ * session and fires its own UserPromptSubmit hooks — measured: 40 of 78 judge fires paid a
+ * kb-pull hint block (~10 KB with the digest) into a one-shot retrieval question. The judge
+ * is now spawned lean (no hooks), but the stand-down stays: belt and braces, and any other
+ * child-session spawner that sets the variable gets the same silence (pattern-menu precedent).
+ */
+const CHILD_SESSION_VAR = 'MK_TURN_END_DEPTH';
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -69,7 +84,13 @@ function readStdin() {
 }
 
 function isMachineText(prompt) {
-  return MACHINE_PREFIXES.some((p) => prompt.startsWith(p));
+  const head = String(prompt || '').replace(/^\s+/, '').slice(0, 200);
+  return MACHINE_TEXT_MARKERS.some((p) => head.startsWith(p));
+}
+
+/** True inside a spawned child session — this hook must do nothing at all there. */
+function isChildSession(env = process.env) {
+  return Boolean(env[CHILD_SESSION_VAR]);
 }
 
 /** Does this project keep a curated memory? Gates every side effect this hook has. */
@@ -138,6 +159,7 @@ function trace(root, record) {
 }
 
 async function main() {
+  if (isChildSession()) process.exit(0);
   const input = await readStdin();
   let prompt = '';
   let payloadCwd = '';
@@ -194,7 +216,8 @@ main().catch((err) => {
 });
 
 module.exports = {
-  pullConfig, isMachineText, hintLines, digestBlock,
+  pullConfig, isMachineText, isChildSession, hintLines, digestBlock,
   DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, MIN_PROMPT_CHARS,
   DEFAULT_DIGEST_MAX_CHARS, DEFAULT_DIGEST_MAX_LINES, DIGEST_REL,
+  MACHINE_TEXT_MARKERS, MACHINE_PREFIXES, CHILD_SESSION_VAR,
 };

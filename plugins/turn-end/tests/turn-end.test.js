@@ -787,6 +787,23 @@ check('steward-sync: applies once an item is staged', () => {
   assert.strictEqual(stewardSync.satisfied(stewardCtx(dir)), false);
 });
 
+check('steward-sync: an item RECORDED in status.json is not staged, though its file never moved (contract 0.5.0)', () => {
+  // Measured 2026-09-06: the ask named all four files as unintegrated after their integration.
+  const dir = seedInbox('steward-ledger-join', ['20260827-1615-recorded.md', '20260906-1250-new.md']);
+  fs.writeFileSync(path.join(dir, '.steward', 'status.json'), JSON.stringify({
+    schema: 1, items: [{ id: '20260827-1615-recorded', status: 'integrated' }], views: {},
+  }));
+  const ctx = stewardCtx(dir);
+  assert.deepStrictEqual(stewardSync.pendingItems(ctx), ['20260906-1250-new.md']);
+  assert.ok(/1 unintegrated/.test(stewardSync.ask(ctx)));
+});
+
+check('steward-sync: a corrupt status.json degrades to the file count, never to silence', () => {
+  const dir = seedInbox('steward-ledger-corrupt', ['20260906-1250-new.md']);
+  fs.writeFileSync(path.join(dir, '.steward', 'status.json'), '{not json');
+  assert.deepStrictEqual(stewardSync.pendingItems(stewardCtx(dir)), ['20260906-1250-new.md']);
+});
+
 check('REGRESSION: done/ and .gitkeep are NOT inbox items — a naive count reads 4 where truth is 3', () => {
   // Both exist in the real pilot project. Counting directory entries would make the duty both
   // over-report and never reach zero, since `.gitkeep` is permanent by design.
@@ -916,7 +933,12 @@ check('REGRESSION: the exe is RESOLVED, never assumed from a bare name', () => {
   // adapter ran in a shell where CLAUDE_CODE_EXECPATH is set, and a HOOK does not get it.
   // On this platform a bare `claude` never resolves via execFile (no PATHEXT lookup).
   const found = claudeP.resolveClaudeExe();
-  assert.ok(found, 'a real claude executable must be discoverable on this machine');
+  if (!found) {
+    // A machine without the CLI (CI, a fresh checkout) cannot prove resolution; it must not
+    // fail the suite for it either — SAID, never silent.
+    console.log('SKIP: no claude executable on this machine — exe resolution unprovable here');
+    return;
+  }
   assert.ok(fs.statSync(found).isFile(), 'and it must be an actual file');
   assert.ok(!/\.(cmd|bat)$/i.test(found), 'never a .cmd/.bat — execFile cannot run one without a shell');
 });
@@ -1022,7 +1044,9 @@ check('material passed back in produces an emission', () => {
   assert.ok(r.emission.hookSpecificOutput.additionalContext.includes('here is what you missed'));
 });
 
-check('material is rendered BEFORE demands (it can change what the answer says)', () => {
+check('demands are rendered BEFORE material (measured: a long tail is read only at its head)', () => {
+  // Reversal of the earlier "material first" rule, 2026-09-06: an 11,248 B tail was stubbed by
+  // the platform to a 2 KB preview and its four demands at line 126 were never read.
   const r = decide(
     fakeCtx(),
     [supplyStub('recall'), dutyStub('chore')],
@@ -1030,7 +1054,8 @@ check('material is rendered BEFORE demands (it can change what the answer says)'
     { recall: 'MATERIAL-HERE' }
   );
   const text = r.emission.hookSpecificOutput.additionalContext;
-  assert.ok(text.indexOf('MATERIAL-HERE') < text.indexOf('do chore'), 'material first');
+  assert.ok(text.indexOf('do chore') < text.indexOf('MATERIAL-HERE'), 'demands first');
+  assert.ok(text.includes('MATERIAL-HERE'), 'material still rides');
 });
 
 check('a satisfied supply duty is not due again this request', () => {
@@ -1166,15 +1191,20 @@ checkAsync('supply() injects the FILE TEXT, not the judge\'s paraphrase', async 
   }
 });
 
-checkAsync('supply() returns null when the judge says nothing was needed', async () => {
+checkAsync('supply() returns NO material — but still its accounting — when the judge says nothing was needed', async () => {
   const dir = tmpdir('recall-none');
   fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'a.md'), '# A\nbody');
   const realJudge = claudeP.judge;
-  claudeP.judge = () => ({ ok: true, text: '{"needed":[]}' });
+  claudeP.judge = () => ({ ok: true, text: '{"needed":[]}', costUsd: 0.01, durationMs: 42, lean: 'applied' });
   try {
     const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
-    assert.strictEqual(await contextRecall.supply(ctx), null);
+    const r = await contextRecall.supply(ctx);
+    assert.strictEqual(r.material, null);
+    assert.deepStrictEqual(r.chosen, []);
+    assert.strictEqual(r.engine, 'judge');
+    assert.strictEqual(r.costUsd, 0.01);
+    assert.strictEqual(r.lean, 'applied');
   } finally {
     claudeP.judge = realJudge;
   }
@@ -1295,8 +1325,23 @@ check('availableIn reports only sources this project actually populated', () => 
 
 // ---------- adapter end-to-end ----------
 
+/*
+ * Every E2E project disables context-recall. With curated memory present the duty is due on
+ * the first fire and its supply spawns a REAL `claude -p` judge — measured: 43 s of
+ * plan-billed spawns per suite run, and a suite that needs the network is not a unit suite.
+ * The recall half has its own tests above with the judge stubbed.
+ */
+function withoutRecall(dir) {
+  fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, '.claude', 'turn-end.json'),
+    JSON.stringify({ duties: { 'context-recall': { enabled: false } } })
+  );
+  return dir;
+}
+
 check('E2E: the hook emits additionalContext for an unmet duty', () => {
-  const dir = tmpdir('e2e-advise');
+  const dir = withoutRecall(tmpdir('e2e-advise'));
   fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
   const transcript = path.join(dir, 't.jsonl');
@@ -1321,7 +1366,7 @@ check('E2E: state anchors to the project root, not the shell cwd (no subdir litt
   // Measured twice in one sitting: cwd followed the shell into plugins/<name>/, the hook
   // wrote a stray .claude/ there, and the session-span ledger SPLIT — an already-asked duty
   // asked again from the fresh bucket.
-  const root = tmpdir('e2e-root-anchor');
+  const root = withoutRecall(tmpdir('e2e-root-anchor'));
   fs.mkdirSync(path.join(root, '.git'), { recursive: true });
   fs.mkdirSync(path.join(root, '.steward'), { recursive: true });
   fs.writeFileSync(path.join(root, '.steward', 'state.md'), 'curated');
@@ -1373,7 +1418,7 @@ check('E2E: unchecked work is nudged; the same work WITH its check passes silent
   // The owner's directive end-to-end through the real adapter: a turn that changed a file and
   // named no check may not yield unnoticed; the identical turn whose transcript shows the
   // check running AFTER the change is not bothered at all.
-  const dir = tmpdir('e2e-self-check');
+  const dir = withoutRecall(tmpdir('e2e-self-check'));
   const transcript = path.join(dir, 't.jsonl');
   const editMsg = JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } });
   fs.writeFileSync(transcript, [
@@ -1401,7 +1446,7 @@ check('E2E: a staged steward inbox is named in the tail, and recorded against th
   // Covers the one seam the unit tests cannot reach: the adapter derives `sessionSpanIds` from
   // the registry, so a duty declaring `span: 'session'` only actually gets the wider bucket if
   // that derivation sees it.
-  const dir = tmpdir('e2e-steward-sync');
+  const dir = withoutRecall(tmpdir('e2e-steward-sync'));
   const inbox = path.join(dir, '.steward', 'inbox');
   fs.mkdirSync(inbox, { recursive: true });
   fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
@@ -1428,7 +1473,7 @@ check('E2E: a staged steward inbox is named in the tail, and recorded against th
 });
 
 check('E2E: the hook escalates to block on the continuation fire', () => {
-  const dir = tmpdir('e2e-block');
+  const dir = withoutRecall(tmpdir('e2e-block'));
   fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
   const transcript = path.join(dir, 't.jsonl');
@@ -1578,6 +1623,276 @@ check('request-closure re-arms on the NEXT wake because a wake is a new prompt_i
   assert.deepStrictEqual(after.asked, [], 'new prompt id drops the prompt bucket');
   const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 }, ledger: after });
   assert.strictEqual(requestClosure.satisfied(ctx), false, 'so the duty asks again at the next yield');
+});
+
+// ---------- 0.7.0: the wrong-check class, the inline bound, the accountable trace ----------
+
+const deferral = require('../lib/deferral');
+
+check('exhaustion is REPORTED exactly once — at the budget line — then silent (measured 08-27: 6 re-arms)', () => {
+  const at = fakeCtx({ ledger: { promptId: 'p', fires: runner.MAX_FIRES_PER_PROMPT, asked: [] } });
+  const r1 = decide(at, [dutyStub('a', { severity: 'block' })]);
+  assert.strictEqual(r1.action, 'allow');
+  assert.ok(r1.emission.hookSpecificOutput.additionalContext.includes('giving up'));
+  const past = fakeCtx({ ledger: { promptId: 'p', fires: runner.MAX_FIRES_PER_PROMPT + 1, asked: [] } });
+  const r2 = decide(past, [dutyStub('a', { severity: 'block' })]);
+  assert.strictEqual(r2.action, 'allow');
+  assert.strictEqual(r2.emission, null, 'no second give-up note');
+  assert.ok(/already reported/.test(r2.reason));
+  assert.deepStrictEqual(r2.unsatisfied, ['a'], 'the trace still names what stayed unmet');
+});
+
+check('REPLAY: the 08-27 nine-fire shape now ends after the budget line', () => {
+  // advise, block, block, give-up (once), then silence for as long as the platform keeps firing.
+  const emissions = [];
+  for (let fires = 0; fires < 9; fires++) {
+    const ctx = fakeCtx({ stopHookActive: fires > 0, ledger: { promptId: 'p', fires, asked: [] } });
+    const r = decide(ctx, [dutyStub('digest', { severity: 'block' })]);
+    if (r.emission) emissions.push(r.action);
+  }
+  assert.deepStrictEqual(emissions, ['advise', 'block', 'block', 'allow']);
+});
+
+check('a duty that throws is NEVER silent, even when it is the only thing wrong', () => {
+  const r = decide(fakeCtx(), [dutyStub('boom', { applies: () => { throw new Error('kaboom'); } })]);
+  assert.strictEqual(r.action, 'advise');
+  assert.ok(r.emission.hookSpecificOutput.additionalContext.includes('NOT CHECKED'));
+  assert.deepStrictEqual(r.errors, [{ id: 'boom', error: 'kaboom' }]);
+});
+
+check('a duty may DEFER by name: not asked, not satisfied, recorded with its reason', () => {
+  const r = decide(fakeCtx(), [dutyStub('closer', { defer: () => 'deferred: 2 background agent(s) still in flight' })]);
+  assert.strictEqual(r.action, 'allow');
+  assert.strictEqual(r.emission, null);
+  assert.deepStrictEqual(r.unsatisfied, []);
+  assert.deepStrictEqual(r.deferred, [{ id: 'closer', reason: 'deferred: 2 background agent(s) still in flight' }]);
+});
+
+check('deferral lifts: the same duty with no reason is asked as before', () => {
+  const r = decide(fakeCtx(), [dutyStub('closer', { defer: () => null })]);
+  assert.strictEqual(r.action, 'advise');
+  assert.deepStrictEqual(r.unsatisfied, ['closer']);
+});
+
+check('satisfiedBy rides into the result when a duty names its detector', () => {
+  const r = decide(fakeCtx(), [dutyStub('sc', { satisfied: () => true, satisfiedBy: () => 'check-named-with-result' })]);
+  assert.deepStrictEqual(r.satisfiedBy, [{ id: 'sc', by: 'check-named-with-result' }]);
+});
+
+check('the tail stays under the inline bound: full material when it fits', () => {
+  const r = decide(fakeCtx(), [supplyStub('recall'), dutyStub('chore')], {}, { recall: { material: 'FULL-TEXT', brief: 'POINTER' } });
+  const text = r.emission.hookSpecificOutput.additionalContext;
+  assert.ok(text.includes('FULL-TEXT'));
+  assert.ok(!text.includes('POINTER'));
+});
+
+check('the tail stays under the inline bound: BRIEF form substituted and SAID when the full text would not fit', () => {
+  const huge = 'x'.repeat(runner.MAX_TAIL_CHARS + 500);
+  const r = decide(fakeCtx(), [supplyStub('recall'), dutyStub('chore')], {}, { recall: { material: huge, brief: 'POINTER-LINE' } });
+  const text = r.emission.hookSpecificOutput.additionalContext;
+  assert.ok(text.length <= runner.MAX_TAIL_CHARS, `tail ${text.length} > bound`);
+  assert.ok(text.includes('POINTER-LINE'));
+  assert.ok(/POINTER form/.test(text), 'the substitution is named');
+  assert.ok(text.indexOf('do chore') < text.indexOf('POINTER-LINE'), 'demands still first');
+});
+
+check('the tail stays under the inline bound: a supply with no brief form is clipped, and the clip is named', () => {
+  const huge = 'y'.repeat(runner.MAX_TAIL_CHARS + 500);
+  const r = decide(fakeCtx(), [supplyStub('recall')], {}, { recall: huge });
+  const text = r.emission.hookSpecificOutput.additionalContext;
+  assert.ok(text.length <= runner.MAX_TAIL_CHARS + 20, `tail ${text.length} far over bound`);
+  assert.ok(/clipped at the inline bound/.test(text));
+});
+
+check('context: background agents in flight are read from the transcript (launch id without completion)', () => {
+  const dir = tmpdir('ctx-agents');
+  const t = path.join(dir, 't.jsonl');
+  const lines = [
+    JSON.stringify({ type: 'user', timestamp: '2026-09-06T10:00:00.000Z', message: { role: 'user', content: 'review everything' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [
+      { type: 'tool_use', id: 'toolu_A', name: 'Agent', input: { subagent_type: 'general-purpose', prompt: 'x' } },
+      { type: 'tool_use', id: 'toolu_B', name: 'Agent', input: { subagent_type: 'Explore', prompt: 'y' } },
+    ] } }),
+    JSON.stringify({ message: { role: 'user', content: [
+      { type: 'tool_result', tool_use_id: 'toolu_A', content: [{ type: 'text', text: 'Async agent launched successfully. agentId: a1' }] },
+      { type: 'tool_result', tool_use_id: 'toolu_B', content: [{ type: 'text', text: 'Async agent launched successfully. agentId: b1' }] },
+    ] } }),
+    JSON.stringify({ type: 'queue-operation', content: '<task-notification>\n<task-id>b1</task-id>\n<tool-use-id>toolu_B</tool-use-id>\n<status>completed</status>\n</task-notification>' }),
+    JSON.stringify({ message: { role: 'user', content: '<task-notification>\n<task-id>b1</task-id>\n<tool-use-id>toolu_B</tool-use-id>\n<status>completed</status>\n</task-notification>' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'one back, one still running' }] } }),
+  ];
+  fs.writeFileSync(t, lines.join('\n'));
+  const turn = extractTurn(t);
+  assert.deepStrictEqual(turn.agentsInFlight, [{ toolUseId: 'toolu_A', target: 'agent:general-purpose' }]);
+  assert.strictEqual(turn.wakeCount, 1);
+  assert.strictEqual(turn.userRequest, 'review everything');
+  assert.strictEqual(turn.userRequestAt, Date.parse('2026-09-06T10:00:00.000Z'));
+  assert.strictEqual(turn.toolCalls[0].id, 'toolu_A');
+});
+
+check('context: a synchronous Agent call (its result IS the report) is never in flight', () => {
+  const dir = tmpdir('ctx-sync-agent');
+  const t = path.join(dir, 't.jsonl');
+  fs.writeFileSync(t, [
+    JSON.stringify({ message: { role: 'user', content: 'go' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_S', name: 'Agent', input: { subagent_type: 'Explore', prompt: 'x' } }] } }),
+    JSON.stringify({ message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_S', content: 'here is the full report' }] } }),
+  ].join('\n'));
+  assert.deepStrictEqual(extractTurn(t).agentsInFlight, []);
+});
+
+check('deferral: closure-class duties wait for agents; write-demanding duties wait for plan mode to lift', () => {
+  const busy = fakeCtx({ turn: { agentsInFlight: [{ toolUseId: 'x', target: 'agent:gp' }] } });
+  assert.ok(/in flight/.test(requestClosure.defer(busy)));
+  assert.ok(/in flight/.test(qualityLens.defer(busy)));
+  assert.ok(/in flight/.test(sessionDigest.defer(busy)));
+  const plan = fakeCtx({ permissionMode: 'plan' });
+  assert.ok(/plan mode/.test(sessionDigest.defer(plan)));
+  assert.strictEqual(requestClosure.defer(plan), null, 'closure needs no write');
+  const clear = fakeCtx({ permissionMode: 'default' });
+  assert.strictEqual(sessionDigest.defer(clear), null);
+  assert.strictEqual(requestClosure.defer(clear), null);
+  assert.strictEqual(qualityLens.defer(clear), null);
+});
+
+check('deferral: the undocumented payload field is honoured if it ever arrives, never required', () => {
+  const viaPayload = fakeCtx({ backgroundTasks: [{ id: 'p1' }] });
+  assert.strictEqual(deferral.agentsInFlight(viaPayload).length, 1);
+  assert.strictEqual(deferral.agentsInFlight(fakeCtx()).length, 0);
+});
+
+check('session-digest: a digest written after the REQUEST began counts, even before the first fire', () => {
+  const requestAt = 1000;
+  const ctx = fakeCtx({
+    turn: { toolNames: ['Bash'], toolTargets: [], userRequestAt: requestAt },
+    ledger: { promptId: 'p', fires: 0, asked: [], startedAt: 5000 },
+    disk: { exists: () => true, read: () => null, mtimeMs: () => 2000, list: () => [], hasFilesIn: () => true },
+  });
+  assert.strictEqual(sessionDigest.satisfied(ctx), true, 'mtime 2000 >= request start 1000, though < first-fire 5000');
+});
+
+check('self-check: satisfiedBy names the detector that fired', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'Check: node tests/x.test.js → 3/3', turn: { toolCalls: [{ name: 'Edit', target: '/a/b.js' }] } });
+  assert.strictEqual(selfCheck.satisfiedBy(ctx), 'check-named-with-result');
+});
+
+check('ledger: sessionSupplied survives a new prompt in the same sitting, resets with the session', () => {
+  const dir = tmpdir('ledger-supplied');
+  const l0 = ledgerStore.emptyLedger('p1', 's1', 1);
+  ledgerStore.writeLedger(dir, ledgerStore.advance(l0, ['context-recall'], [], ['notes/a.md', 'notes/b.md']));
+  const l1 = ledgerStore.readLedger(dir, 'p2', 's1');
+  assert.deepStrictEqual(l1.sessionSupplied, ['notes/a.md', 'notes/b.md']);
+  assert.deepStrictEqual(l1.asked, [], 'prompt bucket reset');
+  const l2 = ledgerStore.readLedger(dir, 'p3', 's2');
+  assert.deepStrictEqual(l2.sessionSupplied, []);
+});
+
+checkAsync('recall: a note already handed over this sitting comes back as a POINTER, never a second copy', async () => {
+  const dir = tmpdir('recall-held');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'held.md'), '# Held note\nHELD-BODY-TEXT');
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'fresh.md'), '# Fresh note\nFRESH-BODY-TEXT');
+  const realJudge = claudeP.judge;
+  const stub = () => ({
+    ok: true, lean: 'applied', durationMs: 5, costUsd: 0.002,
+    text: JSON.stringify({ needed: [
+      { id: 'kb-captures::.claude/kb/captures/held.md', why: 'w1' },
+      { id: 'kb-captures::.claude/kb/captures/fresh.md', why: 'w2' },
+    ] }),
+  });
+  claudeP.judge = stub;
+  try {
+    const ctx0 = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer' });
+    const first = await contextRecall.supply(ctx0);
+    assert.ok(first.chosen.length === 2, `judge chose two: ${JSON.stringify(first.chosen)}`);
+    const heldPath = first.chosen.find((p) => /held/.test(p));
+    const ctx1 = fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'an answer', ledger: { promptId: 'p2', fires: 0, asked: [], sessionSupplied: [heldPath] } });
+    // Async checks interleave at every await; sibling tests swap the judge stub too. supply()
+    // runs synchronously up to its judge call, so re-pinning right before it is sufficient.
+    claudeP.judge = stub;
+    const second = await contextRecall.supply(ctx1);
+    assert.ok(second.material.includes('FRESH-BODY-TEXT'), 'fresh note in full');
+    assert.ok(!second.material.includes('HELD-BODY-TEXT'), 'held note not repeated');
+    assert.ok(/Already handed to you earlier this sitting/.test(second.material));
+    assert.ok(typeof second.brief === 'string' && second.brief.includes('Fresh note') && !second.brief.includes('FRESH-BODY-TEXT'), 'brief is pointers only');
+    assert.strictEqual(second.engine, 'judge');
+    assert.strictEqual(second.lean, 'applied');
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+check('claude-p: the child is spawned LEAN by default, and the args are pinned', () => {
+  const args = claudeP.buildArgs('q', {}, true);
+  assert.ok(args.includes('--setting-sources'), 'setting-sources present');
+  assert.strictEqual(args[args.indexOf('--setting-sources') + 1], '', 'EMPTY source list — the undocumented dependency, pinned here');
+  assert.ok(args.includes('--disable-slash-commands'));
+  assert.ok(args.includes('--strict-mcp-config'));
+  assert.ok(!claudeP.buildArgs('q', {}, false).includes('--setting-sources'));
+});
+
+check('claude-p: an argument-class failure under lean args retries plain — fail-open, and SAID', () => {
+  const fake = path.join(tmpdir('exe-fake'), 'claude.exe');
+  fs.writeFileSync(fake, '');
+  const seen = [];
+  const exec = (_exe, args) => {
+    seen.push(args.includes('--setting-sources'));
+    if (args.includes('--setting-sources')) { const e = new Error('Invalid setting source'); e.status = 1; throw e; }
+    return JSON.stringify({ result: '{"needed":[]}', total_cost_usd: 0.01 });
+  };
+  const r = claudeP.judge('q', { exe: fake, exec });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.lean, 'fallback');
+  assert.deepStrictEqual(seen, [true, false]);
+  assert.ok(typeof r.durationMs === 'number');
+});
+
+check('claude-p: a timeout is NOT retried (a second spawn would overrun the hook ceiling)', () => {
+  const fake = path.join(tmpdir('exe-fake2'), 'claude.exe');
+  fs.writeFileSync(fake, '');
+  let calls = 0;
+  const exec = () => { calls++; const e = new Error('spawnSync ETIMEDOUT'); e.code = 'ETIMEDOUT'; throw e; };
+  const r = claudeP.judge('q', { exe: fake, exec, timeoutMs: 10 });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(calls, 1);
+  assert.strictEqual(r.lean, 'applied');
+});
+
+check('claude-p: a successful lean run reports lean=applied and its cost', () => {
+  const fake = path.join(tmpdir('exe-fake3'), 'claude.exe');
+  fs.writeFileSync(fake, '');
+  const exec = () => JSON.stringify({ result: 'ok', total_cost_usd: 0.02 });
+  const r = claudeP.judge('q', { exe: fake, exec });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.lean, 'applied');
+  assert.strictEqual(r.costUsd, 0.02);
+});
+
+check('E2E: the trace carries engine, ms, deferred, satisfied_by, payload_keys (the accountable fire)', () => {
+  const dir = withoutRecall(tmpdir('e2e-trace-fields'));
+  fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  const transcript = path.join(dir, 't.jsonl');
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [
+      { type: 'tool_use', id: 'toolu_Z', name: 'Agent', input: { subagent_type: 'general-purpose', prompt: 'x' } },
+    ] } }),
+    JSON.stringify({ message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_Z', content: 'Async agent launched successfully. agentId: z' }] } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'launched, waiting' }] } }),
+  ].join('\n'));
+  const payload = JSON.stringify({
+    cwd: dir, prompt_id: 'e2e-trace-1', stop_hook_active: false, permission_mode: 'default',
+    last_assistant_message: 'launched, waiting', transcript_path: transcript, hook_event_name: 'Stop',
+  });
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js')], { input: payload, encoding: 'utf8' });
+  const trace = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const last = trace[trace.length - 1];
+  assert.strictEqual(last.agents_in_flight, 1);
+  assert.ok(last.deferred.some((d) => d.id === 'request-closure' && /in flight/.test(d.reason)), JSON.stringify(last.deferred));
+  assert.ok(Array.isArray(last.payload_keys) && last.payload_keys.includes('permission_mode'));
+  assert.strictEqual(last.permission_mode, 'default');
+  assert.ok(typeof last.emitted_chars === 'number');
 });
 
 // ---------- report ----------

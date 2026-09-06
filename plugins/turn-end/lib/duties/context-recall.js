@@ -140,8 +140,22 @@ function buildPrompt(ctx, index, limits, truncated) {
   return lines.join('\n');
 }
 
-/** Render the fetched notes as the material injected back into the turn. */
-function renderMaterial(items, limits, clipped) {
+const RECONCILE_LINE =
+  '\nReconcile your answer with the above before yielding: if it contradicts or duplicates ' +
+  'any of it, say so and correct it; if the notes are stale, say that instead. Cite the path ' +
+  'of anything you use.';
+
+/** One line per note: title, path, why. The form used whenever the full text must not ride. */
+function pointerLine(it) {
+  return `- ${it.title} (${it.path})${it.why ? ` — ${it.why}` : ''}`;
+}
+
+/**
+ * Render the fetched notes as the material injected back into the turn.
+ * `alreadyHeld` are notes this sitting ALREADY received in full (session ledger): they get a
+ * pointer line each, never a second copy — the session's transcript holds the text.
+ */
+function renderMaterial(items, limits, clipped, alreadyHeld) {
   const out = [];
   out.push('This project already wrote these down, and this turn did not use them:');
   if (clipped) {
@@ -162,11 +176,29 @@ function renderMaterial(items, limits, clipped) {
       break;
     }
   }
-  out.push(
-    '\nReconcile your answer with the above before yielding: if it contradicts or duplicates ' +
-    'any of it, say so and correct it; if the notes are stale, say that instead. Cite the path ' +
-    'of anything you use.'
-  );
+  if (alreadyHeld && alreadyHeld.length) {
+    out.push('\nAlready handed to you earlier this sitting (text is in your transcript; re-open only if needed):');
+    for (const it of alreadyHeld) out.push(pointerLine(it));
+  }
+  out.push(RECONCILE_LINE);
+  return out.join('\n');
+}
+
+/**
+ * The BRIEF form of the same material: every chosen note as one pointer line. The runner
+ * substitutes this for the full text when the whole tail would exceed the platform's inline
+ * bound (measured: hook output past ~10 KB is replaced by a 2 KB preview and never read).
+ * Nothing is dropped — every note is still named, with its path and the judge's why.
+ */
+function renderBrief(items, alreadyHeld) {
+  const out = [];
+  out.push('This project already wrote these down, and this turn did not use them (pointers — open the paths):');
+  for (const it of items) out.push(pointerLine(it));
+  if (alreadyHeld && alreadyHeld.length) {
+    out.push('Already handed to you earlier this sitting:');
+    for (const it of alreadyHeld) out.push(pointerLine(it));
+  }
+  out.push(RECONCILE_LINE);
   return out.join('\n');
 }
 
@@ -228,6 +260,8 @@ module.exports = {
     });
 
     const verdict = claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
+    // Telemetry that every return carries, so a fire is accountable from the trace alone.
+    const cost = { costUsd: verdict.costUsd, durationMs: verdict.durationMs, lean: verdict.lean };
     let needed = null;
     let judgeDeath = null;
     if (!verdict.ok) judgeDeath = verdict.error;
@@ -248,10 +282,13 @@ module.exports = {
     if (judgeDeath) {
       needed = fallbackPick(ctx, index, limits);
       if (!needed.length) {
-        return cannotRun(`${judgeDeath}; the fallback ranker found no strongly-matching notes either`);
+        return {
+          ...cannotRun(`${judgeDeath}; the fallback ranker found no strongly-matching notes either`),
+          engine: 'none', ...cost,
+        };
       }
     }
-    if (!needed.length) return null; // the strict, common, correct answer
+    if (!needed.length) return { material: null, chosen: [], error: null, engine: 'judge', ...cost }; // the strict, common, correct answer
 
     // Cap what the judge asked for only if the project set a limit — and say so if it bites,
     // so a dropped note is never mistaken for one the judge deemed irrelevant.
@@ -274,17 +311,24 @@ module.exports = {
         for (const f of src.fetch(ctx, ids)) items.push({ ...f, why: whyById.get(f.id) || '' });
       } catch (_e) { /* skip a source that cannot read its own files */ }
     }
-    if (!items.length) return null;
+    if (!items.length) return { material: null, chosen: [], error: null, engine: judgeDeath ? 'fallback-ranker' : 'judge', ...cost };
 
-    const material = renderMaterial(items, limits, clipped);
+    // Split what the session already holds from what is new to it this sitting.
+    const held = new Set((ctx.ledger && ctx.ledger.sessionSupplied) || []);
+    const fresh = items.filter((i) => !held.has(i.path));
+    const alreadyHeld = items.filter((i) => held.has(i.path));
+
+    const banner = judgeDeath
+      ? `[recall via FALLBACK RANKER — the judge could not run (${judgeDeath}); ` +
+        'these notes matched the turn lexically, they were not judged]\n'
+      : '';
     return {
       chosen: items.map((i) => i.path),
-      material: judgeDeath
-        ? `[recall via FALLBACK RANKER — the judge could not run (${judgeDeath}); ` +
-          'these notes matched the turn lexically, they were not judged]\n' + material
-        : material,
+      material: banner + renderMaterial(fresh, limits, clipped, alreadyHeld),
+      brief: banner + renderBrief(fresh, alreadyHeld),
       error: null,
       engine: judgeDeath ? 'fallback-ranker' : 'judge',
+      ...cost,
     };
   },
 };
@@ -326,6 +370,7 @@ module.exports.fallbackPick = fallbackPick;
 module.exports.parseVerdict = parseVerdict;
 module.exports.buildPrompt = buildPrompt;
 module.exports.renderMaterial = renderMaterial;
+module.exports.renderBrief = renderBrief;
 module.exports.resolveLimits = resolveLimits;
 module.exports.DEFAULT_MAX_INDEX_ENTRIES = DEFAULT_MAX_INDEX_ENTRIES;
 module.exports.DEFAULT_MAX_CHOSEN = DEFAULT_MAX_CHOSEN;

@@ -1,5 +1,13 @@
 # Release notes — essense-autopilot
 
+## 0.4.1 — 2026-09-06 — lazy yaml, no bash wrapper
+
+js-yaml loads only after the `.pipeline/` walk finds a pipeline; a non-pipeline repo pays
+node startup and nothing else (measured 236–346 ms → ~100 ms per Stop, ~430 fires in audit 2).
+hooks.json invokes node directly (`command: node, args: [...]`, the turn-end shape) instead
+of a bash wrapper that cost ~70 ms per fire. Inside a pipeline project a missing js-yaml is
+now REPORTED in the allow reason instead of a silent exit.
+
 ## 0.4.0 — Flat state schema support + gates derived from the state machine
 
 The autopilot was silently broken against every current essense-flow project: it read `state.pipeline.phase`, but essense-flow's state schema has been flat (top-level `phase`/`sprint`/`wave`) since 0.9 — every Stop-hook fire halted with "no pipeline block". It also keyed blockers on `blocked_on`, a field the live schema replaced with `halt_reason`.

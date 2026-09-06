@@ -18,18 +18,20 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.4.0)
+.claude-plugin/plugin.json       # metadata (v0.5.1)
 agents/verifiability-lens.md     # the read-only classifier + triager
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
 defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded
+defaults/presets/                # copyable per-project profiles
 commands/verifiability.md        # /verifiability [target] — manual trigger
-hooks/hooks.json                 # Stop hook registration
-hooks/scripts/verifiability-stop.{sh,js}  # the auto-trigger (opt-in OFF) + fire-once loop guard
-tests/verifiability-stop.test.js # 13 guard unit tests
+hooks/hooks.json                 # EMPTY registration — no hook since 0.5.0; automatic firing
+                                 #   is turn-end's `quality-lens` duty (dead scripts DELETED 0.5.1)
+tests/verifiability-lens.test.js # contract tests over the shipped files (agent/rubric/profile/
+                                 #   presets/metadata) — replaces the retired hook's 39 checks
 README.md / RELEASE-NOTES.md
 ```
 
-Tests: `node tests/verifiability-stop.test.js` (no framework). Enable auto-mode (default OFF),
+Tests: `node tests/verifiability-lens.test.js` (no framework). Enable auto-mode (default OFF),
 precedence high→low: env `VERIFIABILITY_LENS_ENABLED=1` → project `./.claude/verifiability-lens.json`
 `{"enabled": true|false}` (explicit repo decision wins; `false` opts out of a global ON) → global
 `~/.claude/verifiability-lens.json` `{"enabled": true}` (everywhere switch). Resolved by the pure

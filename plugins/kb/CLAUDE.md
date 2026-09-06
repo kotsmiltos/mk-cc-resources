@@ -75,14 +75,12 @@ hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over 
                              #   score-floored hint lines (title+id, kb_read to pull) +
                              #   session-digest injection; machine-text guard; fail-open;
                              #   .claude/kb.json {"pull":{...}} knobs
-hooks/scripts/kb-scribe-stop.js # RETIRED (0.9.0) — kept one release, marked RETIRED in the
-                             #   header; the enforced write side now ships as turn-end's
-                             #   session-digest duty. Was: on a producing turn, blocks the
-                             #   yield until the session distills the turn into the digest +
-                             #   graduates durable items (captures/ or .steward/inbox/).
-                             #   Fire-once + hash-skip + fail-open (lens contract); IMPORTANT
-                             #   defined inline, sharpened per project by scribe.focus;
-                             #   PRESENCE-gated — silent where no curated memory exists
+                             #   (kb-scribe-stop.js, retired 0.9.0, DELETED 0.12.0 — it had
+                             #   shipped two releases past "kept one release"; the write side
+                             #   is turn-end's session-digest duty. A project's old
+                             #   `.claude/kb.json {"scribe":{"focus":[…]}}` has NO consumer —
+                             #   move the list to `.claude/turn-end.json`
+                             #   duties.session-digest.important, which is read.)
 hooks/scripts/kb-session-start.js # keeps "now" honest (0.10.2: spawned sessions cannot steal
                              #   the live digest — sitting marker gated on .claude/kb/ presence
                              #   so it records on rotating fires; a minutes-fresh digest never
@@ -99,7 +97,6 @@ tests/kb.test.js             # 273 checks, no framework, own temp fixtures
 tests/kb-pull.test.js        # 47 checks — guards, floor, digest, traces, precision fixture,
                              #   subdir root-anchoring + orphan-dir silence (0.10.3)
 tests/kb-session.test.js     # 78 checks — presence rule, rotation + loss-safety, cue
-tests/kb-scribe.test.js      # 42 checks — worthiness, fire-once, transcript turn, e2e block
 tests/kb-status-join.test.js # 9 checks — join facets, themes filter, absent/corrupt ledger
 tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
 tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
@@ -144,7 +141,11 @@ Since 0.9.0 kb CARRIES TWO HOOKS — kb-pull (UserPromptSubmit) and kb-session-s
 (SessionStart). The kb-scribe Stop hook is RETIRED — the enforced write side now ships as
 turn-end's `session-digest` duty, because two plugins each owning a blocking Stop hook
 re-armed each other (scribe's PRODUCE_TOOLS included `Agent`, so the lens's mandated dispatch
-turn read as fresh work); script + 42 tests kept one release, marked RETIRED in the header.
+turn read as fresh work); script + 42 tests were meant to stay one release and stayed three —
+DELETED in 0.12.0 (audit 2: a green suite over dead code is a false clean). kb-pull stands
+down inside `MK_TURN_END_DEPTH` children since 0.12.0 (measured: 40 of 78 judge fires paid a
+hint block) and carries the CANONICAL six-marker machine-text guard, drift-tested by
+plugin-toolkit's repo-guard.
 Both live hooks are PRESENCE-gated: a project keeping no curated memory is never blocked and
 never written into. A standalone install is required for the hooks + MCP server; the bundle
 ships only the skills. **Hooks register at install time**, so an older install keeps its old

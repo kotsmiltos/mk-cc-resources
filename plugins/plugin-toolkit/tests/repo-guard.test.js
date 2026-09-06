@@ -32,8 +32,8 @@ const ctxOf = (files = [], history = []) => ({ files, history });
 const wheres = (findings) => findings.map((f) => f.where);
 
 // ---------------------------------------------------------------- registry contract
-check('registry exposes the three shipped detectors',
-  registry.all().map((d) => d.id).sort().join(',') === 'leaked-path,revert-chain,silenced-failure');
+check('registry exposes the four shipped detectors',
+  registry.all().map((d) => d.id).sort().join(',') === 'leaked-path,machine-guard-drift,revert-chain,silenced-failure');
 check('every shipped detector validates', registry.all().every((d) => registry.validate(d).length === 0));
 check('byId finds a detector', registry.byId('leaked-path') === leakedPath);
 check('byId returns null for an unknown id', registry.byId('nope') === null);
@@ -267,7 +267,7 @@ const result = guard(dirty);
 check('runner collects findings from every surface', result.findings.length === 3);
 check('runner separates blocking from warnings',
   result.blocking.length === 2 && result.warnings.length === 1);
-check('runner reports which detectors ran', result.ran.length === 3);
+check('runner reports which detectors ran', result.ran.length === registry.all().length);
 check('clean context yields no findings',
   guard(ctxOf([{ path: 'ok.md', text: 'nothing wrong' }], incident.slice(0, 1))).findings.length === 0);
 
@@ -285,7 +285,7 @@ const disabled = guard(dirty, { detectors: { 'leaked-path': { enabled: false } }
 check('config can disable a detector', disabled.skipped.includes('leaked-path'));
 check('a disabled detector produces no findings',
   disabled.findings.every((f) => f.detector !== 'leaked-path'));
-check('disabling one detector leaves the others running', disabled.ran.length === 2);
+check('disabling one detector leaves the others running', disabled.ran.length === registry.all().length - 1);
 
 const configured = guard(dirty, { detectors: { 'revert-chain': { minRunLength: 99 } } });
 check('per-detector options reach the detector',
@@ -303,7 +303,29 @@ registry.all = originalAll;
 check('a crashed detector becomes a BLOCKING finding', crashed.blocking.length === 1);
 check('crash finding names the detector', crashed.errored.includes('boom'));
 check('crash finding carries the error message', crashed.blocking[0].evidence === 'kaboom');
-check('registry restored after the crash test', registry.all().length === 3);
+check('registry restored after the crash test', registry.all().length === 4);
+
+// ---------------------------------------------------------------- machine-guard-drift
+const machineGuardDrift = require('../lib/detectors/machine-guard-drift');
+const SIX = "['[SYSTEM NOTIFICATION', '<task-notification>', 'Stop hook feedback:', '<local-command', '<command-name>', '<system-reminder>']";
+const FIVE = "['[SYSTEM NOTIFICATION', '<task-notification>', 'Stop hook feedback:', '<local-command', '<command-name>']";
+const driftFindings = machineGuardDrift.run(ctxOf([
+  { path: 'plugins/a/hooks/a.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` },
+  { path: 'plugins/b/hooks/b.js', text: `// x\nconst MACHINE_PREFIXES = ${FIVE}; // the audit-2 shape` },
+  // The constant name is assembled at runtime so the LIVE repo-guard scan of this very test
+  // file does not read the fixture as a real guard copy (measured: it did, 2026-09-06).
+  { path: 'plugins/c/hooks/c.js', text: `const ${'MACHINE_TEXT_' + 'MARKERS'} = [\n  '[SYSTEM NOTIFICATION', // comment\n  '<task-notification>',\n  'Stop hook feedback:',\n  '<local-command',\n  '<command-name>',\n  '<system-reminder>',\n];` },
+  { path: 'docs/notes.md', text: `const MACHINE_TEXT_MARKERS = ${FIVE};` }
+]));
+check('drift: the five-marker copy is reported against the first copy by path', wheres(driftFindings).includes('plugins/b/hooks/b.js:2'));
+check('drift: a same-list copy with comments and one-per-line literals is NOT reported', !wheres(driftFindings).some((w) => w.startsWith('plugins/c/')));
+check('drift: markdown is not a copy', !wheres(driftFindings).some((w) => w.startsWith('docs/')));
+check('drift: evidence names the missing marker', driftFindings.some((f) => f.evidence.includes('missing ["<system-reminder>"]')));
+check('drift: a lone copy is never a finding', machineGuardDrift.run(ctxOf([{ path: 'x.js', text: `const MACHINE_TEXT_MARKERS = ${FIVE};` }])).length === 0);
+check('drift: identical copies are clean', machineGuardDrift.run(ctxOf([
+  { path: 'a.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }, { path: 'b.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }
+])).length === 0);
+check('drift: findings block', driftFindings.every((f) => f.severity === 'block'));
 
 // ---------------------------------------------------------------- format
 const report = format(result);

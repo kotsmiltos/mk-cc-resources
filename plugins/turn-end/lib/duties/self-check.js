@@ -233,6 +233,13 @@ module.exports = {
     return EVIDENCE.some((e) => e.detect(ctx));
   },
 
+  // WHICH detector satisfied — recorded in the trace, so the share of hatch-only satisfactions
+  // ("Check: …" prose with no run) is a one-liner over trace.jsonl instead of a guess.
+  satisfiedBy(ctx) {
+    const hit = EVIDENCE.find((e) => e.detect(ctx));
+    return hit ? hit.id : null;
+  },
+
   ask(ctx) {
     const names = [...new Set(mutations(orderedCalls(ctx) || []).map((m) => path.basename(m.target)))];
     const shown =

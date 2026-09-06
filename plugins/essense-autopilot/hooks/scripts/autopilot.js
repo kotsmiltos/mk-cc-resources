@@ -26,12 +26,22 @@
 const fs = require("fs");
 const path = require("path");
 
-let yaml;
-try {
-  yaml = require("js-yaml");
-} catch (_e) {
-  // No js-yaml available — autopilot can't read config; allow stop.
-  process.exit(0);
+/*
+ * js-yaml loads LAZILY, after the .pipeline/ walk in main(). This Stop hook fires in EVERY
+ * repo (measured 2026-09-06: ~430 fires at 236–346 ms in projects that never ran the
+ * pipeline), and the yaml require was most of that cost, paid before the walk could say
+ * "nothing to do". A missing js-yaml still allows the stop — inside a pipeline project it
+ * is reported, elsewhere it is never even attempted.
+ */
+let yaml = null;
+function loadYaml() {
+  if (yaml) return yaml;
+  try {
+    yaml = require("js-yaml");
+  } catch (_e) {
+    yaml = null;
+  }
+  return yaml;
 }
 
 // ---------- Defaults ----------
@@ -117,7 +127,9 @@ function findPipelineDir(startCwd) {
 function readYamlSafe(filePath) {
   try {
     if (!fs.existsSync(filePath)) return null;
-    return yaml.load(fs.readFileSync(filePath, "utf8")) || null;
+    const y = loadYaml();
+    if (!y) return null;
+    return y.load(fs.readFileSync(filePath, "utf8")) || null;
   } catch (_e) {
     return null;
   }
@@ -125,7 +137,9 @@ function readYamlSafe(filePath) {
 
 function writeYamlSafe(filePath, obj) {
   try {
-    fs.writeFileSync(filePath, yaml.dump(obj));
+    const y = loadYaml();
+    if (!y) return false;
+    fs.writeFileSync(filePath, y.dump(obj));
     return true;
   } catch (_e) {
     return false;
@@ -229,6 +243,10 @@ async function main() {
   const pipelineDir = findPipelineDir(cwd);
   if (!pipelineDir) {
     return allowStop(`no .pipeline/ directory found from cwd ${cwd}`);
+  }
+  // Only a pipeline project pays for the yaml library — and one without it is told so.
+  if (!loadYaml()) {
+    return allowStop("js-yaml unavailable — autopilot cannot read config; allowing stop");
   }
 
   // Merge project config over defaults

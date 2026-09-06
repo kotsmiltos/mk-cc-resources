@@ -6,6 +6,17 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 0.12.0 — 2026-09-06 — stands down in judge children; canonical guard; scribe deleted (audit 2, #25 #26)
+
+kb-pull exits at once inside `MK_TURN_END_DEPTH` children (measured: 40 of 78 turn-end judge
+fires paid a hint block into a one-shot question) and carries the CANONICAL six-marker
+machine-text guard (it lacked `<system-reminder>` and fired 2–12× per background-agent
+wake), drift-tested by plugin-toolkit's repo-guard. kb-scribe-stop.js + its 42-check suite —
+retired 0.9.0, "kept one release", shipped three — DELETED. `.claude/kb.json
+{"scribe":{"focus"}}` had no consumer: move the list to `.claude/turn-end.json`
+duties.session-digest.important. The session suite pins a fake HOME (it had written 79 temp
+roots into the owner's real ~/.claude/kb/cued.json).
+
 ## 0.11.0 — 2026-08-23 — status-join: the lifecycle ledger becomes searchable facets
 
 Owner ruling (stack-a-blueprint §6 Q1): lifecycle lives in .steward/status.json and SEARCH

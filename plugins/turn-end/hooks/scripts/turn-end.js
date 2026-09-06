@@ -127,21 +127,34 @@ async function main() {
   // one that throws costs its own material, never the turn.
   const materials = {};
   const supplyNotes = [];
+  const suppliedPaths = [];
   for (const id of planned.supplyDue) {
     const duty = duties.byId(id);
     if (!duty || typeof duty.supply !== 'function') continue;
+    const startedMs = Date.now();
+    // Every note carries the ACCOUNTING a fire owes the trace: which engine answered, what it
+    // cost, how long it took, whether the lean spawn held. Dogfood leg (b) of task #1 was
+    // unmeasurable for two weeks because `engine` was set by the duty and dropped right here.
+    const account = (produced) => ({
+      ms: Date.now() - startedMs,
+      ...(produced && produced.engine ? { engine: produced.engine } : {}),
+      ...(produced && typeof produced.costUsd === 'number' ? { costUsd: produced.costUsd } : {}),
+      ...(produced && produced.lean ? { lean: produced.lean } : {}),
+    });
     try {
       const produced = await duty.supply(ctx);
       if (produced && produced.material) {
-        materials[id] = produced.material;
-        supplyNotes.push({ id, chosen: produced.chosen || [] });
+        materials[id] = produced;
+        const chosen = produced.chosen || [];
+        for (const p of chosen) suppliedPaths.push(p);
+        supplyNotes.push({ id, chosen, ...account(produced) });
       } else if (produced && produced.error) {
-        supplyNotes.push({ id, error: produced.error });
+        supplyNotes.push({ id, error: produced.error, ...account(produced) });
       } else {
-        supplyNotes.push({ id, chosen: [] });
+        supplyNotes.push({ id, chosen: [], ...account(produced) });
       }
     } catch (err) {
-      supplyNotes.push({ id, error: String((err && err.message) || err).slice(0, 200) });
+      supplyNotes.push({ id, error: String((err && err.message) || err).slice(0, 200), ...account(null) });
     }
   }
 
@@ -156,8 +169,13 @@ async function main() {
   // only thing that stops a duty whose own output spawns the next prompt from re-arming.
   const sessionSpanIds = duties.all().filter((d) => d.span === 'session').map((d) => d.id);
 
-  if (result.emission || toRecord.length) {
-    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord, sessionSpanIds));
+  const emittedText = result.emission
+    ? (result.emission.reason ||
+       (result.emission.hookSpecificOutput && result.emission.hookSpecificOutput.additionalContext) || '')
+    : '';
+
+  if (result.emission || toRecord.length || result.errored.length || result.deferred.length) {
+    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord, sessionSpanIds, suppliedPaths));
     writeTrace(cwd, {
       t: new Date().toISOString(),
       hook: 'turn-end',
@@ -165,9 +183,17 @@ async function main() {
       stop_hook_active: ctx.stopHookActive,
       action: result.action,
       unsatisfied: result.unsatisfied,
+      deferred: result.deferred,
       supplied: supplyNotes,
-      errored: result.errored,
+      errored: result.errors,
+      satisfied_by: result.satisfiedBy,
       fires: ledger.fires,
+      emitted_chars: emittedText.length,
+      agents_in_flight: (ctx.turn.agentsInFlight || []).length,
+      // Substrate record: which fields the platform actually sent. Two audit claims (a
+      // `background_tasks` field, a `permission_mode` field) rested on docs, not on a fire.
+      payload_keys: Object.keys(payload),
+      permission_mode: ctx.permissionMode,
     });
   }
   if (result.emission) process.stdout.write(JSON.stringify(result.emission));

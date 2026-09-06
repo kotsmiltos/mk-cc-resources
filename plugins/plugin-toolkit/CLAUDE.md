@@ -49,7 +49,13 @@ lib/detectors/          # the extension surface: index.js registry + one module 
                         #   inline !`cmd`), revert-chain (same file rewritten by a run of
                         #   fix-shaped commits in a window = circling; minRunLength 3 and
                         #   ubiquityRatio 0.20 are measured, windowMinutes 60 is flagged in
-                        #   source as an extrapolation). Does NOT cover: uncommitted
+                        #   source as an extrapolation), machine-guard-drift (1.11.0: every
+                        #   MACHINE_TEXT_MARKERS / _PREFIXES declaration in tracked .js must
+                        #   be the SAME list; reference = first copy by path, evidence names
+                        #   missing/extra markers; holds no canonical of its own — the
+                        #   invariant is sameness; a test fixture must not spell the constant
+                        #   name literally or the live scan reads it as a copy).
+                        #   Does NOT cover: uncommitted
                         #   circling (review rounds leave no commits), circling that
                         #   migrates across files, `| head -N` truncation.
                         #   Add one = one require, no runner change

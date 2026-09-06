@@ -98,30 +98,104 @@ Reversible: (b) is additive later if a live pipeline project shows the gap.
 
 ---
 
-## Q15 · Patterns is PUSHED — after the live fire: one design-moment injection or two?
+## Q15 · The design-moment injection — now MEASURED: five surfaces, 1,645 B per design prompt, 1,788 B standing
 
-**Context.** The push half of this question is CLOSED: owner "push it" (logged), both
-refs read `463baa4` on 2026-08-27, patterns INSTALLED from the remote and its menu hook
-fired live in a scratch session. What REMAINS is the injection half: the patterns menu
-hook fires on the same design-shaped prompts as the user-global generalize-first hook —
-~420 tokens combined per fire, a standing double tax invariant 5 prices. The decision
-point arrives at the owner's next interactive restart (#21's remaining legs).
+**Context.** The push half is CLOSED (patterns installed 08-27, menu hook fired live).
+Audit 2 (2026-09-06) put a number on the injection half: the design-open concern has
+FIVE surfaces — the global CLAUDE.md Generalize-First Gate (1,788 B STANDING = 27% of the
+global file, paid per session AND per sub-agent) · the generalize-first hook · pattern-menu
+· pattern-gate · reuse-gate/@build — firing 1,645 B together on one design prompt. Also
+measured: `++` is injected THREE ways, `@verify` restates 3 of the 4 always-on rules,
+and per-prompt process spawns are 9. `/patterns` was never invoked in a real session;
+whether any of these surfaces changes outcomes is unmeasured (the 09-04 doubt datum).
 
 **Options:** (a) after ONE live-verified fire of both patterns hooks, slim the global
-hook down to what patterns does not carry (the contract-extraction steps +
-anti-signals), dropping the duplicated trigger→shape half. (b) Keep both injections
-whole — redundancy accepted as belt-and-suspenders.
+hook + CLAUDE.md gate down to what patterns does not carry. (b) Keep all surfaces —
+redundancy as belt-and-suspenders. (c) **Fold the per-prompt regex stack into ONE
+UserPromptSubmit hook over a `{trigger, injection}` registry** (verification-rules +
+generalize-first + thorough-mode + pattern-menu), inject `++` once, move the gate out of
+global CLAUDE.md into pattern-menu's footer on design prompts — Tier-2 item 14 of the
+audit plan; check: plain prompt unchanged, `++` prompt −363 B, design prompt one block,
+global CLAUDE.md < 5 KB, spawns 9 → 6.
 
-**Recommended default (Claude's): (a), only AFTER the live fire proves the
-replacement** — quality-over-speed: no mechanism is retired on the promise of its
-successor.
+**Recommended default (Claude's): (c)** — it is (a) done generically (a registry is the
+drop-in surface a sixth trigger needs), still only AFTER a live fire of both patterns
+hooks proves the replacement (quality over speed: nothing retires on a promise).
 
-**Blocks:** #21 step 2 (the injection decision); the remaining smoke legs proceed
-regardless.
+**Blocks:** #21 step 2; #17's first concrete cut.
+
+---
+
+## Q16 · Zero-setup memory — seed kb + steward automatically on first open of an un-seeded project? [Tier 3, audit 2]
+
+**Context.** Audit 2 measured WHERE the owner felt the loss: the two projects with NO
+kb/steward (psience 09-01, verbatim: *"i said it in the previous session why is it not
+saved?"*; 09-04: *"can you tell me what happened there?"*). The `/kb-seed` cue-once
+mechanism fired in both and was acted on in neither — measured dead. Owner 08-23:
+*"ideally i don't want to spend time setting them up when i wanna work on them."*
+Invariant 6 says a tool self-activates on PRESENCE (seeding is the on-switch); invariant 1
+says the ship never moves unseen. Auto-seeding writes files into every git project the
+owner opens — the owner must ratify that.
+
+**Options:** (a) on first open of an un-seeded git project, dispatch `kb-seed` + steward
+`seed` in the BACKGROUND (zero questions), show the diff at the next open, `unseed`
+reverts — the audit plan's proposal. (b) One-keystroke gate: the first open asks ONE
+question ("seed memory here?"), then (a) runs. (c) Keep the cue, make it louder — the
+measured-dead path, not recommended. Whichever: the seed must be root-anchored, skip
+scratch/temp roots, and leave a visible marker so a wrong seed is one delete.
+
+**Recommended default (Claude's): (b)** — the owner's words support (a)'s zero-effort
+goal, but a silent write into every project opened (incl. one-off checkouts) is the
+"moves unseen" shape invariant 1 forbids; one keystroke keeps the owner's say and
+costs nothing to remember.
+
+**Blocks:** nothing built yet; would become a task on the answer.
+
+---
+
+## Q17 · Retire or keep: reuse-gate · session-lifecycle · essense-flow · code-glossary — each measured at ZERO real use [Tier 3, audit 2]
+
+**Context.** Audit 2 (five ships, 212 human prompts): reuse-gate dormant since 07-07,
+0 projects configured; session-lifecycle 0 uses ever (no handoffs dir anywhere; `@prompt`
+replaced it; kb's `handoffs` source then indexes nothing); essense-flow 0 uses since 08-10
+(owner 08-26: "rarely used"; Phase E #19 already plans its retirement; Q4/Q5 hold its docs
+until Phase D/E); code-glossary never invoked interactively, engine sound (2.1 s, found
+two identical registries inside kb). Each is an EXTENSION-SURFACE question — what stays
+ambient, what becomes a gate, what goes to `archive/benched-plugins` — not a keep/kill vote.
+
+**Options per surface (Claude's defaults marked ★):** reuse-gate — ★fold into
+pattern-gate (one pre-write nudge, one guard) / keep as is · session-lifecycle — ★archive
+to benched (drop kb's `handoffs` source config with it) / keep for public users / keep
+only retro+meta-review as future steward verbs · essense-flow — ★FREEZE (no new
+investment; Phase E retires; Q5 doc repositioning may move earlier) / keep investing /
+archive now · code-glossary — ★make it a GATE inside `@ship` (drift + duplicate-registry
+check, deterministic) rather than a skill to remember / keep skill-only / archive.
+
+**Recommended default (Claude's): the four ★ marks** — each is a fold or a freeze, none
+deletes a capability the owner uses; all reversible from the archive branch.
+
+**Blocks:** Q5's timing; #17's fold scope; nothing else.
 
 ---
 
 ## Resolved ledger (provenance — these answers are now law in the model)
+
+- **Owner request (2026-09-06, EXECUTED same sitting): review kb / steward / lens /
+  thorough-mode / every hook / glossary / harness + cross-project usage + how to
+  improve.** Executed as audit 2 (five agents, 269 session files, five ships): kb capture
+  `20260906-1340-second-usage-audit-five-projects-measured` (every number, file:line) +
+  the ranked plan (inbox `20260906-1345`, Claude's proposal — nothing decided). Tier 1 →
+  tasks #23–#28; Tier 2 → #8 #27 #28 + #13/#17 folds; Tier 3 → Q16, Q17, Q15(c), #11
+  re-parked. Provenance: `inbox/20260906-1236-review-plugins-and-cross-project-usage.md`.
+- **Owner directive (2026-09-04, EXECUTED same day): the perspective-panel skill** —
+  verbatim *"multiple agents… answer it from different perspectives… their sole focus on
+  that specific thing… compile their outputs"* + *"apply that same logic to building what
+  I've asked"* → prism 0.1.0, designed BY its own five-lens panel, shipped `2ffa2d0`,
+  installed after a settings-level fix; acceptance criterion (owner invokes it again
+  unprompted) MET 09-04 in psience. **The doubt datum in the same capture** (*"I don't
+  think that we've built this. Really doing anything."*) is ANSWERED BY MEASUREMENT (audit
+  2): model-keeping works; injecting is unread/repetitive; browse skills + pipeline unused.
+  Provenance: `inbox/20260904-0405-perspective-panel-skill-and-doubt-about-impact.md`.
 
 - **Q11 · Context-recall firing policy → RESOLVED 2026-08-23 by owner ruling — the SPEED
   framing itself was refuted.** Verbatim: *"46 seconds is not really a problem. getting
@@ -134,7 +208,11 @@ regardless.
   the substrate); (b) richer judge inputs (status/groups, harbor caste); (c) recall
   QUALITY measured (chosen-files-actually-used), never latency. Promoted to vision
   invariant 11 (quality over speed — the standing optimization order). Executes as
-  Phase 1 item (6) + Phase 3 stats. Provenance:
+  Phase 1 item (6) + Phase 3 stats. **Number added 2026-09-06 (audit 2):** the judge is
+  slow from STARTUP, not inference — 33.0 s wall / 3.8 s API by default vs 3.9 s with
+  `--setting-sources ""` (no hooks fire in the child, OAuth intact, plan-billed); the
+  every-turn judge stays default AND becomes cheap (→ #23); the ranker-first pre-filter
+  idea is dead for good. Provenance:
   `inbox/done/20260823-1520-owner-rulings-on-stack-a-blueprint.md`.
 - **Owner rulings on stack-a-blueprint §6 (2026-08-23, all four now design law —
   blueprint §6/§6b is the plan of record):** **(Q1)** item records — delegated with a
@@ -198,6 +276,9 @@ regardless.
   structural and pre-lexical, fixed by the `pattern` split mode. Rungs 2/3 remained
   UNGATED until 2026-08-23: the aithseis kb-probe capture satisfied the rung-2 evidence
   gate — the un-gate is now an OWNER CALL parked in blueprint Phase 4 (tasks #11).
+  **Re-read 2026-09-06 (audit 2):** hints are ignored for REPETITION + SIZE (84% ignored,
+  top-3 ids in 40% of slots, digest stubbed by the platform), not for vocabulary — rung 2
+  is the wrong lever before #27; #11 stays parked and re-measures after it.
   Provenance: `inbox/done/20260725-0337-retrieval-improvement-direction.md`,
   `inbox/done/20260725-1400-first-retrieval-miss-splitter-class.md`.
 - **Owner direction (not a question, EXECUTED): kb-seed judges on its own.** "It should be

@@ -37,8 +37,17 @@ function writeDigest(root, body) {
   fs.mkdirSync(path.join(root, '.claude', 'kb'), { recursive: true });
   fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), body);
 }
+// EVERY hook invocation runs against an isolated fake home. The hook's one-time /kb-seed cue
+// registers the project root in ~/.claude/kb/cued.json, and a payload without `home` falls
+// back to os.homedir() — measured 2026-09-06: 79 of the 84 entries in the owner's REAL cue
+// file were this suite's temp roots. os.homedir() honours USERPROFILE/HOME, so the env pin
+// covers every call, including the deliberately empty payload below.
+const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-session-home-'));
 function runHook(cwd, payload) {
-  return spawnSync('node', [HOOK], { cwd, input: JSON.stringify(payload), encoding: 'utf8', timeout: 15000 });
+  return spawnSync('node', [HOOK], {
+    cwd, input: JSON.stringify(payload), encoding: 'utf8', timeout: 15000,
+    env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
+  });
 }
 
 // ---------- presence: the self-activation rule ----------

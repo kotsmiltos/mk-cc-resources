@@ -28,13 +28,16 @@
 // START of the prompt (after whitespace) — machine turns begin with these; user
 // messages don't. Mid-text occurrences are deliberately NOT matched (a user may
 // legitimately paste or mention them while asking about the content).
+// CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook
+// in this repo; repo-guard's `machine-guard-drift` detector fails the push when a copy
+// diverges. `<local-command` is a PREFIX: it covers -caveat and -stdout variants alike.
 const MACHINE_TEXT_MARKERS = [
-  "[SYSTEM NOTIFICATION",       // background-task events
-  "<task-notification>",        // task-notification blocks
-  "Stop hook feedback:",        // Stop-hook re-invocations
-  "<local-command-caveat>",     // local command transcripts (/plugin etc.)
-  "<command-name>",             // slash-command invocation records
-  "<system-reminder>",          // system reminder blocks
+  '[SYSTEM NOTIFICATION',
+  '<task-notification>',
+  'Stop hook feedback:',
+  '<local-command',
+  '<command-name>',
+  '<system-reminder>',
 ];
 
 function isMachineText(prompt) {

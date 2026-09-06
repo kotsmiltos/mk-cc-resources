@@ -840,3 +840,165 @@ row+section + root CLAUDE.md tree. Checks: registry-check 0 · repo-guard 0 · t
 34/34 / 1795 (prism correctly NAMED as no-suite unit — informational, per the
 simplicity lens's source-verified prediction). NOT pushed — owner gate. Acceptance
 criterion per sustainability lens: owner invokes /prism again unprompted.
+
+## 2026-09-04 · prism 0.1.0 SHIPPED (2ffa2d0 -> origin) + a settings-level root cause found and fixed
+Owner "@ship it". Pre-ship: all checklist items already landed at build; commit 2ffa2d0
+(25 files incl. steward model recompute); post-commit gates on TRACKED files:
+repo-guard 0 (root, direct) · registry-check 0. Pushed 463baa4..2ffa2d0, origin == local.
+Install first FAILED — "marketplace mk-cc-resources not found": the settings declaration
+(extraKnownMarketplaces) carried an INVALID field — a github source with an ABSOLUTE
+LOCAL `path` (schema: path = repo-relative marketplace.json location). That bogus field
+also explains the July/August install-behavior flip-flop (July "reads local checkout",
+August "reads remote"): the mixed declaration was interpreted differently across CC
+versions until it stopped loading entirely. Fixed: path field removed (default
+.claude-plugin/marketplace.json), settings.json re-validated (JSON parse OK), marketplace
+update OK, `claude plugin install prism` OK (cache prism/0.1.0, SKILL.md present,
+settings now enable prism@mk-cc-resources). Remaining: owner /reload-plugins or restart
+-> /prism live; first real panel run = the acceptance criterion.
+
+## 2026-09-04 · CORRECTION to the ship entry's causal story (recall surfaced the July capture)
+The July->August install flip was NOT caused by the invalid path field "degrading
+across versions" — .claude/kb/captures/20260727-0730 records it was an OWNER DECISION
+the same day ("i wanna push an update to me marketplace, update from there"): file
+source re-pointed to github on 2026-07-27. My 08-27 capture guessed "either re-added or
+different mechanism" when the July capture already knew — a recall failure, now caught
+by turn-end recall. Revised story: the absolute `path` in extraKnownMarketplaces is
+RESIDUE of that July migration (the old file-source path pasted into the github
+declaration); it explains only TODAY'S "marketplace not found" (a CC update apparently
+began rejecting the invalid combo) — not the July/August transition. The fix stands;
+only the causal narrative shrinks.
+
+## 2026-09-06 · AUDIT 2 — every plugin reviewed, five projects measured, ranked plan filed (owner decides)
+Owner asked for a review of kb, steward, the lens, thorough-mode, every hook, the glossary and
+the harness, plus how they were used in other sessions and how to improve them (inbox 1236).
+Method: five background agents (transcript scan over 269 session files with a reproducible
+script; on-disk state of 5 ships + 6 secondary roots; code reviews of kb, steward+turn-end,
+and the whole injection stack incl. lens/thorough/patterns/glossary), plus one session-run
+judge-child probe. Deliverables: capture
+.claude/kb/captures/20260906-1340-second-usage-audit-five-projects-measured.md (every number,
+file:line) and inbox 20260906-1345 (ranked plan: Tier 1 ten S items, Tier 2 seven M items,
+Tier 3 owner decisions, cross-ship chores). Headline measured facts: 235/269 session files are
+headless judges each paying the whole harness; judge 33.0 s default vs 3.9 s with
+--setting-sources "" (OAuth intact, hooks silent) — startup, not inference; kb-hints 84%
+ignored; per-prompt tax avg 6.3 KB p95 20.5 KB and RISING after 08-23 while pull fell to ~0;
+platform stubs hook output >10 KB to a 2 KB preview (53x kb-pull, 1x turn-end tail today);
+briefing prose contradicted by the log in 4/5 ships; give-up path looped to the platform's
+9-block cap; self-check gamed by "Check: none" and blind to Bash edits. Three dogfood datums
+measured live this sitting (inbox 1250). Cleanup: ~/.claude/steward/fleet.json restored to the
+5 real ships (a probe + an old test leak had added 3 entries). Checks: 5 suites read by the
+agents (kb 526/526, turn-end 146/146, steward 40+13, thorough 21/21, patterns 37/37,
+statusline 20/20); judge probe numbers from three claude -p runs in a scratch project. NOT
+done: no plugin code changed; no push; steward integrate pass + lens pass dispatched at
+wrap-up (outcome in the next entry).
+
+## 2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened
+Steward pass (HEAD snapshot 2ffa2d0; tree carried only log.md). Ledger check first: of the
+9 top-level inbox files, 4 were already recorded (0826-1446, 0826-1504, 0827-1406,
+0827-1440) — NOT re-integrated; the 5 unrecorded ones are integrated here: 0827-1615
+(steward-sync counter ignores the ledger), 0904-0405 (panel skill directive + doubt),
+0906-1236 (owner review request), 0906-1250 (three turn-end tail datums), 0906-1345
+(ranked plan — Claude's proposal, recorded as such; nothing decided). Model moves:
+vision — audit-2 reading in the active thrust (model-keeping works; injecting unread;
+browse skills + pipeline unused), the measured 10 KB platform bound on invariant 5, prism's
+language-level lens axis; state — full recompute (prism shipped + installed via the
+settings fix; audit-2 verdicts beside the 08-23 ones; the judge-startup finding 33.0 s →
+3.9 s; three PLATFORM INVARIANTS; dogfood legs a/c lies filed + root-caused, leg b BLOCKED
+on the untraced `engine`); parts — turn-end/steward/kb gap maps with file:line (✓ marks =
+re-read this pass: context-recall.js:287, hooks/scripts/turn-end.js:161, context.js:218,
+runner.js:37/98/190, claude-p.js:112-113, steward-sync.js:45, steward-brief.js:63-67/151/
+256, self-check.js:78/109-120), prism section NEW, stale "steward-sync never observed
+firing" corrected, lens "CLOSED" drift re-opened on the audit's claim, two cross-reference
+rules added (retired hooks leave; one machine-text guard); questions — Q15 measured (five
+surfaces, 1,645 B / 1,788 B standing) + option (c) fold, Q16 zero-setup memory (default b:
+one keystroke), Q17 retire/keep four dormant surfaces (fold/archive/freeze/gate defaults),
+Q11 + Q9 resolved entries carry their new numbers, two EXECUTED directives ledgered; tasks —
+#23 (cheap judge + readable tail + honest trace) leads, #22 rewritten as the generic
+wrong-check class, #24 counters ledger-joined, #25 one machine-text guard, #26 test hygiene
++ dead weight, #27 kb-pull under 10 KB, #8 rewritten as compute-what-drifts, #28 self-check
+un-gameable, #11 RE-PARKED, #21 behind Tier 2, per-ship chores under #12, plan items
+14–17 folded into #13/#17. Checks: every version/file:line claim written was read once
+(listed above); prism 0.1.0 + marketplace 2.47.2 + bundle 2.27.0 read from disk. Ledger:
+5 items appended, cursors → 20260906-1345. Briefing regenerated LAST.
+Lens pass (same sitting) over the capture + plan: 22/22 citations verified, numbers reproduce;
+five escalations accepted and filed as inbox 20260906-1405 (essense-flow/autopilot hooks
+omitted; judge-flag quality leg unmeasured + undocumented mechanism; background_tasks not a
+documented field; owner-voice split; items 2/4 vs recorded runner decisions). Errata appended
+to the capture. Steward pass still running at this line.
+
+## 2026-09-06 · #23 + #22 + #24 BUILT (turn-end 0.7.0-pending, steward 0.5.1-pending) — owner delegated: "decide… my vision is applied and works"
+#23/#22 turn-end: judge child spawned LEAN (`--setting-sources ""` + `--disable-slash-commands`
++ `--strict-mcp-config`), fail-open retry without lean args on an argument-class failure
+(never on a timeout), verdict carries `lean` / `durationMs` / `costUsd`; exhaustion note
+emitted ONCE at the budget line then silent (lens correction 5, not the plan's "silent
+always"); DEFERRAL primitive — a duty may return a named reason from `defer()`; shared
+predicates in lib/deferral.js (agents in flight, plan mode); request-closure + quality-lens
+defer while agents run, session-digest also under plan mode; agents-in-flight derived from
+the TRANSCRIPT (launch tool_use id ↔ `<tool-use-id>` in the completion notice — shape read
+from this sitting's own transcript), `background_tasks` honoured if ever present, never
+required; tail renders DEMANDS first, then errors, then material, whole tail hard-capped at
+9,000 chars with the BRIEF (pointer) form substituted and named; session-scoped
+`sessionSupplied` memory — a note already handed over this sitting returns as one pointer
+line; trace now carries engine / ms / costUsd / lean / deferred / errors / satisfied_by /
+agents_in_flight / emitted_chars / payload_keys / permission_mode; errored duties never
+silent; session-digest satisfied against the REQUEST's own timestamp, not first-fire time.
+Suite hygiene: E2E fixtures disable context-recall (no real judge spawn); exe test SKIPS by
+name without a binary. Check: turn-end suite 170/170 in ~1 s (was 146 in 43 s); replay of
+the 08-27 9-fire shape → advise, block, block, give-up, silence. #24 counters: brief
+`inbox:` line, `[instr] items`, fleet table and turn-end steward-sync all derive from
+status.json (turn-end's own port of the predicate); `[instr]` adds `(oldest Nd)`; fleet
+dedupe case-insensitive. Check: on this repo all readers print 3 (ledger newIds = the three
+post-pass items); steward suites 45/45 + 13/13. OUTSTANDING for #23: the recall-quality
+replay (lean vs plain, 10 real turns) is running in the background; result lands below.
+Plugin code changed, NOT pushed, versions not yet bumped.
+
+## 2026-09-06 · #25 BUILT — one canonical machine-text guard, drift-tested; kb-pull stands down in judge children
+Six markers (`[SYSTEM NOTIFICATION`, `<task-notification>`, `Stop hook feedback:`,
+`<local-command` prefix, `<command-name>`, `<system-reminder>`) now identical in
+thorough-mode, pattern-menu, kb-pull, turn-end context.js AND the two home hooks
+(verification-rules.js gained a guard it never had — it fired 378× across 212 human prompts;
+generalize-first.sh gained `<system-reminder>`). kb-pull stands down on `MK_TURN_END_DEPTH`
+(pattern-menu precedent). New repo-guard detector `machine-guard-drift` (plugin-toolkit):
+finds every `MACHINE_TEXT_MARKERS`/`MACHINE_PREFIXES` declaration in tracked .js and blocks
+when copies differ (holds no canonical of its own — the invariant is sameness). Checks:
+kb-pull 51/51 · patterns 37/37 · thorough-mode 21/21 · turn-end 170/170 · repo-guard live
+from root: exit 0, 4 detectors ran (first run caught my own test fixture — fixture now
+assembles the constant name at runtime); home probes: machine-prompt → 0 B from both home
+hooks, human `++` prompt → 786 B unchanged. Caveman's tracker (third-party) still has no
+guard — 121 B/prompt, not ours to edit.
+
+## 2026-09-06 · #26 BUILT + GATES GREEN — test hygiene, dead weight gone, seven plugins bumped (not pushed)
+Deleted: kb-scribe-stop.js + its 42-check suite (retired 0.9.0, "kept one release", shipped
+three), lens verifiability-stop.{js,sh} + its 39-check suite (tested only the dead hook) —
+replaced by tests/verifiability-lens.test.js (33 contract checks over agent/rubric/profile/
+presets/metadata/no-hook); relic .claude/kb/scribe-state.json + .claude/verifiability-lens/
+state.json in this repo; the unreferenced ~/.claude/hooks/thorough-mode.js (April copy).
+Migrated this repo's dead `.claude/kb.json scribe.focus` (6 bullets, no consumer) into
+`.claude/turn-end.json` duties.session-digest.important — the consumer that exists. Home
+hygiene: ~/.claude/kb/cued.json 84 → 5 real roots; 4,458 leftover test dirs removed from
+%TEMP% (kb-* 4,207, steward-* 249, patterns-* 2; all older than 60 min); kb-session suite now
+pins a fake HOME (the source of the 79 temp roots); turn-end E2E fixtures disable recall (no
+real judge spawn, 43 s → 1 s). Docs: lens CLAUDE.md/README/plugin.json/agent.md no longer
+describe a live Stop hook; kb CLAUDE.md/README say two hooks + DELETED scribe; turn-end
+README/CLAUDE.md 170 checks; steward README 45+13 checks, ≤6-line briefing. Versions:
+turn-end 0.7.0 · steward 0.5.1 · kb 0.12.0 · patterns 0.1.1 · thorough-mode 1.11.2 ·
+verifiability-lens 0.5.1 · plugin-toolkit 1.11.0 — plugin.json + marketplace.json (metadata
+2.47.2 unchanged) + RELEASE-NOTES entries + root README rows. GATES (root cwd, direct exit
+reads): test-all --root 33/33 suites / 1,783 checks · registry-check exit 0 (6 "worth a
+decision" rows, pre-existing) · repo-guard exit 0, 4 detectors ran. Working tree: ~40 files
+modified, 5 deleted, 3 added — NOT committed, NOT pushed (owner's call).
+
+## 2026-09-06 · Tier-1 item 1b (lens-restored) BUILT — pipeline hooks stand down cheaply everywhere
+essense-flow 0.26.2: context-inject + next-step test `.pipeline/` before importing lib/state.js
++ js-yaml (same predicate as readState's pipeline_present). essense-autopilot 0.4.1: js-yaml
+lazy after the pipeline walk; hooks.json calls node directly (bash wrapper gone). Measured
+best-of-3 in a non-pipeline repo: context-inject 154 → 105 ms, next-step 129 → 104 ms,
+autopilot 125 (+197 wrapper) → 99 ms. Suites: essense-flow hooks 11/11, autopilot 44/44;
+autopilot fixture with .pipeline still halts correctly. Judge probes (5 + 3 runs, one real
+8.8 KB prompt): api_ms ≈ wall — the child DELIBERATES 2.1–4.0k output tokens for a ~600-char
+JSON verdict; `--effort low` 2,138 tokens / 25.8 s; same config twice → different picks
+(plain-vs-plain and lean-vs-lean). claude-p.js header corrected: lean buys no-boot + −36% cost
++ no state pollution, NOT speed on real prompts; the 60 s budget is overrun by deliberation.
+Probe 2 (same prompt): `--effort low` 2,138 → 5,893 output tokens on two identical runs
+(25.8 s → 56.9 s); `--effort medium` 8,853 tokens / 95.8 s — past the judge's own 60 s
+budget. Every same-config pair picked DIFFERENT notes. Filed as a Q11 datum (inbox
+20260906-1700) with five open options + the check each needs. Owner decides.

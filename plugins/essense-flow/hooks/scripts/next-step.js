@@ -9,6 +9,7 @@
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(__dirname, "../..");
@@ -22,6 +23,11 @@ main().catch((err) => {
 
 async function main() {
   const projectRoot = process.cwd();
+
+  // FAST stand-down before any library loads — this Stop hook fires in EVERY repo (measured
+  // ~430 fires, ~130 ms each, in projects that never ran the pipeline). Same predicate
+  // readState uses for `pipeline_present`; only the cost moves, never the behaviour.
+  if (!existsSync(join(projectRoot, ".pipeline"))) process.exit(0);
 
   let state;
   try {

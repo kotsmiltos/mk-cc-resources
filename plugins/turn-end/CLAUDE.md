@@ -112,7 +112,20 @@ lib/sources/            # WHERE recallable knowledge lives — the second extens
                         #   is the generic TYPE; every shipped source is CONFIG over it
                         #   (kb-captures, kb-extracted, steward-model). A configured dir
                         #   that does not exist is simply empty — that is the silence rule
-lib/judges/             # judgment surface. 0.6.0: context-recall carries a fail-open
+lib/deferral.js         # 0.7.0: the shared "not now" predicates — agents in flight (read
+                        #   from the transcript: Agent tool_use id ↔ <tool-use-id> in the
+                        #   completion notice; the undocumented payload field is honoured,
+                        #   never required) and plan mode (documented permission_mode). A
+                        #   duty returns a NAMED reason from defer(); the runner records it
+                        #   as `deferred`, asks nothing. Closes the wrong-check class
+                        #   (measured 08-27 plan mode 8+ cycles; 09-06 five agents in flight)
+lib/judges/             # judgment surface. 0.7.0: the child is spawned LEAN (--setting-sources
+                        #   "" --disable-slash-commands --strict-mcp-config; empty source list
+                        #   is UNDOCUMENTED → fail-open retry without it, verdict says
+                        #   lean:applied|fallback). Buys no-boot, −36% cost, no state
+                        #   pollution — NOT speed: measured on real prompts the child
+                        #   deliberates 2–9k output tokens (25–95 s) and picks differently
+                        #   on identical input; see claude-p.js header. 0.6.0: context-recall carries a fail-open
                         #   term-overlap FALLBACK (its own tiny ranker — no kb import) for
                         #   judge deaths only; material NAMES the engine, supply() returns
                         #   engine judge|fallback-ranker (owner ruling: quality over speed —
@@ -136,7 +149,7 @@ hooks/                  # the one Stop registration; the adapter holds ZERO poli
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 146 checks, own temp fixtures. Three replay measured failures
+tests/turn-end.test.js  # 170 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

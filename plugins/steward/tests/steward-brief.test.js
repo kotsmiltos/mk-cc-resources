@@ -51,6 +51,33 @@ check('briefing content injected', ctx.includes('Ship: test project.'));
 check('pending inbox flagged', ctx.includes('1 UNINTEGRATED'));
 check('ambient protocol injected', ctx.includes('<steward-protocol>'));
 
+// 2b. ONE item model, three readers (audit 2, 2026-09-06): an item RECORDED in status.json
+// is not "unintegrated" though its file still sits in inbox/ (files never move under the
+// contract); a dotfile is never an item; the [instr] line and the inbox line agree.
+fs.writeFileSync(path.join(proj, '.steward', 'inbox', '.README.md'), 'tombstone\n');
+fs.writeFileSync(path.join(proj, '.steward', 'inbox', '20260722-0900-second.md'), 'second\n');
+fs.writeFileSync(path.join(proj, '.steward', 'status.json'), JSON.stringify({
+  schema: 1, items: [{ id: '20260721-2200-food-rot', status: 'integrated' }], views: {},
+}));
+const outLedger = JSON.parse(runHook(proj)).hookSpecificOutput.additionalContext;
+check('recorded item excluded from the inbox count', outLedger.includes('inbox: 1 UNINTEGRATED'));
+check('dotfile never counts (Endure phantom)', !outLedger.includes('inbox: 2 UNINTEGRATED') && !outLedger.includes('inbox: 3 UNINTEGRATED'));
+check('[instr] items agrees with the inbox line', /\[instr\][^\n]*items: 1 new/.test(outLedger));
+check('[instr] carries the backlog age of the oldest new item', /items: 1 new \(oldest \d+d\)/.test(outLedger));
+fs.unlinkSync(path.join(proj, '.steward', 'inbox', '.README.md'));
+fs.unlinkSync(path.join(proj, '.steward', 'inbox', '20260722-0900-second.md'));
+fs.unlinkSync(path.join(proj, '.steward', 'status.json'));
+
+// 2c. Fleet dedupe is case-insensitive on Windows: a lowercase cwd must not register twice.
+{
+  const fleetFile = path.join(fakeHomeGlobal, '.claude', 'steward', 'fleet.json');
+  const before = JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.length;
+  const lowered = process.platform === 'win32' ? proj.charAt(0).toLowerCase() + proj.slice(1) : proj;
+  runHook(lowered);
+  const after = JSON.parse(fs.readFileSync(fleetFile, 'utf8')).projects.length;
+  check('lowercase cwd adds no duplicate fleet entry', after === before);
+}
+
 // 3. Empty inbox → "inbox: empty"
 fs.unlinkSync(path.join(proj, '.steward', 'inbox', '20260721-2200-food-rot.md'));
 const out2 = JSON.parse(runHook(proj));

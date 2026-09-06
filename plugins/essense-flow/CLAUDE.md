@@ -43,8 +43,8 @@ return, masters surface them at phase gates via AskUserQuestion (`register-add -
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first). Silent in repos that never ran the pipeline (no `.pipeline/`); parse-corrupt state.yaml renders a VISIBLE degraded banner |
-| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml |
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first). Silent in repos that never ran the pipeline (no `.pipeline/`) — and since 0.26.2 exits BEFORE importing lib/state.js + js-yaml there (~150 → ~100 ms per fire; these fire in every repo); parse-corrupt state.yaml renders a VISIBLE degraded banner |
+| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml; same pre-import stand-down since 0.26.2 |
 
 ## references/ (the load-bearing docs)
 

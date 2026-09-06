@@ -27,12 +27,33 @@
  *    spawning, and stand down on sight of it.
  * 4. `--bare` IS NOT AN OPTION. It skips hooks — which would solve (3) for free — but it does
  *    not read the stored OAuth credential: exit 1, "Not logged in · Please run /login". Lean
- *    and plan-billed are unreachable together by flags.
+ *    and plan-billed are unreachable together by THAT flag.
  *
- * COST, measured: ~11s and ~$0.03 per call, because a non-bare session loads CLAUDE.md,
- * plugins and its full system prompt. That is why no shipped duty uses this. It is the
- * extension surface for a duty whose satisfaction is genuinely a matter of judgment; every
- * duty answerable from disk must stay on disk.
+ * COST — measured 2026-09-06 (audit 2, haiku). TWO measurements, and they disagree on purpose:
+ *   one-word probe, scratch project:
+ *     default child ...... 33.0 s wall / 3.8 s API, $0.026, every hook fired
+ *     + LEAN_ARGS ........ 3.9 s wall,               $0.018, NO hook fired, OAuth intact
+ *   REAL recall prompts (10-turn replay + a 5-run controlled probe, 8.8 KB prompt):
+ *     lean ............... avg 28 s (api_ms ≈ wall), $0.026, 2,100–4,000 OUTPUT tokens for a
+ *                          ~600-char JSON answer — the child deliberates; --effort low barely moves it
+ *     plain .............. avg 33 s, $0.040 (13k more cached system-prompt tokens)
+ *     same config twice .. DIFFERENT picks (plain-vs-plain AND lean-vs-lean) — the judge is
+ *                          nondeterministic; its verdict is a distribution, not a fact
+ * So LEAN_ARGS buy: no hook/plugin/MCP boot (the 235 judge children on this machine each
+ * fired the whole harness and polluted fleet/kb state), ~36% lower cost, and no dependence on
+ * the user's settings. They do NOT buy speed on a real prompt: that time is inference, and
+ * the 60 s budget below is what a long deliberation overruns (12 ETIMEDOUTs in real sittings).
+ * The earlier "~11s" and "46s" figures in this repo were harness boot, not judge time.
+ *
+ * LEAN_ARGS, and the caveat that keeps them honest: `--setting-sources ""` (an EMPTY source
+ * list) is what silences hooks and plugins while leaving OAuth alone. The documented values
+ * are `user,project,local`; the empty list works because the CLI drops empty entries before
+ * validating — measured on the installed CLI, NOT documented. So every use is fail-open: a
+ * child that exits non-zero under LEAN_ARGS is retried once WITHOUT them, and the verdict says
+ * which way it ran (`lean: applied | fallback`). A CLI that one day rejects the empty list
+ * costs one extra spawn per fire and shows up in the trace, never a dead recall.
+ * `--disable-slash-commands` drops the ~8 KB skill listing; `--strict-mcp-config` with no
+ * `--mcp-config` starts no MCP server. Both documented.
  */
 
 const { execFileSync } = require('child_process');
@@ -42,6 +63,20 @@ const path = require('path');
 const DEPTH_VAR = 'MK_TURN_END_DEPTH';
 const DEFAULT_MODEL = 'haiku';
 const DEFAULT_TIMEOUT_MS = 60000;
+
+const LEAN_ARGS = ['--setting-sources', '', '--disable-slash-commands', '--strict-mcp-config'];
+
+/*
+ * A failure that a retry cannot cure: the child ran past the budget (or was signalled). A
+ * second spawn would double the wait and overrun the hook's own 90 s ceiling, so those errors
+ * stand as they are; only an argument-class failure (non-zero exit, no timeout) earns the
+ * retry without LEAN_ARGS.
+ */
+function isRetryableFailure(err) {
+  if (!err) return false;
+  if (err.code === 'ETIMEDOUT' || err.signal) return false;
+  return typeof err.status === 'number' && err.status !== 0;
+}
 
 /*
  * FIFTH measured constraint, and the one that actually bit in production: FINDING THE BINARY.
@@ -91,10 +126,23 @@ function isNested() {
   return Boolean(process.env[DEPTH_VAR]);
 }
 
+/** The argv for one child. `lean` decides whether LEAN_ARGS ride along. */
+function buildArgs(prompt, options, lean) {
+  const args = [
+    '-p', prompt,
+    '--model', options.model || DEFAULT_MODEL,
+    '--output-format', 'json',
+  ];
+  return lean ? args.concat(LEAN_ARGS) : args;
+}
+
 /**
- * Ask a fast model one question. Returns { ok, text, error }.
+ * Ask a fast model one question. Returns { ok, text, error, costUsd, durationMs, lean }.
  * Never throws: a judge that cannot answer must degrade to "no verdict", because a turn-end
  * hook that dies on a spawn failure would wedge every turn in the session.
+ *
+ * `options.exec` injects the spawn (tests exercise the retry ladder without a real binary);
+ * `options.lean === false` opts a caller out of LEAN_ARGS entirely.
  */
 function judge(prompt, options = {}) {
   if (isNested()) {
@@ -108,28 +156,51 @@ function judge(prompt, options = {}) {
       error: 'no runnable claude executable found (CLAUDE_CODE_EXECPATH unset and none on PATH)',
     };
   }
-  const args = [
-    '-p', prompt,
-    '--model', options.model || DEFAULT_MODEL,
-    '--output-format', 'json',
-  ];
-  try {
-    const out = execFileSync(exe, args, {
-      encoding: 'utf8',
-      timeout: options.timeoutMs || DEFAULT_TIMEOUT_MS,
-      // stdin ignored: the prompt is argv (constraint 1) and an inherited stdin would block.
-      stdio: ['ignore', 'pipe', 'pipe'],
-      // shell deliberately absent — see constraint 2.
-      env: { ...process.env, [DEPTH_VAR]: '1' },
-    });
+  const exec = typeof options.exec === 'function' ? options.exec : execFileSync;
+  const spawnOptions = {
+    encoding: 'utf8',
+    timeout: options.timeoutMs || DEFAULT_TIMEOUT_MS,
+    // stdin ignored: the prompt is argv (constraint 1) and an inherited stdin would block.
+    stdio: ['ignore', 'pipe', 'pipe'],
+    // shell deliberately absent — see constraint 2.
+    env: { ...process.env, [DEPTH_VAR]: '1' },
+  };
+  const wantLean = options.lean !== false;
+  const started = Date.now();
+  const attempt = (lean) => {
+    const out = exec(exe, buildArgs(prompt, options, lean), spawnOptions);
     const parsed = JSON.parse(out);
-    return { ok: true, text: parsed.result || '', error: null, costUsd: parsed.total_cost_usd };
-  } catch (err) {
-    return { ok: false, text: null, error: String((err && err.message) || err).slice(0, 300) };
+    return {
+      ok: true,
+      text: parsed.result || '',
+      error: null,
+      costUsd: parsed.total_cost_usd,
+      durationMs: Date.now() - started,
+      lean: wantLean ? (lean ? 'applied' : 'fallback') : 'off',
+    };
+  };
+  try {
+    return attempt(wantLean);
+  } catch (first) {
+    if (wantLean && isRetryableFailure(first)) {
+      try {
+        return attempt(false);
+      } catch (second) {
+        return {
+          ok: false, text: null, durationMs: Date.now() - started, lean: 'fallback',
+          error: `lean run failed (${String((first && first.message) || first).slice(0, 120)}); ` +
+            `plain run failed too (${String((second && second.message) || second).slice(0, 160)})`,
+        };
+      }
+    }
+    return {
+      ok: false, text: null, durationMs: Date.now() - started, lean: wantLean ? 'applied' : 'off',
+      error: String((first && first.message) || first).slice(0, 300),
+    };
   }
 }
 
 module.exports = {
-  id: 'claude-p', judge, isNested, resolveClaudeExe,
-  DEPTH_VAR, DEFAULT_MODEL, DEFAULT_TIMEOUT_MS,
+  id: 'claude-p', judge, isNested, resolveClaudeExe, buildArgs, isRetryableFailure,
+  DEPTH_VAR, DEFAULT_MODEL, DEFAULT_TIMEOUT_MS, LEAN_ARGS,
 };

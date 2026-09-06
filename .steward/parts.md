@@ -46,8 +46,8 @@ capability reach) — it CHECKS, never generates.
   empty OR the steward agent was dispatched OR it already asked this sitting; an item is a
   top-level non-dot `.md`, so `done/` and `.gitkeep` never inflate the count. Documented
   everywhere since the 0.3.x cascade — the root README's turn-end ROW now names all FOUR
-  duties (read 2026-08-01; that drift instance is CLOSED). **Never yet observed firing — a
-  LIVE check, see state.md**) · `quality-lens` (advise, from verifiability-lens; its
+  duties (read 2026-08-01; that drift instance is CLOSED). **First fire OBSERVED live
+  2026-08-23 — but it counts RAW files, see the gap map below**) · `quality-lens` (advise, from verifiability-lens; its
   meta-loop guard judges the ROLLUP'S SHAPE, not the plugin's NAME).
 - **SHIPPED 0.4.0 (owner directive + pass 2, 2026-08-01/02): `self-check`** — the fifth
   duty, the first default-ON `severity:block` DEMAND: a turn that changed real files may
@@ -112,6 +112,48 @@ capability reach) — it CHECKS, never generates.
   then defer-until-mode-exits or count the plan file as that span's digest surface —
   generic for any duty whose satisfaction needs a project-file write. Non-writing DEMAND
   duties (request-closure) stayed satisfiable and are unaffected.
+- **GAP MAP — audit 2 (measured 2026-09-06; ✓ = file:line re-read by the steward pass,
+  otherwise the audit capture's citation):**
+  - **Tail ORDER + SIZE:** `runner.js:98` ✓ puts material first ("it can change what the
+    answer SAYS"); a 3-recall tail measured 11,248 B with `[turn-end] before yielding` at
+    line 126 → the platform stubbed it to a 2 KB preview → the 4 demands were never read
+    → one nudge cycle wasted by ordering, not disobedience. → #23.
+  - **Closure-class duties ignore in-flight agents:** `context.js:218` ✓ captures
+    `backgroundTasks`; no duty reads it ✓ (one match in `lib/`). request-closure +
+    quality-lens demanded closure with 5 agents in flight and no work product; each of the
+    5 completion wakes re-demanded session-digest + request-closure — same "wrong check"
+    class as plan mode. → #22.
+  - **Recall supply has no per-session memory:** the first wake RE-SUPPLIED two of the
+    same three July captures supplied at the first stop — 5 wakes = 5 judge runs + 5
+    tails of mostly repeated material. → #23.
+  - **Exhaustion re-arms:** `runner.js:190` ✓ emits the "giving up after N attempt(s)"
+    note as `additionalContext` on EVERY exhausted fire, which continues the turn → 2
+    prompts × 9 fires on 08-27, ended only by the platform's 9-consecutive-block
+    override; `MAX_FIRES_PER_PROMPT = 3` (`:37` ✓) never actually stops it. → #22.
+  - **Judge startup is the cost, not inference:** `claude-p.js:112-113` ✓ passes only
+    `-p`, `--model`; 33.0 s wall / 3.8 s API default vs 3.9 s with `--setting-sources ""`
+    (no hooks, OAuth intact) — every judge child today pays SessionStart + UserPromptSubmit
+    + the skill listing (~3.75 MB across 235 children). → #23.
+  - **`engine` never traced:** `context-recall.js:287` ✓ sets `engine: judgeDeath ?
+    'fallback-ranker' : 'judge'`; `hooks/scripts/turn-end.js` `writeTrace` (`:98`/`:161`)
+    names no such field ✓; per-duty `ms`/`costUsd` returned by `claude-p.js:126` are
+    dropped at `context-recall.js:230` (audit). Dogfood #1 leg (b) is unmeasurable from
+    disk. → #23.
+  - **Errored duties vanish** (`runner.js:170`, audit — no tail line, no trace field);
+    `DUTIES` is a hard-coded array (`lib/duties/index.js:52-59`, audit — not discovery by
+    shape); the whole transcript is re-read every Stop (`context.js:122-123`, audit:
+    170 MB → 1.4 s, 673 MB RSS). → #23 / #17.
+  - **`self-check` is gameable:** the named-check regex (`self-check.js:109-120` ✓,
+    result-tense) accepts "Check: none" / "verified by inspection" / "exit 0" (audit);
+    `sed` is on the non-run heads list (`:78` ✓) so a `Bash sed -i` mutation is invisible
+    to the changed-files detector (audit `:53-55`) — the very edit mode the owner's
+    harness prescribes. Blocked 42× (twin 30) while the owner asked for LESS testing on
+    Unity (*"no testing on your side is necessary"*). → #28.
+  - **`steward-sync` counts raw files:** `ITEM_EXT = '.md'` (`steward-sync.js:45` ✓), no
+    status.json read ✓ — on a contract ship every integrated item is re-reported forever
+    (measured 08-27: all 4 listed AFTER integration). → #24.
+  - **The suite spawns REAL judges** (`tests/turn-end.test.js:912-919`, audit) — 43 s,
+    plan-billed, asserts a real `claude` binary exists. → #26.
 - **FIXED in 0.3.1 (2026-07-31) — the hook budget no longer kills its own judge:**
   `hooks/hooks.json` now sets `"timeout": 90` (read 2026-08-01). Invariant the old 30
   violated: **the hook budget must exceed the judge budget** — the judge carries its own
@@ -220,7 +262,29 @@ capability reach) — it CHECKS, never generates.
   `dropped N line(s) / M chars` plus the remedy. kb keeps its own copy of this logic
   (`lib/cap-block.js`) ON PURPOSE: plugins install standalone, so a shared module across
   plugin boundaries would make one plugin's install a dependency of another's.
-  **Residual:** nothing checks at WRITE time that a real `briefing.md` is inside budget.
+  **Residual:** nothing checks at WRITE time that a real `briefing.md` is inside budget
+  (→ #8, now the compute-what-drifts redesign).
+- **GAP MAP — audit 2 (measured 2026-09-06; ✓ = re-read this pass):**
+  - **Two inbox counters in ONE injection:** `steward-brief.js:256` ✓ counts every
+    `.md` (no dot check, no ledger) while the `[instr]` line derives from status.json —
+    Endure shows a permanent phantom from `inbox/.README.md`; `steward-fleet.js:43`
+    (audit) is a third raw counter, and fleet dedupe is case-sensitive (`:238`, audit;
+    a lowercase-cwd probe added a duplicate ship this sitting). → #24.
+  - **False ⚠ on `git-HEAD`:** freshness reads the ref FILE's mtime (`:63-67` ✓) — it
+    moves when the regenerated model is COMMITTED, so every model commit trips the
+    warning against the briefing it just committed. → #8 (freshness by SHA).
+  - **Authored prose lags:** Ship/Last/Next contradicted by the log's last entry in 4/5
+    ships; the ⚠ line right in 5/5. Only `Ship:` cannot be computed. → #8.
+  - **Agent text vs tools:** `agents/steward.md:59-60` still instructs a done/-move the
+    agent's toolset cannot perform (audit); `:62-66` claims an install instrument —
+    `INSTRUMENTS = [instrGit, instrItems]` (`:151` ✓) has none. → #8 / #26.
+  - **Status contract adopted in 1/5 ships** — the done/-ritual + stub litter stand on
+    the other four until `steward-backfill` runs there. → #12.
+  - **Wrong-root drops still land** in the aithseis inbox — not the hook (root anchoring
+    measured correct, 0 wrong-root paths in transcripts) but twin-game's MODEL text
+    hardcoding that path; one aithseis inbox file has a mangled name and an older body
+    than its twin; fleet-caste content hijacked an aithseis session. → per-ship chores
+    under #12.
 - **Integration mechanics — the done/-move ritual is RETIRED on contract ships (0.5.0):**
   status.json owns lifecycle, files never move, "new" is DERIVED (file present, id
   absent) — which also keeps the agent the single writer with no write race, and kills
@@ -294,6 +358,26 @@ capability reach) — it CHECKS, never generates.
   stay EVIDENCE-GATED; the first foreign datum did NOT gate them (the crowd-game miss was
   SPLITTER-class, closed by the pattern split mode). The deep re-seed is the next chance.
 - **Parked (design decided, unbuilt):** `kb_capture` MCP write tool.
+- **GAP MAP — audit 2 (measured 2026-09-06; citations are the audit capture's):**
+  - **kb-pull is the largest unread surface:** the digest is injected WHOLE and UNCAPPED
+    every prompt (`kb-pull.js:50`; twin 9,963 B / 110 lines) — 51 of the 53 platform
+    stubs (>10 KB → 2 KB preview) carried it; hints have no per-session dedupe (top-3 ids
+    fill 40% of slots) and are 84% ignored; no `MK_TURN_END_DEPTH` guard (40/78 judge
+    Stops preceded by a kb-pull fire — patterns' menu hook has the guard, this one does
+    not); body-repeat bonus leaks into the subject floor (`term-overlap.js:185,235`); a
+    malformed `.claude/kb.json` silently drops the digest (`kb-pull.js:157` throws before
+    `:170`); `source` facet advertised but unfilterable; archived digests titled by stamp
+    → noise hits; 8-digit runs in h2 titles become timestamps; a BOM defeats frontmatter.
+    → #27 (cap + dedupe + change-aware digest), #25 (depth guard).
+  - **Dead weight still shipped:** `kb-scribe-stop.js` + its tests (RETIRED 0.9.0, "kept
+    one release" — now three releases on); `kb.json scribe.focus` has no consumer anywhere
+    (crowd + this repo still carry it). → #26.
+  - **Tests pollute the home:** `kb-session.test.js` `runHook(root, {})` → `cueOnce`
+    falls back to the REAL homedir (cue file: 84 entries, 79 temp test roots); thousands
+    of `kb-*`/`kb-cue-*` temp dirs left behind. → #26.
+  - **Usage:** 38 MCP calls fleet-wide; deliberate pull fell to ~0 after 08-23 while the
+    push tax rose. The hints-ignored cause is REPETITION + SIZE, not vocabulary — rung 2
+    (#11) stays parked behind #27.
 
 ## verifiability-lens (0.5.0) — no hook
 
@@ -307,6 +391,14 @@ capability reach) — it CHECKS, never generates.
 - **Files:** `plugins/verifiability-lens/` · design: `design/verifiability-awareness.md`.
   Its plugin CLAUDE.md now records the 0.5.0 retirement (patched in the 2026-07-31
   restructure, grep-verified) — that drift instance is CLOSED.
+- **Audit 2 (2026-09-06):** ON everywhere via the user-global config; 27 dispatches;
+  ZERO telemetry (no trace, no refute/confirm ratio, no cost) — its value is
+  UNMEASURABLE; all 39 of its tests test the RETIRED Stop hook (`verifiability-stop.{js,sh}`
+  still shipped); the audit reports CLAUDE.md/README/plugin.json/agent.md still describing
+  that hook as live — which RE-OPENS the "CLOSED" drift instance above (not re-read this
+  pass; the #26 executor settles it); the advancing-vs-oscillating classifier is
+  deliberately unbuilt (`quality-lens.js:25-27`) and stays parked until telemetry shows
+  escalations get acted on. → #26 (delete + contract test), #13 (telemetry).
 - **v3 role:** kept, re-economized at Phase C.
 
 ## plugin-toolkit (1.10.1) — dev/maintenance + measurement + THREE gates
@@ -367,6 +459,10 @@ capability reach) — it CHECKS, never generates.
   — which needs no answer about whether Claude Code substitutes the variable inside a
   ` ```! ` block or what that block's cwd is. Both earlier forms bet on one of those
   unknowns. The installed bundle still carries the pre-fix text (state.md).
+- **Audit 2 (2026-09-06):** code-glossary was NEVER invoked interactively in any real
+  session; the engine is sound (2.1 s over plugins/kb, 8 real clusters — it found two
+  identical registries inside kb). Whether it becomes a gate inside `@ship` instead of a
+  skill to remember is Q17.
 - **v3 role:** gates finally get WIRED into executor steps (Phase A).
 
 ## essense-flow (0.26.1) — classic pipeline (headline today; dissolves per v3 §2)
@@ -384,6 +480,9 @@ capability reach) — it CHECKS, never generates.
 - **Consumes:** the plugin-toolkit code-glossary engine for /organize + /glossary (hard
   stop if absent); Node.js `lib/` (19 modules).
 - **Files:** `plugins/essense-flow/` · references/schemas single-source artifact shapes.
+- **Audit 2 (2026-09-06):** ZERO uses of any essense-flow skill or agent in any real
+  session since 08-10 (owner 08-26: "rarely used"). Largest surface in the marketplace,
+  no live customers — freeze-vs-invest is Q17; Phase E (#19) already plans its retirement.
 
 ## essense-autopilot (0.4.0) — the last competing blocking hook
 
@@ -403,7 +502,17 @@ capability reach) — it CHECKS, never generates.
   `@ship` now PROBES for repo-guard before naming it, and says so when absent — the rule
   that an instruction may not name a path an install cannot resolve.
 - **Files:** `plugins/thorough-mode/hooks/thorough-mode.js`.
-- **v3 role:** discipline folds into executor protocol; @prompt obsoleted by the model.
+- **Audit 2 (2026-09-06):** `@prompt` 11 + `@ship` 5 + `++ @verify` 1 = the owner's REAL
+  workflow (the "obsoleted by the model" role below is refuted by usage — @prompt renders
+  FROM the model and is how the owner starts work). Gaps (audit citations): `++` is
+  injected THREE ways (THOROUGH_AUGMENT 363 B + thorough-mode 1,007 B + global CLAUDE.md
+  restating it under a line that says "not restated here"); `@verify` re-injects 3 of the
+  4 always-on rules; the `++` regex fires on pasted code `x ++ ;`, hints fire on "push to"
+  / "select … from" / "carefully"; `@prompt`'s steward check uses `process.cwd()` not the
+  git root; sub-agent modifier propagation is prose only (no Agent-matcher hook); a
+  home-side unreferenced April copy of the hook exists. Its 6-marker machine-text guard
+  is the CANONICAL candidate (→ #25). → #25, #17 (fold), Q15.
+- **v3 role:** discipline folds into executor protocol — @prompt STAYS (usage-proven).
 
 ## session-lifecycle (1.3.1)
 
@@ -411,12 +520,18 @@ capability reach) — it CHECKS, never generates.
   /claude-md-sync, /retro, /meta-review. No dependencies.
 - **v3 role:** handoff/resume obsoleted by the steward model; retro/meta-review become
   candidate steward verbs.
+- **Audit 2 (2026-09-06):** ZERO uses ever — no `.claude/handoffs/` dir exists on any
+  ship; the plugin is globally disabled; `@prompt` took its place. Note the coupling:
+  kb's `handoffs` source then indexes nothing. Archive-or-keep is Q17.
 
 ## reuse-gate (0.1.0)
 
 - **Exposes:** PreToolUse once-per-message reuse-first reminder on first source write;
   opt-in OFF, fail-open. Dedupes on `prompt_id` and is safe there only because injecting a
   reminder spawns nothing. **v3 role:** folds into executor code-write discipline.
+  **Audit 2:** dormant since 07-07, 0 projects configured; one of the FIVE design-open
+  surfaces (with the CLAUDE.md gate, generalize-first, pattern-menu, pattern-gate). Fold
+  into pattern-gate is the Q17 default.
 
 ## patterns (0.1.0) — ambient named-pattern menu + pre-code check (PUSHED + INSTALLED 2026-08-27; menu hook live-verified, interactive legs → #21)
 
@@ -444,8 +559,12 @@ capability reach) — it CHECKS, never generates.
   footprint lesson) · **standalone, NOT in mk-cc-all** — load-bearing: hook-carrying AND
   the bundle ships skills only, a bundled `/patterns` would find no `catalog/` · fail-open
   everywhere · own copy of the nearest-`.git` walk (cross-plugin duplication deliberate).
-- **Overlap pending (Q15):** fires on the same prompts as the user-global generalize-first
-  hook (~420 tokens combined); slim/retire vs keep is the owner's call AFTER a live fire.
+- **Overlap pending (Q15) — now MEASURED (audit 2):** the design-open concern has FIVE
+  surfaces (global CLAUDE.md gate 1,788 B STANDING, per session and per sub-agent ·
+  generalize-first hook · pattern-menu · pattern-gate · reuse-gate/@build) firing
+  1,645 B together on one design prompt. `/patterns` was never invoked in any real
+  session; the hooks fire (gate once per prompt_id verified); outcome change unmeasured.
+  Slim / fold-to-one-hook / keep is the owner's call.
 - **Later drop-ins documented, not built:** turn-end pattern-check duty · review lens ·
   essense-flow citation.
 - **Files:** `plugins/patterns/{catalog/patterns.json, hooks/, lib/{render-menu,
@@ -455,11 +574,37 @@ capability reach) — it CHECKS, never generates.
   mid-pass): schema, menu cap, gate chains, enablement precedence, root walk, e2e spawns
   via the `PATTERNS_STATE_DIR` + `PATTERNS_CATALOG_PATH` seams.
 
+## prism (0.1.0) — multi-perspective panel skill (SHIPPED + INSTALLED 2026-09-04; acceptance MET)
+
+- **Why it exists (owner, 2026-09-04, verbatim):** *"multiple agents try and… answer it
+  from different perspectives… these agents have their sole focus on that specific
+  thing… compile their outputs and figure out a plan"* + *"apply that same logic to
+  building what I've asked"* — so it was designed BY its own method (five sole-focus
+  lenses on the skill's design; rulings in `plugins/prism/CLAUDE.md`).
+- **Exposes:** `/prism` — one SKILL.md, ZERO code, stateless, no hooks/config/state files;
+  3-step protocol (frame → parallel sole-focus dispatch on the session model → session-side
+  synthesis with per-point lens credit, named conflict rulings, a delta line naming what a
+  solo answer would have missed); fixed 4-section return contract per lens. **The lens set
+  is open at the LANGUAGE level** — an asker-named lens IS an added lens, zero edits (a
+  stronger drop-in test than a JSON entry); a standing per-project lens set is the named
+  trigger for a future `.claude/prism.json`.
+- **Contract:** bundled in mk-cc-all (skill-only, bundle-safe); never integrates INTO
+  essense-flow (essense-flow may invoke it); test-all NAMES it as a no-suite unit —
+  informational, stays green. Refused on purpose: tests, config, modes, scout, debate
+  rounds, quorum — each with a named future trigger.
+- **Measured:** design-panel cost ~370k agent tokens (five self-bounded lenses; economy
+  blocks in briefs target ~75–150k). **Acceptance criterion MET:** the owner invoked
+  `/prism` unprompted in psience on 09-04 (audit 2).
+- **Files:** `plugins/prism/{.claude-plugin/plugin.json, skills/prism/SKILL.md, CLAUDE.md,
+  README.md, RELEASE-NOTES.md}` · registered marketplace 2.47.2 + bundle 2.27.0.
+
 ## Orthogonal (unaffected by v3)
 
 - **schema-scout (1.2.1):** data-file schema CLI (`scout`), Python package.
 - **project-note-tracker (1.8.0):** per-handler question tracker, Excel backend.
-- **alert-sounds (1.1.1):** cross-platform event alerts, stdlib Python.
+- **alert-sounds (1.1.1):** cross-platform event alerts, stdlib Python. Audit 2: its
+  `clear` step is a 290–410 ms Python interpreter whose whole job is unlinking one file —
+  one of 9 process spawns per prompt (~0.85 s summed) → #17.
 - **statusline (0.2.0):** segment-based statusline (model | task | dir | steward
   anchor+inbox | context counter); settings-level wiring, no hooks/skills, not a plugin
   install; extend = drop a function into SEGMENTS. **0.2.0 (Phase 1): `segSteward` v2**
@@ -491,3 +636,13 @@ count or version in prose is a defect waiting to happen — the class has now pr
 instances in three different files that no one re-ran. Any doc edit that states a number
 must have just run the thing that produces it; where the number earns nothing, print the
 command instead.
+
+**A retired hook is DELETED in the next release, never "kept one release" forever.** Both
+"kept" scripts outlived that promise by three releases (kb-scribe-stop.js + 42 tests;
+lens verifiability-stop + 39 tests), and the lens's docs describe the dead hook as live —
+a shipped file that does nothing is a claim registry-check cannot see. → #26.
+
+**Every UserPromptSubmit hook shares ONE machine-text guard** — four different lists
+existed (thorough 6 / pattern-menu 6 / kb-pull 5 / generalize-first 5 / verification-rules
+0 / caveman 0), none knew `<system-reminder>`, and a `++` inside an agent report armed a
+modifier live. Adding a hook = reusing the guard, not authoring a fifth list. → #25.

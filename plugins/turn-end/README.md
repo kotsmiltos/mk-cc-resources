@@ -231,7 +231,7 @@ resets it.
 node tests/turn-end.test.js
 ```
 
-110 checks, no framework, own temp fixtures — it never reads the repo it ships in. Three of them
+170 checks, no framework, own temp fixtures — it never reads the repo it ships in, and it never spawns a real judge (E2E fixtures disable context-recall; the exe-resolution check SKIPS by name on a machine without the CLI). Three of them
 replay measured failures: *ten consecutive work turns do not oscillate* (the old guard returned
 block/allow/block/allow), *the lens is asked at most once per user request* (all eight observed
 passes were one request), and *`done/` and `.gitkeep` are not inbox items* (a naive count read 4

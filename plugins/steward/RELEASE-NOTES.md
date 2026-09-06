@@ -1,5 +1,14 @@
 # steward — Release Notes
 
+## 0.5.1 — 2026-09-06 — one item model, every reader (audit 2, task #24)
+
+The brief hook's `inbox:` line, the `[instr] items` line and the fleet table all derive
+from status.json now (`lib/status.derive`): an integrated item whose file still sits in
+inbox/ is not "unintegrated", a dotfile is never an item (the Endure phantom). Measured before:
+"8 UNINTEGRATED" beside "items: 4 new" in ONE injection. `[instr]` adds the backlog age of
+the oldest new item (`3 new (oldest 10d)`). Fleet dedupe is case-insensitive on Windows (a
+lowercase cwd registered a ship twice). Suite 45 + 13 checks, isolated fake home.
+
 ## 0.5.0 — Phase 1: the status contract — a ledger instead of rituals
 
 Owner 'go' on design/stack-a-blueprint.md §6b Phase 1; contract page: design/status-contract.md.

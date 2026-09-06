@@ -34,6 +34,8 @@
  * config — the runner already honors that.
  */
 
+const { whileAgentsRun } = require('../deferral');
+
 // The verbatim ask is the payload — but a pasted wall of text would bury its own instruction.
 const MAX_REQUEST_EXCERPT = 600;
 // A one-word "go"/"do it" prompt still deserves closure; no lower bound on the excerpt.
@@ -65,6 +67,12 @@ module.exports = {
   applies(ctx) {
     if (!ctx.turn.userRequest) return false;
     return (ctx.turn.wakeCount || 0) > 0 || agentTargets(ctx).length > 0;
+  },
+
+  // A span with agents still running has no final message to close yet — the status line the
+  // session yields with IS the right message there. Deferred by name until the last returns.
+  defer(ctx) {
+    return whileAgentsRun(ctx);
   },
 
   satisfied(ctx) {

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260827-1545",
+  "updated": "20260906-1430",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -303,14 +303,64 @@
       "groups": ["turn-end"],
       "log": "2026-08-27 · Three items integrated at 902eb2b — patterns landing reconciled, #20 CLOSED as built, Q15 opened, new #22",
       "check": "no code claim entered the model — defect recorded verbatim-sourced as tasks #22 + parts.md turn-end defect bullet; measurement taken from the capture, fix direction marked Claude's pending owner ratification"
+    },
+    {
+      "id": "20260827-1615-dogfood-datum-steward-sync-counter-ignores-ledger",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260906-1430",
+      "by": "steward-agent",
+      "groups": ["dogfood", "status-spine", "turn-end"],
+      "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
+      "check": "steward-sync.js:45 read — ITEM_EXT '.md', no status.json read (grep 'status' = 0 matches); recorded as dogfood leg (c) lie, root-caused into tasks #24"
+    },
+    {
+      "id": "20260904-0405-perspective-panel-skill-and-doubt-about-impact",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260906-1430",
+      "by": "steward-agent",
+      "groups": ["prism", "audit-2"],
+      "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
+      "check": "plugins/prism/.claude-plugin/plugin.json read (0.1.0, skill-only); marketplace 2.47.2 + bundle 2.27.0 read; directive EXECUTED per log 2026-09-04 entries; doubt datum marked answered-by-measurement citing kb capture 20260906-1340"
+    },
+    {
+      "id": "20260906-1236-review-plugins-and-cross-project-usage",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260906-1430",
+      "by": "steward-agent",
+      "groups": ["audit-2"],
+      "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
+      "check": "owner request recorded verbatim-sourced as EXECUTED in questions.md resolved ledger; execution evidence = log 2026-09-06 audit entry + kb capture 20260906-1340 (both read this pass)"
+    },
+    {
+      "id": "20260906-1250-dogfood-turn-end-tail-buries-demands-and-fires-mid-span",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260906-1430",
+      "by": "steward-agent",
+      "groups": ["audit-2", "turn-end", "dogfood"],
+      "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
+      "check": "runner.js:98 'Material first' + :190 giving-up note read; context.js:218 backgroundTasks read, grep over lib/ = 1 match (no duty consumer); datums recorded as parts.md turn-end gap map → tasks #22 + #23"
+    },
+    {
+      "id": "20260906-1345-audit-2-improvement-plan-ranked",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260906-1430",
+      "by": "steward-agent",
+      "groups": ["audit-2"],
+      "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
+      "check": "recorded as Claude's PROPOSAL (no owner decision written): Tier 1 → tasks #23–#28 with file:line re-read where marked ✓ (context-recall.js:287, hooks/scripts/turn-end.js:161, claude-p.js:112-113, steward-brief.js:63-67/151/256, self-check.js:78/109-120); Tier 2 → #8 #27 #28 + #13/#17 folds; Tier 3 → Q16, Q17, Q15(c), #11 re-parked"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260827-1440-turn-end-digest-duty-not-plan-mode-aware"
+      "derived_through": "20260906-1345-audit-2-improvement-plan-ranked"
     },
     "model": {
-      "derived_through": "20260827-1440-turn-end-digest-duty-not-plan-mode-aware"
+      "derived_through": "20260906-1345-audit-2-improvement-plan-ranked"
     }
   }
 }

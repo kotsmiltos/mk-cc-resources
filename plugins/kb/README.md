@@ -95,9 +95,9 @@ unsure something was already tried. Misuse (unknown kind, bad id) returns `isErr
 the model reads the message and corrects its own call. The corpus refreshes per tool call — an
 entry written this session is queryable this session.
 
-Note: the `mk-cc-all` bundle carries only the *skills*. The MCP server and the three hooks
-(`kb-pull` on UserPromptSubmit, `kb-scribe` on Stop, `kb-session-start` on SessionStart) come
-with installing the `kb` plugin itself.
+Note: the `mk-cc-all` bundle carries only the *skills*. The MCP server and the two hooks
+(`kb-pull` on UserPromptSubmit, `kb-session-start` on SessionStart) come with installing the
+`kb` plugin itself; the write side (the session digest) is enforced by the `turn-end` plugin.
 
 ## Use
 

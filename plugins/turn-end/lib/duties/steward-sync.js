@@ -51,11 +51,36 @@ const ITEM_EXT = '.md';
  */
 const STEWARD_AGENT_RX = /^agent:(?:[a-z0-9_.-]+:)?steward$/i;
 
+const STATUS_REL = '.steward/status.json';
+
+/*
+ * Ids the steward ledger already records. Under the status contract (steward 0.5.0) inbox
+ * files NEVER move, so "staged" is "present in inbox/ AND absent from status.json items[]" —
+ * the same predicate steward's own `lib/status.js` derives. This is turn-end's OWN port of
+ * that rule (plugins install standalone; cross-plugin duplication is the house rule), kept
+ * to the letter: top-level, non-dot, `.md`, id = basename sans extension. Measured 2026-09-06
+ * before this port: the ask listed all four files as unintegrated AFTER their integration.
+ * A missing or corrupt ledger records nothing, which degrades to the pre-contract file count.
+ */
+function recordedIds(ctx) {
+  const raw = ctx.disk.read(STATUS_REL);
+  if (!raw) return new Set();
+  try {
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.items)) return new Set();
+    return new Set(data.items.filter((i) => i && typeof i.id === 'string').map((i) => i.id));
+  } catch (_e) {
+    return new Set();
+  }
+}
+
 /** Names of the notes staged for integration, oldest-first by filename convention. */
 function pendingItems(ctx) {
+  const known = recordedIds(ctx);
   return ctx.disk.list(INBOX_REL)
     .filter((e) => e.isFile && !e.name.startsWith('.') && e.name.toLowerCase().endsWith(ITEM_EXT))
-    .map((e) => e.name);
+    .map((e) => e.name)
+    .filter((name) => !known.has(name.slice(0, -ITEM_EXT.length)));
 }
 
 function ask(ctx) {
@@ -102,5 +127,7 @@ module.exports = {
 };
 
 module.exports.pendingItems = pendingItems;
+module.exports.recordedIds = recordedIds;
 module.exports.INBOX_REL = INBOX_REL;
+module.exports.STATUS_REL = STATUS_REL;
 module.exports.STEWARD_AGENT_RX = STEWARD_AGENT_RX;

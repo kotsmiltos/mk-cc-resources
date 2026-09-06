@@ -42,6 +42,27 @@ const SEVERITY_ADVISE = 'advise';
 
 const HEADER = '[turn-end]';
 
+/*
+ * THE INLINE BOUND. Measured 2026-09-06: Claude Code replaces any hook output past ~10 KB with
+ * a 2 KB preview ("Output too large … saved to tool-results … Preview (first 2KB)") — 53 times
+ * in real sessions for kb-pull, once for this runner's own 11,248 B tail, whose four demands
+ * sat at line 126 and were never read. A tail over the bound is a tail that did not happen.
+ * 9,000 chars leaves margin under the smallest stubbed output observed (10,394 B). Claude's
+ * number, derived from a platform measurement, not an owner rule.
+ */
+const MAX_TAIL_CHARS = 9000;
+
+/** Material may arrive as a plain string or as { material, brief } — both are honoured. */
+function materialText(m) {
+  if (!m) return null;
+  if (typeof m === 'string') return m;
+  return typeof m.material === 'string' ? m.material : null;
+}
+function briefText(m) {
+  if (!m || typeof m === 'string') return null;
+  return typeof m.brief === 'string' ? m.brief : null;
+}
+
 /**
  * Evaluate one duty against the frozen context.
  * A duty that throws is a MISSING signal, never a clean one — but unlike repo-guard (a
@@ -53,8 +74,21 @@ function evaluate(duty, ctx, options) {
     if (typeof duty.applies === 'function' && !duty.applies(ctx, options)) {
       return { id: duty.id, state: 'not-applicable' };
     }
+    /*
+     * DEFERRAL — a duty that applies but CANNOT be met right now says so by name. Measured
+     * three ways (08-27 + 09-06): a digest demanded under plan mode's write lock, closure
+     * demanded with five agents still running, both re-armed by every background wake. A
+     * demand that cannot be met is a wrong check, and a wrong check burns the fire budget.
+     * The duty owns the reason (lib/deferral.js holds the shared predicates); the runner
+     * only records it — never a per-duty branch here.
+     */
+    if (typeof duty.defer === 'function') {
+      const why = duty.defer(ctx, options);
+      if (typeof why === 'string' && why) return { id: duty.id, state: 'deferred', reason: why };
+    }
     if (typeof duty.satisfied === 'function' && duty.satisfied(ctx, options)) {
-      return { id: duty.id, state: 'satisfied' };
+      const by = typeof duty.satisfiedBy === 'function' ? duty.satisfiedBy(ctx, options) : null;
+      return by ? { id: duty.id, state: 'satisfied', satisfiedBy: by } : { id: duty.id, state: 'satisfied' };
     }
     // A SUPPLY duty hands the session material instead of demanding work, and producing that
     // material is impure (it may spawn a judge). So the pure runner only reports that it should
@@ -90,16 +124,20 @@ function evaluate(duty, ctx, options) {
  * Render the ONE message covering every unsatisfied duty. Two duties produce one tail with
  * two items — never two tails. Errored duties are named in the same message because a duty
  * that did not run reads as satisfied if nobody says otherwise.
+ *
+ * ORDER: demands, then errors, then material. Material used to go first ("it can change what
+ * the answer SAYS") — true, and it still rides — but under the platform's inline bound only
+ * the head of a long tail is ever read, and a demand that is not read costs a whole nudge
+ * cycle (measured 09-06). Demands are short and imperative; they lead.
+ *
+ * BUDGET: the whole tail stays under MAX_TAIL_CHARS. When the full material does not fit, each
+ * supply's BRIEF form (pointers: title, path, why) stands in — nothing is dropped unnamed, and
+ * the substitution is SAID. A supply that offers no brief form is clipped with a named cut.
  */
 function renderMessage(unsatisfied, errored, hard, materials) {
   const lines = [];
-  const supplied = Object.values(materials || {}).filter(Boolean);
-
-  // Material first: it can change what the answer SAYS, whereas a chore only adds to it.
-  for (const m of supplied) lines.push(`${HEADER} ${m}`);
 
   if (unsatisfied.length) {
-    if (supplied.length) lines.push('');
     lines.push(hard
       ? `${HEADER} still unmet after a prior nudge — do these before yielding:`
       : `${HEADER} before yielding, ${unsatisfied.length === 1 ? 'one duty is' : `${unsatisfied.length} duties are`} unmet:`);
@@ -113,7 +151,34 @@ function renderMessage(unsatisfied, errored, hard, materials) {
         'Treat these as unknown, not done.'
     );
   }
-  return lines.join('\n');
+
+  const supplied = Object.values(materials || {}).filter((m) => materialText(m));
+  if (!supplied.length) return lines.join('\n');
+
+  const headChars = lines.join('\n').length;
+  const fulls = supplied.map((m) => `${HEADER} ${materialText(m)}`);
+  const fits = (parts) => headChars + parts.reduce((n, p) => n + p.length + 1, 0) <= MAX_TAIL_CHARS;
+
+  let parts = fulls;
+  if (!fits(parts)) {
+    const briefs = supplied.map((m, i) => {
+      const b = briefText(m);
+      return b ? `${HEADER} ${b}` : fulls[i];
+    });
+    parts = briefs;
+    parts.unshift(
+      `${HEADER} [material below is in POINTER form — the full text would have pushed this tail ` +
+      `past the ${MAX_TAIL_CHARS}-char inline bound, after which nothing here is read]`
+    );
+  }
+  if (!fits(parts)) {
+    // Still over: no brief form was offered, or even the pointers are long. Cut, and say so.
+    const room = Math.max(0, MAX_TAIL_CHARS - headChars - 80);
+    const joined = parts.join('\n');
+    parts = [`${joined.slice(0, room)}\n${HEADER} [material clipped at the inline bound — open the paths named above]`];
+  }
+  if (lines.length) lines.push('');
+  return lines.concat(parts).join('\n');
 }
 
 /**
@@ -148,6 +213,7 @@ function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
     .filter((r) => r.state === 'unsatisfied')
     .sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
   const errored = results.filter((r) => r.state === 'errored');
+  const deferred = results.filter((r) => r.state === 'deferred');
   const fires = (ctx.ledger && ctx.ledger.fires) || 0;
   const exhausted = fires >= MAX_FIRES_PER_PROMPT;
 
@@ -157,17 +223,20 @@ function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
     ? []
     : results.filter((r) => r.state === 'supply-due').sort((a, b) => a.priority - b.priority).map((r) => r.id);
 
-  const hasMaterial = Object.values(materials || {}).some(Boolean);
+  const hasMaterial = Object.values(materials || {}).some((m) => materialText(m));
 
   const base = {
     results,
     unsatisfied: unsatisfied.map((d) => d.id),
     errored: errored.map((d) => d.id),
+    errors: errored.map((d) => ({ id: d.id, error: d.error })),
+    deferred: deferred.map((d) => ({ id: d.id, reason: d.reason })),
+    satisfiedBy: results.filter((r) => r.satisfiedBy).map((r) => ({ id: r.id, by: r.satisfiedBy })),
     supplyDue,
     ran: results.filter((r) => r.state !== 'disabled').map((r) => r.id),
   };
 
-  if (!unsatisfied.length && !hasMaterial) {
+  if (!unsatisfied.length && !hasMaterial && !errored.length) {
     // Every applicable duty is satisfied and nothing was recalled. This is the structural exit
     // and the ONLY one that should fire in a healthy project. `supplyDue` still rides along:
     // the adapter reads it to know what to execute before asking again.
@@ -178,8 +247,17 @@ function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
     return { ...base, action: 'allow', emission: null, reason: 'fire budget exhausted' };
   }
   if (exhausted) {
-    // Exhaustion is an OUTCOME, not a silence. A satisfaction check that never goes true is
-    // a defect in the duty, and the owner only finds it if the runner says so.
+    /*
+     * Exhaustion is an OUTCOME, not a silence. A satisfaction check that never goes true is a
+     * defect in the duty, and the owner only finds it if the runner says so — ONCE. Measured
+     * 08-27: this note went out on EVERY exhausted fire, and `additionalContext` continues the
+     * turn, so the runner's own give-up re-armed the turn six times until the platform's cap
+     * cut it. Now the note rides exactly at the budget line; every later fire of the same
+     * request is a silent allow, with the trace still carrying the unmet ids.
+     */
+    if (fires > MAX_FIRES_PER_PROMPT) {
+      return { ...base, action: 'allow', emission: null, reason: 'fire budget exhausted for this prompt_id (already reported)' };
+    }
     return {
       ...base,
       action: 'allow',
@@ -216,8 +294,10 @@ module.exports = {
   decide,
   evaluate,
   renderMessage,
+  materialText,
   MAX_FIRES_PER_PROMPT,
   PLATFORM_CONSECUTIVE_BLOCK_CAP,
+  MAX_TAIL_CHARS,
   SEVERITY_BLOCK,
   SEVERITY_ADVISE,
   HEADER,

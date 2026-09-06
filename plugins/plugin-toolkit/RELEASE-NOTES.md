@@ -1,5 +1,13 @@
 # Release notes — plugin-toolkit
 
+## 1.11.0 — 2026-09-06 — repo-guard: machine-guard-drift detector
+
+Fourth detector: finds every `MACHINE_TEXT_MARKERS` / `MACHINE_TEXT_PREFIXES` /
+`MACHINE_PREFIXES` declaration in tracked .js and BLOCKS when the lists differ (reference =
+first copy by path; evidence names the missing/extra markers). Holds no canonical of its own —
+the invariant is sameness. Why: four different guard lists had grown across the hooks by
+2026-09-06 and none knew `<system-reminder>`; one home hook had no guard at all.
+
 ## 1.10.1 — repo-guard allowlist catch-up after the first root-scoped run since 08-23
 
 The documented repo-guard invocation (toolkit cwd, no root flag) scans only

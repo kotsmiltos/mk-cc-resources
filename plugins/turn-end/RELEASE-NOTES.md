@@ -1,5 +1,30 @@
 # turn-end — release notes
 
+## 0.7.0 — 2026-09-06 — the accountable, cheap, un-loopable turn end (audit 2, tasks #22 #23 #24)
+
+Judge child spawned LEAN — `--setting-sources ""` + `--disable-slash-commands` +
+`--strict-mcp-config` (measured on a one-word probe: 33.0 s → 3.9 s wall, no hook fires,
+OAuth intact; the empty source list is UNDOCUMENTED and works because empties are filtered
+before validation, so the spawn is fail-open: an argument-class failure retries once without
+the lean args and the verdict says `lean: applied | fallback`; a timeout never retries).
+DEFERRAL primitive: a duty may return a named reason from `defer()`; lib/deferral.js holds
+the shared predicates (background agents in flight — derived from the transcript's launch
+tool_use ids vs `<tool-use-id>` completion notices, no payload field required; plan mode via
+the documented `permission_mode`). request-closure + quality-lens defer while agents run;
+session-digest also under plan mode. Exhaustion note emitted ONCE at the budget line, silent
+after (measured 08-27: the note continued the turn six times until the platform's cap).
+Tail renders DEMANDS first, then errors, then material, hard-capped at 9,000 chars — under
+the platform's ~10 KB inline bound past which a hook's output is replaced by a 2 KB preview
+(measured 53× + once for this runner's own tail); the BRIEF (pointer) form stands in when the
+full text would not fit, and the substitution is said. Session-scoped `sessionSupplied`
+memory: a note already handed over this sitting returns as one pointer line. Errored duties
+are never silent. session-digest satisfied against the request's own transcript timestamp,
+not the first fire's. steward-sync joins the status.json ledger (files never move; the ask
+listed integrated items forever). Trace carries engine / ms / costUsd / lean / deferred /
+errors / satisfied_by / agents_in_flight / emitted_chars / payload_keys / permission_mode —
+dogfood leg (b) is computable from disk at last. Suite: 170 checks in ~1 s (E2E fixtures
+disable recall; no real judge spawn; exe check skips by name without a binary).
+
 ## 0.6.0 — context-recall: fail-open ranker fallback (the judge stays)
 
 Owner ruling 2026-08-23, verbatim: '46 seconds is not really a problem… we go for quality,

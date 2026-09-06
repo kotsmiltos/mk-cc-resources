@@ -14,7 +14,7 @@ Design source of truth: `design/continuous-transformation.md` (v3) in this repo.
 
 ## What you experience (nothing to memorize)
 
-- **Open a steward project** → a ≤10-line briefing appears by itself: where things stand, what
+- **Open a steward project** → a ≤6-line briefing appears by itself: where things stand, what
   changed, next 3 tasks, decisions waiting on you.
 - **Talk normally** → ideas/wishes/doubts get captured to the inbox automatically; nothing dies
   with a session.
@@ -36,7 +36,7 @@ Design source of truth: `design/continuous-transformation.md` (v3) in this repo.
 
 `vision.md` (what+why+invariants+growth axes) · `state.md` (current truth) · `parts.md`
 (modules + promises) · `questions.md` (decisions waiting, each with a recommended default) ·
-`tasks.md` (ordered, executor-ready) · `log.md` (outcome ledger) · `briefing.md` (the ≤10-line
+`tasks.md` (ordered, executor-ready) · `log.md` (outcome ledger) · `briefing.md` (the ≤6-line
 opener) · `inbox/` (your raw thoughts; consider gitignoring it — the rest SHOULD be committed).
 
 ## Hard rules
@@ -54,4 +54,4 @@ Carries a hook — install standalone (not part of the mk-cc-all bundle). The Se
 totally silent in projects without `.steward/`. Disable everywhere: uninstall the plugin. Disable
 for one project: delete or rename its `.steward/` folder.
 
-Tests: `node tests/steward-brief.test.js` (9 checks, no framework).
+Tests: `node tests/steward-brief.test.js` (45 checks) + `node tests/status.test.js` (13 checks), no framework, isolated fake home.

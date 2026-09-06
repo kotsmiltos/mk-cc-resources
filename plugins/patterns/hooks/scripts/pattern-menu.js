@@ -61,11 +61,15 @@ const GLOBAL_CONFIG = path.join(os.homedir(), '.claude', 'patterns.json');
 
 // Canonical machine-text list (thorough-mode's guard — the fullest in-repo copy).
 // Matched at the START of the trimmed prompt only.
+// CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook
+// in this repo (plugins install standalone, so each carries its own copy); repo-guard's
+// `machine-guard-drift` detector fails the push when any copy diverges. `<local-command` is a
+// PREFIX on purpose: it covers `<local-command-caveat>` and `<local-command-stdout>` alike.
 const MACHINE_TEXT_MARKERS = [
   '[SYSTEM NOTIFICATION',
   '<task-notification>',
   'Stop hook feedback:',
-  '<local-command-caveat>',
+  '<local-command',
   '<command-name>',
   '<system-reminder>',
 ];

@@ -35,7 +35,10 @@ plugins/
                             #   engine; DESIGN-V2.md is the design source), dry-refactor —
                             #   plus the repo-level CLI gates repo-guard / test-all /
                             #   registry-check (lib/ pure policy + bin/ adapters + registries
-                            #   as extension surfaces). See plugins/plugin-toolkit/CLAUDE.md.
+                            #   as extension surfaces). 1.11.0: repo-guard's 4th detector
+                            #   machine-guard-drift — every hook's MACHINE_TEXT_MARKERS copy
+                            #   must be identical or the push fails.
+                            #   See plugins/plugin-toolkit/CLAUDE.md.
 
   schema-scout/             # Data file schema exploration CLI (Python: typer + openpyxl + rich)
 
@@ -57,7 +60,9 @@ plugins/
   verifiability-lens/       # Work-quality guardian: A/B/U verifiability + completeness +
                             #   quality-bar checks, actively verified; surfacing triage tuned
                             #   by a recipient profile. Carries NO hook since 0.5.0 — automatic
-                            #   firing is turn-end's quality-lens duty, opt-in OFF.
+                            #   firing is turn-end's quality-lens duty, opt-in OFF. 0.5.1: the
+                            #   dead hook scripts + their suite DELETED; contract tests over
+                            #   the shipped files replace them.
                             #   See plugins/verifiability-lens/CLAUDE.md.
 
   reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
@@ -77,6 +82,8 @@ plugins/
                             #   0.5.0: STATUS CONTRACT — status.json lifecycle ledger
                             #   (agent = only writer, new is derived, files never move),
                             #   computed [instr] briefing lines, cursor staleness, backfill.
+                            #   0.5.1: ONE item model, three readers — brief line, [instr]
+                            #   and fleet table all derive from status.json (+ backlog age).
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
@@ -92,7 +99,15 @@ plugins/
                             #   default per owner quality-over-speed law), request-closure (0.5.0 — a span
                             #   woken by / dispatching agents must END by answering the
                             #   user's verbatim original request + who-did-what, not the
-                            #   last agent's return). See plugins/turn-end/CLAUDE.md.
+                            #   last agent's return). 0.7.0: judge child spawned LEAN
+                            #   (no hooks/plugins/MCP; fail-open retry; −36% cost — NOT
+                            #   faster on real prompts: the child deliberates 2–9k tokens),
+                            #   DEFERRAL primitive (agents in flight from the transcript,
+                            #   plan mode), give-up note once, tail DEMANDS-first under
+                            #   the platform's ~10 KB inline bound (pointer form beyond),
+                            #   sessionSupplied memory, accountable trace (engine/ms/cost/
+                            #   deferred/satisfied_by/payload_keys).
+                            #   See plugins/turn-end/CLAUDE.md.
 
   prism/                    # Multi-perspective panel skill — sole-focus agents, one lens
                             #   each (asker-named lenses win: the extension surface is the
@@ -127,7 +142,9 @@ plugins/
                             #   alwaysLoad (schemas never deferred); CLI; skills kb / kb-seed /
                             #   kb-capture; TWO hooks since 0.9.0 (kb-pull, kb-session-start —
                             #   the kb-scribe Stop hook is RETIRED into turn-end's
-                            #   session-digest duty). See plugins/kb/CLAUDE.md.
+                            #   session-digest duty; its script DELETED in 0.12.0). 0.12.0:
+                            #   kb-pull stands down in judge children + canonical six-marker
+                            #   machine-text guard. See plugins/kb/CLAUDE.md.
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.

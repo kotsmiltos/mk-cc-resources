@@ -37,7 +37,9 @@ agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ON
                         #   NEVER move, briefing regenerated LAST, volatile facts never authored)
 skills/steward/         # ambient session protocol + workflows/seed.md (existing-project onboarding)
 lib/status.js           # tolerant reader of design/status-contract.md — derived-new, cursor
-                        #   staleness; consumers: brief hook, backfill, (fleet later)
+                        #   staleness; consumers since 0.5.1: brief hook (`inbox:` line AND
+                        #   `[instr] items … (oldest Nd)`), backfill, fleet table — ONE item
+                        #   model, every reader (turn-end's steward-sync ports the same rule)
 bin/steward-backfill.js # one-shot absent-only seeder: done/ copies + INTEGRATED tombstones ->
                         #   items[], cursors to highest id; adoption is one run, never hand-JSON
 commands/               # seed | brief | sync | next | fleet — optional aliases only

@@ -27,6 +27,13 @@ main().catch((err) => {
 async function main() {
   const projectRoot = process.cwd();
 
+  // FAST stand-down before any library loads: a repo with no .pipeline/ is not a pipeline
+  // project, and this hook fires on EVERY prompt and session start in EVERY repo. Measured
+  // 2026-09-06: ~150 ms per fire spent loading lib/state.js + js-yaml only to say nothing —
+  // 32 injections + ~430 spawns in projects that never ran the pipeline. Same predicate
+  // readState uses for `pipeline_present`, so behaviour is unchanged; only the cost moves.
+  if (!existsSync(join(projectRoot, ".pipeline"))) process.exit(0);
+
   let state, libErr;
   try {
     const { readState } = await import(STATE_LIB_URL);

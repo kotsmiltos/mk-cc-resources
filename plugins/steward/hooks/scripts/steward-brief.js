@@ -25,15 +25,19 @@ const path = require('path');
  * this is this plugin's own copy of the walk (duplication ACROSS plugins is deliberate:
  * a shared module would couple independently-installed plugins).
  */
+// Windows paths are case-insensitive but string compare is not: a payload cwd arriving
+// as c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a
+// dotfiles .git — the exact hazard the guard exists for. Measured again 2026-09-06: the
+// fleet registry's dedupe compared raw strings and a lowercase-cwd open registered the same
+// ship twice. ONE comparator, used everywhere a path is compared.
+const samePath = (a, b) =>
+  process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+
 function resolveProjectRoot(start, home) {
   const os = require('os');
   const fallback = path.resolve(start);
   const homeDir = path.resolve(home || os.homedir());
-  // Windows paths are case-insensitive but string compare is not: a payload cwd arriving
-  // as c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a
-  // dotfiles .git — the exact hazard the guard exists for.
-  const same = (a, b) =>
-    process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  const same = samePath;
   let dir = fallback;
   while (!same(dir, homeDir)) {
     try {
@@ -138,7 +142,14 @@ function instrItems(projectRoot) {
     const status = require('../../lib/status');
     const d = status.derive(projectRoot);
     const parts = [];
-    if (d.newIds.length) parts.push(`${d.newIds.length} new`);
+    if (d.newIds.length) {
+      // Backlog AGE, from the id's own YYYYMMDD prefix (the logical clock of the inbox).
+      // Audit 2 found a 12-day frozen model whose count never escalated; age is the instrument
+      // a count cannot be.
+      const oldest = d.newIds.slice().sort()[0];
+      const days = ageDaysFromId(oldest);
+      parts.push(`${d.newIds.length} new${days !== null ? ` (oldest ${days}d)` : ''}`);
+    }
     if (d.present && !d.corrupt) {
       const staged = d.recorded.filter((i) => i && i.status === 'staged').length;
       if (staged) parts.push(`${staged} staged`);
@@ -146,6 +157,15 @@ function instrItems(projectRoot) {
     if (d.corrupt) parts.push(`status.json UNREADABLE (${d.corrupt})`); // loud, per contract rule 9
     return parts.length ? `items: ${parts.join(' · ')}` : '';
   } catch (_e) { return ''; }
+}
+
+/** Whole days between an inbox id's YYYYMMDD prefix and now; null when the id carries none. */
+function ageDaysFromId(id, now = Date.now()) {
+  const m = /^(\d{4})(\d{2})(\d{2})/.exec(String(id || ''));
+  if (!m) return null;
+  const stamp = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (!Number.isFinite(stamp)) return null;
+  return Math.max(0, Math.floor((now - stamp) / 86400000));
 }
 
 const INSTRUMENTS = [instrGit, instrItems];
@@ -235,7 +255,7 @@ function main() {
     try { fleet = JSON.parse(fs.readFileSync(fleetFile, 'utf8')); } catch (_) { /* first run */ }
     if (!Array.isArray(fleet.projects)) fleet.projects = [];
     const norm = path.resolve(projectRoot); // register the ROOT, not wherever the shell sat
-    if (!fleet.projects.some((p) => path.resolve(p) === norm)) {
+    if (!fleet.projects.some((p) => samePath(path.resolve(String(p)), norm))) {
       fleet.projects.push(norm);
       fs.mkdirSync(fleetDir, { recursive: true });
       fs.writeFileSync(fleetFile, JSON.stringify(fleet, null, 2) + '\n');
@@ -250,12 +270,20 @@ function main() {
   }
   briefing = capBriefing(briefing);
 
+  /*
+   * ONE item model, three readers. Under the status contract files never move, so a count of
+   * FILES re-reports every integrated item forever — measured 2026-09-06: this line said
+   * "8 UNINTEGRATED" beside an `[instr] items: 4 new` computed from the ledger, in the same
+   * injection; Endure carried a permanent phantom from `inbox/.README.md`. `status.derive`
+   * is the single predicate (top-level, non-dot .md, id absent from items[]); without a
+   * status.json it degrades to the pre-contract file count by construction.
+   */
   let pendingNote = 'inbox: empty';
   try {
-    const pending = fs.readdirSync(path.join(root, 'inbox'))
-      .filter((f) => f.endsWith('.md'));
-    if (pending.length > 0) {
-      pendingNote = `inbox: ${pending.length} UNINTEGRATED item(s) — background steward pass (job: integrate) when convenient; diff on return.`;
+    const status = require('../../lib/status');
+    const d = status.derive(projectRoot);
+    if (d.newIds.length > 0) {
+      pendingNote = `inbox: ${d.newIds.length} UNINTEGRATED item(s) — background steward pass (job: integrate) when convenient; diff on return.`;
     }
   } catch (_) { /* no inbox dir yet — fine */ }
 

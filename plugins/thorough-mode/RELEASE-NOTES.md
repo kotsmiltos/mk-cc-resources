@@ -1,5 +1,10 @@
 # Release notes — thorough-mode
 
+## 1.11.2 — 2026-09-06 — canonical machine-text guard
+
+`<local-command-caveat>` → the `<local-command` PREFIX; the six-marker list is shared
+verbatim with pattern-menu, kb-pull, turn-end and the home hooks, drift-tested by repo-guard.
+
 ## 1.11.1 — the repo-guard line now probes before it points
 
 As shipped, that checklist item told every project to run `node plugins/plugin-toolkit/bin/repo-guard.js` — a path that resolves only inside a checkout of this repo, because the bundle ships plugin-toolkit's `skills` and never its `bin/`. A review caught the irony: the sentence directly after it advertises that the guard "blocks on machine-specific absolute paths." It now probes for the file first and says "not present — skipping" when absent, instead of naming a path that is not there.

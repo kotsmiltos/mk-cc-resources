@@ -1,5 +1,13 @@
 # Release notes — essense-flow
 
+## 0.26.2 — 2026-09-06 — hooks stand down BEFORE loading anything in non-pipeline repos
+
+context-inject (UserPromptSubmit + SessionStart) and next-step (Stop) now test for
+`.pipeline/` first and exit before importing lib/state.js + js-yaml. Behaviour is unchanged
+(same predicate readState used for `pipeline_present`); the cost moves: measured ~150 ms →
+~100 ms per fire, and these fire on EVERY prompt and Stop in EVERY repo (audit 2: ~430 Stop
+fires + 32 injections in projects that never ran the pipeline).
+
 ## 0.26.1 — Context-inject economics inversion fixed (loud where it should be silent, silent where it should be loud)
 
 The injection layer was inverted both ways (code-verified 2026-07-22, shipped now):

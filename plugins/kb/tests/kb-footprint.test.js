@@ -47,10 +47,6 @@ const AUDITED = {
     writes: 2, // mkdirSync + appendFileSync, both inside writeTrace
     why: 'writeTrace returns early unless hasCuratedMemory(root) — THE gate for every caller',
   },
-  'hooks/scripts/kb-scribe-stop.js': {
-    writes: 2, // mkdirSync + writeFileSync inside writeState
-    why: 'writeState is called only when `enabled`, which requires hasCuratedMemory (fail-closed)',
-  },
   'hooks/scripts/kb-session-start.js': {
     writes: 7, // rotate: unlink/mkdir/write/unlink ; cue registry: mkdir/write ;
                // digest-session marker: write — GATED on the digest existing, so a project
@@ -75,7 +71,6 @@ const FS_IMPORT_RX = /require\(\s*['"](?:node:)?(?:fs(?:\/promises)?|child_proce
 // listed too: the point is that NOTHING touches disk without an explicit entry.
 const FS_IMPORTERS = {
   'mcp/kb-mcp-server.js': 'writeTrace (gated) — the only writer here',
-  'hooks/scripts/kb-scribe-stop.js': 'state read/write (gated) + transcript read',
   'hooks/scripts/kb-session-start.js': 'digest rotation (marker-implied) + home-side cue registry',
   'hooks/scripts/kb-pull.js': 'reads the session digest only',
   'lib/project-root.js': 'read-only existsSync walk to the nearest .git ancestor (root anchoring, strike 1)',
@@ -187,19 +182,8 @@ function touched(root) {
   check('pull hook: fires on ambient content (precondition)', pull.stdout.includes('<kb-hints>'));
   check('pull hook: leaves nothing behind', !touched(a));
 
-  // (b) the scribe, on a genuine producing turn
-  const b = unseededProject();
-  const transcript = path.join(b, 't.jsonl');
-  fs.writeFileSync(transcript, [
-    JSON.stringify({ message: { role: 'user', content: 'build it' } }),
-    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'x.js' } }] } }),
-    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'shipped' }] } }),
-  ].join('\n'));
-  const scribe = spawnSync('node', [path.join(HOOKS, 'kb-scribe-stop.js')], {
-    cwd: b, input: JSON.stringify({ transcript_path: transcript }), encoding: 'utf8',
-  });
-  check('scribe: does not block an unseeded project', scribe.stdout === '');
-  check('scribe: leaves nothing behind', !touched(b));
+  // (b) the write side lives in turn-end's session-digest duty since 0.9.0 (the scribe hook was
+  // retired then and deleted in 0.12.0) — its footprint is turn-end's suite's to prove.
 
   // (c) session start, which also emits the one-time cue
   const c = unseededProject();
@@ -218,13 +202,18 @@ function touched(root) {
   // (e) and every one of them starts working the moment the project keeps a memory
   const e = unseededProject();
   fs.mkdirSync(path.join(e, '.claude', 'kb', 'extracted'), { recursive: true });
-  fs.writeFileSync(path.join(e, '.claude', 'kb', 'extracted', 'x.md'), '# seeded\n');
+  fs.writeFileSync(
+    path.join(e, '.claude', 'kb', 'extracted', 'x.md'),
+    '---\nkind: semantic\ncaste: project\nthemes: [rejected, porter]\n---\n# Rejected: porter ferry caste for transfers\n\nA dedicated porter caste was rejected; the handoff layer superseded it.\n'
+  );
   writeTrace(e, { t: 'now', tool: 'kb_query', text: 'porter ferry' });
   check('seeding switches tracing on', fs.existsSync(path.join(e, '.claude', 'kb', 'trace.jsonl')));
-  const scribe2 = spawnSync('node', [path.join(HOOKS, 'kb-scribe-stop.js')], {
-    cwd: e, input: JSON.stringify({ transcript_path: transcript }), encoding: 'utf8',
+  const pull2 = spawnSync('node', [path.join(HOOKS, 'kb-pull.js')], {
+    cwd: e, input: JSON.stringify({ cwd: e, prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?' }), encoding: 'utf8',
   });
-  check('seeding switches upkeep on', (scribe2.stdout || '').includes('block'));
+  check('seeding switches the pull hook on (hints fire, a trace line lands)',
+    pull2.status === 0 && pull2.stdout.includes('<kb-hints>') &&
+    fs.readFileSync(path.join(e, '.claude', 'kb', 'trace.jsonl'), 'utf8').includes('kb-pull'));
 }
 
 console.log(`\n${total - failures}/${total} checks passed`);

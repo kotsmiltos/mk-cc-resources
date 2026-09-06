@@ -57,6 +57,20 @@ statusline truth from status.json. Strike 1 (steward 0.4.0 freshness ⚠ + root 
 kb 0.10.3 root-anchored hooks) SHIPPED, PUSHED and INSTALLED same day — the ⚠ line fired
 live on this repo's own briefing. The v3 phases resume AFTER, on the honest substrate.
 
+Measured 2026-09-06 (audit 2 — five projects, 212 human prompts, every plugin; kb capture
+`20260906-1340-second-usage-audit-five-projects-measured`): the owner's 09-04 doubt
+(verbatim: *"I don't think that we've built this. Really doing anything."*) is ANSWERED by
+measurement, not argued. **Model-keeping WORKS** — 97 inbox captures, 28 integrate
+dispatches, the recompute verdict unchanged, `@prompt`/`@ship`/`/prism` are the owner's
+real workflow. **Injecting mostly does NOT yet** — kb-hints 84% ignored, per-prompt hook
+tax avg 6.3 KB / p95 20.5 KB and RISING after 08-23 while deliberate pull fell to ~0,
+briefing prose contradicted by the log in 4/5 ships, 235 of 269 session files are
+headless recall judges each paying the whole harness. **Browse skills + the pipeline are
+used in ZERO real sessions** (essense-flow, session-lifecycle, code-glossary, reuse-gate,
+/kb, /patterns, /verifiability). Reading (Claude's, not a ruling): the next moves are
+deletions, folds and guards on the PUSH side, not new mechanisms — the ranked plan is
+inbox `20260906-1345`; nothing in it is decided.
+
 ## The turn-end law (2026-07-27) — one blocking tail
 
 Two plugins each owning a blocking `Stop` hook RE-ARMED each other: each one's mandated
@@ -105,6 +119,10 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    deterministic > LLM, fold > add, fire conditionally. Standing injections are part
    of the price: injected text is a per-session tax the owner reads — every line earns
    its place (owner, 2026-08-03: "make the steward lighter — unbearable").
+   **Measured platform bound (2026-09-06):** Claude Code stubs any hook output over
+   ~10 KB to a 2 KB preview (53× kb-pull, 1× a turn-end tail whose four DEMANDS sat at
+   line 126 → the nudge was wasted) — an injection over 10 KB is NOT READ. Every push
+   surface stays under it, DEMANDS before supply; a capped surface names what it cut.
 6. **Zero added memory load.** Interfaces attach to motions the owner already makes;
    slash commands are optional aliases, never required vocabulary. Corollary proven by
    kb 0.7.0: a tool SELF-ACTIVATES on presence (a project that keeps curated memory gets
@@ -158,7 +176,8 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
 ## Declared growth axes (change expected here)
 
 - New plugins / prompt modifiers (protocol-shaped injection convention is the drop-in
-  surface).
+  surface). prism (2026-09-04) adds a second shape: an axis open at the LANGUAGE level —
+  naming a lens at invocation IS the extension, zero files.
 - Steward verbs beyond seed/brief/sync/next (/discuss, /test, /work — Phase B).
 - External-project generalization of the steward loop (mk-cc-resources = Phase 0
   pilot; crowd-game seeded 2026-07-21, running in parallel; EMDE/psience next).

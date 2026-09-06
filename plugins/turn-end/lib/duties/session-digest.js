@@ -23,6 +23,7 @@
  */
 
 const path = require('path');
+const { whileWritesForbidden, whileAgentsRun, firstReason } = require('../deferral');
 
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const DIGEST_POSIX = DIGEST_REL.split(path.sep).join('/');
@@ -105,6 +106,12 @@ module.exports = {
     return (ctx.turn.toolNames || []).some((t) => PRODUCE_TOOLS.has(t));
   },
 
+  // A write this span cannot make (plan mode) or a span not yet at rest (agents running) is
+  // deferred BY NAME — the demand returns when the condition lifts. See lib/deferral.js.
+  defer(ctx) {
+    return firstReason(ctx, [whileWritesForbidden, whileAgentsRun]);
+  },
+
   /*
    * Structural termination — and it must be a DISK fact, not a tool-call fact.
    *
@@ -115,14 +122,19 @@ module.exports = {
    * written?". Same defect family as the sweep that matched a name instead of a shape.
    *
    * Tool evidence stays as the fast path (it is exact when present); the file's own mtime
-   * against this request's start is the general one, and it cannot be fooled by the method.
+   * against this REQUEST's start is the general one, and it cannot be fooled by the method.
+   * The request's start is the user prompt's own timestamp when the transcript carries it —
+   * the ledger's `startedAt` is minted at the FIRST FIRE, and a digest appended before that
+   * fire (measured 09-06, Bash append, 90 ms earlier) read as absent.
    */
   satisfied(ctx) {
     if (wroteDigest(ctx)) return true;
+    const requestAt = ctx.turn && typeof ctx.turn.userRequestAt === 'number' ? ctx.turn.userRequestAt : null;
     const startedAt = ctx.ledger && ctx.ledger.startedAt;
-    if (typeof startedAt !== 'number') return false;
+    const since = requestAt !== null ? requestAt : startedAt;
+    if (typeof since !== 'number') return false;
     const mtime = ctx.disk.mtimeMs(DIGEST_POSIX);
-    return typeof mtime === 'number' && mtime >= startedAt;
+    return typeof mtime === 'number' && mtime >= since;
   },
 
   ask(ctx, options) {

@@ -6,6 +6,12 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+## 0.1.1 — 2026-09-06 — canonical machine-text guard
+
+`<local-command-caveat>` → the `<local-command` PREFIX (covers -caveat and -stdout alike);
+the six-marker list is now byte-identical across thorough-mode, kb-pull, turn-end and the
+owner's home hooks, and repo-guard's `machine-guard-drift` detector blocks divergence.
+
 ## v0.1.0 (2026-08-27)
 
 Initial release — owner directive: mechanize Head First Design Patterns' trigger→shape

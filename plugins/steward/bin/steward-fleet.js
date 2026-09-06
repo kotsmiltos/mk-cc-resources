@@ -40,7 +40,9 @@ function projectRow(projPath) {
     row.topTask = firstMatch(tasks, /^##\s*\d+[.\s]*([^\n]+)/m, '(no tasks)');
   } catch (_) { /* keep placeholder */ }
   try {
-    row.inbox = fs.readdirSync(path.join(root, 'inbox')).filter((f) => f.endsWith('.md')).length;
+    // The ledger-derived count — same predicate as the brief hook and `[instr]`, so the fleet
+    // table can never disagree with the briefing it summarises (audit 2: three raw counters).
+    row.inbox = require('../lib/status').derive(projPath).newIds.length;
   } catch (_) { /* no inbox dir */ }
   return row;
 }

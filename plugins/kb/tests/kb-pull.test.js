@@ -49,6 +49,22 @@ check('pullConfig honors enabled:false', hook.pullConfig({ pull: { enabled: fals
 check('pullConfig keeps floor when only enabled overridden', hook.pullConfig({ pull: { enabled: true } }).minScore === hook.DEFAULT_MIN_SCORE);
 check('machine text detected', hook.isMachineText('[SYSTEM NOTIFICATION - blah'));
 check('plain text not machine', !hook.isMachineText('why did we reject the porter caste'));
+check('system-reminder prompts are machine text (audit 2: this copy lacked the marker)',
+  hook.isMachineText('<system-reminder>\nStop hook additional context: …'));
+check('the canonical six markers are all present',
+  ['[SYSTEM NOTIFICATION', '<task-notification>', 'Stop hook feedback:', '<local-command', '<command-name>', '<system-reminder>']
+    .every((m) => hook.MACHINE_TEXT_MARKERS.includes(m)) && hook.MACHINE_TEXT_MARKERS.length === 6);
+check('a child session (turn-end judge) is detected from the env', hook.isChildSession({ MK_TURN_END_DEPTH: '1' }) && !hook.isChildSession({}));
+{
+  // Measured 2026-09-06: 40 of 78 judge children paid a kb-pull fire. Inside one, silence.
+  const root = fixture();
+  const r = spawnSync('node', [HOOK], {
+    cwd: root, encoding: 'utf8', timeout: 15000,
+    input: JSON.stringify({ cwd: root, prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?' }),
+    env: { ...process.env, MK_TURN_END_DEPTH: '1' },
+  });
+  check('stands down inside a judge child (MK_TURN_END_DEPTH set)', r.status === 0 && r.stdout === '');
+}
 
 // ---- e2e: silence cases ----
 

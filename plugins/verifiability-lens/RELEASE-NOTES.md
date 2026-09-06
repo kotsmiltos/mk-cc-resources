@@ -1,5 +1,13 @@
 # verifiability-lens — Release Notes
 
+## 0.5.1 — 2026-09-06 — the dead hook actually leaves (audit 2, task #26)
+
+hooks/scripts/verifiability-stop.{js,sh} and tests/verifiability-stop.test.js (39 checks over
+a hook retired in 0.5.0) are DELETED; tests/verifiability-lens.test.js replaces them with
+contract checks over the shipped files (agent frontmatter + tools, rubric, profile dials,
+presets, metadata claims, no hook). CLAUDE.md / README / plugin.json / agent description no
+longer describe the Stop hook as live — automatic firing is turn-end's quality-lens duty.
+
 ## 0.5.0 — 2026-07-27 — the Stop hook is retired; the trigger moves to turn-end
 
 **This plugin no longer carries any hook.** Automatic firing now comes from the `quality-lens`

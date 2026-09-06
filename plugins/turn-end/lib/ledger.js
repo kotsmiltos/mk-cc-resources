@@ -35,6 +35,13 @@ function emptyLedger(promptId, sessionId, now) {
     fires: 0,
     asked: [],
     sessionAsked: [],
+    /*
+     * Material already handed to the session THIS SITTING (paths). Measured 2026-09-06: each
+     * background-agent completion is a new prompt, so recall ran again and re-supplied the
+     * same three captures verbatim, wake after wake. A note the session already holds in its
+     * transcript needs a pointer, not a second copy — session span, like `sessionAsked`.
+     */
+    sessionSupplied: [],
     startedAt: typeof now === 'number' ? now : Date.now(),
   };
 }
@@ -62,9 +69,11 @@ function readLedger(cwd, promptId, sessionId) {
     if (!parsed || typeof parsed !== 'object') return emptyLedger(promptId, sessionId);
 
     // The session bucket carries over only while the sitting is the same one.
-    const sessionAsked = parsed.sessionId === sessionId ? strings(parsed.sessionAsked) : [];
+    const sameSession = parsed.sessionId === sessionId;
+    const sessionAsked = sameSession ? strings(parsed.sessionAsked) : [];
+    const sessionSupplied = sameSession ? strings(parsed.sessionSupplied) : [];
     if (parsed.promptId !== promptId) {
-      return { ...emptyLedger(promptId, sessionId), sessionAsked };
+      return { ...emptyLedger(promptId, sessionId), sessionAsked, sessionSupplied };
     }
     return {
       promptId,
@@ -72,6 +81,7 @@ function readLedger(cwd, promptId, sessionId) {
       fires: Number.isInteger(parsed.fires) ? parsed.fires : 0,
       asked: strings(parsed.asked),
       sessionAsked,
+      sessionSupplied,
       startedAt: typeof parsed.startedAt === 'number' ? parsed.startedAt : Date.now(),
     };
   } catch (_e) {
@@ -102,22 +112,26 @@ function writeLedger(cwd, ledger) {
 /**
  * Next ledger state after an emission naming `askedIds`. Pure.
  * `sessionSpanIds` are recorded against the sitting instead of the prompt, so a duty whose own
- * output spawns the next prompt cannot re-arm itself.
+ * output spawns the next prompt cannot re-arm itself. `suppliedPaths` (material handed over
+ * this fire) join the session-span memory so no later wake re-hands them.
  */
-function advance(ledger, askedIds, sessionSpanIds) {
+function advance(ledger, askedIds, sessionSpanIds, suppliedPaths) {
   const asked = new Set(ledger.asked || []);
   const sessionAsked = new Set(ledger.sessionAsked || []);
+  const sessionSupplied = new Set(ledger.sessionSupplied || []);
   const sessionSpan = new Set(sessionSpanIds || []);
   for (const id of askedIds || []) {
     asked.add(id);
     if (sessionSpan.has(id)) sessionAsked.add(id);
   }
+  for (const p of suppliedPaths || []) if (typeof p === 'string') sessionSupplied.add(p);
   return {
     promptId: ledger.promptId,
     sessionId: ledger.sessionId,
     fires: (ledger.fires || 0) + 1,
     asked: Array.from(asked),
     sessionAsked: Array.from(sessionAsked),
+    sessionSupplied: Array.from(sessionSupplied),
     startedAt: ledger.startedAt,
   };
 }

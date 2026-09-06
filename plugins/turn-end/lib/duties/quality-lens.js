@@ -28,6 +28,7 @@
  */
 
 const path = require('path');
+const { whileAgentsRun } = require('../deferral');
 const CONFIG_REL = path.join('.claude', 'verifiability-lens.json');
 
 /*
@@ -134,6 +135,11 @@ module.exports = {
     if (isLensSurfacing(ctx.lastAssistantMessage)) return false;
     if (isLensSurfacing(ctx.turn.text)) return false;
     return (ctx.turn.toolNames || []).some((t) => WORK_TOOLS.has(t) || /^mcp__/.test(t));
+  },
+
+  // Nothing to review while the work is still being produced by agents in flight.
+  defer(ctx) {
+    return whileAgentsRun(ctx);
   },
 
   /*

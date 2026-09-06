@@ -46,7 +46,7 @@ tiers, `verified` flags); this names it once and acts on it.
 | `defaults/recipient-profile.yaml` | the dials — who it serves (default: time-poor, only-important, aggressive auto-resolve). **Per-project override:** copy to `<project>/.claude/verifiability-lens/profile.yaml` and tune; the optional `focus:` list defines what "best achievable" means for THAT project. Read ONCE per dispatch, never per item. |
 | `defaults/presets/` | copyable per-project profiles: `game-project` (runs-in-app, feel regressions, editor-test etiquette), `plugin-repo` (hooks fire, doc/version cascade, cross-file contradictions), `research-data` (provenance, reproducibility, conservative auto-resolve) |
 | `commands/verifiability.md` | `/verifiability [target]` — manual trigger |
-| `hooks/` (Stop hook) | fires it **automatically** every classify-worthy turn — blocks the turn, runs the lens in-session, surfaces the triaged result before yielding. **Opt-in, OFF by default.** Fire-exactly-once loop guard, fail-open. |
+| `hooks/hooks.json` | **empty** — this plugin carries no hook. Automatic firing is the `turn-end` plugin's `quality-lens` duty: at most one ask per sitting, advisory, deferred while background agents run. **Opt-in, OFF by default** (switches below). |
 
 ## Usage
 
@@ -68,18 +68,20 @@ high → low:
 - **Opt-in prose checking:** set `"check_prose_claims": true` to also classify strong *text-only*
   claims (`tests pass`, `shipped`, …). Off by default.
 
-Once enabled, the Stop hook fires on a classify-worthy turn — it blocks, runs the lens over what
-was just produced, and surfaces the triaged result before the turn ends. You wait a moment for the
-in-session classification — the deliberate cost of catching the slack before you act on it.
+Once enabled, turn-end's `quality-lens` duty asks the session — once per sitting, at a work
+turn's end — to dispatch the lens over what was just produced and surface the triaged rollup.
+It is advisory (the turn is never blocked), it waits while background agents are still running,
+and the session pays the lens's cost on the plan. Requires the `turn-end` plugin; without it the
+lens is manual-only via `/verifiability`.
 
 ## Status
 
-v0.3.0 ships the guardian: three checks (verifiability A/B/U + completeness + quality bar) with
+v0.5.1: the guardian — three checks (verifiability A/B/U + completeness + quality bar) with
 active verification (web + docs + read), a strict stance (`stance` profile dial), the surfacing
-triage, the manual `/verifiability` trigger, and the automatic Stop hook (opt-in; global/project/env
-enable switch; whole-turn read; work-trigger covering code/reads/web/subagents/MCP; question +
-meta-loop hard-skips; fire-once guard; fail-open). Verified: 39/39 hook unit tests (incl. BLOCK_REASON contract) + process smokes
-+ real-transcript test. Design doc: `design/verifiability-awareness.md`.
+triage, per-project profiles + presets, the manual `/verifiability` trigger. Automatic firing
+lives in `turn-end` (`quality-lens` duty) since 0.5.0; the Stop hook this plugin once carried
+is gone — its 39-check suite tested only that dead hook and is replaced by contract tests over
+the shipped files (`tests/verifiability-lens.test.js`). Design doc: `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending
 essense-flow's librarian surfacing protocol with the triage; the schema deepening.

@@ -74,7 +74,10 @@ function makeDisk(cwd) {
  * — they are only not boundaries. Prefix-at-start only: a user legitimately pasting one
  * mid-message is still the user.
  */
-const MACHINE_TEXT_PREFIXES = [
+// CANONICAL machine-text guard — one list, copied verbatim into every hook in this repo that
+// classifies prompt text; repo-guard's `machine-guard-drift` detector fails the push when a
+// copy diverges. `<local-command` is a PREFIX: it covers -caveat and -stdout variants alike.
+const MACHINE_TEXT_MARKERS = [
   '[SYSTEM NOTIFICATION',
   '<task-notification>',
   'Stop hook feedback:',
@@ -82,10 +85,11 @@ const MACHINE_TEXT_PREFIXES = [
   '<command-name>',
   '<system-reminder>',
 ];
+const MACHINE_TEXT_PREFIXES = MACHINE_TEXT_MARKERS; // prior name, kept for callers
 
 function isMachineText(text) {
   const head = String(text || '').replace(/^\s+/, '').slice(0, 200);
-  return MACHINE_TEXT_PREFIXES.some((m) => head.startsWith(m));
+  return MACHINE_TEXT_MARKERS.some((m) => head.startsWith(m));
 }
 
 /*
@@ -114,8 +118,23 @@ function isWakeText(text) {
  * The transcript is written ASYNCHRONOUSLY and may lag, which is why `last_assistant_message`
  * from the payload is carried separately and preferred for the final text.
  */
+/*
+ * BACKGROUND AGENTS, read from the transcript — the only place they are recorded. Verified on
+ * a real transcript (2026-09-06): the Agent tool_use carries an `id`; its tool_result text
+ * begins "Async agent launched successfully" when the agent runs in the background; the
+ * completion arrives as a `<task-notification>` whose `<tool-use-id>` is that same id. So
+ * "in flight" = launched in this span, no completion seen yet. No payload field is needed
+ * (none is documented), and a synchronous Agent call — whose tool_result IS the report —
+ * never counts.
+ */
+const ASYNC_LAUNCH_MARKER = 'Async agent launched';
+const COMPLETION_RX = /<tool-use-id>\s*([A-Za-z0-9_-]+)\s*<\/tool-use-id>/g;
+
 function extractTurn(transcriptPath) {
-  const EMPTY = { text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '', wakeCount: 0 };
+  const EMPTY = {
+    text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '', userRequestAt: null,
+    wakeCount: 0, agentsInFlight: [],
+  };
   if (!transcriptPath) return EMPTY;
   let raw;
   try {
@@ -126,12 +145,22 @@ function extractTurn(transcriptPath) {
   }
 
   const msgs = [];
+  const completed = new Set();
+  const launched = new Set();
   for (const line of raw.split('\n')) {
     if (!line.trim()) continue;
     let obj;
     try { obj = JSON.parse(line); } catch (_e) { continue; }
     const m = obj.message || obj;
     const role = m.role || obj.role || obj.type;
+    // Completion notices reach the transcript as their own record kind AND as the user-role
+    // wake text; scan every record so the id is caught whichever shape carried it.
+    const flat = typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.map((c) => (c && c.type === 'text' ? c.text : '')).join('\n') : '');
+    if (flat && flat.includes('<task-notification>')) {
+      let hit;
+      while ((hit = COMPLETION_RX.exec(flat)) !== null) completed.add(hit[1]);
+      COMPLETION_RX.lastIndex = 0;
+    }
     if (role !== 'user' && role !== 'assistant') continue;
     const content = m.content;
     let text = '';
@@ -150,6 +179,7 @@ function extractTurn(transcriptPath) {
           // The ORDERED record as well: "did a check run AFTER the last change?" is an
           // ordering fact, and the flat name/target lists cannot express it (self-check).
           const call = { name: c.name };
+          if (typeof c.id === 'string') call.id = c.id;
           if (c.input && typeof c.input.file_path === 'string') {
             targets.push(c.input.file_path);
             call.target = c.input.file_path;
@@ -160,10 +190,17 @@ function extractTurn(transcriptPath) {
           }
           if (c.input && typeof c.input.command === 'string') call.command = c.input.command;
           calls.push(call);
-        } else if (c.type === 'tool_result') hasToolResult = true;
+        } else if (c.type === 'tool_result') {
+          hasToolResult = true;
+          const body = typeof c.content === 'string'
+            ? c.content
+            : (Array.isArray(c.content) ? c.content.map((x) => (x && typeof x.text === 'string' ? x.text : '')).join('\n') : '');
+          if (typeof c.tool_use_id === 'string' && body.includes(ASYNC_LAUNCH_MARKER)) launched.add(c.tool_use_id);
+        }
       }
     }
-    msgs.push({ role, text: text.trim(), tools, targets, calls, hasToolResult });
+    const at = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : NaN;
+    msgs.push({ role, text: text.trim(), tools, targets, calls, hasToolResult, at: Number.isFinite(at) ? at : null });
   }
   if (!msgs.length) return EMPTY;
 
@@ -171,6 +208,7 @@ function extractTurn(transcriptPath) {
   // messages and are NOT turn boundaries.
   let start = 0;
   let userRequest = '';
+  let userRequestAt = null;
   for (let i = msgs.length - 1; i >= 0; i--) {
     if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult && !isMachineText(msgs[i].text)) {
       start = i + 1;
@@ -178,6 +216,10 @@ function extractTurn(transcriptPath) {
       // question, not only the answer — an answer can look complete and still address the
       // wrong thing.
       userRequest = msgs[i].text;
+      // When the request began — a DISK-fact check ("did the file change during this
+      // request?") needs the request's start, not the first hook fire's (ledger.startedAt
+      // is minted at first fire, so a write made earlier in the same span read as absent).
+      userRequestAt = msgs[i].at;
       break;
     }
   }
@@ -187,6 +229,7 @@ function extractTurn(transcriptPath) {
   let toolTargets = [];
   let toolCalls = [];
   let wakeCount = 0;
+  const agentsInFlight = [];
   for (let i = start; i < msgs.length; i++) {
     // Wake entries are user-ROLE but machine-authored (non-boundaries, see above); counting
     // them tells a duty this span was resumed by something other than the user.
@@ -196,8 +239,13 @@ function extractTurn(transcriptPath) {
     toolNames = toolNames.concat(msgs[i].tools);
     toolTargets = toolTargets.concat(msgs[i].targets);
     toolCalls = toolCalls.concat(msgs[i].calls);
+    for (const c of msgs[i].calls) {
+      if (c.id && launched.has(c.id) && !completed.has(c.id)) {
+        agentsInFlight.push({ toolUseId: c.id, target: c.target || null });
+      }
+    }
   }
-  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest, wakeCount };
+  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest, userRequestAt, wakeCount, agentsInFlight };
 }
 
 /**
@@ -216,6 +264,9 @@ function buildContext(payload, cwd, ledger) {
     lastAssistantMessage: payload.last_assistant_message || '',
     transcriptPath: payload.transcript_path || null,
     backgroundTasks: Array.isArray(payload.background_tasks) ? payload.background_tasks : [],
+    // Documented Stop-payload field (hooks reference); null when absent. Duties that must
+    // WRITE consult it — a demand for a write the mode forbids is a wrong check.
+    permissionMode: typeof payload.permission_mode === 'string' ? payload.permission_mode : null,
     turn,
     ledger: ledger || { promptId: payload.prompt_id || null, fires: 0, asked: [] },
     disk: makeDisk(cwd),
@@ -227,4 +278,4 @@ function buildContext(payload, cwd, ledger) {
   return Object.freeze(ctx);
 }
 
-module.exports = { buildContext, extractTurn, makeDisk, isMachineText, isWakeText, MACHINE_TEXT_PREFIXES, WAKE_MARKERS };
+module.exports = { buildContext, extractTurn, makeDisk, isMachineText, isWakeText, MACHINE_TEXT_MARKERS, MACHINE_TEXT_PREFIXES, WAKE_MARKERS };
