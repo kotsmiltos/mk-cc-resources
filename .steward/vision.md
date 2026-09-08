@@ -69,7 +69,40 @@ headless recall judges each paying the whole harness. **Browse skills + the pipe
 used in ZERO real sessions** (essense-flow, session-lifecycle, code-glossary, reuse-gate,
 /kb, /patterns, /verifiability). Reading (Claude's, not a ruling): the next moves are
 deletions, folds and guards on the PUSH side, not new mechanisms — the ranked plan is
-inbox `20260906-1345`; nothing in it is decided.
+inbox `20260906-1345`; nothing in it is decided. **Owner, same day (verbatim):** *"ok,
+decide what is the best way to handle it. the need is that my vision is applied and
+works."* — the standing delegation shape: Claude decides HOW within the vision; the owner
+still rules vision-level forks. Under it Tier 1 (#22–#26 + the lens-restored 1b) was built
+and SHIPPED `bc39fe0` that sitting. **Built ≠ running** (2026-09-08): the owner's process
+predated the install and ran 0.6.0 for two days after — the G1 finding in the frame below.
+
+## The frame (2026-09-08) — a harness LAYER over Claude Code (Claude's reading; the owner asked)
+
+Owner (verbatim): *"What I currently have, is it considered a harness? What does it need to
+do in order for it to be considered a harness? … complete management of what I'm trying to
+do — of managing memory, of managing context, of pushing the work further, of verifying the
+work."* Research + plan: `design/harness.md` (log 2026-09-08). The answer, sourced to
+Anthropic's own 2026 definitions: **Claude Code IS the harness** (loop, tools, compaction,
+permissions, subagents, memory, 33 hook events); **this toolkit is a harness LAYER** —
+duties on the loop's end, memory the loop reads and writes, context it is fed, judges and
+gates it must pass — and "harness design" in Anthropic's vocabulary is exactly deciding
+what belongs in that layer and what to take out as models improve. So "is it a harness?"
+becomes measurable: does it cover the ten components (loop · tools · context · memory ·
+verification · sub-agents · checkpoints · observability · guardrails · evals), and does each
+demonstrably change outcomes? Verdict against audit 2: MEMORY + LOOP work; the PUSH side is
+over-built and unread; **GOAL** (no goal-based termination — "stopping while there is
+planned work" is a plea in prose), **VERIFY** (self-check satisfied by prose and Bash-blind;
+the lens untraced), **OBSERVE** (no scorecard; installed≠running invisible — live-proven
+09-08 on this repo's own process) and **GUARD** (no budgets) are under-built. The owner's
+four axes map onto those components one-to-one.
+
+**Proposed rule (Claude's, NOT owner law until Q18 ratifies it): a mechanism ships with its
+result-metric key or it does not ship.** prism already meets it ("owner invokes it again
+unprompted" — met); nothing else in the toolkit does yet. Companion practice from
+Anthropic's own harnesses (they dropped context resets + the sprint construct when Opus 4.6
+landed): on every model release, re-run the scorecard and remove any mechanism whose metric
+is flat. What the plan does NOT do: add injections, add a second judge, or run unattended
+(invariant 1).
 
 ## The turn-end law (2026-07-27) — one blocking tail
 
@@ -150,8 +183,8 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    SATISFIED against real state (a file on disk, a ledger entry) — never by a counter;
    a fire budget is only the backstop for a satisfaction check that is wrong, and it
    names what it abandons. Currently holds everywhere except a project running
-   essense-autopilot, which still owns its own blocking Stop hook (tasks: extract its
-   `decide()`).
+   essense-autopilot, which still owns its own blocking Stop hook (0.4.1 stands it down
+   cheaply without `.pipeline/`, still REGISTERED; tasks: extract its `decide()`).
 10. **Never hand the owner an unverified "DONE."** (Owner, verbatim, 2026-08-01: *"just
     arbitrarily calling 'DONE' — can we make sure this has happened before finishing and
     me having to ask?"*) A turn that produced work must carry verification evidence — a
@@ -198,7 +231,14 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
   DUTIES (`lib/duties/` — demand or supply), SOURCES of recallable knowledge
   (`lib/sources/` — `markdown-dir` is the generic TYPE; every shipped source is config
   over it), and JUDGES (`lib/judges/` — `claude -p` today). Retiring another plugin's
-  Stop hook into a duty is the expected motion, not an exception.
+  Stop hook into a duty is the expected motion, not an exception. **A fourth since 0.7.0:
+  DEFERRAL predicates** (`lib/deferral.js` — agents in flight, plan mode; a new reason a
+  duty may stand down for is a predicate, never runner code).
+- **Harness-layer drop-ins (2026-09-08, planned — the plan's extension surfaces):** METRIC
+  sources for the `harness-stats` gate (pure runner over a registry, the house gate
+  pattern); trace schema v1 fields every plugin's own writer emits; injection-registry
+  entries `{trigger, injection, budget, metric, provenance}` (Q15 option c); goal-duty
+  arming policies (Q18); ground-truth strictness per project (Q19).
 - kb axes are drop-in surfaces: kinds (all four now written — `working` since the 0.5.0
   session digest), castes, source types (`markdown-dir` is the first; its `split` knob is
   its own extension point — `h2`, then `pattern` for non-heading ledgers), rankers

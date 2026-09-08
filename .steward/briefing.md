@@ -1,5 +1,5 @@
-# mk-cc-resources — briefing (2026-09-06)
-Ship: prism 0.1.0 shipped; you used /prism unprompted. Audit 2 answers your 09-04 doubt by measurement: model-keeping WORKS (captures, integrates, @prompt/@ship/prism); INJECTING is unread — hints 84% ignored, >10 KB tails stubbed, briefing prose wrong in 4/5 ships; browse skills + pipeline unused.
-Last: audit 2 integrated — the ranked plan is Claude's, nothing decided; Tier 1 became tasks #23–#28 (deterministic guards + deletions).
-Next: #23 turn-end — judge --setting-sources "" (33 s → 3.9 s measured), demands-first tail under 10 KB, trace engine (unblocks dogfood leg b); then #22 wrong-check class, #24 counters.
-Waiting: Q16 zero-setup memory (default: one-keystroke seed) · Q17 fold/archive/freeze/gate reuse-gate, session-lifecycle, essense-flow, code-glossary · Q15 now measured (default: fold to ONE hook) · Q13 · Q12.
+# mk-cc-resources — briefing (2026-09-08)
+Ship: Tier 1 (#22–#26 + 1b) shipped + installed 09-06 — but this process predates the install: 0.7.0 has NOT run yet (0/128 trace lines carry it). Restart before trusting any Tier-1 verdict.
+Last: harness research (design/harness.md) — the toolkit is a harness LAYER over Claude Code; memory + loop work, goal/verify/observe/guard under-built; the recall judge measured nondeterministic.
+Next: #29 running≠installed instrument (hours) → #27 digest cap → #28 ground-truth self-check + shared file-touch → #30 trace schema → #31 harness-stats scorecard.
+Waiting: Q18 goal-duty scope + ratify the metric rule (default: every steward:next, advise) · Q19 check strictness (default: run-and-observed, no deny-list) · Q20 recall judge (default: keep, pre-register top-K) · Q16 · Q17 · Q15.

@@ -87,7 +87,10 @@ plugins/
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
-  turn-end/                 # THE single blocking Stop hook — plugins ship DUTIES, not hooks;
+  turn-end/                 # (0.8.0: ground truth — Bash-aware file-touch, named-check floor,
+                            #   modality asks, exec-result recorder hook pair; 0.7.1: running≠
+                            #   installed on every trace line + tail.) THE single blocking Stop
+                            #   hook — plugins ship DUTIES, not hooks;
                             #   one runner checks each against real state, ONE consolidated
                             #   tail per user request. Duty kinds: DEMAND (ask) + SUPPLY
                             #   (material). Shipped duties: context-recall, session-digest,
@@ -131,7 +134,9 @@ plugins/
                             #   Standalone, not in mk-cc-all (bundle would strip catalog/).
                             #   See plugins/patterns/CLAUDE.md.
 
-  kb/                       # (0.10.3: both hooks root-anchored via lib/project-root.js —
+  kb/                       # (0.13.0: kb-pull within the MEASURED 8 KiB platform bound, hinted
+                            #   ids never repeated per session, unchanged digest = one pointer
+                            #   line. 0.10.3: both hooks root-anchored via lib/project-root.js —
                             #   a subdir shell no longer reads/rotates another project's
                             #   kb state. 0.11.0: status-join — steward ledger status/groups
                             #   ride as searchable themes.) Queryable knowledge base — the PULL side of the long-lens tools

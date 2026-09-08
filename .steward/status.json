@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260906-1430",
+  "updated": "20260908-1900",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -353,14 +353,64 @@
       "groups": ["audit-2"],
       "log": "2026-09-06 · Five items integrated at 2ffa2d0 — audit 2 absorbed, the 09-04 doubt answered by measurement, Tier 1 → #23–#28, Q16/Q17 opened",
       "check": "recorded as Claude's PROPOSAL (no owner decision written): Tier 1 → tasks #23–#28 with file:line re-read where marked ✓ (context-recall.js:287, hooks/scripts/turn-end.js:161, claude-p.js:112-113, steward-brief.js:63-67/151/256, self-check.js:78/109-120); Tier 2 → #8 #27 #28 + #13/#17 folds; Tier 3 → Q16, Q17, Q15(c), #11 re-parked"
+    },
+    {
+      "id": "20260906-1405-audit-2-plan-corrections-from-lens",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260908-1900",
+      "by": "steward-agent",
+      "groups": ["audit-2", "tier-1"],
+      "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
+      "check": "silent-drop item 1b confirmed BUILT via essense-flow 0.26.2 + essense-autopilot 0.4.1 plugin.json versions (grep-read); restored items 18/20/21/22 homed in tasks #15/#17/#8/#35, item 19 half at #24; amended checks recorded against #23's closure + Q20; ranking-key split recorded in the questions.md resolved ledger"
+    },
+    {
+      "id": "20260906-1500-owner-should-prism-solve-the-audit-issues-result-based",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260908-1900",
+      "by": "steward-agent",
+      "groups": ["audit-2", "harness", "prism"],
+      "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
+      "check": "owner question + Claude's answer recorded verbatim-sourced in the questions.md resolved ledger; scorecard proposal → tasks #31; the push-side prism run → tasks #17 step 0 (brief preserved in the inbox file); the 'ships with its metric' rule entered vision.md marked Claude's, ratification in Q18"
+    },
+    {
+      "id": "20260906-1520-owner-decide-and-apply-vision-must-work",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260908-1900",
+      "by": "steward-agent",
+      "groups": ["audit-2", "tier-1"],
+      "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
+      "check": "execution evidence = four log.md build entries + the SHIPPED entry (2026-09-06); HEAD ref = bc39fe0; all 16 plugin.json versions grep-read match the ship list; lib/deferral.js present, kb/lens *-stop scripts absent (glob); tasks #22 #23 #24 #25 #26 removed as closed; '\"deferred\"' in trace.jsonl = 0/128 → live proof recorded as PENDING (#1 leg e), not claimed"
+    },
+    {
+      "id": "20260906-1700-datum-recall-judge-deliberates-and-is-nondeterministic",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260908-1900",
+      "by": "steward-agent",
+      "groups": ["turn-end", "recall-judge"],
+      "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
+      "check": "numbers taken from the capture's table (no re-measurement possible in a model pass); 'slow from startup' superseded in state.md, parts.md Judges bullet + gap map, and the Q11 resolved-ledger paragraph; five options + the one check carried verbatim into Q20 with Claude's default marked"
+    },
+    {
+      "id": "20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260908-1900",
+      "by": "steward-agent",
+      "groups": ["harness"],
+      "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
+      "check": "design/harness.md §0, §5.0, §6, §8, §9 read; log 2026-09-08 entry read; '\"deferred\"' in .claude/turn-end/trace.jsonl = 0/128 (G1 re-verified); PostToolUse/PreCompact/PostCompact/SubagentStart/SubagentStop/SessionEnd over plugins/*/hooks/hooks.json = 0 matches (G2/G8/G10 substrate re-verified); frame + rule entered vision.md marked Claude's; G1–G13 mapped to tasks #29–#36 / existing ids; §9 decisions → Q18/Q19 with defaults marked Claude's"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260906-1345-audit-2-improvement-plan-ranked"
+      "derived_through": "20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness"
     },
     "model": {
-      "derived_through": "20260906-1345-audit-2-improvement-plan-ranked"
+      "derived_through": "20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness"
     }
   }
 }

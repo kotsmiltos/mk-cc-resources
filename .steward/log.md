@@ -1002,3 +1002,99 @@ Probe 2 (same prompt): `--effort low` 2,138 → 5,893 output tokens on two ident
 (25.8 s → 56.9 s); `--effort medium` 8,853 tokens / 95.8 s — past the judge's own 60 s
 budget. Every same-config pair picked DIFFERENT notes. Filed as a Q11 datum (inbox
 20260906-1700) with five open options + the check each needs. Owner decides.
+
+## 2026-09-06 · SHIPPED — bc39fe0 pushed (2ffa2d0..bc39fe0), nine plugins + marketplace 2.48.0
+Owner "@ship it". Pre-ship checklist: README rows (9), RELEASE-NOTES (9), plugin.json +
+marketplace (metadata 2.47.2 → 2.48.0), root CLAUDE.md tree (5 entries) + plugin CLAUDE.md
+(turn-end, steward, plugin-toolkit, essense-flow, kb, lens), no new commands; gates at push
+from root with direct exit reads: test-all 33/33 / 1,783 · registry-check 0 · repo-guard 0
+(4 detectors). Leak grep: only the pre-existing author-name field. Commit carries no
+attribution trailer (owner rule). 75 files: +2,1xx/−5xx, 5 deletions, 3 new. Post-push
+install: see the next entry for measured versions. Known stale at push: briefing.md still
+says "33 s → 3.9 s" under Next — superseded by inbox 20260906-1700; the ⚠ line flags 4
+newer events; corrected at the next steward pass (this sitting's one pass is spent).
+Post-push install (measured from installed_plugins.json + cache reads): turn-end 0.7.0 ·
+steward 0.5.1 · kb 0.12.0 · patterns 0.1.1 · thorough-mode 1.11.2 · verifiability-lens
+0.5.1 · plugin-toolkit 1.11.0 · essense-flow 0.26.2 · essense-autopilot 0.4.1; cache
+carries the new code (LEAN_ARGS, lib/deferral.js, kb isChildSession, lens scripts dir
+gone, steward status.derive). Live in the NEXT session — the running one still executes
+the pre-ship hooks. First live legs to watch: a real Stop trace line with `engine`, `ms`,
+`lean`, `deferred`, `payload_keys`; a tail under 9,000 chars with demands first; no
+kb-pull fire inside a judge child; `[instr] items: N new (oldest Nd)`.
+
+## 2026-09-08 · Harness research + plan — `design/harness.md` (owner asked; nothing decided)
+
+Owner asked what a harness is, whether this toolkit is one, how others build them, and for a plan
+covering memory / context / pushing work / verifying work (inbox `20260908-1748-…`). Four background
+agents (Anthropic canon · other builders · Claude Code primitives · internal inventory) + session-side
+verification (hooks doc: 33 events; SDK reference: `query()`/`hooks`/`canUseTool`/`maxBudgetUsd`; loops
+post: turn/goal/time/proactive; `/goal` = session-scoped prompt Stop hook). Deliverable:
+`design/harness.md` (8,966 words): definitions (3 Anthropic, verbatim), the four-layer model (Claude Code
+IS the harness; this repo is a harness LAYER — "harness design" in Anthropic's 2026 sense), ten-component
+table with measured status, other-builders mechanisms + disagreements, verified platform surface, gap
+table G1–G13 each with a closing mechanism and a named check, target contract per axis (open base +
+drop-in surface), five-phase plan mapped onto #27 #28 #8 #13 #3 and Q15–Q17, owner decisions.
+Two live findings on the way: (1) this process (PID 34664, started 09-06 12:32) predates the 0.7.0
+install (15:15) → all traces since the ship are 0.6.0 (`grep -c '"deferred"' trace.jsonl` = 0/127);
+`/clear` does not reload plugins; "installed ≠ running" is invisible from disk → G1. (2) context-recall's
+"did not use" detector is blind to Bash reads (re-served the audit capture read via `head -c`) → G2's
+shared file-touch extractor. Dead end: the primitives agent's `new Agent()` SDK shape — refuted by the
+TypeScript reference; discarded.
+**Check:** file:line citations in the doc re-read from source this sitting (`runner.js:37-38,53,283`,
+`duties/index.js:59`, `self-check.js:53-55,119-120`, `kb-pull.js:50-51`, `steward-brief.js:171`,
+`pattern-gate.js:19-20`); hook events registered across `plugins/*/hooks/hooks.json` = SessionStart 3 ·
+UserPromptSubmit 5 · PreToolUse 2 · Stop 4 · Notification 1 (no PostToolUse/PreCompact/SessionEnd/
+SubagentStop), matching §4/§5. No code changed; suites not run (nothing to run).
+
+## 2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted
+Items (all five had no ledger id; the nine earlier top-level files were already recorded):
+lens corrections `1405` (silent drops restored — 1b BUILT; items 18 → #15, 19 half-built at
+#24 / rest → #8, 20 → #17, 21 → #8, 22 → #35; the amended recall-quality check → Q20; the
+ranking-key split recorded as provenance) · owner prism question `1500` (answered by Claude:
+no panel for plumbing, panel for the push-side fork AFTER a baseline — the run is #17 step 0;
+scorecard → #31; the "ships with its metric" rule → vision as Claude's proposal, Q18
+ratifies) · owner delegation `1520` (EXECUTED: #22 #23 #24 #25 #26 + 1b built and SHIPPED
+`bc39fe0` — DELETED from tasks as closed; live legs → #1(e)) · judge datum `1700`
+(SUPERSEDES "slow from startup" in state.md, parts.md and the Q11 ledger paragraph → Q20;
+the 1345 plan's speed claim is superseded in the model text, its ledger status unchanged) ·
+harness request `1748` (`design/harness.md`: harness-LAYER frame + proposed rule → vision;
+G1→#29, G2→#28, G3→#32, G4→#30, G5→#31 (absorbs #13, DELETED), G6=#27, G7=#17/Q15, G8→#33,
+G9→#34, G10→#35, G11=Q16, G12=Q17/#3, G13→#36; §9 → Q18 goal scope, Q19 strictness + deny;
+the two live findings → state.md G1 section + #28). Snapshot HEAD `bc39fe0` (ref file read);
+the tree did not move mid-pass. Ledger `at` stamps are approximate to the hour (the agent has
+no clock).
+**Check:** all 16 `plugins/*/.claude-plugin/plugin.json` versions grep-read = the ship
+entry's list; marketplace 2.48.0 / bundle 2.27.0 read; `lib/deferral.js` present and
+kb/lens `*-stop.{js,sh}` absent (glob); `"deferred"` in `.claude/turn-end/trace.jsonl` = 0
+of 128 lines (G1 persists at pass time); PostToolUse/PreCompact/PostCompact/SubagentStart/
+SubagentStop/SessionEnd over `plugins/*/hooks/hooks.json` = 0 matches. No code touched; no
+suites run (model-only pass).
+Lens pass (same sitting, verifiability-lens): 54 claims verified, 1 refuted (a blog slug), completeness
+COMPLETE; 5 escalations applied to the doc — (1) G3's "prompt-hook evaluator" was a second blocking Stop
+hook (invariant 9) → prose done-checks go through a turn-end JUDGE inside the one tail; (2) "PreToolUse
+deny" contradicted invariant 8 → settings-level `permissions.deny`, never a hook; (3) `/goal` starts
+idle check-in turns on its own (docs: up to 3 per goal, first at 30 min) → invariant-1 conflict noted in
+§4/§7.3, owner decision §9.5, default excluded; (4) G2's recorder must register PostToolUseFailure too
+(PostToolUse fires only on success) and capture real payload fixtures before parsing; (5) evidence base
+ephemeral → `.claude/kb/captures/20260908-1830-harness-research-sources.md`. Auto-resolved: errata
+stub counts (51+2), Phase 0 restart marked [needs owner], G12 check reads BLOCKING registrations = 1.
+
+## 2026-09-09 · #29 BUILT — running ≠ installed instrument (turn-end 0.7.1, steward 0.5.2) · Q15 slim applied · rulings Q18/Q19/Q16/Q15 recorded
+
+Owner rulings via one-keystroke panel (inbox `20260909-0015-…`): Q19 done = ran-and-observed · Q18 goal duty arms every task I start · Q16 KEEP THE CUE · Q15 SLIM ONLY. Owner law (inbox `20260909-0010-…`): never point the owner to files; content in-environment; least clicks.
+**#29 built.** `plugins/turn-end/lib/installed.js` (new, fail-soft): running version = manifest beside the executing script; installed = `~/.claude/plugins/installed_plugins.json` entry for the same plugin name (user scope preferred, newest wins). turn-end.js: `version` + `stale` on every trace line; a stale process PREPENDS one line to the tail it already emits. steward-brief.js: third instrument `instrRunning` (own copy — cross-plugin duplication deliberate). Versions: turn-end 0.7.0 → 0.7.1, steward 0.5.1 → 0.5.2 (manifest, marketplace row + description, RELEASE-NOTES, plugin CLAUDE.md, README table rows).
+**Q15 slim applied** to `~/.claude/CLAUDE.md` (backup `CLAUDE.md.pre-slim-20260909.md`): Generalize-First Gate 1,788 B → ~640 B (the five steps live in the `generalize-first` hook, one-line summary + anti-signals stay), the `++` augment restatement dropped (hook-injected twice already). 6,528 → 5,228 B. Hooks untouched per the ruling.
+**Checks:** `node plugins/turn-end/tests/turn-end.test.js` → 175/175 (+5: stale / equal / absent / malformed / scope preference; `withStaleNote` both emission shapes; E2E trace line = manifest version) · `node plugins/steward/tests/steward-brief.test.js` → 50/50 (+5) · `status.test.js` 13/13 · registry-check exit 0 (after README rows) · repo-guard exit 0 (4 detectors) · test-all `--root .` 33/33 · 1,793 checks on the third run — the first two runs reported essense-flow `test/run-all.cjs` exit 1 while the same suite run directly passes (54/0): INTERMITTENT under the sweep, untouched by this work, datum for #9-class adjudication. **Live probes against the REAL ledger:** steward hook from the repo → `[instr] running steward 0.5.2 ≠ installed 0.5.1 (installed 2026-09-06) — restart Claude Code to load it`; turn-end hook from the repo on the suite's self-check fixture → tail's first line `[turn-end] running turn-end 0.7.1 ≠ installed 0.7.0 (installed 2026-09-06) — …`, trace `{version:'0.7.1', stale:true, action:'advise'}`; pre-bump the same probe traced `{version:'0.7.0', stale:false}` with no prefix. Dead end on the way: three silent probes were my Bash quoting (`'\\t.jsonl'` → a TAB before Node), not the hook — forward slash works.
+Not pushed, not committed. Next: #27.
+
+## 2026-09-09 · #27 BUILT — kb-pull under the platform bound, not repetitive (kb 0.13.0)
+
+Owner ruling context: Q15 slim-only left the hooks in place; #27 is the kb-pull half of the push-side economics. Built: `lib/pull-state.js` (home-side `~/.claude/kb/pull-state/<root-hash>.json`, session-scoped, presence-gated, `KB_PULL_STATE_DIR` test override); kb-pull.js — whole output within `PLATFORM_INLINE_BOUND_BYTES = 8192` (measured: the smallest hook output the platform ever stubbed was 9.9 KB, three times; 10 KB once), digest cut on a line boundary with a marker naming the platform, per-session hint dedupe + `(+N more above the floor (k already hinted this session) — kb_query "<terms>")` cue, unchanged digest → one pointer line, malformed `.claude/kb.json` → one visible line + digest still injected, trace carries `session_id/prompt_id/held/scores/digest mode/bytes`; kb-session-start clears the digest hash on every fire (compaction throws the transcript copy away); ranker: body-repeat bonus routed to the body side (the floor leak, `term-overlap.js`). Versions: kb 0.12.0 → 0.13.0 (manifest + description, marketplace row + description, README row, RELEASE-NOTES, kb + root CLAUDE.md).
+**Checks:** kb suites — kb 276/276 (+3 floor-leak) · kb-pull 88/88 (+37: bound cut, dedupe, cue, pointer, session scoping, no-session_id = never suppress, malformed config, trace fields, state in the suite-private dir) · kb-footprint 31/31 (new writer audited with its why) · kb-session 78 · status-join 9 · mcp 44 · registry-check exit 0 · repo-guard exit 0 · test-all `--root .` 33/33 · 1,835 checks (was 1,793). **Live probe** on a fixture carrying THIS repo's real 11,353 B digest + two real captures, one session, same prompt ×3: fire 1 = 8,110 B (`digest: cut`, 3 hints), fires 2–3 = 324 B (`digest: pointer`, `held: 3`, cue present). Meaning: the session digest of this very sitting was past the bound all evening — stubbed unread — and now reads. Dead end: a bash-quoting failure (apostrophe inside a single-quoted node script) aborted one doc patch before anything ran; redone as a heredoc.
+Not pushed, not committed. Next: #28 (ground-truth self-check + shared file-touch extractor; Q19 = ran-and-observed).
+
+## 2026-09-09 · #28 BUILT — ground truth: file-touch, named-check floor, modality asks, exec-result recorder (turn-end 0.8.0) · PHASE 0 COMPLETE (#29 → #27 → #28)
+
+Owner ruling Q19 (ran-and-observed) applied. Built: `lib/file-touch.js` (ONE extractor: tool targets + Bash/PowerShell argv → mutations `sed -i`/`>`/`>>`/`tee`/heredoc/`cp`-`mv` dest/`touch`; reads `cat`/`head`/`tail`/`sed -n`/`grep FILE`; pure, conservative — flags/vars/globs/devices never files; sed's script arg and a bare `>>` were the two parsing bugs the suite caught). self-check: mutations via file-touch (Bash edits count); named-check FLOOR (`namedCheckAnchored`: ratio, touched basename, or a command head the turn ran; "Check: none" is a confession); MODALITIES registry (prose re-read / scene look / code run); `requireGreen` knob reads the recorder ledger (default off). context-recall: `dropAlreadyRead` drops notes at paths the turn opened (Read OR Bash), judge prompt lists "FILES THIS TURN OPENED", trace carries `alreadyRead`. New hook pair PostToolUse + PostToolUseFailure on `Bash|PowerShell` → `hooks/scripts/tool-record.js` → `.claude/turn-end/checks.jsonl` + one real payload per event under `samples/` (fixtures first, per the lens's escalation 4; `tool_response` for Bash is undocumented — keys recorded, exit parsed best-effort, null never guessed); footprint only where turn-end keeps state; stands down in judge children. Item 4 (`startedAt` from the transcript) was already live since 0.7.0 (`session-digest.js:132`) — not rebuilt. Versions: turn-end 0.7.1 → 0.8.0 (manifest, marketplace row + description, README row, RELEASE-NOTES, turn-end + root CLAUDE.md).
+**Checks:** `node plugins/turn-end/tests/turn-end.test.js` → 189/189 (+14: file-touch ×4, self-check Bash/floor/modality/requireGreen ×6, recall drop ×1, tool-record unit + E2E ×2 — E2E asserts ledger lines, per-event samples, truncated bodies, no footprint without state, judge-child silence) · registry-check exit 0 · repo-guard exit 0 · test-all `--root .` 33/33 · 1,849 checks (was 1,835). **Live through the real hook** (temp project, `sed -i` edit of parser.js in the transcript): final message "Check: none" → nudged; "verified by inspection" → nudged; "Check: node tests/parser.test.js → 12/12" → silent allow; "Check: re-read parser.js against the ask; result: matches" → silent allow. The recorder's real-payload fixtures land on the first Bash call after the owner restarts (hooks register at process start).
+**Sitting total (2026-09-08/09):** research + plan (`design/harness.md`), rulings Q18/Q19/Q16/Q15, owner law "no pointers, least clicks", Q15 slim (global CLAUDE.md −1,300 B), #29 (turn-end 0.7.1 + steward 0.5.2), #27 (kb 0.13.0), #28 (turn-end 0.8.0). Tree: 4 plugins bumped, ~30 files changed, NOT committed, NOT pushed. Next: #30 trace schema v1 + lens telemetry → #31 harness-stats. Standing datum: essense-flow suite intermittent under the sweep (red 2 of 5 runs tonight, green direct) — #9-class.

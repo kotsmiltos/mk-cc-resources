@@ -178,7 +178,133 @@ deletes a capability the owner uses; all reversible from the archive branch.
 
 ---
 
+## Q18 · Goal-based termination — which tasks arm the goal duty? [harness plan G3, Phase 2 — also ratifies the "ships with its metric" rule]
+
+**Context.** The harness research (`design/harness.md` §6 G3, Claude's, 2026-09-08) found
+NO goal-based termination anywhere in the layer: the loop ends when Claude says so, and
+"stopping while there is planned work" (owner, twin 08-12) is a plea in prose — the shape
+invariant 3 rejects. Anthropic's own harnesses hold the loop to a checked list (`/goal`,
+feature lists, the "35 of 50 items" laziness); the steward already keeps per-task
+DONE-CHECKS in tasks.md — the criterion exists, nothing consumes it. Proposed mechanism
+(#32): a session-scoped turn-end DEMAND duty whose criterion is the armed task's done-check,
+satisfied by a RECORDED check (the #28 ledger) or an explicit owner "stop", capped by fires
+(3), never by a promise phrase. The base supports every arming policy; the DEFAULT is the
+owner's because it changes when a sitting is allowed to end. Bundled here: the doc's
+proposed rule *"a mechanism ships with its result-metric key or does not ship"* is
+Claude's — say yes/no once and it becomes invariant 12 or stays a design value.
+
+**Options:** (a) every `steward:next` arms the duty (the task you picked IS the goal);
+(b) only an explicit `steward:goal <n>` arms it — opt-in per sitting; (c) every task whose
+done-check is machine-checkable arms automatically, prose done-checks never do (an LLM
+evaluator for prose is a later drop-in, never default).
+
+**Recommended default (Claude's): (a), with `severity: advise` first** — the owner's motion
+is already `@prompt`/`steward:next`, so (a) adds zero vocabulary (invariant 6); advise never
+traps a sitting (invariant 8); escalate to `block` once the scorecard (#31) shows the nudge
+is heeded. (b) is the fallback if (a) nags on exploratory sittings. Rule: ratify.
+
+**Blocks:** #32's default; nothing else.
+
+---
+
+## Q19 · Ground truth for "done": must a recorded check be GREEN, or merely RUN and observed? — and is any deny rule wanted? [harness plan G2, §9.2 + §9.4]
+
+**Context.** Self-check today is satisfied by prose ("Check: none", "verified by
+inspection", "exit 0" — `self-check.js:119-120`) and is blind to Bash mutations (`sed -i`);
+on 09-08 context-recall's "did not use" detector was likewise blind to a Bash read. Every
+harness the research compared (SWE-agent, Aider, OpenAI) verifies by TOOL RESULT, never by
+claim. #28 builds the PostToolUse check-recorder (a per-root ledger of `{prompt_id, kind:
+check|mutation, cmd, exit, files}`) and a shared file-touch extractor; the question is what
+SATISFIES: canon says green ("task verifier nearly perfect"); the owner's Unity sittings
+asked for LESS testing (*"no testing on your side is necessary"*) and self-check blocked
+42× (twin 30). Separately, no PreToolUse `deny` exists anywhere (invariant 8: hooks never
+block a tool call); the doc's §7.6 asks whether any should.
+
+**Options — strictness:** (a) GREEN — a check ran after the last mutation AND exited 0;
+(b) RUN-AND-OBSERVED — a check ran after the last mutation and its output was Read/echoed;
+the exit code is reported in the tail either way; (c) per-project registry default
+(`turn-end/config.json`) — (a) for code repos, (b) where the owner says so. **Deny-list:**
+(d) none until the scorecard shows a class of irreversible mistakes; (e) a minimal list now
+(e.g. `git push` without owner words, `rm -rf` outside the repo).
+
+**Recommended default (Claude's): (b) as the floor + (c) as the surface, and (d).** (b) is
+what invariant 10 actually says (a run OBSERVED, compared, probed — not necessarily green: a
+red check honestly reported is evidence); a project can raise itself to (a) in config; (d)
+keeps invariant 8 intact until a measured class earns a rule.
+
+**Blocks:** #28's ledger leg; #32 (a goal satisfied by a recorded check inherits this).
+
+---
+
+## Q20 · The recall judge is a NOISY sample, not a verdict — keep, narrow, vote, or replace? [Q11 datum, inbox 20260906-1700]
+
+**Context.** Q11 was RESOLVED on quality-over-speed assuming the judge's pick is the quality
+ceiling. Measured 2026-09-06 on one real 8.8 KB prompt (haiku, 28-entry index): the child
+DELIBERATES 2.1–8.9k output tokens for a ~600-char verdict, the amount varies 4× on
+identical input (`--effort low` 25.8 s → 56.9 s on two identical runs; `--effort medium`
+95.8 s > the 60 s budget — the mechanism behind audit 2's 12 ETIMEDOUTs); the SAME
+configuration twice → DIFFERENT picks in every pairing tried; 10-turn replay: identical
+verdict sets 3/10. The lean flags buy −36% cost + no harness boot in the child + no state
+pollution, NOT speed (shipped in 0.7.0 for those). Every option below is measurable with
+ONE check: 10 repeats on 3 real turns → agreement rate, p95 ms, cost, against the measured
+rows.
+
+**Options:** (1) keep as is — accountable now (trace `engine`/`ms`/`costUsd`/`lean`),
+fallback ranker on timeout; (2) `--effort low` as the default — cheapest measured, still
+noisy (n=2); (3) the ranker pre-selects top-K (K≈8) candidates and the judge rules only on
+those — smaller prompt, less to deliberate (this is NOT the dead "should recall fire?"
+pre-filter: recall still fires every turn and the judge still chooses); (4) two-vote judge,
+keep the intersection — halves false positives, doubles cost; (5) ranker + per-session
+dedupe replaces the LLM judge; the saved tokens go to the lens.
+
+**Recommended default (Claude's): (1) NOW, (3) as the pre-registered candidate** — nothing
+retires on a promise (invariant 11): keep the judge until a 0.7.0 trace exists (#1 leg e)
+and #30 writes the agreement inputs; then run the one check with (3) against (1) and adopt
+(3) only if agreement is not worse and p95 ms is lower. (5) is the fallback if agreement
+stays near chance — a coin-flip judge is a dead mechanism, and a dead mechanism is a quality
+failure by the owner's own law.
+
+**Blocks:** nothing built; #30's judge trace is the instrument.
+
+---
+
 ## Resolved ledger (provenance — these answers are now law in the model)
+
+- **Owner request (2026-09-08, EXECUTED as research; decisions parked): "research what a
+  Claude harness is… is what I currently have a harness? … complete management of managing
+  memory, of managing context, of pushing the work further, of verifying the work."** →
+  `design/harness.md` (log 2026-09-08): Claude Code IS the harness, this toolkit is a
+  harness LAYER (vision frame); ten components with measured status; gaps G1–G13 → tasks
+  #29–#36 (+ #27 #28 #17 and Q15–Q17 as already homed); §9 owner decisions → Q18 (goal
+  scope + the rule), Q19 (strictness + deny). Two live findings on the way:
+  installed≠running (G1 → #29) and recall's Bash-blind detector (G2 → #28). Provenance:
+  `inbox/20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness.md`.
+- **Owner directive (2026-09-06, EXECUTED same sitting): "ok, decide what is the best way to
+  handle it. the need is that my vision is applied and works."** Reply to Claude's prism
+  answer (next entry). Claude's decision under it: Tier 1 first as small verified batches →
+  #23 #22 #24 #25 #26 + lens-restored 1b BUILT (four log entries 2026-09-06), nine plugins
+  bumped, gates green, SHIPPED `bc39fe0` on the owner's "@ship it", installed — NOT yet
+  running in that process (G1). The scorecard baseline (#31) and the push-side prism run
+  (#17 step 0) are the sequence's next two steps. Provenance:
+  `inbox/20260906-1520-owner-decide-and-apply-vision-must-work.md`.
+- **Owner question (2026-09-06, ANSWERED by Claude, then delegated): "should we use prism
+  to solve these issues? … redesign as long as it fits my vision… result based."** Answer:
+  plumbing (Tier 1) gets no panel — build, run the named check, done; the PUSH-SIDE fork
+  (what a session receives from memory, when, how big; owner-named lens
+  *what-I-actually-experience*) is panel-worthy AFTER a scorecard baseline; prism AS a
+  mechanism replacing lens/judge/steward: not yet — those measurably work, the plumbing
+  fails, and the lens has no telemetry to judge a panel by. The verbatim prism brief is
+  preserved in the inbox file for #17 step 0. Provenance:
+  `inbox/20260906-1500-owner-should-prism-solve-the-audit-issues-result-based.md`.
+- **Lens corrections to the audit-2 plan (2026-09-06, Claude accepted all five):** silent
+  drops restored (1b BUILT; items 18 → #15, 19 → half at #24 / rest #8, 20 → #17, 21 → #8,
+  22 → #35); item 1's check amended to recall QUALITY (came back uninterpretable → Q20);
+  `background_tasks` may never arrive (0.7.0 derives from the transcript); the ranking key
+  SPLIT — owner rulings (quality over speed; dead mechanism = quality failure) vs
+  Claude-derived values (fold > add; fire conditionally; deterministic > LLM); items 2/4
+  softened (give-up ONCE; cap primary, order secondary) — all as built. Errata: avg 6,361 B
+  per prompt, 33 real sessions + 1 unknown, spawns ≥8 UPS + 5 Stop. Provenance:
+  `inbox/20260906-1405-audit-2-plan-corrections-from-lens.md`.
 
 - **Owner request (2026-09-06, EXECUTED same sitting): review kb / steward / lens /
   thorough-mode / every hook / glossary / harness + cross-project usage + how to
@@ -208,11 +334,13 @@ deletes a capability the owner uses; all reversible from the archive branch.
   the substrate); (b) richer judge inputs (status/groups, harbor caste); (c) recall
   QUALITY measured (chosen-files-actually-used), never latency. Promoted to vision
   invariant 11 (quality over speed — the standing optimization order). Executes as
-  Phase 1 item (6) + Phase 3 stats. **Number added 2026-09-06 (audit 2):** the judge is
-  slow from STARTUP, not inference — 33.0 s wall / 3.8 s API by default vs 3.9 s with
-  `--setting-sources ""` (no hooks fire in the child, OAuth intact, plan-billed); the
-  every-turn judge stays default AND becomes cheap (→ #23); the ranker-first pre-filter
-  idea is dead for good. Provenance:
+  Phase 1 item (6) + Phase 3 stats. **Numbers 2026-09-06 — CORRECTED the same day:** the
+  audit's one-word probe (33.0 s wall / 3.8 s API → 3.9 s with `--setting-sources ""`)
+  measured STARTUP on a trivial prompt; on a real 8.8 KB prompt the child DELIBERATES
+  (api_ms ≈ wall, 2–9k output tokens, nondeterministic picks — inbox `20260906-1700`). The
+  lean flags shipped in 0.7.0 for cost + isolation, not speed; the ranker-first "should
+  recall fire?" pre-filter stays dead; whether the judge's NOISE is acceptable is the new
+  question → Q20. Provenance:
   `inbox/done/20260823-1520-owner-rulings-on-stack-a-blueprint.md`.
 - **Owner rulings on stack-a-blueprint §6 (2026-08-23, all four now design law —
   blueprint §6/§6b is the plan of record):** **(Q1)** item records — delegated with a
