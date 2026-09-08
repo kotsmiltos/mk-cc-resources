@@ -1,5 +1,16 @@
 # steward — Release Notes
 
+## 0.5.2 — 2026-09-09 — running ≠ installed instrument (harness G1, task #29)
+
+`[instr]` gains a third instrument: the hook reports ITS OWN version (the plugin.json beside
+the executing code) against `~/.claude/plugins/installed_plugins.json` and prints
+`running steward X ≠ installed Y (installed <date>) — restart Claude Code to load it` only when
+they differ; silent when equal, when the ledger is absent or unreadable, or when this plugin has
+no entry. Own copy of the reader turn-end 0.7.1 carries — duplication across independently
+installed plugins is deliberate. Why: a session that outlives an install keeps the old code with
+no symptom (measured 2026-09-08, two days of stale turn-end traces); one stale plugin proves the
+class for the whole process. Suite 50 checks (+5), isolated fake home, no framework.
+
 ## 0.5.1 — 2026-09-06 — one item model, every reader (audit 2, task #24)
 
 The brief hook's `inbox:` line, the `[instr] items` line and the fleet table all derive

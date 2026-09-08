@@ -235,6 +235,30 @@ check('cursor mode: item integrated after the cursor flagged despite fresh mtime
 check('cursor mode: derived-new item flagged', statCtx.includes('item:20260823-2100-new-idea'));
 check('instrument line present with git position', /\[instr\] git: main @ abc1234/.test(statCtx));
 check('instrument line counts new items', statCtx.includes('1 new'));
+check('instrument line silent about versions when the fake home has no install ledger', !statCtx.includes('running steward'));
+
+// Running ≠ installed (2026-09-08): the hook reports ITS OWN version against the install ledger
+// in the (fake) home. A newer ledger version → one instrument; equal → silent; ledger gone → silent.
+const ownManifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8'));
+const ledgerDir = path.join(fakeHomeGlobal, '.claude', 'plugins');
+fs.mkdirSync(ledgerDir, { recursive: true });
+const ledgerFile = path.join(ledgerDir, 'installed_plugins.json');
+fs.writeFileSync(ledgerFile, JSON.stringify({ version: 2, plugins: {
+  'steward@fake-market': [{ scope: 'user', version: '99.0.0', installPath: 'x', lastUpdated: '2026-09-06T12:15:47.839Z' }],
+} }));
+const verStaleCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalContext;
+check('running ≠ installed: instrument names running version, installed version, install date, and the remedy',
+  new RegExp(`\\[instr\\][^\\n]*running steward ${ownManifest.version.replace(/\./g, '\\.')} ≠ installed 99\\.0\\.0 \\(installed 2026-09-06\\) — restart Claude Code`).test(verStaleCtx));
+check('running ≠ installed: the briefing still injects (instrument never blocks)', verStaleCtx.includes('Ship: status test.'));
+fs.writeFileSync(ledgerFile, JSON.stringify({ version: 2, plugins: {
+  'steward@fake-market': [{ scope: 'user', version: ownManifest.version, lastUpdated: '2026-09-06T12:15:47.839Z' }],
+} }));
+const verFreshCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalContext;
+check('running = installed: silent', !verFreshCtx.includes('running steward'));
+fs.writeFileSync(ledgerFile, '{not json');
+const badLedgerCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalContext;
+check('malformed ledger: silent and the briefing still injects (fail-soft)', !badLedgerCtx.includes('running steward') && badLedgerCtx.includes('Ship: status test.'));
+fs.unlinkSync(ledgerFile);
 
 // BREAK: corrupt status.json — reader degrades to mtime mode AND says so out loud.
 fs.writeFileSync(path.join(statProj, '.steward', 'status.json'), '{broken');

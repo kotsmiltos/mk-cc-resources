@@ -57,7 +57,9 @@ hooks/
                         #   silently — the most-injected surface may be old, never a liar.
                         #   Agent regenerates briefing LAST in a pass so same-pass writes
                         #   never false-flag. Protocol line names <git root>/.steward/inbox/
-                        #   as the only capture path (aithseis build-and-sell orphan class)
-tests/steward-brief.test.js  # 40 checks, isolated fake home, no framework
+                        #   as the only capture path (aithseis build-and-sell orphan class).
+                        #   0.5.2: [instr] running≠installed — own version (manifest beside the
+                        #   code) vs the install ledger; silent when equal/absent/unreadable
+tests/steward-brief.test.js  # 50 checks, isolated fake home, no framework (0.5.2: running≠installed instrument ×5)
 tests/status.test.js         # 13 checks — contract reader (derive/cursor/corrupt/tolerant)
 ```

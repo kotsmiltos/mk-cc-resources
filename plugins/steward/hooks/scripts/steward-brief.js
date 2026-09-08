@@ -168,7 +168,41 @@ function ageDaysFromId(id, now = Date.now()) {
   return Math.max(0, Math.floor((now - stamp) / 86400000));
 }
 
-const INSTRUMENTS = [instrGit, instrItems];
+/*
+ * Running ≠ installed (measured 2026-09-08): Claude Code resolves plugin roots at PROCESS
+ * start and `/clear` does not reload, so a session that outlives an install keeps the old
+ * code — this repo ran turn-end 0.6.0 for two days after 0.7.0 was installed, with no
+ * symptom on screen. A hook can only observe ITS OWN running version (the plugin.json
+ * beside the executing code); one stale plugin proves the class for the whole process,
+ * since every root resolved at the same moment. Own copy of the reader turn-end carries in
+ * lib/installed.js — duplication ACROSS plugins is deliberate. Silent when equal, when the
+ * ledger is absent or unreadable, or when this plugin has no entry (a --plugin-dir checkout).
+ */
+function instrRunning() {
+  try {
+    const os = require('os');
+    const pluginRoot = path.join(__dirname, '..', '..');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pluginRoot, '.claude-plugin', 'plugin.json'), 'utf8'));
+    if (!manifest || typeof manifest.name !== 'string' || typeof manifest.version !== 'string') return '';
+    const ledgerPath = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+    const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+    const plugins = ledger && ledger.plugins && typeof ledger.plugins === 'object' ? ledger.plugins : {};
+    const entries = [];
+    for (const [key, arr] of Object.entries(plugins)) {
+      if (key.split('@')[0] !== manifest.name) continue;
+      for (const e of Array.isArray(arr) ? arr : []) {
+        if (e && typeof e === 'object' && typeof e.version === 'string') entries.push(e);
+      }
+    }
+    const byTime = (a, b) => String(b.lastUpdated || '').localeCompare(String(a.lastUpdated || ''));
+    const entry = entries.filter((e) => e.scope === 'user').sort(byTime)[0] || entries.slice().sort(byTime)[0];
+    if (!entry || entry.version === manifest.version) return '';
+    const when = typeof entry.lastUpdated === 'string' ? ` (installed ${entry.lastUpdated.slice(0, 10)})` : '';
+    return `running ${manifest.name} ${manifest.version} ≠ installed ${entry.version}${when} — restart Claude Code to load it`;
+  } catch (_e) { return ''; }
+}
+
+const INSTRUMENTS = [instrGit, instrItems, instrRunning];
 
 function instrumentLine(projectRoot) {
   const parts = INSTRUMENTS.map((fn) => { try { return fn(projectRoot); } catch (_e) { return ''; } })
