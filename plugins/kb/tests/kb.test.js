@@ -194,6 +194,18 @@ const mkEntry = (over) => makeEntry({ ...goodFields, ...over }, reg);
   check('the cap leaves a real subject match ahead of a generic one',
     termOverlap.score(subject, longPrompt, { scan: true }) > termOverlap.score(generic, chatty, { scan: true }));
   check('body cap is a named constant, not a magic number', termOverlap.SCAN_BODY_CAP > 0);
+
+  // The floor leak (audit 2, 2026-09-06): the body-repeat bonus rode inside the term's value,
+  // so a title hit whose word also recurs in the body carried body evidence into the SUBJECT
+  // floor — length posing as aboutness. Repeats are body evidence and stay under the cap.
+  const repeaty = mkEntry({ id: 'sc5', title: 'widget', body: ('widget ').repeat(8) });
+  check('scan mode: body repeats of a title word cannot lift the score past title + body cap',
+    termOverlap.score(repeaty, T('widget'), { scan: true }) <= termOverlap.TITLE_WEIGHT + termOverlap.SCAN_BODY_CAP);
+  check('scan mode: the repeat bonus still counts as (capped) body evidence',
+    termOverlap.score(repeaty, T('widget'), { scan: true }) > termOverlap.TITLE_WEIGHT);
+  const onceOnly = mkEntry({ id: 'sc6', title: 'widget', body: 'widget' });
+  check('query mode: the repeat bonus is unchanged (raw still includes it)',
+    termOverlap.score(repeaty, T('widget')) > termOverlap.score(onceOnly, T('widget')));
   check('query carries the scan flag', makeQuery({ text: 'x', scan: true }, reg).scan === true);
   check('query defaults scan off', makeQuery({ text: 'x' }, reg).scan === false);
 

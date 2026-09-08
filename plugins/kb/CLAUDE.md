@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.10.0)
+.claude-plugin/plugin.json   # metadata (v0.13.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -24,6 +24,11 @@ lib/
   query.js                   # caller request -> normalised Query (validates, throws)
   coverage.js                # what has ALREADY been mined (Extracted-from citations ->
                              #   the top-up map a re-seed reads first)
+  pull-state.js              # 0.13.0: what THIS sitting was already shown — home-side
+                             #   ~/.claude/kb/pull-state/<root-hash>.json, session-scoped,
+                             #   presence-gated; kb-pull dedupes hints + detects an unchanged
+                             #   digest against it, kb-session-start clears the digest hash on
+                             #   every fire (a compaction throws the transcript copy away)
   presence.js                # the self-activation rule: does this project keep curated
                              #   memory? (empty dirs and ambient files do NOT count)
   cap-block.js               # bound injected text so the READER learns what went missing:
@@ -71,7 +76,13 @@ skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .
 hooks/hooks.json             # UserPromptSubmit (kb-pull) + SessionStart (kb-session-start)
                              #   registration; the kb-scribe Stop registration is RETIRED
                              #   (0.9.0 — see below)
-hooks/scripts/kb-pull.js     # the awareness surface: deterministic ranker over the prompt ->
+hooks/scripts/kb-pull.js     # the awareness surface (0.13.0: whole output within the MEASURED
+                             #   platform bound of 8 KiB — past ~10 KB the platform stubs it
+                             #   unread; digest cut loud, pointer line when unchanged this
+                             #   session, hinted ids never repeated + a "+N more — kb_query" cue,
+                             #   malformed kb.json never costs the digest, trace carries
+                             #   session_id/prompt_id/scores/digest mode/bytes):
+                             #   deterministic ranker over the prompt ->
                              #   score-floored hint lines (title+id, kb_read to pull) +
                              #   session-digest injection; machine-text guard; fail-open;
                              #   .claude/kb.json {"pull":{...}} knobs
@@ -93,13 +104,14 @@ hooks/scripts/kb-session-start.js # keeps "now" honest (0.10.2: spawned sessions
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 273 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 47 checks — guards, floor, digest, traces, precision fixture,
+tests/kb.test.js             # 276 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 88 checks — guards, floor, digest + platform bound, dedupe + cue,
+                             #   change-aware digest, malformed kb.json, traces, precision fixture,
                              #   subdir root-anchoring + orphan-dir silence (0.10.3)
 tests/kb-session.test.js     # 78 checks — presence rule, rotation + loss-safety, cue
 tests/kb-status-join.test.js # 9 checks — join facets, themes filter, absent/corrupt ledger
 tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
-tests/kb-footprint.test.js   # 33 checks — THE footprint invariant: fs-import + write-site
+tests/kb-footprint.test.js   # 31 checks — THE footprint invariant: fs-import + write-site
                              #   audit (negative-controlled) +
                              #   all four entry points silent in an unseeded project
 ```

@@ -180,10 +180,14 @@ function scoreVariant(term, titleTokens, themeTokens, bodyTokens, genericTerms) 
   else if (inTitle.fuzzy) value = TITLE_WEIGHT * FUZZY_WEIGHT;
   else if (inThemes.fuzzy) value = THEME_WEIGHT * FUZZY_WEIGHT;
   else if (inBody.fuzzy) value = BODY_WEIGHT * FUZZY_WEIGHT;
-  else return { value: 0, subject: false };
+  else return { value: 0, subject: false, repeat: 0 };
 
-  if (inBody.full > 1) value += BODY_REPEAT_WEIGHT * Math.min(inBody.full - 1, MAX_REPEAT_BONUS);
-  return { value, subject };
+  // The body-repeat bonus is BODY evidence however the term landed. Audit 2 (2026-09-06)
+  // found it folded into `value`, so a title hit whose word also recurs in the body carried
+  // the bonus into the scan-mode SUBJECT floor — length posing as aboutness, the exact thing
+  // that floor exists to stop. Kept apart so the caller can route it to the body side.
+  const repeat = inBody.full > 1 ? BODY_REPEAT_WEIGHT * Math.min(inBody.full - 1, MAX_REPEAT_BONUS) : 0;
+  return { value, subject, repeat };
 }
 
 /**
@@ -224,16 +228,17 @@ function score(entry, terms, opts) {
     const variants = aliases && Array.isArray(aliases[term]) ? aliases[term] : null;
     if (variants) forms.push(...variants);
 
-    let best = { value: 0, subject: false };
+    let best = { value: 0, subject: false, repeat: 0 };
     for (const form of forms) {
       const v = scoreVariant(form, titleTokens, themeTokens, bodyTokens, genericTerms);
-      if (v.value > best.value) best = v;
+      if (v.value + v.repeat > best.value + best.repeat) best = v;
     }
     if (best.value <= 0) continue;
     matched += 1;
-    raw += best.value;
+    raw += best.value + best.repeat;
     if (best.subject) subjectRaw += best.value;
     else bodyRaw += best.value;
+    bodyRaw += best.repeat; // repeats are body evidence, never subject evidence
   }
 
   if (!matched) return 0;

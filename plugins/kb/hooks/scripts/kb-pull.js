@@ -32,6 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 const { capBlock } = require('../../lib/cap-block');
+const pullState = require('../../lib/pull-state');
 
 // Hints fire only when an entry REALLY matches the prompt: a floor of 6 needs
 // roughly a title-level hit with decent coverage — body-only brushes stay quiet.
@@ -40,16 +41,37 @@ const DEFAULT_MAX_HINTS = 3;
 // Prompts shorter than this are commands/acks ("push", "do it") — never worth a scan.
 const MIN_PROMPT_CHARS = 15;
 // The digest is the SESSION'S OWN MEMORY of the sitting, and it is injected because the
-// session needs it — so it gets whatever size it needs. It ships UNCAPPED.
+// session needs it — so it gets whatever size it needs, UP TO WHAT THE PLATFORM WILL SHOW.
 //
-// It used to carry a hardcoded 1500-char / 30-line budget. That was a number nobody chose:
-// it cut real working memory every long session, and "compress the file" is the wrong remedy
-// when the file is the thing being remembered with. A budget belongs to a project that wants
-// one, not to the shipped default — set `pull.digest.maxChars` / `maxLines` in .claude/kb.json
-// to impose one, and the cut is still loud when you do.
+// It used to carry a hardcoded 1500-char / 30-line budget — a number nobody chose, cutting
+// real working memory every long session. Then it shipped uncapped, and audit 2 measured the
+// other failure: 51 fires stubbed to a 2 KB preview because the output passed ~10 KB, so the
+// biggest kb push was mostly NOT READ. The default budget is now the PLATFORM's bound (below),
+// not a taste; a project may still set `pull.digest.maxChars` / `maxLines` in .claude/kb.json
+// to impose a tighter one, and every cut stays loud.
 const DEFAULT_DIGEST_MAX_CHARS = null;
 const DEFAULT_DIGEST_MAX_LINES = null;
 const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
+
+/*
+ * PLATFORM INLINE BOUND — measured, not chosen. Claude Code replaces a hook output over
+ * roughly 10 KB with a 2 KB "Output too large … saved to tool-results/… Preview" stub; the
+ * smallest output ever stubbed across this machine's session transcripts was 9.9 KB (seen
+ * three times), and audit 2 counted 51 kb-pull fires stubbed that way, 110-line digests
+ * among them. An injection past the bound is not read. 8 KiB keeps a margin for the
+ * platform's own wrapper bytes. Bytes, not chars: the digest carries →/≠/— and the platform
+ * counts bytes.
+ */
+const PLATFORM_INLINE_BOUND_BYTES = 8192;
+// Room kept inside the bound for the cut marker and wrappers when the digest must be cut.
+const CUT_NOTE_RESERVE_BYTES = 256;
+// Shrink step when a char budget still overflows the byte budget (multi-byte text).
+const CUT_SHRINK_FACTOR = 0.9;
+const MIN_DIGEST_CHARS_AFTER_CUT = 200;
+// Candidates scanned beyond maxHints so "+N more above the floor" can be counted honestly.
+const SCAN_LIMIT_MULTIPLIER = 4;
+// Prompt terms named in the cue so the session can turn a hint into a deliberate query.
+const CUE_TERMS = 3;
 
 // CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook
 // in this repo; repo-guard's `machine-guard-drift` detector fails the push when a copy
@@ -114,36 +136,101 @@ function pullConfig(config) {
   };
 }
 
-function hintLines(hits) {
+/**
+ * Which strong hits to SHOW this prompt: never one this session was already hinted (the
+ * prior line sits in the transcript; repeating it is the 40%-of-slots noise audit 2 measured),
+ * at most maxHints. `held` counts what stayed back — already-hinted and beyond-the-cap alike —
+ * so the cue can say "+N more" truthfully.
+ */
+function selectHints(strong, hintedIds, maxHints) {
+  const already = new Set(Array.isArray(hintedIds) ? hintedIds : []);
+  const fresh = strong.filter((h) => !already.has(h.entry.id));
+  const shown = fresh.slice(0, maxHints);
+  return { shown, held: strong.length - shown.length, repeats: strong.length - fresh.length };
+}
+
+/** The prompt's own terms, so the cue turns a hint into a deliberate `kb_query`. */
+function cueTerms(terms, n = CUE_TERMS) {
+  return (Array.isArray(terms) ? terms : []).filter((t) => typeof t === 'string' && t.length >= 4).slice(0, n);
+}
+
+function cueLine(held, repeats, terms) {
+  const q = cueTerms(terms);
+  const how = q.length ? ` — kb_query "${q.join(' ')}"` : '';
+  const seen = repeats ? ` (${repeats} already hinted this session)` : '';
+  return `(+${held} more above the floor${seen}${how})`;
+}
+
+function hintLines(hits, cue) {
   const lines = ['<kb-hints>', 'The project knowledge base holds entries relevant to this prompt — pull before re-deriving:'];
   for (const h of hits) {
     lines.push(`- ${h.entry.title} (${h.entry.kind}/${h.entry.caste}, ${h.entry.path}) -> kb_read "${h.entry.id}"`);
   }
+  if (cue) lines.push(cue);
   lines.push('</kb-hints>');
   return lines.join('\n');
 }
 
-function digestBlock(root, settings) {
-  let raw;
+function readDigest(root) {
   try {
-    raw = fs.readFileSync(path.join(root, DIGEST_REL), 'utf8').trim();
+    const raw = fs.readFileSync(path.join(root, DIGEST_REL), 'utf8').trim();
+    return raw || null;
   } catch (_e) {
     return null; // no digest — the session has not started one; say nothing.
   }
-  if (!raw) return null;
-  const s = (settings && settings.digest) || {};
-  const body = capBlock(raw, {
-    maxChars: typeof s.maxChars === 'number' ? s.maxChars : DEFAULT_DIGEST_MAX_CHARS,
-    maxLines: typeof s.maxLines === 'number' ? s.maxLines : DEFAULT_DIGEST_MAX_LINES,
-    label: 'digest',
-    remedy: `compress ${DIGEST_REL}`,
-  });
+}
+
+function wrapDigest(body) {
   return [
     '<session-digest>',
     body,
     `(rolling session context — update ${DIGEST_REL} when decisions/outcomes land)`,
     '</session-digest>',
   ].join('\n');
+}
+
+/**
+ * The digest, capped first by the PROJECT's own budget (if any) and then by whatever bytes the
+ * platform bound leaves after the other parts — cut on line boundaries, marker names the loss.
+ * `budgetBytes` null = no platform budget (tests exercising the project knobs alone).
+ */
+function digestBlockWithin(raw, settings, budgetBytes) {
+  const s = (settings && settings.digest) || {};
+  const projectChars = typeof s.maxChars === 'number' ? s.maxChars : DEFAULT_DIGEST_MAX_CHARS;
+  const projectLines = typeof s.maxLines === 'number' ? s.maxLines : DEFAULT_DIGEST_MAX_LINES;
+  const cap = (maxChars) => wrapDigest(capBlock(raw, {
+    maxChars, maxLines: projectLines, label: 'digest',
+    remedy: `compress ${DIGEST_REL} — the platform shows ~${PLATFORM_INLINE_BOUND_BYTES / 1024 | 0} KB of hook output and stubs the rest unread`,
+  }));
+  let block = cap(projectChars);
+  if (typeof budgetBytes !== 'number' || Buffer.byteLength(block) <= budgetBytes) return { block, cut: false };
+  // Over the platform bound: shrink a CHAR budget until the BYTE size fits. Chars never exceed
+  // bytes, so the byte budget is a safe first char budget; multi-byte text needs a few steps.
+  let maxChars = Math.max(MIN_DIGEST_CHARS_AFTER_CUT, budgetBytes - CUT_NOTE_RESERVE_BYTES);
+  if (typeof projectChars === 'number') maxChars = Math.min(maxChars, projectChars);
+  block = cap(maxChars);
+  while (Buffer.byteLength(block) > budgetBytes && maxChars > MIN_DIGEST_CHARS_AFTER_CUT) {
+    maxChars = Math.max(MIN_DIGEST_CHARS_AFTER_CUT, Math.floor(maxChars * CUT_SHRINK_FACTOR));
+    block = cap(maxChars);
+  }
+  return { block, cut: true };
+}
+
+/** Back-compat entry (tests + callers): the digest block under the project's knobs only. */
+function digestBlock(root, settings) {
+  const raw = readDigest(root);
+  return raw ? digestBlockWithin(raw, settings, null).block : null;
+}
+
+/**
+ * One pointer line instead of the whole digest when it has not changed since its last
+ * injection THIS session — the full copy already sits in the transcript. kb-session-start
+ * clears the remembered hash on every SessionStart fire (compaction included), so the first
+ * prompt after a summary gets the full text again.
+ */
+function digestPointer(raw) {
+  const lines = raw.split('\n').length;
+  return `<session-digest>(unchanged since its last injection this session — ${lines} lines / ${Buffer.byteLength(raw)} B, standing earlier in this transcript; update ${DIGEST_REL} when decisions/outcomes land)</session-digest>`;
 }
 
 /**
@@ -163,10 +250,14 @@ async function main() {
   const input = await readStdin();
   let prompt = '';
   let payloadCwd = '';
+  let sessionId = null;
+  let promptId = null;
   try {
     const payload = JSON.parse(input);
     prompt = String(payload.prompt || '').trimStart();
     if (typeof payload.cwd === 'string') payloadCwd = payload.cwd;
+    if (typeof payload.session_id === 'string' && payload.session_id) sessionId = payload.session_id;
+    if (typeof payload.prompt_id === 'string' && payload.prompt_id) promptId = payload.prompt_id;
   } catch (_e) {
     process.exit(0); // not hook JSON — nothing to do
   }
@@ -176,22 +267,63 @@ async function main() {
   // previously read/wrote the wrong project's kb state (see lib/project-root.js).
   const { resolveProjectRoot } = require('../../lib/project-root');
   const root = resolveProjectRoot(payloadCwd || process.cwd());
-  const { openKb } = require('../../lib/kb');
-  const kb = openKb(root);
-  const cfg = pullConfig(kb.config);
+
+  // A malformed .claude/kb.json used to throw here and take the DIGEST down with the hints
+  // (audit 2). The two are independent: hints need the corpus, the digest is a file. Say so
+  // once, visibly, and still deliver the digest.
+  let kb = null;
+  let configError = null;
+  try {
+    kb = require('../../lib/kb').openKb(root);
+  } catch (err) {
+    configError = err;
+  }
+  const cfg = pullConfig(kb ? kb.config : {});
   if (!cfg.enabled) process.exit(0);
 
+  // This sitting's memory of what it was shown (home-side, session-scoped; absent session_id
+  // = stateless, never suppress on a missing signal). Presence-gated like every other side
+  // effect: a project keeping no curated memory leaves no state anywhere, home included.
+  const stateFile = sessionId && hasMemory(root) ? pullState.statePathFor(root) : null;
+  const state = stateFile ? pullState.readState(stateFile, sessionId) : pullState.emptyState(null);
+
   const out = [];
+  let strong = [];
+  let shown = [];
+  let held = 0;
+  let repeats = 0;
+  if (configError) {
+    out.push(`[kb-pull] ${String(configError.message || configError).split('\n')[0]} — hints off this prompt; the digest still injects`);
+  } else {
+    // scan: the text is a prompt, not a query — score for "is this entry ABOUT the
+    // subject" instead of "does it cover every word the user typed". Scan wider than
+    // maxHints so what stays back can be counted, not guessed.
+    const { query, result } = kb.query({ text: prompt, limit: cfg.maxHints * SCAN_LIMIT_MULTIPLIER, scan: true });
+    strong = result.returned.filter((h) => h.score >= cfg.minScore);
+    ({ shown, held, repeats } = selectHints(strong, state.hinted, cfg.maxHints));
+    const cue = held > 0 ? cueLine(held, repeats, query && query.terms) : null;
+    if (shown.length) out.push(hintLines(shown, cue));
+    else if (cue) out.push(`<kb-hints>${cue}</kb-hints>`);
+  }
 
-  // scan: the text is a prompt, not a query — score for "is this entry ABOUT the
-  // subject" instead of "does it cover every word the user typed".
-  const { result } = kb.query({ text: prompt, limit: cfg.maxHints, scan: true });
-  const strong = result.returned.filter((h) => h.score >= cfg.minScore);
-  if (strong.length) out.push(hintLines(strong));
-
-  const digest = digestBlock(root, cfg);
-  if (digest) out.push(digest);
-  else if (strong.length && hasMemory(root)) {
+  // The digest: full when it changed since this session last saw it (or was never shown),
+  // one pointer line when it did not, and never past the platform bound either way.
+  const raw = readDigest(root);
+  let digestMode = false;
+  let digestHash = state.digestHash;
+  if (raw) {
+    digestHash = pullState.digestHashOf(raw);
+    if (sessionId && state.digestHash === digestHash) {
+      out.push(digestPointer(raw));
+      digestMode = 'pointer';
+    } else {
+      const otherBytes = Buffer.byteLength(out.length ? `${out.join('\n')}\n` : '');
+      const budget = PLATFORM_INLINE_BOUND_BYTES - otherBytes;
+      const { block, cut } = digestBlockWithin(raw, cfg, budget);
+      out.push(block);
+      digestMode = cut ? 'cut' : 'full';
+    }
+  } else if (shown.length && hasMemory(root)) {
     // Bootstrap: without this line the digest can never come into existence — the
     // maintenance nudge lives INSIDE the injected digest, which requires a digest.
     // Ride the hint injection (never a standalone fire) so it costs no extra
@@ -204,8 +336,26 @@ async function main() {
   }
 
   if (out.length) {
-    process.stdout.write(`${out.join('\n')}\n`);
-    trace(root, { fired: true, hints: strong.map((h) => h.entry.id), digest: !!digest });
+    const text = `${out.join('\n')}\n`;
+    process.stdout.write(text);
+    if (stateFile) {
+      pullState.writeState(stateFile, {
+        sessionId,
+        hinted: state.hinted.concat(shown.map((h) => h.entry.id).filter((id) => !state.hinted.includes(id))),
+        digestHash: raw ? digestHash : state.digestHash,
+      });
+    }
+    trace(root, {
+      fired: true,
+      session_id: sessionId,
+      prompt_id: promptId,
+      hints: shown.map((h) => h.entry.id),
+      held,
+      scores: strong.map((h) => ({ id: h.entry.id, score: Number(h.score.toFixed(2)) })),
+      digest: digestMode,
+      bytes: Buffer.byteLength(text),
+      config_error: configError ? true : undefined,
+    });
   }
   process.exit(0);
 }
@@ -216,8 +366,10 @@ main().catch((err) => {
 });
 
 module.exports = {
-  pullConfig, isMachineText, isChildSession, hintLines, digestBlock,
+  pullConfig, isMachineText, isChildSession, hintLines, digestBlock, digestBlockWithin,
+  digestPointer, selectHints, cueLine, cueTerms,
   DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, MIN_PROMPT_CHARS,
   DEFAULT_DIGEST_MAX_CHARS, DEFAULT_DIGEST_MAX_LINES, DIGEST_REL,
+  PLATFORM_INLINE_BOUND_BYTES, CUT_NOTE_RESERVE_BYTES, SCAN_LIMIT_MULTIPLIER, CUE_TERMS,
   MACHINE_TEXT_MARKERS, MACHINE_PREFIXES, CHILD_SESSION_VAR,
 };

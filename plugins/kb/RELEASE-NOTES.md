@@ -1,5 +1,24 @@
 # kb — release notes
 
+## 0.13.0 — 2026-09-09 — kb-pull under the platform bound, not repetitive (audit 2 item 11, task #27, harness G6)
+
+The last uncapped push surface, bounded by MEASUREMENT: Claude Code replaces any hook output past
+~10 KB with a 2 KB "Output too large" preview (smallest stubbed output observed: 9.9 KB), so the
+whole kb-pull injection now stays within `PLATFORM_INLINE_BOUND_BYTES` (8 KiB) — the digest is
+cut on a line boundary with a marker naming the platform as the reason; the shipped PROJECT knobs
+stay no-budget. Not repetitive: an id hinted this session is never hinted again (state home-side,
+`~/.claude/kb/pull-state/<root-hash>.json`, session-scoped, presence-gated, test-overridable via
+`KB_PULL_STATE_DIR`); what stays back is counted in a cue — `(+N more above the floor (k already
+hinted this session) — kb_query "<prompt terms>")` — so a hint becomes a deliberate pull. A digest
+unchanged since its last injection this session is ONE pointer line; kb-session-start clears the
+remembered hash on every fire, so the first prompt after a compaction gets the full text. A
+malformed `.claude/kb.json` used to throw before the digest was read — now one visible line,
+hints off, digest still injected. Ranker: the body-repeat bonus is routed to the body side, so it
+can no longer lift a title hit past the scan-mode subject floor (the floor leak). Trace lines carry
+`session_id`, `prompt_id`, `held`, `scores`, `digest: full|pointer|cut|false`, `bytes`.
+Measured on this repo's real 11,353 B digest: fire 1 = 8,110 B (cut, 3 hints), fires 2-3 = 324 B.
+Suites: kb 276 · kb-pull 88 (+37) · footprint 31 (new writer audited) · session 78 · mcp 44 · join 9.
+
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
 > - Positive mindset: every gap solvable. Find the way by working carefully.

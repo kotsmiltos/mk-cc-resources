@@ -28,8 +28,15 @@ function check(name, cond) {
   else { failures += 1; console.error(`FAIL - ${name}`); }
 }
 
+// The hook keeps per-session pull state HOME-side (lib/pull-state.js). A suite must never
+// write into the real home (audit 2 found 79 test roots in ~/.claude/kb/cued.json), so every
+// spawn points the state dir at a suite-private temp dir via the documented test override.
+const STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-pull-state-'));
 function runHook(cwd, promptJson) {
-  return spawnSync('node', [HOOK], { cwd, input: promptJson, encoding: 'utf8', timeout: 15000 });
+  return spawnSync('node', [HOOK], {
+    cwd, input: promptJson, encoding: 'utf8', timeout: 15000,
+    env: { ...process.env, KB_PULL_STATE_DIR: STATE_DIR },
+  });
 }
 
 function fixture() {
@@ -217,16 +224,27 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
   check('digest carries its content', r.stdout.includes('porter caste stays rejected'));
   check('digest carries the maintenance line', r.stdout.includes('session-digest.md'));
 
-  // THE DEFAULT IS UNCAPPED. The digest is the session's own working memory; a shipped budget
-  // cut it every long sitting and told the owner to "compress" the very file being remembered
-  // with. A project may still impose one — see below — but nothing ships one.
+  // THE DEFAULT BUDGET IS THE PLATFORM'S, NOT A TASTE. The digest is the session's own working
+  // memory and ships with no project budget — but Claude Code stubs any hook output past ~10 KB
+  // to a 2 KB preview (audit 2: 51 kb-pull fires stubbed, digests among them), so a digest the
+  // platform will not show is a digest nobody reads. Under the bound: whole, no marker. Over it:
+  // cut on a line boundary, marker naming the platform, whole output within the bound.
+  const roomy = Array.from({ length: 60 }, (_, i) => `- bullet ${i} carrying real detail about the sitting`).join('\n');
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), roomy);
+  const r2a = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
+  check('a digest under the platform bound is injected WHOLE', r2a.stdout.includes('- bullet 59 carrying real detail'));
+  check('no budget marker under the bound', !r2a.stdout.includes('over budget'));
   const huge = Array.from({ length: 400 }, (_, i) => `- bullet ${i} carrying real detail about the sitting`).join('\n');
   fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), huge);
   const r2 = runHook(root, JSON.stringify({ prompt: 'ok lets continue with the next task on the list' }));
-  check('a huge digest is injected WHOLE by default', r2.stdout.includes('- bullet 399 carrying real detail'));
-  check('no budget marker when no budget is configured', !r2.stdout.includes('over budget'));
-  check('shipped digest defaults are literally no-budget',
+  check('a digest past the platform bound is CUT, never stubbed unread',
+    Buffer.byteLength(r2.stdout) <= hook.PLATFORM_INLINE_BOUND_BYTES && r2.stdout.includes('[digest over budget —'));
+  check('the cut keeps the head and lands on a line boundary', r2.stdout.includes('- bullet 0 carrying') && !r2.stdout.includes('- bullet 399 carrying'));
+  check('the cut marker names the platform bound as the reason', /platform shows ~8 KB/.test(r2.stdout));
+  check('shipped PROJECT digest knobs are still no-budget (the bound is the platform, not a knob)',
     hook.DEFAULT_DIGEST_MAX_CHARS === null && hook.DEFAULT_DIGEST_MAX_LINES === null);
+  check('the bound is a named constant under the smallest measured stub (9.9 KB)',
+    hook.PLATFORM_INLINE_BOUND_BYTES > 0 && hook.PLATFORM_INLINE_BOUND_BYTES < 9.9 * 1024);
 
   // A project that WANTS a budget still gets a loud, line-boundary cut naming both units.
   fs.writeFileSync(path.join(root, '.claude', 'kb.json'),
@@ -287,6 +305,114 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
   const orphan = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-orphan-'));
   const r2 = runHook(orphan, JSON.stringify({ cwd: orphan, prompt: 'porter ferry caste transfers rejected?' }));
   check('non-repo dir with no memory stays silent', (r2.stdout || '') === '');
+}
+
+// ---- 0.13.0 (task #27): not repetitive — per-session hint dedupe + the "+N more" cue ----
+//
+// Audit 2 measured the top-3 ids filling 40% of every hint slot and 84% of hints ignored: a
+// hint the session already saw is noise. Same session → an id is offered once; what stays
+// back is COUNTED in a cue that names the prompt's own terms, so a hint can become a pull.
+
+{
+  const pullState = require('../lib/pull-state');
+  const hit = (id, score = 9) => ({ score, entry: { id, title: id, kind: 'semantic', caste: 'project', path: `${id}.md` } });
+  const sel = hook.selectHints([hit('a'), hit('b'), hit('c'), hit('d')], ['a', 'c'], 3);
+  check('selectHints: already-hinted ids are skipped, cap respected, held counted honestly',
+    sel.shown.map((h) => h.entry.id).join(',') === 'b,d' && sel.held === 2 && sel.repeats === 2);
+  const selCap = hook.selectHints([hit('a'), hit('b'), hit('c'), hit('d')], [], 2);
+  check('selectHints: beyond-the-cap hits are held, not repeats', selCap.shown.length === 2 && selCap.held === 2 && selCap.repeats === 0);
+  check('cueLine names the count, the repeats, and a kb_query with the prompt terms',
+    hook.cueLine(3, 1, ['porter', 'ferry', 'the', 'transfers', 'again']) === '(+3 more above the floor (1 already hinted this session) — kb_query "porter ferry transfers")');
+  check('cueLine without terms still counts', hook.cueLine(2, 0, []) === '(+2 more above the floor)');
+  check('cueTerms drops short words and caps the count', hook.cueTerms(['ab', 'porter', 'ferry', 'caste', 'extra'], 3).join(' ') === 'porter ferry caste');
+
+  // pull-state: session-scoped, other session reads as empty, broken file reads as empty.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-pull-state-unit-'));
+  const file = pullState.statePathFor('/some/project', dir);
+  check('statePathFor keys by root hash inside the given dir', file.startsWith(dir) && /[0-9a-f]{32}\.json$/.test(file));
+  check('unknown state reads empty', pullState.readState(file, 's1').hinted.length === 0);
+  pullState.writeState(file, { sessionId: 's1', hinted: ['x'], digestHash: 'h1' });
+  check('same session reads back', pullState.readState(file, 's1').hinted[0] === 'x' && pullState.readState(file, 's1').digestHash === 'h1');
+  check('another session reads empty (a new sitting starts clean)', pullState.readState(file, 's2').hinted.length === 0);
+  check('clearDigestHash forgets the hash, keeps the hinted list', pullState.clearDigestHash('/some/project', dir) === true
+    && pullState.readState(file, 's1').digestHash === null && pullState.readState(file, 's1').hinted[0] === 'x');
+  check('clearDigestHash on an absent file is a no-op', pullState.clearDigestHash('/never/seen', dir) === false);
+  fs.writeFileSync(file, '{broken');
+  check('a broken state file reads empty (fail-soft)', pullState.readState(file, 's1').hinted.length === 0);
+  if (process.platform === 'win32') {
+    check('win32: two spellings of one root share state',
+      pullState.statePathFor('C:\\Proj\\Alpha', dir) === pullState.statePathFor('c:\\proj\\alpha', dir));
+  }
+}
+
+{
+  const root = fixture();
+  const prompt = 'should we add a porter ferry caste for transfers, or was that rejected already?';
+  const first = runHook(root, JSON.stringify({ prompt, session_id: 'sess-A', prompt_id: 'p1' }));
+  check('dedupe: first prompt of a session hints the entry', /kb_read "kb-extracted::/.test(first.stdout));
+  const second = runHook(root, JSON.stringify({ prompt, session_id: 'sess-A', prompt_id: 'p2' }));
+  check('dedupe: the same prompt again in the same session does NOT repeat the id',
+    second.status === 0 && !/kb_read "kb-extracted::/.test(second.stdout));
+  check('dedupe: what stayed back is counted in a cue naming the prompt terms',
+    /\(\+1 more above the floor \(1 already hinted this session\) — kb_query "/.test(second.stdout));
+  check('dedupe: the cue rides a tiny hints block, under 300 B', second.stdout.includes('<kb-hints>') && Buffer.byteLength(second.stdout) < 300);
+  const other = runHook(root, JSON.stringify({ prompt, session_id: 'sess-B', prompt_id: 'p1' }));
+  check('dedupe: a NEW session is hinted again (state is per sitting)', /kb_read "kb-extracted::/.test(other.stdout));
+  const noId = runHook(root, JSON.stringify({ prompt }));
+  const noId2 = runHook(root, JSON.stringify({ prompt }));
+  check('dedupe: without a session_id nothing is suppressed (never on a missing signal)',
+    /kb_read "kb-extracted::/.test(noId.stdout) && /kb_read "kb-extracted::/.test(noId2.stdout));
+  const trace = fs.readFileSync(path.join(root, '.claude', 'kb', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const t2 = trace.find((t) => t.prompt_id === 'p2' && t.session_id === 'sess-A');
+  check('trace carries session_id, prompt_id, held, scores and the digest mode',
+    !!t2 && t2.held === 1 && Array.isArray(t2.scores) && t2.scores.length >= 1 && typeof t2.scores[0].score === 'number'
+      && t2.hints.length === 0 && t2.digest === false && typeof t2.bytes === 'number');
+  check('state lives in the suite-private dir, never the real home', fs.readdirSync(STATE_DIR).some((f) => f.endsWith('.json')));
+}
+
+// ---- 0.13.0 (task #27): change-aware digest — full when it changed, a pointer when not ----
+
+{
+  const root = fixture();
+  const digestPath = path.join(root, '.claude', 'kb', 'session-digest.md');
+  fs.writeFileSync(digestPath, '## Session so far\n- decided: porter caste stays rejected\n- open: grid size');
+  const quiet = 'ok lets continue with the next task on the list';
+  const a = runHook(root, JSON.stringify({ prompt: quiet, session_id: 'sess-D', prompt_id: 'd1' }));
+  check('digest: first injection of a session is the full text', a.stdout.includes('porter caste stays rejected'));
+  const b = runHook(root, JSON.stringify({ prompt: quiet, session_id: 'sess-D', prompt_id: 'd2' }));
+  check('digest: unchanged since last injection → one pointer line, under 300 B',
+    b.stdout.includes('<session-digest>(unchanged since its last injection this session') && !b.stdout.includes('porter caste stays rejected') && Buffer.byteLength(b.stdout) < 300);
+  check('digest: the pointer still says where to write', b.stdout.includes('session-digest.md'));
+  fs.writeFileSync(digestPath, '## Session so far\n- decided: porter caste stays rejected\n- open: grid size\n- NEW: bound is 8 KB');
+  const c = runHook(root, JSON.stringify({ prompt: quiet, session_id: 'sess-D', prompt_id: 'd3' }));
+  check('digest: a changed digest is injected in full again', c.stdout.includes('NEW: bound is 8 KB'));
+  const d = runHook(root, JSON.stringify({ prompt: quiet, session_id: 'sess-E', prompt_id: 'e1' }));
+  check('digest: a different session gets the full text (pointer is per sitting)', d.stdout.includes('NEW: bound is 8 KB'));
+  const e = runHook(root, JSON.stringify({ prompt: quiet, prompt_id: 'x1' }));
+  check('digest: without a session_id the full text always injects', e.stdout.includes('NEW: bound is 8 KB'));
+  // SessionStart clears the remembered hash: a compaction threw the transcript copy away.
+  const pullState = require('../lib/pull-state');
+  const cleared = pullState.clearDigestHash(root, STATE_DIR);
+  const f = runHook(root, JSON.stringify({ prompt: quiet, session_id: 'sess-E', prompt_id: 'e2' }));
+  check('digest: after the hash is cleared (SessionStart) the full text injects again', cleared === true && f.stdout.includes('NEW: bound is 8 KB'));
+  const trace = fs.readFileSync(path.join(root, '.claude', 'kb', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const modes = ['d1', 'd2', 'd3'].map((p) => (trace.find((t) => t.prompt_id === p) || {}).digest);
+  check('trace names the digest mode per fire (full / pointer / full)', modes.join(',') === 'full,pointer,full');
+}
+
+// ---- 0.13.0 (task #27): a malformed kb.json costs the hints, never the digest ----
+
+{
+  const root = fixture();
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), '# Now\nthe digest survives a bad config\n');
+  fs.writeFileSync(path.join(root, '.claude', 'kb.json'), '{not json');
+  const r = runHook(root, JSON.stringify({ prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?', session_id: 'sess-M', prompt_id: 'm1' }));
+  check('malformed kb.json: exit 0, one visible line naming the problem', r.status === 0 && /^\[kb-pull\] .*kb\.json.*hints off this prompt; the digest still injects/m.test(r.stdout));
+  check('malformed kb.json: the digest still injects', r.stdout.includes('the digest survives a bad config'));
+  check('malformed kb.json: no hints (the corpus could not open)', !r.stdout.includes('<kb-hints>'));
+  const trace = fs.readFileSync(path.join(root, '.claude', 'kb', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const t = trace.find((x) => x.prompt_id === 'm1');
+  check('malformed kb.json: the fire is traced with config_error', !!t && t.config_error === true);
 }
 
 console.log(`\n${total - failures}/${total} checks passed`);
