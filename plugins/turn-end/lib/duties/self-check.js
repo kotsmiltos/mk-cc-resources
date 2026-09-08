@@ -48,13 +48,17 @@
 const path = require('path');
 const os = require('os');
 const { AGENT_TARGET } = require('./quality-lens');
+const fileTouch = require('../file-touch');
 
 /*
- * Tools whose targets are the turn's own artifacts. A Bash-driven generator's writes carry no
- * file_path and are invisible here — that too fails toward silence.
+ * Tools whose targets are the turn's own artifacts. Since 0.8.0 (task #28) a Bash-driven
+ * write — `sed -i`, `> file`, `tee`, a heredoc target — counts too: lib/file-touch.js reads
+ * argv, the same extractor context-recall uses for "what did this turn open". Measured
+ * before: 42 blocks where the owner asked for LESS testing, while the auto-mode edits this
+ * harness itself prescribes were invisible.
  */
-const MUTATION_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
-const EXEC_TOOLS = new Set(['Bash', 'PowerShell']);
+const MUTATION_TOOLS = fileTouch.MUTATION_TOOLS;
+const EXEC_TOOLS = fileTouch.EXEC_TOOLS;
 
 /*
  * Bookkeeping trees whose writes are other duties' MANDATED output (digests, inbox captures,
@@ -135,15 +139,128 @@ function isInternal(target) {
   return norm.split('/').some((seg) => INTERNAL_SEGMENTS.has(seg));
 }
 
-/** Deliverable mutations, in turn order: [{index, target}]. */
+/** Deliverable mutations, in turn order: [{index, target, via}] — tool targets AND Bash argv. */
 function mutations(calls) {
-  const out = [];
-  calls.forEach((c, i) => {
-    if (c && MUTATION_TOOLS.has(c.name) && typeof c.target === 'string' && !isInternal(c.target)) {
-      out.push({ index: i, target: c.target });
+  return fileTouch.touches(calls).mutations.filter((m) => !isInternal(m.target));
+}
+
+/*
+ * MODALITY of the ask (task #28, owner asked "what should i be seeing now?" three times in one
+ * afternoon on scene work): verification lives in the work's own medium. An open registry —
+ * first match wins, `code` is the catch-all; a new medium is one entry.
+ */
+const PROSE_EXT = new Set(['.md', '.markdown', '.txt', '.rst', '.adoc', '.mdx']);
+const SCENE_EXT = new Set(['.unity', '.prefab', '.asset', '.blend', '.fbx', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.psd', '.tscn', '.tres', '.uasset', '.umap']);
+const MODALITIES = [
+  {
+    id: 'prose',
+    applies: (targets) => targets.length > 0 && targets.every((t) => PROSE_EXT.has(path.extname(t).toLowerCase())),
+    ask: (shown) =>
+      `You changed ${shown} (prose) and named no check. Before yielding, RE-READ what you wrote as the ` +
+      'reader will: name the section you re-read and what you compared it against (the ask, the ' +
+      'source it summarises, the earlier version). Say what the owner should be SEEING — the one ' +
+      'line that answers them — and end your reply with "Check: re-read <section> vs <what>; ' +
+      'result: …". "Updated the doc" is not a check.',
+  },
+  {
+    id: 'scene',
+    applies: (targets) => targets.some((t) => SCENE_EXT.has(path.extname(t).toLowerCase())),
+    ask: (shown) =>
+      `You changed ${shown} (scene/visual) and named no check. Render or open it and LOOK: say in ` +
+      'one line what is on screen now and how it differs from what was asked ("what should the ' +
+      'owner be seeing?"), then try one non-happy path (empty, extreme, wrong input). End your ' +
+      'reply with "Check: opened <file> → <what you saw>". A number sampled from the data is not ' +
+      'a look.',
+  },
+  {
+    id: 'code',
+    applies: () => true,
+    ask: (shown) =>
+      `You changed ${shown} but no check ran after the last change and none is named. ` +
+      "Close the loop before yielding: RUN the check in the work's own medium (tests/build " +
+      'for code, execute what you wrote, render visual output) with enough logging that the ' +
+      "output SAYS what happened — if you cannot tell from the output, that is a finding: " +
+      'add logs and rerun, never pass what you cannot read. LOOK at the result and compare ' +
+      'it against what was ASKED, not against "it ran". And try to BREAK it — at least one ' +
+      'non-happy path, not only the happy one. Then end your reply naming check + observed ' +
+      'result, e.g. "Check: node tests/x.test.js → 110/110; break: malformed input → clean ' +
+      'error". "Should work" is not a check, and a check that ran before your last edit does ' +
+      'not cover the edit.',
+  },
+];
+
+function modalityFor(targets) {
+  return MODALITIES.find((m) => m.applies(targets)) || MODALITIES[MODALITIES.length - 1];
+}
+
+/*
+ * NAMED-CHECK FLOOR (task #28; audit 2 measured "Check: none" / "verified by inspection" /
+ * "exit 0" satisfying the hatch). A claimed check must be ANCHORED to this turn: the line that
+ * names it carries a pass/fail RATIO, or a basename the turn touched, or the head of a command
+ * the turn actually ran. Free-floating prose satisfies nothing; an explicit "Check: none" is a
+ * confession, never evidence.
+ */
+const CHECK_NONE_RX = /\bcheck:\s*(none|n\/a|nothing|skipped|not\s+run|-)\b/i;
+const RATIO_RX = /\b\d+\s*\/\s*\d+\b/;
+const MIN_ANCHOR_LENGTH = 4;
+
+/** Words this turn's tool calls make legitimate anchors for a claim. */
+function anchorsOf(ctx) {
+  const calls = orderedCalls(ctx) || [];
+  const out = new Set();
+  for (const m of mutations(calls)) {
+    const b = path.basename(m.target);
+    if (b.length >= MIN_ANCHOR_LENGTH) out.add(b.toLowerCase());
+  }
+  for (const c of calls) {
+    if (!c || !EXEC_TOOLS.has(c.name) || typeof c.command !== 'string') continue;
+    const head = fileTouch.headOf(c.command);
+    if (head.length >= MIN_ANCHOR_LENGTH) out.add(head);
+    for (const tok of fileTouch.tokenize(c.command)) {
+      if (fileTouch.looksLikeFile(tok)) {
+        const b = path.basename(tok).toLowerCase();
+        if (b.length >= MIN_ANCHOR_LENGTH) out.add(b);
+      }
     }
-  });
+  }
   return out;
+}
+
+const CHECKS_LEDGER_REL = path.join('.claude', 'turn-end', 'checks.jsonl');
+
+/** The last `kind: check` line the recorder wrote for THIS request; null when none. */
+function lastRecordedCheck(ctx) {
+  try {
+    const fs = require('fs');
+    const raw = fs.readFileSync(path.join(ctx.cwd, CHECKS_LEDGER_REL), 'utf8');
+    let last = null;
+    for (const line of raw.split('\n')) {
+      if (!line.trim()) continue;
+      let rec;
+      try { rec = JSON.parse(line); } catch (_e) { continue; }
+      if (rec && rec.kind === 'check' && (!ctx.promptId || rec.prompt_id === ctx.promptId)) last = rec;
+    }
+    return last;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function lastRecordedCheckGreen(ctx) {
+  const rec = lastRecordedCheck(ctx);
+  return Boolean(rec) && rec.exit === 0;
+}
+
+function namedCheckAnchored(text, anchors) {
+  const lines = String(text || '').split('\n');
+  for (const line of lines) {
+    if (!NAMED_CHECK_RXS.some((rx) => rx.test(line))) continue;
+    if (CHECK_NONE_RX.test(line)) continue;
+    if (RATIO_RX.test(line)) return true;
+    const lower = line.toLowerCase();
+    for (const a of anchors) if (lower.includes(a)) return true;
+  }
+  return false;
 }
 
 /** Exec calls strictly after `index` that carry a command string. */
@@ -205,11 +322,12 @@ const EVIDENCE = [
     },
   },
   {
-    // The universal escape hatch: name the check and its observed result.
+    // The universal escape hatch: name the check and its observed result — ANCHORED to this
+    // turn (a ratio, a touched basename, or a command the turn ran). See the floor above.
     id: 'check-named-with-result',
     detect(ctx) {
       const text = ctx.lastAssistantMessage || (ctx.turn && ctx.turn.text) || '';
-      return NAMED_CHECK_RXS.some((rx) => rx.test(text));
+      return namedCheckAnchored(text, anchorsOf(ctx));
     },
   },
 ];
@@ -229,8 +347,17 @@ module.exports = {
     return mutations(calls).length > 0;
   },
 
-  satisfied(ctx) {
-    return EVIDENCE.some((e) => e.detect(ctx));
+  /*
+   * Q19 (owner ruling 2026-09-09): "done" = a check RAN after the last change and was
+   * observed; green is NOT required by default. `duties.self-check.requireGreen: true` in
+   * .claude/turn-end.json is the per-project strictness surface: the last check this request
+   * recorded in the ground-truth ledger (hooks/scripts/tool-record.js) must have exit 0.
+   * No ledger line = cannot tell = not green — a strict knob is strict.
+   */
+  satisfied(ctx, options) {
+    if (!EVIDENCE.some((e) => e.detect(ctx))) return false;
+    if (options && options.requireGreen) return lastRecordedCheckGreen(ctx);
+    return true;
   },
 
   // WHICH detector satisfied — recorded in the trace, so the share of hatch-only satisfactions
@@ -241,25 +368,24 @@ module.exports = {
   },
 
   ask(ctx) {
-    const names = [...new Set(mutations(orderedCalls(ctx) || []).map((m) => path.basename(m.target)))];
+    const muts = mutations(orderedCalls(ctx) || []);
+    const names = [...new Set(muts.map((m) => path.basename(m.target)))];
     const shown =
       names.slice(0, MAX_NAMED_FILES).join(', ') + (names.length > MAX_NAMED_FILES ? ', …' : '');
-    return (
-      `You changed ${shown} but no check ran after the last change and none is named. ` +
-      "Close the loop before yielding: RUN the check in the work's own medium (tests/build " +
-      'for code, execute what you wrote, render visual output) with enough logging that the ' +
-      "output SAYS what happened — if you cannot tell from the output, that is a finding: " +
-      'add logs and rerun, never pass what you cannot read. LOOK at the result and compare ' +
-      'it against what was ASKED, not against "it ran". And try to BREAK it — at least one ' +
-      'non-happy path, not only the happy one. Then end your reply naming check + observed ' +
-      'result, e.g. "Check: node tests/x.test.js → 110/110; break: malformed input → clean ' +
-      'error". "Should work" is not a check, and a check that ran before your last edit does ' +
-      'not cover the edit.'
-    );
+    return modalityFor(muts.map((m) => m.target)).ask(shown);
   },
 };
 
 module.exports.EVIDENCE = EVIDENCE;
+module.exports.MODALITIES = MODALITIES;
+module.exports.modalityFor = modalityFor;
+module.exports.anchorsOf = anchorsOf;
+module.exports.namedCheckAnchored = namedCheckAnchored;
+module.exports.mutations = mutations;
+module.exports.CHECK_NONE_RX = CHECK_NONE_RX;
+module.exports.lastRecordedCheck = lastRecordedCheck;
+module.exports.lastRecordedCheckGreen = lastRecordedCheckGreen;
+module.exports.CHECKS_LEDGER_REL = CHECKS_LEDGER_REL;
 module.exports.MUTATION_TOOLS = MUTATION_TOOLS;
 module.exports.EXEC_TOOLS = EXEC_TOOLS;
 module.exports.INTERNAL_SEGMENTS = INTERNAL_SEGMENTS;

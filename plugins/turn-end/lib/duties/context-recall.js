@@ -36,6 +36,7 @@
 
 const sources = require('../sources');
 const claudeP = require('../judges/claude-p');
+const fileTouch = require('../file-touch');
 
 const LEDGER_ID = 'context-recall';
 
@@ -97,6 +98,31 @@ function clip(s, n) {
   return t.length <= n ? t : `${t.slice(0, n)}\n… [+${t.length - n} chars — open the file for the rest]`;
 }
 
+const MAX_OPENED_LISTED = 40;
+
+/** Paths this turn opened, via Read or via Bash argv (lib/file-touch.js), as written. */
+function openedPaths(ctx) {
+  const calls = ctx && ctx.turn && Array.isArray(ctx.turn.toolCalls) ? ctx.turn.toolCalls : [];
+  return [...new Set(fileTouch.touches(calls).reads.map((r) => r.target))];
+}
+
+/**
+ * Drop notes the turn already opened — a note at a path the session read (whichever tool
+ * carried the bytes) was USED, not missed, and re-serving it is the "did not use" false
+ * positive measured on 2026-09-08. Pure; exported for tests.
+ */
+function dropAlreadyRead(items, ctx) {
+  const opened = openedPaths(ctx);
+  if (!opened.length) return { kept: items, alreadyRead: [] };
+  const kept = [];
+  const alreadyRead = [];
+  for (const it of items) {
+    if (opened.some((p) => fileTouch.sameFile(p, it.path, ctx.cwd))) alreadyRead.push(it.path);
+    else kept.push(it);
+  }
+  return { kept, alreadyRead };
+}
+
 /**
  * The prompt. The transcript is framed as DATA, explicitly: it is untrusted text that may
  * itself contain instructions, and a judge that follows them stops being a judge.
@@ -120,6 +146,14 @@ function buildPrompt(ctx, index, limits, truncated) {
   lines.push(clip(ctx.turn.userRequest || '(not recovered)', limits.maxExcerptOfTurn));
   lines.push('--- ANSWER ---');
   lines.push(clip(ctx.lastAssistantMessage || ctx.turn.text || '(empty)', limits.maxExcerptOfTurn));
+  // Files the turn actually OPENED — through Read or through Bash (`cat`, `head -c`, `sed -n`,
+  // `grep`) — are used, not missed. Measured 2026-09-08: the audit capture was re-served to a
+  // turn that had read it with `head -c` in its first tool call.
+  const opened = openedPaths(ctx);
+  if (opened.length) {
+    lines.push('--- FILES THIS TURN OPENED (already used — never choose a note at one of these paths) ---');
+    for (const p of opened.slice(0, MAX_OPENED_LISTED)) lines.push(p);
+  }
   lines.push('--- AVAILABLE NOTES (id — title) ---');
   for (const e of index) lines.push(`${e.id} — ${e.title}`);
   // A truncated list must never pose as the whole corpus: a judge that thinks it saw everything
@@ -303,7 +337,7 @@ module.exports = {
       if (!bySource.has(sid)) bySource.set(sid, []);
       bySource.get(sid).push(n.id);
     }
-    const items = [];
+    let items = [];
     for (const [sid, ids] of bySource) {
       const src = sources.byId(sid);
       if (!src) continue;
@@ -311,7 +345,14 @@ module.exports = {
         for (const f of src.fetch(ctx, ids)) items.push({ ...f, why: whyById.get(f.id) || '' });
       } catch (_e) { /* skip a source that cannot read its own files */ }
     }
-    if (!items.length) return { material: null, chosen: [], error: null, engine: judgeDeath ? 'fallback-ranker' : 'judge', ...cost };
+    const engine = judgeDeath ? 'fallback-ranker' : 'judge';
+    if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost };
+
+    // A note this turn already OPENED (Read, or `cat`/`head`/`sed -n`/`grep` through Bash)
+    // was used, whatever the judge inferred from the text. Deterministic; the trace names it.
+    const { kept: unread, alreadyRead } = dropAlreadyRead(items, ctx);
+    if (!unread.length) return { material: null, chosen: [], error: null, engine, alreadyRead, ...cost };
+    items = unread;
 
     // Split what the session already holds from what is new to it this sitting.
     const held = new Set((ctx.ledger && ctx.ledger.sessionSupplied) || []);
@@ -327,7 +368,8 @@ module.exports = {
       material: banner + renderMaterial(fresh, limits, clipped, alreadyHeld),
       brief: banner + renderBrief(fresh, alreadyHeld),
       error: null,
-      engine: judgeDeath ? 'fallback-ranker' : 'judge',
+      engine,
+      ...(alreadyRead.length ? { alreadyRead } : {}),
       ...cost,
     };
   },
@@ -367,6 +409,8 @@ function fallbackPick(ctx, index, limits) {
 }
 
 module.exports.fallbackPick = fallbackPick;
+module.exports.dropAlreadyRead = dropAlreadyRead;
+module.exports.openedPaths = openedPaths;
 module.exports.parseVerdict = parseVerdict;
 module.exports.buildPrompt = buildPrompt;
 module.exports.renderMaterial = renderMaterial;

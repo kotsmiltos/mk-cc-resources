@@ -24,8 +24,10 @@ const duties = require('../../lib/duties');
 const { buildContext } = require('../../lib/context');
 const ledgerStore = require('../../lib/ledger');
 const claudeP = require('../../lib/judges/claude-p');
+const installed = require('../../lib/installed');
 
 const CONFIG_REL = path.join('.claude', 'turn-end.json');
+const PLUGIN_ROOT = path.join(__dirname, '..', '..');
 const TRACE_REL = path.join('.claude', 'turn-end', 'trace.jsonl');
 
 /*
@@ -103,6 +105,24 @@ function writeTrace(cwd, record) {
   } catch (_e) { /* telemetry never blocks the decision */ }
 }
 
+/**
+ * 0.7.1 — a stale process says so in the tail it already emits, the one surface the owner
+ * reads at turn end. Measured 2026-09-08: this repo ran 0.6.0 for two days after 0.7.0 was
+ * installed (`/clear` does not reload plugins) and nothing on screen could show it.
+ * PREPENDED, never appended — a note past the inline bound is a note nobody reads. Pure;
+ * a fresh process or no emission returns the emission untouched.
+ */
+function withStaleNote(emission, live) {
+  if (!emission || !live || !live.stale || !live.note) return emission;
+  const line = `[turn-end] ${live.note}`;
+  if (typeof emission.reason === 'string') return { ...emission, reason: `${line}\n${emission.reason}` };
+  const hso = emission.hookSpecificOutput;
+  if (hso && typeof hso.additionalContext === 'string') {
+    return { ...emission, hookSpecificOutput: { ...hso, additionalContext: `${line}\n${hso.additionalContext}` } };
+  }
+  return emission;
+}
+
 async function main() {
   // Guard first: inside a judgment child, this hook must do nothing at all. The child is a
   // full session and fires its own Stop hooks — measured, and the platform has no guard.
@@ -113,6 +133,9 @@ async function main() {
   const config = readConfig(cwd);
 
   if (config.enabled === false) return process.exit(0);
+
+  // Which code is this? The manifest beside the executing script vs the install ledger.
+  const live = installed.runningVsInstalled({ pluginRoot: PLUGIN_ROOT });
 
   const promptId = payload.prompt_id || null;
   const sessionId = payload.session_id || null;
@@ -140,6 +163,8 @@ async function main() {
       ...(produced && produced.engine ? { engine: produced.engine } : {}),
       ...(produced && typeof produced.costUsd === 'number' ? { costUsd: produced.costUsd } : {}),
       ...(produced && produced.lean ? { lean: produced.lean } : {}),
+      // Notes the turn had already opened and the judge would have re-served (task #28).
+      ...(produced && Array.isArray(produced.alreadyRead) && produced.alreadyRead.length ? { alreadyRead: produced.alreadyRead } : {}),
     });
     try {
       const produced = await duty.supply(ctx);
@@ -179,6 +204,10 @@ async function main() {
     writeTrace(cwd, {
       t: new Date().toISOString(),
       hook: 'turn-end',
+      // The RUNNING version — from the manifest beside this script, never the ledger. Two
+      // days of 0.6.0 traces read as 0.7.0 data until this field existed.
+      version: live.running,
+      stale: live.stale,
       prompt_id: promptId,
       stop_hook_active: ctx.stopHookActive,
       action: result.action,
@@ -196,7 +225,7 @@ async function main() {
       permission_mode: ctx.permissionMode,
     });
   }
-  if (result.emission) process.stdout.write(JSON.stringify(result.emission));
+  if (result.emission) process.stdout.write(JSON.stringify(withStaleNote(result.emission, live)));
   process.exit(0);
 }
 
@@ -207,4 +236,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { readConfig, writeTrace, resolveProjectRoot, CONFIG_REL, TRACE_REL };
+module.exports = { readConfig, writeTrace, withStaleNote, resolveProjectRoot, CONFIG_REL, TRACE_REL, PLUGIN_ROOT };

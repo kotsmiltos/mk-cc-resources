@@ -1,5 +1,43 @@
 # turn-end — release notes
 
+## 0.8.0 — 2026-09-09 — ground truth: file-touch, the named-check floor, modality asks, the exec-result recorder (task #28, harness G2; owner ruling Q19)
+
+Owner ruled Q19: "done" = a check RAN after the last file change AND was observed; green not
+required by default. ONE shared extractor, `lib/file-touch.js`, reads Bash/PowerShell argv: a
+`sed -i`, `> file`, `>> file`, `tee`, heredoc target, `cp`/`mv` destination or `touch` is a
+MUTATION; `cat`/`head`/`tail`/`sed -n`/`grep FILE` is a READ. self-check counts Bash mutations
+(measured before: invisible — the very mode this harness prescribes for auto mode); context-recall
+drops a note the turn already opened through Bash (measured 2026-09-08: the audit capture was
+re-served to a turn that had `head -c`'d it) and tells the judge which files the turn opened.
+Named-check FLOOR: the line naming a check must carry a pass/fail ratio, a touched basename or the
+head of a command the turn ran — "Check: none", "verified by inspection" and a free-floating
+"exit 0" satisfy nothing. Modality-aware ask (open MODALITIES registry): prose edits get "re-read
+<section> vs <what>; what should the owner be seeing?", scene files get "open it and say what is on
+screen", code keeps the run/look/break ask. NEW informational hook pair, PostToolUse +
+PostToolUseFailure on `Bash|PowerShell` (`hooks/scripts/tool-record.js`): one line per exec
+result in `.claude/turn-end/checks.jsonl` ({event, session_id, prompt_id, cmd, kind, files, exit,
+ok, payload_keys, response_keys}) and ONE real payload per event saved under
+`.claude/turn-end/samples/` the first time it is seen — the fixture the exit parser is measured
+against (PostToolUse fires only on success; a failure's `error` begins with the exit-code line;
+`tool_response` for Bash is undocumented, so keys are recorded, never assumed). Footprint: writes
+only where turn-end already keeps state; stands down in judge children.
+`duties.self-check.requireGreen: true` (.claude/turn-end.json) = the last recorded check for this
+request must be exit 0 — the per-project strictness surface Q19 named; no ledger line = not green.
+Suite 189 checks (+14). Live: a `sed -i` edit + "Check: none" is nudged; the same edit + "Check:
+node tests/parser.test.js → 12/12" passes silently.
+
+## 0.7.1 — 2026-09-09 — the process says which code it is running (harness G1, task #29)
+
+Every trace line now carries `version` (read from the manifest beside the executing script,
+never the ledger) and `stale`; when the running version differs from the install ledger,
+the tail the runner already emits is PREFIXED with one line naming both versions, the install
+date and the remedy (restart Claude Code). Measured 2026-09-08: this repo ran 0.6.0 for two
+days after 0.7.0 was installed — `/clear` does not reload plugins — and 0 of 128 trace lines
+could show it; the log read "SHIPPED + INSTALLED", true of the disk, false of the process. The
+reader (`lib/installed.js`) is fail-soft by construction: no ledger, no entry (a --plugin-dir
+checkout), malformed JSON → not stale, silent. Suite 175 checks (+5: stale / equal / absent /
+malformed / scope preference, the tail prefix, an E2E trace line with the manifest version).
+
 ## 0.7.0 — 2026-09-06 — the accountable, cheap, un-loopable turn end (audit 2, tasks #22 #23 #24)
 
 Judge child spawned LEAN — `--setting-sources ""` + `--disable-slash-commands` +

@@ -1,5 +1,5 @@
 {
-  "description": "The single blocking Stop hook — runs every applicable turn-end duty in one pass",
+  "description": "The single blocking Stop hook — runs every applicable turn-end duty in one pass — plus the ground-truth recorder for exec tool results (PostToolUse + PostToolUseFailure on Bash|PowerShell, informational, fail-soft)",
   "hooks": {
     "Stop": [
       {
@@ -10,6 +10,32 @@
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/turn-end.js"],
             "timeout": 90
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"],
+            "timeout": 10
           }
         ]
       }

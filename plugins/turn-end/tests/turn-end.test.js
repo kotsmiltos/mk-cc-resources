@@ -1895,6 +1895,283 @@ check('E2E: the trace carries engine, ms, deferred, satisfied_by, payload_keys (
   assert.ok(typeof last.emitted_chars === 'number');
 });
 
+// ---------- 0.7.1: running ≠ installed — the process says which code it is running ----------
+// Measured 2026-09-08: two days of 0.6.0 traces read as 0.7.0 data because `/clear` does not
+// reload plugins and no field said which code fired. The reader is fail-soft by construction.
+const installedLib = require('../lib/installed');
+const hookModule = require('../hooks/scripts/turn-end');
+
+function installedFixture(name, rootVersion, ledgerPlugins) {
+  const home = tmpdir(`inst-home-${name}`);
+  const root = tmpdir(`inst-root-${name}`);
+  fs.mkdirSync(path.join(root, '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'demo', version: rootVersion }));
+  if (ledgerPlugins !== undefined) {
+    fs.mkdirSync(path.join(home, '.claude', 'plugins'), { recursive: true });
+    const body = typeof ledgerPlugins === 'string' ? ledgerPlugins : JSON.stringify({ version: 2, plugins: ledgerPlugins });
+    fs.writeFileSync(path.join(home, '.claude', 'plugins', 'installed_plugins.json'), body);
+  }
+  return { home, root };
+}
+
+check('installed: stale when the ledger carries a different version — note names both and the install date', () => {
+  const { home, root } = installedFixture('stale', '1.0.0', {
+    'demo@mk': [{ scope: 'user', version: '1.1.0', installPath: 'x', lastUpdated: '2026-09-06T12:15:45.708Z' }],
+  });
+  const r = installedLib.runningVsInstalled({ pluginRoot: root, home });
+  assert.strictEqual(r.stale, true);
+  assert.strictEqual(r.running, '1.0.0');
+  assert.strictEqual(r.installed, '1.1.0');
+  assert.ok(/^running demo 1\.0\.0 ≠ installed 1\.1\.0 \(installed 2026-09-06\) — .*restart Claude Code/.test(r.note), r.note);
+});
+
+check('installed: silent when equal, when no ledger, when the ledger is malformed, when the manifest is missing', () => {
+  const equal = installedFixture('equal', '1.0.0', { 'demo@mk': [{ scope: 'user', version: '1.0.0' }] });
+  const rEqual = installedLib.runningVsInstalled({ pluginRoot: equal.root, home: equal.home });
+  assert.strictEqual(rEqual.stale, false); assert.strictEqual(rEqual.note, ''); assert.strictEqual(rEqual.installed, '1.0.0');
+  const none = installedFixture('noledger', '1.0.0', undefined);
+  const rNone = installedLib.runningVsInstalled({ pluginRoot: none.root, home: none.home });
+  assert.deepStrictEqual([rNone.stale, rNone.installed, rNone.running], [false, null, '1.0.0']);
+  const bad = installedFixture('badledger', '1.0.0', '{not json');
+  const rBad = installedLib.runningVsInstalled({ pluginRoot: bad.root, home: bad.home });
+  assert.strictEqual(rBad.stale, false);
+  const rNoManifest = installedLib.runningVsInstalled({ pluginRoot: tmpdir('inst-nomanifest'), home: bad.home });
+  assert.deepStrictEqual([rNoManifest.stale, rNoManifest.running, rNoManifest.note], [false, null, '']);
+  assert.deepStrictEqual(installedLib.runningVsInstalled(), { name: null, running: null, installed: null, lastUpdated: null, stale: false, note: '' });
+});
+
+check('installed: the user-scope entry wins over another scope; among several, the newest', () => {
+  const { home, root } = installedFixture('scope', '1.0.0', {
+    'demo@a': [{ scope: 'project', version: '3.0.0', lastUpdated: '2026-09-09T00:00:00Z' }],
+    'demo@b': [
+      { scope: 'user', version: '1.0.0', lastUpdated: '2026-08-01T00:00:00Z' },
+      { scope: 'user', version: '2.0.0', lastUpdated: '2026-09-01T00:00:00Z' },
+    ],
+    'other@b': [{ scope: 'user', version: '9.9.9' }],
+  });
+  const r = installedLib.runningVsInstalled({ pluginRoot: root, home });
+  assert.strictEqual(r.installed, '2.0.0');
+  assert.strictEqual(r.stale, true);
+});
+
+check('withStaleNote prepends the note to a block reason and to additionalContext; fresh or empty → untouched', () => {
+  const live = { stale: true, note: 'running demo 1.0.0 ≠ installed 1.1.0 — restart Claude Code to load it' };
+  const block = hookModule.withStaleNote({ decision: 'block', reason: 'do X' }, live);
+  assert.ok(block.reason.startsWith('[turn-end] running demo 1.0.0'), block.reason);
+  assert.ok(block.reason.endsWith('\ndo X'));
+  const advise = hookModule.withStaleNote({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: 'ctx' } }, live);
+  assert.ok(advise.hookSpecificOutput.additionalContext.startsWith('[turn-end] running demo'));
+  assert.strictEqual(advise.hookSpecificOutput.hookEventName, 'Stop');
+  const fresh = { decision: 'block', reason: 'do X' };
+  assert.strictEqual(hookModule.withStaleNote(fresh, { stale: false, note: '' }), fresh);
+  assert.strictEqual(hookModule.withStaleNote(null, live), null);
+  assert.strictEqual(hookModule.withStaleNote(fresh, null), fresh);
+});
+
+check('E2E: every trace line carries the RUNNING version from the manifest beside the script', () => {
+  const dir = withoutRecall(tmpdir('e2e-trace-version'));
+  fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  const transcript = path.join(dir, 't.jsonl');
+  // An idle turn allows silently and writes no trace line; an agent in flight defers a duty,
+  // which is recorded — so the fixture carries one dispatch, exactly like the trace-fields test.
+  fs.writeFileSync(transcript, [
+    JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [
+      { type: 'tool_use', id: 'toolu_V', name: 'Agent', input: { subagent_type: 'general-purpose', prompt: 'x' } },
+    ] } }),
+    JSON.stringify({ message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_V', content: 'Async agent launched successfully. agentId: v' }] } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'text', text: 'launched, waiting' }] } }),
+  ].join('\n'));
+  const payload = JSON.stringify({
+    cwd: dir, prompt_id: 'e2e-version-1', stop_hook_active: false, permission_mode: 'default',
+    last_assistant_message: 'launched, waiting', transcript_path: transcript, hook_event_name: 'Stop',
+  });
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js')], { input: payload, encoding: 'utf8' });
+  const trace = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const last = trace[trace.length - 1];
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8'));
+  assert.strictEqual(last.version, manifest.version);
+  assert.strictEqual(typeof last.stale, 'boolean');
+});
+
+// ---------- 0.8.0 (task #28): ground truth — file-touch, Bash-aware self-check, the floor, modality, recall ----------
+
+const fileTouch = require('../lib/file-touch');
+const selfCheck28 = require('../lib/duties/self-check');
+const recall28 = require('../lib/duties/context-recall');
+const toolRecord = require('../hooks/scripts/tool-record');
+
+check('file-touch: Bash mutations — sed -i, > and >> redirections, tee, heredoc target, cp/mv destination', () => {
+  const f = fileTouch.filesInCommand;
+  assert.deepStrictEqual(f("sed -i 's/a/b/' src/app.js").writes, ['src/app.js']);
+  assert.deepStrictEqual(f('sed -i.bak -e "s/x/y/" lib/x.js').writes, ['lib/x.js']);
+  assert.deepStrictEqual(f('echo hi > out/report.txt').writes, ['out/report.txt']);
+  assert.deepStrictEqual(f('node build.js >> logs/build.log 2>&1').writes, ['logs/build.log']);
+  assert.deepStrictEqual(f('cat > .steward/inbox/x.md <<\'EOF\'\n# body with ; and && inside\nEOF\necho done').writes, ['.steward/inbox/x.md']);
+  assert.deepStrictEqual(f('npm test | tee results.txt').writes, ['results.txt']);
+  assert.deepStrictEqual(f('cp a.json b.json && mv c.md docs/c.md').writes, ['b.json', 'docs/c.md']);
+  assert.deepStrictEqual(f('touch CHANGELOG.md').writes, ['CHANGELOG.md']);
+});
+
+check('file-touch: Bash reads — cat, head -c, sed -n, grep FILE, tail; never flags, devices, globs, variables', () => {
+  const f = fileTouch.filesInCommand;
+  assert.deepStrictEqual(f('cat README.md').reads, ['README.md']);
+  assert.deepStrictEqual(f('head -c 6000 .claude/kb/captures/20260906-1340-audit.md').reads, ['.claude/kb/captures/20260906-1340-audit.md']);
+  assert.deepStrictEqual(f("sed -n '10,20p' plugins/kb/lib/kb.js").reads, ['plugins/kb/lib/kb.js']);
+  assert.deepStrictEqual(f('grep -n "foo" src/a.js src/b.js').reads, ['src/a.js', 'src/b.js']);
+  assert.deepStrictEqual(f('tail -n 3 .claude/turn-end/trace.jsonl | cut -c1-200').reads, ['.claude/turn-end/trace.jsonl']);
+  assert.deepStrictEqual(f('node --test > /dev/null 2>&1').writes, []);
+  assert.deepStrictEqual(f('cat $FILE *.md 2>/dev/null').reads, []);
+  assert.deepStrictEqual(f('git add -A && git commit -m "x.js"'), { reads: [], writes: [] });
+  assert.deepStrictEqual(f(''), { reads: [], writes: [] });
+  assert.deepStrictEqual(f(null), { reads: [], writes: [] });
+});
+
+check('file-touch: touches() merges tool targets and Bash argv in turn order, with provenance', () => {
+  const t = fileTouch.touches([
+    { name: 'Read', target: 'docs/a.md' },
+    { name: 'Bash', command: 'head -c 100 notes/b.md && sed -i "s/x/y/" src/c.js' },
+    { name: 'Edit', target: 'src/d.js' },
+    { name: 'Bash', command: 'node tests/x.test.js' },
+  ]);
+  assert.deepStrictEqual(t.reads.map((r) => [r.index, r.target, r.via]), [[0, 'docs/a.md', 'Read'], [1, 'notes/b.md', 'Bash:head']]);
+  assert.deepStrictEqual(t.mutations.map((m) => [m.index, m.target, m.via]), [[1, 'src/c.js', 'Bash:head'], [2, 'src/d.js', 'Edit']]);
+  assert.deepStrictEqual(fileTouch.touches(null), { mutations: [], reads: [] });
+});
+
+check('file-touch: sameFile matches absolute vs relative and case on win32', () => {
+  const cwd = process.platform === 'win32' ? 'C:\\proj' : '/proj';
+  const abs = path.join(cwd, 'docs', 'a.md');
+  assert.ok(fileTouch.sameFile(abs, 'docs/a.md', cwd));
+  assert.ok(fileTouch.sameFile('./docs/a.md', 'docs/a.md', cwd));
+  assert.ok(!fileTouch.sameFile('docs/b.md', 'docs/a.md', cwd));
+  if (process.platform === 'win32') assert.ok(fileTouch.sameFile(abs.toUpperCase(), 'docs/a.md', cwd));
+});
+
+function turnCtx(calls, text, extra) {
+  return { cwd: process.cwd(), promptId: 'p', lastAssistantMessage: text || '', turn: { toolCalls: calls, toolTargets: calls.map((c) => c.target).filter(Boolean), text: text || '' }, ledger: { fires: 0, asked: [] }, ...(extra || {}) };
+}
+
+check('self-check: a `sed -i` edit through Bash IS a change (was invisible)', () => {
+  const ctx = turnCtx([{ name: 'Bash', command: "sed -i 's/a/b/' src/app.js" }], 'done');
+  assert.strictEqual(selfCheck28.applies(ctx), true);
+  assert.strictEqual(selfCheck28.satisfied(ctx), false);
+  assert.ok(selfCheck28.ask(ctx).includes('app.js'));
+});
+
+check('self-check: `sed -i` then `node --test` after it satisfies; a check BEFORE it does not', () => {
+  const after = turnCtx([{ name: 'Bash', command: "sed -i 's/a/b/' src/app.js" }, { name: 'Bash', command: 'node --test tests/' }], 'ok');
+  assert.strictEqual(selfCheck28.satisfied(after), true);
+  assert.strictEqual(selfCheck28.satisfiedBy(after), 'check-command-after-last-change');
+  const before = turnCtx([{ name: 'Bash', command: 'node --test tests/' }, { name: 'Bash', command: "sed -i 's/a/b/' src/app.js" }], 'ok');
+  assert.strictEqual(selfCheck28.satisfied(before), false);
+});
+
+check('self-check: a heredoc write into a bookkeeping tree is NOT fresh work', () => {
+  const ctx = turnCtx([{ name: 'Bash', command: 'cat >> .claude/kb/session-digest.md <<\'EOF\'\n- note\nEOF' }], 'noted');
+  assert.strictEqual(selfCheck28.applies(ctx), false);
+});
+
+check('self-check floor: "Check: none", bare "verified by inspection" and a free-floating "exit 0" satisfy NOTHING', () => {
+  const calls = [{ name: 'Edit', target: 'src/parser.js' }];
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(calls, 'Check: none')), false);
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(calls, 'verified by inspection, looks right')), false);
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(calls, 'it returned exit 0')), false);
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(calls, 'tests passed')), false);
+});
+
+check('self-check floor: a claim anchored to the turn satisfies — a ratio, a touched basename, or a command the turn ran', () => {
+  const edited = [{ name: 'Edit', target: 'src/parser.js' }];
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(edited, 'Check: node tests/parser.test.js → 12/12')), true);
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(edited, 'Check: re-read parser.js against the spec; result: matches')), true);
+  const ran = [{ name: 'Edit', target: 'src/parser.js' }, { name: 'Bash', command: 'pytest -q' }];
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(ran, 'Check: pytest green after the edit')), true);
+  // The same words without the anchor stay prose.
+  assert.strictEqual(selfCheck28.satisfied(turnCtx(edited, 'Check: pytest green after the edit')), false);
+  assert.ok(selfCheck28.anchorsOf(turnCtx(ran)).has('pytest') && selfCheck28.anchorsOf(turnCtx(ran)).has('parser.js'));
+});
+
+check('self-check modality: prose edits get the re-read ask, scene edits the look ask, code the run ask', () => {
+  const prose = turnCtx([{ name: 'Edit', target: 'design/harness.md' }], 'updated');
+  assert.ok(/RE-READ .* what the owner should be SEEING/s.test(selfCheck28.ask(prose)) && selfCheck28.modalityFor(['x.md']).id === 'prose');
+  const scene = turnCtx([{ name: 'Edit', target: 'Assets/Scenes/Main.unity' }], 'placed');
+  assert.ok(/what should the owner be seeing\?/.test(selfCheck28.ask(scene)) && selfCheck28.modalityFor(['a.unity']).id === 'scene');
+  const mixed = turnCtx([{ name: 'Edit', target: 'README.md' }, { name: 'Edit', target: 'src/a.js' }], 'x');
+  assert.ok(/RUN the check/.test(selfCheck28.ask(mixed)) && selfCheck28.modalityFor(['README.md', 'src/a.js']).id === 'code');
+});
+
+check('self-check requireGreen (Q19 knob): satisfied only when the recorded last check for this request has exit 0', () => {
+  const dir = tmpdir('sc-require-green');
+  fs.mkdirSync(path.join(dir, '.claude', 'turn-end'), { recursive: true });
+  const ledger = path.join(dir, '.claude', 'turn-end', 'checks.jsonl');
+  const calls = [{ name: 'Edit', target: 'src/a.js' }, { name: 'Bash', command: 'node --test tests/' }];
+  const ctx = { ...turnCtx(calls, 'ok'), cwd: dir, promptId: 'req-1' };
+  assert.strictEqual(selfCheck28.satisfied(ctx, { requireGreen: true }), false, 'no ledger line = cannot tell = not green');
+  fs.writeFileSync(ledger, `${JSON.stringify({ prompt_id: 'req-1', kind: 'check', cmd: 'node --test tests/', exit: 1 })}\n`);
+  assert.strictEqual(selfCheck28.satisfied(ctx, { requireGreen: true }), false, 'a red check is not green');
+  fs.appendFileSync(ledger, `${JSON.stringify({ prompt_id: 'req-1', kind: 'check', cmd: 'node --test tests/', exit: 0 })}\n`);
+  assert.strictEqual(selfCheck28.satisfied(ctx, { requireGreen: true }), true, 'the LAST recorded check is green');
+  assert.strictEqual(selfCheck28.satisfied(ctx, {}), true, 'default strictness (ran-and-observed) never consults the ledger');
+  fs.appendFileSync(ledger, `${JSON.stringify({ prompt_id: 'other', kind: 'check', cmd: 'x', exit: 1 })}\n`);
+  assert.strictEqual(selfCheck28.satisfied(ctx, { requireGreen: true }), true, 'another request\'s red check does not count');
+});
+
+check('recall: a note at a path this turn OPENED (Read or Bash) is dropped before it can be re-served', () => {
+  const cwd = process.platform === 'win32' ? 'C:\\proj' : '/proj';
+  const items = [
+    { id: 'kb::a', path: '.claude/kb/captures/a.md', title: 'A', content: 'x' },
+    { id: 'kb::b', path: '.claude/kb/captures/b.md', title: 'B', content: 'y' },
+    { id: 'kb::c', path: '.claude/kb/captures/c.md', title: 'C', content: 'z' },
+  ];
+  const ctx = { cwd, turn: { toolCalls: [
+    { name: 'Bash', command: 'head -c 6000 .claude/kb/captures/a.md' },
+    { name: 'Read', target: path.join(cwd, '.claude', 'kb', 'captures', 'b.md') },
+  ] } };
+  const r = recall28.dropAlreadyRead(items, ctx);
+  assert.deepStrictEqual(r.kept.map((i) => i.id), ['kb::c']);
+  assert.deepStrictEqual(r.alreadyRead, ['.claude/kb/captures/a.md', '.claude/kb/captures/b.md']);
+  assert.deepStrictEqual(recall28.dropAlreadyRead(items, { cwd, turn: { toolCalls: [] } }).kept.length, 3);
+  const prompt = recall28.buildPrompt({ ...ctx, lastAssistantMessage: 'ans', turn: { ...ctx.turn, userRequest: 'q', text: 'ans' } }, [{ id: 'kb::c', title: 'C' }], recall28.resolveLimits({}), null);
+  assert.ok(prompt.includes('FILES THIS TURN OPENED') && prompt.includes('.claude/kb/captures/a.md'));
+});
+
+check('tool-record: lineFor classifies the command, extracts files, parses the exit code from every shape the docs describe', () => {
+  const ok = toolRecord.lineFor({ hook_event_name: 'PostToolUse', session_id: 's', prompt_id: 'p', tool_name: 'Bash', tool_input: { command: 'node --test tests/' }, tool_response: { stdout: 'ok', stderr: '' } });
+  assert.deepStrictEqual([ok.kind, ok.exit, ok.ok, ok.event], ['check', null, true, 'PostToolUse']);
+  assert.ok(ok.response_keys.includes('stdout') && ok.payload_keys.includes('tool_response'));
+  const fail = toolRecord.lineFor({ hook_event_name: 'PostToolUseFailure', session_id: 's', prompt_id: 'p', tool_name: 'Bash', tool_input: { command: 'node --test tests/' }, error: 'Exit code 1\nFAIL x' });
+  assert.deepStrictEqual([fail.kind, fail.exit, fail.ok], ['check', 1, false]);
+  const mut = toolRecord.lineFor({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: "sed -i 's/a/b/' src/x.js" }, tool_response: { exit_code: 0 } });
+  assert.deepStrictEqual([mut.kind, mut.exit, mut.files.writes], ['mutation', 0, ['src/x.js']]);
+  const read = toolRecord.lineFor({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'cat README.md' }, tool_response: 'contents\nexit code: 0' });
+  assert.deepStrictEqual([read.kind, read.exit, read.files.reads], ['read', 0, ['README.md']]);
+  assert.strictEqual(toolRecord.lineFor({}).kind, 'other');
+});
+
+check('tool-record E2E: writes one ledger line + one sample per event where turn-end keeps state; silent elsewhere; stands down in a judge child', () => {
+  const script = path.join(__dirname, '..', 'hooks', 'scripts', 'tool-record.js');
+  const dir = tmpdir('tool-record-e2e');
+  fs.mkdirSync(path.join(dir, '.claude', 'turn-end'), { recursive: true });
+  const payload = (event, extra) => JSON.stringify({ hook_event_name: event, cwd: dir, session_id: 's1', prompt_id: 'p1', tool_name: 'Bash', tool_input: { command: 'node --test tests/' }, ...extra });
+  execFileSync(process.execPath, [script], { input: payload('PostToolUse', { tool_response: { stdout: 'x'.repeat(2000) } }), encoding: 'utf8' });
+  execFileSync(process.execPath, [script], { input: payload('PostToolUseFailure', { error: 'Exit code 2\nboom' }), encoding: 'utf8' });
+  execFileSync(process.execPath, [script], { input: payload('PostToolUse', { tool_response: { stdout: 'y' } }), encoding: 'utf8' });
+  const lines = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'checks.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.strictEqual(lines.length, 3);
+  assert.deepStrictEqual(lines.map((l) => [l.event, l.exit, l.ok]), [['PostToolUse', null, true], ['PostToolUseFailure', 2, false], ['PostToolUse', null, true]]);
+  const samples = fs.readdirSync(path.join(dir, '.claude', 'turn-end', 'samples')).sort();
+  assert.deepStrictEqual(samples, ['PostToolUse.json', 'PostToolUseFailure.json'], 'one sample per event, first fire only');
+  const sample = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'samples', 'PostToolUse.json'), 'utf8'));
+  assert.ok(sample.tool_response.stdout.length < 600 && sample.tool_response.stdout.includes('[+'), 'sample bodies are truncated');
+  const bare = tmpdir('tool-record-bare');
+  execFileSync(process.execPath, [script], { input: payload('PostToolUse', { cwd: bare }).replace(dir.replace(/\\/g, '\\\\'), bare.replace(/\\/g, '\\\\')), encoding: 'utf8' });
+  assert.ok(!fs.existsSync(path.join(bare, '.claude')), 'no footprint where turn-end keeps no state');
+  const nested = execFileSync(process.execPath, [script], { input: payload('PostToolUse', {}), encoding: 'utf8', env: { ...process.env, [claudeP.DEPTH_VAR]: '1' } });
+  assert.strictEqual(nested, '');
+  assert.strictEqual(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'checks.jsonl'), 'utf8').trim().split('\n').length, 3, 'a judge child records nothing');
+});
+
 // ---------- report ----------
 
 // Async checks resolve after the sync pass, so the report waits on them — otherwise a failing

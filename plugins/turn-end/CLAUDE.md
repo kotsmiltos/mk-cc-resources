@@ -84,7 +84,11 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   NAMED with observed result in the final message — the universal
                         #   escape hatch that makes block safe; result tense only ("passed",
                         #   never planning "pass"). The ask teaches run -> LOOK -> compare vs
-                        #   ASKED -> try to BREAK it. Zero tokens; the EVIDENCE registry is
+                        #   ASKED -> try to BREAK it. 0.8.0: Bash mutations count (file-touch);
+                        #   named-check FLOOR — the claim must carry a ratio, a touched basename or
+                        #   a command the turn ran ("Check: none" / "verified by inspection" /
+                        #   bare "exit 0" satisfy nothing); MODALITIES registry shapes the ask
+                        #   (prose re-read / scene look / code run). Zero tokens; the EVIDENCE registry is
                         #   the extension surface (new modality = new detector). Excludes
                         #   .claude/.steward/.pipeline + tmp writes — mandated bookkeeping is
                         #   not fresh work. Needs ctx.turn.toolCalls, the ORDERED snapshot;
@@ -119,6 +123,17 @@ lib/deferral.js         # 0.7.0: the shared "not now" predicates — agents in f
                         #   duty returns a NAMED reason from defer(); the runner records it
                         #   as `deferred`, asks nothing. Closes the wrong-check class
                         #   (measured 08-27 plan mode 8+ cycles; 09-06 five agents in flight)
+lib/file-touch.js       # 0.8.0 (task #28): ONE extractor for what a turn READ and MUTATED — tool
+                        #   targets AND Bash/PowerShell argv (sed -i / > / >> / tee / heredoc /
+                        #   cp-mv dest = mutation; cat / head / tail / sed -n / grep FILE = read).
+                        #   Consumed by self-check (Bash edits count) and context-recall (a note the
+                        #   turn opened through Bash is never re-served; the judge is told what was
+                        #   opened). Pure, conservative: flags/vars/globs/devices are never files
+lib/installed.js        # 0.7.1: running ≠ installed — the manifest beside the executing code vs the
+                        #   install ledger; `version` + `stale` on every trace line, one-line stale
+                        #   note PREPENDED to the tail (measured 2026-09-08: `/clear` does not reload
+                        #   plugins; two days of 0.6.0 traces read as 0.7.0 data). Fail-soft: no
+                        #   ledger / no entry / malformed → silent
 lib/judges/             # judgment surface. 0.7.0: the child is spawned LEAN (--setting-sources
                         #   "" --disable-slash-commands --strict-mcp-config; empty source list
                         #   is UNDOCUMENTED → fail-open retry without it, verdict says
@@ -139,7 +154,14 @@ lib/judges/             # judgment surface. 0.7.0: the child is spawned LEAN (--
                         #   when recall matters is itself a thing that can be wrong).
                         #   MEASURED 46s per fire against a real corpus, not the ~11s the
                         #   tiny experiment prompt suggested
-hooks/                  # the one Stop registration; the adapter holds ZERO policy beyond
+hooks/                  # the one Stop registration + (0.8.0) the exec-result RECORDER: PostToolUse +
+                        #   PostToolUseFailure on Bash|PowerShell -> scripts/tool-record.js appends
+                        #   {event, session_id, prompt_id, cmd, kind, files, exit, ok} to
+                        #   .claude/turn-end/checks.jsonl and saves ONE real payload per event under
+                        #   samples/ (the fixture; tool_response for Bash is undocumented). Only where
+                        #   turn-end keeps state; stands down in judge children. self-check reads it
+                        #   when a project sets duties.self-check.requireGreen (Q19 strictness knob).
+                        #   The adapter holds ZERO policy beyond
                         #   executing due supply duties. 0.4.1: ALL state (config/ledger/
                         #   trace) anchors to resolveProjectRoot — nearest ancestor with
                         #   .git, never HOME or above; raw cwd if none. payload.cwd follows
@@ -149,7 +171,7 @@ hooks/                  # the one Stop registration; the adapter holds ZERO poli
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 170 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
+tests/turn-end.test.js  # 189 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;
