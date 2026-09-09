@@ -1132,3 +1132,58 @@ recorded as PENDING not claimed; `design/harness.md` §7.7 (l.491), §7.8 (l.520
 (l.428-429), §9.1–9.7 (l.612-631) read for #37/#38/Q21/Q22; the global CLAUDE.md gate as
 injected this session is the slimmed one-line + anti-signals form (Q15 applied). No code
 touched; no suites run (model-only pass).
+
+## 2026-09-09 · Arrival check after the Phase 0 ship (task #1 legs f + e) — process is NEW; recorder fixtures real; stale leg deferred to this sitting's first Stop
+
+Kickoff `prompts/prompt-2026-09-09T00-10-06Z.md`, step 0. Session `2da1777e` (the previous one was
+`5e8e08b4`, ledger.json) — a fresh process. Legs: (2) `[instr]` at open = `git: main @ a5988ac` only,
+NO running≠installed line — `steward-brief.js:201` prints it only on mismatch, so absence = equal
+(steward 0.5.2 running); (3) the RECORDER is live in this process (0.8.0-only hook pair):
+`samples/PostToolUse.json` written on the first Bash call, `checks.jsonl` lines carry kind/exit/
+payload_keys/response_keys; forced `node -e "process.exit(3)"` → `samples/PostToolUseFailure.json`
++ a line with `exit: 3, ok: false` parsed from `error: "Exit code 3"`. FIXTURE SHAPE (was
+undocumented): PostToolUse `tool_response` for Bash = `{stdout, stderr, interrupted, isImage,
+noOutputExpected}` — NO exit field, so `exit: null, ok: true` on success is the platform's truth,
+not a parser gap; PostToolUseFailure has no `tool_response` at all, `error` + `is_interrupt` +
+`duration_ms` instead. (4) kb-pull on the first prompt: hints + digest inline, NOT stubbed; digest
+in `cut` mode ("dropped 15 lines / 8223 chars" — the 14 KB digest itself needs compressing, done
+this sitting). (1) the first Stop trace line of THIS session cannot be observed before this turn
+ends — the previous session's last line (00:25Z) still lacked `version` (pre-0.7.1 code) — and (5)
+the tail size: both read at the next prompt. No failed leg → no inbox item.
+**Check:** `.claude/turn-end/samples/` ls = 2 files; `checks.jsonl` grep `process.exit(3)` → one
+line, `"exit":3`; `trace.jsonl` grep `2da1777e` = 0 (no Stop yet); `installed_plugins.json` =
+turn-end 0.8.0 / kb 0.13.0 / steward 0.5.2 / lens 0.5.1 / toolkit 1.11.0.
+
+## 2026-09-09 · #30 BUILT — trace schema v1 across turn-end / kb / lens + the drift suite + acted-on derivation; SubagentStop payload MEASURED live
+
+Contract: `plugins/plugin-toolkit/references/trace-schema-v1.md` + validator
+`lib/metrics/trace-schema.js` (required t/plugin/version/session_id/prompt_id/ms/decision/bytes,
+exactly one kind key hook|duty|agent|tool, optional cost_usd/engine/acted_on; legacy = no
+`plugin` key, never malformed). Ownership: each plugin keeps its OWN pure `lib/trace-line.js`
+exporting builders + `examples()`; `tests/trace-schema.test.js` discovers every sibling writer BY
+SHAPE and validates every example, plus the negative (minus `decision` → fails). turn-end 0.9.0:
+hook line (0.7.x shape kept + v1 keys), one `duty:<id>` line per supply duty with engine / ms /
+cost_usd / surfaced / index_size / judge_chosen / ranker_top (the ranker now runs on every recall
+fire — Q20 agreement computable from disk), `duty:acted-on` once per closed owner span at the next
+genuine prompt (`context.js` turn.previous with timestamps, kb_read ids, prompt ids — a wake is the
+same span; `lib/acted-on.js` reads sibling traces read-only; ledger `actedOnUpTo`). kb 0.14.0:
+kb-pull / kb-session-start / MCP tool lines through `lib/trace-line.js` (kb-pull keyed
+`hook: kb-pull`, was `tool: kb-pull-hook`; MCP lines null ids by construction). lens 0.6.0: a
+SubagentStop RECORDER (`hooks/scripts/lens-record.js`, matcher `verifiability-lens$` — real
+dispatches carry the plugin-scoped type, 81 transcripts) → one line per dispatch from the payload's
+`last_assistant_message` (rollup a/b/u, escalations, auto_resolved, suppressed, verified/refuted,
+completeness; null when unstated) + duration/model/tokens from `agent_transcript_path`; the agent
+def now states `verification: {verified, refuted, unverifiable}` in its rollup. NOT the retired
+Stop hook — informational, never blocks. MEASURED: a live probe (lean `claude -p`, haiku,
+`--plugin-dir` dump plugin, 9 s, $0.036) captured the real SubagentStop input — keys session_id,
+transcript_path, cwd, prompt_id, permission_mode, agent_id, agent_type, hook_event_name,
+stop_hook_active, agent_transcript_path, last_assistant_message, background_tasks, session_crons;
+SubagentStart carries NO agent_transcript_path (docs say it does). Parser measured on the real
+2026-08-23 rollup: one bug caught before ship (`\s*` in a YAML key regex swallowed the first
+`- item` line — escalations 1 read as 0). Docs + versions + marketplace + README rows + root tree
+lines updated. LIVE legs pending a ship + restart: first Stop of the next-next session shows a
+`duty:acted-on` line and, once the lens is dispatched, `.claude/verifiability-lens/trace.jsonl`.
+**Check:** turn-end suite 195/195 (+6); kb suites 89/89 · 79/79 · 45/45 · 31/31 · 276/276;
+lens suite 58/58 (+18, E2E over the real payload shape); toolkit trace-schema drift suite 74/74
+over 3 writers (kb, turn-end, verifiability-lens); `registry-check --root .` consistent (exit 0);
+`repo-guard` from the root clean (exit 0, 4 detectors); `test-all --root .` = 33/34 suites, 1957 checks; the one red is `essense-flow:test/run-all.cjs` (exit 1 under the sweep, exit 0 / 54 total / 0 failures run DIRECT a minute later — the #9-class intermittent, untouched this sitting; no essense-flow file in the diff).

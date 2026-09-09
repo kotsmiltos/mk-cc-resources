@@ -1,5 +1,23 @@
 # kb — release notes
 
+## 0.14.0 — 2026-09-09 — trace schema v1: every kb fire leaves the one shared line shape (task #30, harness G4)
+
+kb's three trace writers (kb-pull, kb-session-start, the MCP server) now build their lines through
+ONE pure module, `lib/trace-line.js`, in the cross-plugin contract
+(`plugins/plugin-toolkit/references/trace-schema-v1.md`): `{ t, plugin: "kb", hook|tool, version,
+session_id, prompt_id, ms, decision, bytes, … }`. kb-pull lines are keyed `hook: "kb-pull"` (was
+`tool: "kb-pull-hook"`) with `decision: "hints:N+digest:full|cut|pointer|none"`; kb-session-start is
+`hook: "kb-session-start"` with `decision: rotated|kept` and `prompt_id: null` (no prompt exists at
+open); MCP calls are `tool: kb_query|kb_read|kb_overview` with `decision: hits:N|read|overview|error`
+and null ids by construction (the server never sees a prompt). `version` is the RUNNING one — the
+manifest beside the code, never the install ledger. `ms` is the fire's wall-clock; `bytes` what was
+handed to the session. Every 0.13.0 field (hints, held, scores, digest mode, config_error, text,
+matched, returned) is kept. `examples()` on the writer is what plugin-toolkit's trace-schema drift
+suite validates — a dropped field goes red there. turn-end derives `acted_on` for kb-pull hints at
+the next owner prompt (a hinted id `kb_read`, or its path opened) — the audit-2 "7% strict / 16%
+loose" number, computable from disk on every run instead of by transcript archaeology.
+Suites: kb-pull 89, kb-session 79, kb-mcp 45, footprint 31 (the writer imports no fs).
+
 ## 0.13.0 — 2026-09-09 — kb-pull under the platform bound, not repetitive (audit 2 item 11, task #27, harness G6)
 
 The last uncapped push surface, bounded by MEASUREMENT: Claude Code replaces any hook output past

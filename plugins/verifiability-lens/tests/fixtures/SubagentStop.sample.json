@@ -1,0 +1,16 @@
+{
+  "_provenance": "REAL SubagentStop payload captured 2026-09-09 from a lean `claude -p` child (haiku, --plugin-dir probe, 9 s, $0.036) — machine paths replaced by relative placeholders, agent text replaced by the lens rollup shape. Keys and their order are the platform's. SubagentStart in the same run carried NO agent_transcript_path (docs say it does).",
+  "session_id": "9b99c9e6-00d1-455d-8f57-46e5905fd540",
+  "transcript_path": "<projects>/<project>/9b99c9e6-00d1-455d-8f57-46e5905fd540.jsonl",
+  "cwd": "<project>",
+  "prompt_id": "ffac9fb2-acd1-4230-ad35-0eb2b9241f79",
+  "permission_mode": "default",
+  "agent_id": "a488ea25d0b3a1f53",
+  "agent_type": "verifiability-lens:verifiability-lens",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "<projects>/<project>/9b99c9e6-00d1-455d-8f57-46e5905fd540/subagents/agent-a488ea25d0b3a1f53.jsonl",
+  "last_assistant_message": "## Rollup\n\n```yaml\nrollup:\n  counts: { a: 7, b: 0, u: 0 }\n  completeness_verdict: complete\n  escalations:\n    - item: \"Watch coverage: today's PASSes are all true-negatives\"\n      why_it_matters: \"only positive cases prove the instruments can say anything but fine\"\n      recommended_default: \"check for the warning line at next open\"\n      context_bundle: \"steward-brief.js:109-112\"\n  auto_resolved: [ leg-a injection accepted, leg-d render accepted, commit verified via .git/logs/HEAD, moment-in-time accepted ]\n  suppressed_count: 4   # leg-b deferral, log-entry tail, no-inbox-item, path style\n  verification: { verified: 7, refuted: 0, unverifiable: 0 }\n  headline: \"Arrival check verified end-to-end against disk and git — every claim holds, zero lies.\"\n```\n",
+  "background_tasks": [],
+  "session_crons": []
+}

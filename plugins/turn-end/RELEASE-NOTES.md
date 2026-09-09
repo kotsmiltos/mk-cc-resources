@@ -1,5 +1,26 @@
 # turn-end — release notes
 
+## 0.9.0 — 2026-09-09 — trace schema v1: the fire, every evaluator, and acted-on — each its own line (task #30, harness G4)
+
+Three line kinds now, all in the cross-plugin contract
+(`plugins/plugin-toolkit/references/trace-schema-v1.md`), built by the pure `lib/trace-line.js`:
+`hook: turn-end` per Stop fire (the 0.7.x shape kept whole, plus `plugin`, `session_id`, `ms` = the
+fire's wall-clock, `decision` = the runner's action, `bytes` = the tail); `duty: <id>` per SUPPLY duty
+that ran — the evaluator's OWN record: `engine`, `ms`, `cost_usd`, `lean`, `surfaced` (paths handed
+over) and the AGREEMENT INPUTS Q20 needs — `index_size`, `judge_chosen`, `ranker_top` (the
+deterministic ranker now runs on every recall fire, cheap and pure, so judge-vs-ranker agreement is
+computable from disk), `already_read`; and `duty: acted-on`, ONE per closed owner span, derived at
+the first Stop of the NEXT genuine prompt (a wake is a different prompt_id inside the same span —
+`context.js` now returns `turn.previous` = the previous span's calls with timestamps, kb_read ids and
+prompt ids). `lib/acted-on.js` reads the sibling traces READ-ONLY (turn-end recall lines, kb-pull
+hints, lens escalations — path constants duplicated, never imported) and scores each source
+`{ surfaced, touched }` through the 0.8.0 file-touch extractor: a supplied path opened (Read or
+Bash argv), a hinted id `kb_read` or its path opened, an escalating lens dispatch followed by a
+mutation. The ledger's session-span `actedOnUpTo` makes it once per span however many fires follow.
+Suite 195 checks (+6: writer shape, previous span with a wake, derive over three sources by
+prompt-id set + time fallback, ledger carry-over, agreement inputs on every recall return, E2E
+two-prompt transcript → one acted-on line, hook line v1 keys, the advise→block ladder as decisions).
+
 ## 0.8.0 — 2026-09-09 — ground truth: file-touch, the named-check floor, modality asks, the exec-result recorder (task #28, harness G2; owner ruling Q19)
 
 Owner ruled Q19: "done" = a check RAN after the last file change AND was observed; green not

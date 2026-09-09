@@ -133,7 +133,7 @@ const COMPLETION_RX = /<tool-use-id>\s*([A-Za-z0-9_-]+)\s*<\/tool-use-id>/g;
 function extractTurn(transcriptPath) {
   const EMPTY = {
     text: '', toolNames: [], toolTargets: [], toolCalls: [], userRequest: '', userRequestAt: null,
-    wakeCount: 0, agentsInFlight: [],
+    wakeCount: 0, agentsInFlight: [], previous: null,
   };
   if (!transcriptPath) return EMPTY;
   let raw;
@@ -163,6 +163,8 @@ function extractTurn(transcriptPath) {
     }
     if (role !== 'user' && role !== 'assistant') continue;
     const content = m.content;
+    const atRaw = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : NaN;
+    const at = Number.isFinite(atRaw) ? atRaw : null;
     let text = '';
     const tools = [];
     const targets = [];
@@ -189,6 +191,10 @@ function extractTurn(transcriptPath) {
             call.target = `agent:${c.input.subagent_type}`;
           }
           if (c.input && typeof c.input.command === 'string') call.command = c.input.command;
+          // An id-shaped argument (a kb_read of a hinted entry) and WHEN the call happened —
+          // acted-on derivation (task #30) asks "was the hint followed, and after what?"
+          if (c.input && typeof c.input.id === 'string') call.ref = c.input.id;
+          if (at !== null) call.at = at;
           calls.push(call);
         } else if (c.type === 'tool_result') {
           hasToolResult = true;
@@ -199,10 +205,14 @@ function extractTurn(transcriptPath) {
         }
       }
     }
-    const at = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : NaN;
-    msgs.push({ role, text: text.trim(), tools, targets, calls, hasToolResult, at: Number.isFinite(at) ? at : null });
+    // The record's own prompt id (present on user/assistant records since CC 2.1.196) —
+    // lets a closed span be named by its prompt ids, wakes included.
+    const promptId = typeof obj.promptId === 'string' ? obj.promptId : null;
+    msgs.push({ role, text: text.trim(), tools, targets, calls, hasToolResult, at, promptId });
   }
   if (!msgs.length) return EMPTY;
+
+  const isGenuinePrompt = (msg) => msg.role === 'user' && msg.text && !msg.hasToolResult && !isMachineText(msg.text);
 
   // Turn start = just after the last GENUINE user prompt. Tool results arrive as user-role
   // messages and are NOT turn boundaries.
@@ -210,7 +220,7 @@ function extractTurn(transcriptPath) {
   let userRequest = '';
   let userRequestAt = null;
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].role === 'user' && msgs[i].text && !msgs[i].hasToolResult && !isMachineText(msgs[i].text)) {
+    if (isGenuinePrompt(msgs[i])) {
       start = i + 1;
       // The ASK itself. A judge deciding "what context was this answer missing?" needs the
       // question, not only the answer — an answer can look complete and still address the
@@ -245,7 +255,31 @@ function extractTurn(transcriptPath) {
       }
     }
   }
-  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest, userRequestAt, wakeCount, agentsInFlight };
+  /*
+   * The PREVIOUS owner span — closed the moment this one opened, and the only span whose
+   * "did the session act on what was surfaced?" is answerable (task #30). Everything between
+   * the genuine prompt before ours and ours: its ordered calls (with timestamps) and the
+   * prompt ids the records carried (a wake inside it is a different prompt_id, same span).
+   * null when no earlier genuine prompt exists in the transcript.
+   */
+  let previous = null;
+  if (start > 0) {
+    let prevIdx = -1;
+    for (let i = start - 2; i >= 0; i--) {
+      if (isGenuinePrompt(msgs[i])) { prevIdx = i; break; }
+    }
+    if (prevIdx >= 0) {
+      const prevCalls = [];
+      const promptIds = new Set();
+      for (let i = prevIdx; i < start - 1; i++) {
+        if (msgs[i].promptId) promptIds.add(msgs[i].promptId);
+        if (msgs[i].role === 'assistant') prevCalls.push(...msgs[i].calls);
+      }
+      previous = { requestAt: msgs[prevIdx].at, endAt: msgs[start - 1].at, promptIds: Array.from(promptIds), toolCalls: prevCalls };
+    }
+  }
+
+  return { text: text.trim(), toolNames, toolTargets, toolCalls, userRequest, userRequestAt, wakeCount, agentsInFlight, previous };
 }
 
 /**

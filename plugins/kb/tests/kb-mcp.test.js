@@ -195,6 +195,10 @@ e2e().then((responses) => {
     queryTrace && queryTrace.text !== undefined && Array.isArray(queryTrace.returned));
   const errTrace = traceLines.find((r) => r.error);
   check('trace records isError calls too', !!errTrace);
+  // Trace schema v1 (task #30): the server sees no prompt and no session — nulls by construction.
+  check('tool lines are v1-shaped (plugin kb, derived version, null ids, ms, decision hits:N | error, bytes of the result)',
+    queryTrace.plugin === 'kb' && queryTrace.version === server.SERVER_INFO.version && queryTrace.session_id === null && queryTrace.prompt_id === null &&
+    Number.isInteger(queryTrace.ms) && /^hits:\d+$/.test(queryTrace.decision) && queryTrace.bytes > 0 && errTrace.decision === 'error');
 
   // The footprint rule at its SOURCE. The MCP tools load in every session regardless of
   // seeding, so an ungated trace here would leave a file in every repo the owner opens —

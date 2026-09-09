@@ -126,8 +126,14 @@ rollup:
   escalations: [ <items + completeness/quality gaps that are important+ AND actionable-with-context> ]
   auto_resolved: [ <items settled with a logged default> ]
   suppressed_count: <int>
+  verification: { verified: <int>, refuted: <int>, unverifiable: <int> }   # from the per-item verdicts above
   headline: "<the one thing the user must see, plain — or 'all clear, complete, verified'>"
 ```
+
+The `rollup:` block is also machine-read: a SubagentStop recorder in this plugin turns it into one
+trace line per dispatch (`counts`, `escalations`, `auto_resolved`, `suppressed_count`,
+`verification`, `completeness_verdict`). Keep the keys and shapes exactly as above — a count you
+did not state is recorded as unknown, never as zero.
 
 ## The strict-but-disciplined rule (resolve the tension)
 

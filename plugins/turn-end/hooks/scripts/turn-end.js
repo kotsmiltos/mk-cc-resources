@@ -25,6 +25,8 @@ const { buildContext } = require('../../lib/context');
 const ledgerStore = require('../../lib/ledger');
 const claudeP = require('../../lib/judges/claude-p');
 const installed = require('../../lib/installed');
+const traceLine = require('../../lib/trace-line');
+const actedOn = require('../../lib/acted-on');
 
 const CONFIG_REL = path.join('.claude', 'turn-end.json');
 const PLUGIN_ROOT = path.join(__dirname, '..', '..');
@@ -129,6 +131,7 @@ async function main() {
   if (claudeP.isNested()) return process.exit(0);
 
   const payload = await readPayload();
+  const fireStartedMs = Date.now();
   const cwd = resolveProjectRoot(payload.cwd || process.cwd());
   const config = readConfig(cwd);
 
@@ -151,6 +154,7 @@ async function main() {
   const materials = {};
   const supplyNotes = [];
   const suppliedPaths = [];
+  const supplyRuns = []; // { id, ms, produced } — one v1 duty line each
   for (const id of planned.supplyDue) {
     const duty = duties.byId(id);
     if (!duty || typeof duty.supply !== 'function') continue;
@@ -168,6 +172,7 @@ async function main() {
     });
     try {
       const produced = await duty.supply(ctx);
+      supplyRuns.push({ id, ms: Date.now() - startedMs, produced: produced || {} });
       if (produced && produced.material) {
         materials[id] = produced;
         const chosen = produced.chosen || [];
@@ -179,7 +184,9 @@ async function main() {
         supplyNotes.push({ id, chosen: [], ...account(produced) });
       }
     } catch (err) {
-      supplyNotes.push({ id, error: String((err && err.message) || err).slice(0, 200), ...account(null) });
+      const error = String((err && err.message) || err).slice(0, 200);
+      supplyNotes.push({ id, error, ...account(null) });
+      supplyRuns.push({ id, ms: Date.now() - startedMs, produced: { error, chosen: [] } });
     }
   }
 
@@ -199,34 +206,63 @@ async function main() {
        (result.emission.hookSpecificOutput && result.emission.hookSpecificOutput.additionalContext) || '')
     : '';
 
+  // ACTED-ON (task #30): the previous owner span closed when this one opened; score it once.
+  const derived = actedOnFor(cwd, ctx, ledger, live, sessionId, promptId);
+
+  let nextLedger = ledger;
   if (result.emission || toRecord.length || result.errored.length || result.deferred.length) {
-    ledgerStore.writeLedger(cwd, ledgerStore.advance(ledger, toRecord, sessionSpanIds, suppliedPaths));
-    writeTrace(cwd, {
-      t: new Date().toISOString(),
-      hook: 'turn-end',
-      // The RUNNING version — from the manifest beside this script, never the ledger. Two
-      // days of 0.6.0 traces read as 0.7.0 data until this field existed.
-      version: live.running,
-      stale: live.stale,
-      prompt_id: promptId,
-      stop_hook_active: ctx.stopHookActive,
-      action: result.action,
-      unsatisfied: result.unsatisfied,
-      deferred: result.deferred,
-      supplied: supplyNotes,
-      errored: result.errors,
-      satisfied_by: result.satisfiedBy,
-      fires: ledger.fires,
-      emitted_chars: emittedText.length,
-      agents_in_flight: (ctx.turn.agentsInFlight || []).length,
+    nextLedger = ledgerStore.advance(ledger, toRecord, sessionSpanIds, suppliedPaths);
+    // Trace schema v1 (lib/trace-line.js): the fire's own line, then one line per evaluator
+    // that ran — a judge's engine / ms / cost / picks are its OWN record, not a nested note.
+    // `version` is the RUNNING one — from the manifest beside this script, never the ledger
+    // (two days of 0.6.0 traces read as 0.7.0 data until that field existed).
+    const now = new Date();
+    writeTrace(cwd, traceLine.hookLine({
+      now, version: live.running, stale: live.stale, sessionId, promptId,
+      ms: Date.now() - fireStartedMs, result, supplyNotes, fires: ledger.fires, emittedText,
+      agentsInFlight: (ctx.turn.agentsInFlight || []).length,
       // Substrate record: which fields the platform actually sent. Two audit claims (a
       // `background_tasks` field, a `permission_mode` field) rested on docs, not on a fire.
-      payload_keys: Object.keys(payload),
-      permission_mode: ctx.permissionMode,
-    });
+      payloadKeys: Object.keys(payload), permissionMode: ctx.permissionMode, stopHookActive: ctx.stopHookActive,
+    }));
+    for (const ran of supplyRuns) {
+      writeTrace(cwd, traceLine.dutyLine({ now, version: live.running, sessionId, promptId, id: ran.id, ms: ran.ms, produced: ran.produced }));
+    }
   }
+  if (derived) {
+    nextLedger = { ...nextLedger, actedOnUpTo: derived.upTo };
+    writeTrace(cwd, derived.line);
+  }
+  if (nextLedger !== ledger) ledgerStore.writeLedger(cwd, nextLedger);
   if (result.emission) process.stdout.write(JSON.stringify(withStaleNote(result.emission, live)));
   process.exit(0);
+}
+
+/**
+ * Score the previous owner span for acted-on (lib/acted-on.js) — once per closed span, keyed
+ * on the ledger's session-span `actedOnUpTo`. Reads sibling traces read-only; an absent file
+ * is an absent source. Returns { line, upTo } or null when there is nothing new to score.
+ */
+function actedOnFor(cwd, ctx, ledger, live, sessionId, promptId) {
+  try {
+    const prev = ctx.turn && ctx.turn.previous;
+    if (!prev || typeof prev.requestAt !== 'number') return null;
+    if (ledger.actedOnUpTo === prev.requestAt) return null;
+    const startedMs = Date.now();
+    const traces = {};
+    for (const [plugin, rel] of Object.entries(actedOn.TRACE_FILES)) {
+      try { traces[plugin] = fs.readFileSync(path.join(cwd, rel), 'utf8'); } catch (_e) { traces[plugin] = ''; }
+    }
+    const span = { from: prev.requestAt, to: prev.endAt, promptIds: prev.promptIds, toolCalls: prev.toolCalls };
+    const { sources } = actedOn.derive(traces, span, cwd);
+    const line = traceLine.actedOnLine({
+      now: new Date(), version: live.running, sessionId, promptId, ms: Date.now() - startedMs,
+      span: { from: prev.requestAt, to: prev.endAt }, sources,
+    });
+    return { line, upTo: prev.requestAt };
+  } catch (_e) {
+    return null; // derivation is telemetry; it never touches the decision
+  }
 }
 
 if (require.main === module) {

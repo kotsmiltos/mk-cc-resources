@@ -129,6 +129,18 @@ lib/file-touch.js       # 0.8.0 (task #28): ONE extractor for what a turn READ a
                         #   Consumed by self-check (Bash edits count) and context-recall (a note the
                         #   turn opened through Bash is never re-served; the judge is told what was
                         #   opened). Pure, conservative: flags/vars/globs/devices are never files
+lib/trace-line.js       # 0.9.0 (task #30): turn-end's OWN trace-schema-v1 writer — hookLine (the
+                        #   fire), dutyLine (each supply duty: engine / ms / cost_usd / surfaced /
+                        #   index_size / judge_chosen / ranker_top / already_read — Q20's agreement
+                        #   inputs), actedOnLine (one per closed span) + examples() for the toolkit's
+                        #   drift suite. Pure: now + version are arguments
+lib/acted-on.js         # 0.9.0: was a surfacing ACTED ON? Derived once per closed owner span at the
+                        #   next genuine prompt (turn.previous — a wake is a different prompt_id in
+                        #   the SAME span); reads the sibling traces read-only (recall lines, kb-pull
+                        #   hints, lens escalations) and scores { surfaced, touched } per source via
+                        #   file-touch (opened path / kb_read id / mutation after an escalation).
+                        #   Selection by the span's prompt-id set, time window as fallback; ledger
+                        #   actedOnUpTo (session span) makes it once. Telemetry: never the decision
 lib/installed.js        # 0.7.1: running ≠ installed — the manifest beside the executing code vs the
                         #   install ledger; `version` + `stale` on every trace line, one-line stale
                         #   note PREPENDED to the tail (measured 2026-09-08: `/clear` does not reload
@@ -171,7 +183,7 @@ hooks/                  # the one Stop registration + (0.8.0) the exec-result RE
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 189 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
+tests/turn-end.test.js  # 195 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

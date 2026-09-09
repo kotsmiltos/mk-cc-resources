@@ -249,13 +249,16 @@ function cueOnce(root, home) {
 function trace(root, record) {
   try {
     const { writeTrace } = require('../../mcp/kb-mcp-server');
-    writeTrace(root, { t: new Date().toISOString(), tool: 'kb-session-start', ...record });
+    // Trace schema v1 (lib/trace-line.js) — one shape across plugins (task #30).
+    const traceLine = require('../../lib/trace-line');
+    writeTrace(root, traceLine.sessionLine({ now: new Date(), version: traceLine.runningVersion(), ...record }));
   } catch (_e) { /* telemetry never blocks */ }
 }
 
 async function main() {
   // A spawned judgment child fires SessionStart like any full session — stand down entirely.
   if (isSpawnedChild()) return process.exit(0);
+  const startedMs = Date.now();
 
   const payload = await readPayload();
   // Anchor to the project root: the shell's cwd follows `cd`, and a subdir session
@@ -305,10 +308,13 @@ async function main() {
     out.push('<kb-session>This project has no knowledge base yet. Run /kb-seed once to extract what it already knows (decisions, rejected approaches, conventions) — after that the KB maintains itself.</kb-session>');
   }
 
-  if (out.length) process.stdout.write(`${out.join('\n')}\n`);
+  const emitted = out.length ? `${out.join('\n')}\n` : '';
+  if (emitted) process.stdout.write(emitted);
   // writeTrace gates on presence itself, but calling it when this pass already answered
   // "no memory" re-walks the markers and re-reports the same obstruction. Ask once.
-  if (memory.found) trace(root, { source, rotated: out.some((l) => l.includes('archived')) });
+  if (memory.found) {
+    trace(root, { sessionId, ms: Date.now() - startedMs, bytes: Buffer.byteLength(emitted), source, rotated: out.some((l) => l.includes('archived')) });
+  }
   process.exit(0);
 }
 

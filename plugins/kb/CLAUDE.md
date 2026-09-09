@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.13.0)
+.claude-plugin/plugin.json   # metadata (v0.14.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -62,6 +62,10 @@ lib/
                              #   themes on recorded entries (search stays in ONE engine, owner
                              #   ruling); tolerant, corrupt ledger = visible per-source error
   kb.js                      # THE FACADE — every adapter binds here, nothing reaches past it
+  trace-line.js              # 0.14.0: kb's OWN trace-schema-v1 writer (pure, no fs) — pullLine /
+                             #   sessionLine / toolLine + examples(); every kb trace line is built
+                             #   here (contract: plugin-toolkit references/trace-schema-v1.md,
+                             #   drift-tested there). `version` = the manifest beside the code
 bin/kb.js                    # CLI adapter (one caller among peers)
 mcp/kb-mcp-server.js         # MCP stdio adapter — kb_query/kb_read/kb_overview; hand-rolled
                              #   JSON-RPC (tools-only server = 3 methods); refreshes corpus

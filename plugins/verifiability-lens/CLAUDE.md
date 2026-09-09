@@ -18,16 +18,31 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.5.1)
-agents/verifiability-lens.md     # the read-only classifier + triager
+.claude-plugin/plugin.json       # metadata (v0.6.0)
+agents/verifiability-lens.md     # the read-only classifier + triager; its `rollup:` block is
+                                 #   MACHINE-READ (0.6.0: + `verification: {verified, refuted}`)
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
 defaults/recipient-profile.yaml  # the dials (who it serves) — config, never hardcoded
 defaults/presets/                # copyable per-project profiles
 commands/verifiability.md        # /verifiability [target] — manual trigger
-hooks/hooks.json                 # EMPTY registration — no hook since 0.5.0; automatic firing
-                                 #   is turn-end's `quality-lens` duty (dead scripts DELETED 0.5.1)
+hooks/hooks.json                 # ONE informational recorder, never a Stop hook (retired 0.5.0;
+                                 #   automatic firing is turn-end's `quality-lens` duty):
+hooks/scripts/lens-record.js     #   SubagentStop, matcher `verifiability-lens$` (dispatches carry
+                                 #   the plugin-scoped type `verifiability-lens:verifiability-lens`
+                                 #   — measured in 81 transcripts). One trace-schema-v1 line per
+                                 #   dispatch -> .claude/verifiability-lens/trace.jsonl, from the
+                                 #   payload's `last_assistant_message` (the rollup) + the agent
+                                 #   transcript (duration, model, tokens); one real payload saved
+                                 #   under samples/ (0.8.0 recorder precedent). Zero output, stands
+                                 #   down in judge children, writes only under the project root
+lib/trace-line.js                # the PURE writer: parseRollup (a count not stated is null, never
+                                 #   0), lineFor, examples() — plugin-toolkit's trace-schema drift
+                                 #   suite discovers it by shape (references/trace-schema-v1.md)
 tests/verifiability-lens.test.js # contract tests over the shipped files (agent/rubric/profile/
-                                 #   presets/metadata) — replaces the retired hook's 39 checks
+                                 #   presets/metadata/hook registration) + the writer (parser over
+                                 #   the REAL 2026-08-23 rollup shape, E2E over the REAL payload
+                                 #   shape captured live 2026-09-09) — replaces the retired hook's 39
+tests/fixtures/SubagentStop.sample.json  # the real SubagentStop payload, paths sanitized
 README.md / RELEASE-NOTES.md
 ```
 

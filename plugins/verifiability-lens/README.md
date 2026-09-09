@@ -46,7 +46,8 @@ tiers, `verified` flags); this names it once and acts on it.
 | `defaults/recipient-profile.yaml` | the dials — who it serves (default: time-poor, only-important, aggressive auto-resolve). **Per-project override:** copy to `<project>/.claude/verifiability-lens/profile.yaml` and tune; the optional `focus:` list defines what "best achievable" means for THAT project. Read ONCE per dispatch, never per item. |
 | `defaults/presets/` | copyable per-project profiles: `game-project` (runs-in-app, feel regressions, editor-test etiquette), `plugin-repo` (hooks fire, doc/version cascade, cross-file contradictions), `research-data` (provenance, reproducibility, conservative auto-resolve) |
 | `commands/verifiability.md` | `/verifiability [target]` — manual trigger |
-| `hooks/hooks.json` | **empty** — this plugin carries no hook. Automatic firing is the `turn-end` plugin's `quality-lens` duty: at most one ask per sitting, advisory, deferred while background agents run. **Opt-in, OFF by default** (switches below). |
+| `hooks/hooks.json` | **one informational recorder, no Stop hook.** `SubagentStop` on the lens's agent type → `hooks/scripts/lens-record.js` appends one trace-schema-v1 line per dispatch to `.claude/verifiability-lens/trace.jsonl` (a/b/u, escalations, auto-resolved, suppressed, verified/refuted, completeness, duration, tokens) and saves one real payload under `samples/`. Never blocks, zero output. Automatic firing is still the `turn-end` plugin's `quality-lens` duty: at most one ask per sitting, advisory, deferred while background agents run. **Opt-in, OFF by default** (switches below). |
+| `lib/trace-line.js` | the pure writer (`parseRollup`, `lineFor`, `examples()`); plugin-toolkit's `tests/trace-schema.test.js` discovers it by shape and validates every example — contract: `plugins/plugin-toolkit/references/trace-schema-v1.md` |
 
 ## Usage
 
@@ -76,12 +77,14 @@ lens is manual-only via `/verifiability`.
 
 ## Status
 
-v0.5.1: the guardian — three checks (verifiability A/B/U + completeness + quality bar) with
+v0.6.0: the guardian — three checks (verifiability A/B/U + completeness + quality bar) with
 active verification (web + docs + read), a strict stance (`stance` profile dial), the surfacing
 triage, per-project profiles + presets, the manual `/verifiability` trigger. Automatic firing
 lives in `turn-end` (`quality-lens` duty) since 0.5.0; the Stop hook this plugin once carried
 is gone — its 39-check suite tested only that dead hook and is replaced by contract tests over
-the shipped files (`tests/verifiability-lens.test.js`). Design doc: `design/verifiability-awareness.md`.
+the shipped files (`tests/verifiability-lens.test.js`). 0.6.0: every dispatch leaves a trace
+line (the SubagentStop recorder above) — audit 2 had measured 27 dispatches and zero telemetry.
+Design doc: `design/verifiability-awareness.md`.
 
 **Deferred (own gates):** in-band pipeline-gate dispatch; PostToolUse fire points; extending
 essense-flow's librarian surfacing protocol with the triage; the schema deepening.

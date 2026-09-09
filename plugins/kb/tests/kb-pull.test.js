@@ -101,7 +101,12 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
 
   const trace = fs.readFileSync(path.join(root, '.claude', 'kb', 'trace.jsonl'), 'utf8').trim().split('\n');
   const last = JSON.parse(trace[trace.length - 1]);
-  check('fire is traced', last.tool === 'kb-pull-hook' && last.fired === true && last.hints.length >= 1);
+  check('fire is traced', last.hook === 'kb-pull' && last.fired === true && last.hints.length >= 1);
+  // Trace schema v1 (task #30): the cross-plugin keys, with the RUNNING version from the manifest.
+  const manifestVersion = require('../.claude-plugin/plugin.json').version;
+  check('trace line is v1-shaped: plugin/version/session_id/prompt_id/ms/decision/bytes',
+    last.plugin === 'kb' && last.version === manifestVersion && 'session_id' in last && 'prompt_id' in last &&
+    Number.isInteger(last.ms) && last.ms >= 0 && /^hints:\d+\+digest:/.test(last.decision) && Number.isInteger(last.bytes) && last.bytes > 0);
 }
 
 // ---- e2e: a natural prompt (not a query) surfaces its subject ----

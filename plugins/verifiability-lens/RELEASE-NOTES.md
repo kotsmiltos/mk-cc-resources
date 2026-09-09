@@ -1,5 +1,35 @@
 # verifiability-lens — Release Notes
 
+## 0.6.0 — 2026-09-09 — every dispatch leaves a line (task #30, harness G4)
+
+Audit 2 (2026-09-06) measured 27 lens dispatches and ZERO telemetry — no refute/confirm ratio, no
+cost, no way to say whether the lens does anything. The agent is read/research-only by design and
+cannot write its own record, so the platform does: a **SubagentStop recorder**
+(`hooks/scripts/lens-record.js`, matcher `verifiability-lens — dispatches carry the plugin-scoped
+type `verifiability-lens:verifiability-lens`, measured in 81 transcripts) appends ONE trace-schema-v1
+line per dispatch to `.claude/verifiability-lens/trace.jsonl`: `{ t, plugin, agent, version,
+session_id, prompt_id, ms, decision: parsed|unparsed|crashed, bytes, engine (model), tokens, a, b,
+u, escalations, auto_resolved, suppressed, verified, refuted, completeness }`. The counts come from
+the agent's own `rollup:` block (the payload's `last_assistant_message`); the agent definition now
+states `verification: { verified, refuted, unverifiable }` there. A count the rollup did not state
+is `null`, never 0. Duration, model and tokens come from `agent_transcript_path`. One real payload
+is saved under `samples/` the first time (the turn-end 0.8.0 recorder precedent).
+
+**This is NOT the retired Stop hook.** It never blocks, never emits, never dispatches; automatic
+firing stays turn-end's `quality-lens` duty. The plugin now carries one hook — install separately.
+
+SUBSTRATE, captured live 2026-09-09 (lean `claude -p` child, haiku, 9 s, $0.036, `--plugin-dir`
+probe): SubagentStop input = `{session_id, transcript_path, cwd, prompt_id, permission_mode,
+agent_id, agent_type, hook_event_name, stop_hook_active, agent_transcript_path,
+last_assistant_message, background_tasks, session_crons}`; SubagentStart carries NO
+`agent_transcript_path` although the hooks reference shows one. The sanitized payload is the suite's
+fixture (`tests/fixtures/SubagentStop.sample.json`). Parser measured on the real 2026-08-23 rollup;
+one bug found and fixed before ship (`s*` in a YAML key regex swallowed the first list item).
+
+The pure writer `lib/trace-line.js` exports `examples()`; plugin-toolkit's
+`tests/trace-schema.test.js` discovers it by shape and validates every example (contract:
+`plugins/plugin-toolkit/references/trace-schema-v1.md`). Suite: contract + parser + E2E.
+
 ## 0.5.1 — 2026-09-06 — the dead hook actually leaves (audit 2, task #26)
 
 hooks/scripts/verifiability-stop.{js,sh} and tests/verifiability-stop.test.js (39 checks over

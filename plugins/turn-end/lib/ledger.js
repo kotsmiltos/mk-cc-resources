@@ -42,6 +42,11 @@ function emptyLedger(promptId, sessionId, now) {
      * transcript needs a pointer, not a second copy — session span, like `sessionAsked`.
      */
     sessionSupplied: [],
+    /*
+     * The previous owner span already scored for acted-on (its requestAt, ms) — session span,
+     * so the derivation happens once per closed span however many fires follow (task #30).
+     */
+    actedOnUpTo: null,
     startedAt: typeof now === 'number' ? now : Date.now(),
   };
 }
@@ -72,8 +77,9 @@ function readLedger(cwd, promptId, sessionId) {
     const sameSession = parsed.sessionId === sessionId;
     const sessionAsked = sameSession ? strings(parsed.sessionAsked) : [];
     const sessionSupplied = sameSession ? strings(parsed.sessionSupplied) : [];
+    const actedOnUpTo = sameSession && typeof parsed.actedOnUpTo === 'number' ? parsed.actedOnUpTo : null;
     if (parsed.promptId !== promptId) {
-      return { ...emptyLedger(promptId, sessionId), sessionAsked, sessionSupplied };
+      return { ...emptyLedger(promptId, sessionId), sessionAsked, sessionSupplied, actedOnUpTo };
     }
     return {
       promptId,
@@ -82,6 +88,7 @@ function readLedger(cwd, promptId, sessionId) {
       asked: strings(parsed.asked),
       sessionAsked,
       sessionSupplied,
+      actedOnUpTo,
       startedAt: typeof parsed.startedAt === 'number' ? parsed.startedAt : Date.now(),
     };
   } catch (_e) {
@@ -132,6 +139,7 @@ function advance(ledger, askedIds, sessionSpanIds, suppliedPaths) {
     asked: Array.from(asked),
     sessionAsked: Array.from(sessionAsked),
     sessionSupplied: Array.from(sessionSupplied),
+    actedOnUpTo: typeof ledger.actedOnUpTo === 'number' ? ledger.actedOnUpTo : null,
     startedAt: ledger.startedAt,
   };
 }

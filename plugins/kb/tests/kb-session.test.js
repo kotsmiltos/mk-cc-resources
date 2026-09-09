@@ -264,9 +264,13 @@ function runHook(cwd, payload) {
   // A live-session fire must leave disk evidence (the "is it actually wired?" question).
   const traceFile = path.join(root, '.claude', 'kb', 'trace.jsonl');
   const traces = fs.readFileSync(traceFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-  check('session-start fires are traced', traces.some((t) => t.tool === 'kb-session-start'));
+  check('session-start fires are traced', traces.some((t) => t.hook === 'kb-session-start'));
   check('the trace records the source and whether it rotated',
-    traces.some((t) => t.tool === 'kb-session-start' && t.source === 'startup' && t.rotated === true));
+    traces.some((t) => t.hook === 'kb-session-start' && t.source === 'startup' && t.rotated === true));
+  // Trace schema v1 (task #30): SessionStart has no prompt, so prompt_id is null by design.
+  check('the session-start line is v1-shaped (plugin, version, prompt_id null, ms, decision rotated|kept, bytes)',
+    traces.some((t) => t.hook === 'kb-session-start' && t.plugin === 'kb' && typeof t.version === 'string' && t.prompt_id === null &&
+      Number.isInteger(t.ms) && /^(rotated|kept)$/.test(t.decision) && Number.isInteger(t.bytes)));
 
   const bareTrace = tmp('kb-session-bare-');
   runHook(bareTrace, { source: 'startup' });

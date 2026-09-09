@@ -57,7 +57,9 @@ plugins/
                             #   segSteward v2 — ⚓N✱ ▲M from the status contract, root-anchored.
                             #   See plugins/statusline/CLAUDE.md.
 
-  verifiability-lens/       # Work-quality guardian: A/B/U verifiability + completeness +
+  verifiability-lens/       # (0.6.0: a SubagentStop RECORDER — one trace-schema-v1 line per
+                            #   dispatch: a/b/u, escalations, verified/refuted, ms, tokens; never a
+                            #   Stop hook.) Work-quality guardian: A/B/U verifiability + completeness +
                             #   quality-bar checks, actively verified; surfacing triage tuned
                             #   by a recipient profile. Carries NO hook since 0.5.0 — automatic
                             #   firing is turn-end's quality-lens duty, opt-in OFF. 0.5.1: the
@@ -87,7 +89,10 @@ plugins/
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
-  turn-end/                 # (0.8.0: ground truth — Bash-aware file-touch, named-check floor,
+  turn-end/                 # (0.9.0: TRACE SCHEMA v1 — hook / duty / acted-on lines via the
+                            #   pure lib/trace-line.js; judge-vs-ranker agreement inputs; acted-on
+                            #   derived per closed span at the next owner prompt.
+                            #   0.8.0: ground truth — Bash-aware file-touch, named-check floor,
                             #   modality asks, exec-result recorder hook pair; 0.7.1: running≠
                             #   installed on every trace line + tail.) THE single blocking Stop
                             #   hook — plugins ship DUTIES, not hooks;
@@ -134,7 +139,9 @@ plugins/
                             #   Standalone, not in mk-cc-all (bundle would strip catalog/).
                             #   See plugins/patterns/CLAUDE.md.
 
-  kb/                       # (0.13.0: kb-pull within the MEASURED 8 KiB platform bound, hinted
+  kb/                       # (0.14.0: all three trace writers on TRACE SCHEMA v1 through the pure
+                            #   lib/trace-line.js — hook:kb-pull / hook:kb-session-start / tool:kb_*.
+                            #   0.13.0: kb-pull within the MEASURED 8 KiB platform bound, hinted
                             #   ids never repeated per session, unchanged digest = one pointer
                             #   line. 0.10.3: both hooks root-anchored via lib/project-root.js —
                             #   a subdir shell no longer reads/rotates another project's

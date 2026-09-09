@@ -30,13 +30,86 @@ function check(name, cond) {
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const exists = (rel) => fs.existsSync(path.join(ROOT, rel));
 
-// ---------- no hook, and no dead hook files ----------
+// ---------- ONE recorder hook, never a Stop hook, and no dead hook files ----------
 const hooks = JSON.parse(read('hooks/hooks.json'));
-check('hooks.json registers NO hook (automatic firing is turn-end\'s quality-lens duty)',
-  hooks.hooks && typeof hooks.hooks === 'object' && Object.keys(hooks.hooks).length === 0);
-check('hooks.json says WHY there is no hook', /retired/i.test(hooks.description || ''));
-check('no hook scripts ship', !exists('hooks/scripts'));
-check('the retired hook suite is gone', !exists('tests/verifiability-stop.test.js'));
+check('hooks.json registers NO Stop hook (automatic firing is turn-end\'s quality-lens duty)',
+  hooks.hooks && typeof hooks.hooks === 'object' && !('Stop' in hooks.hooks) && !('UserPromptSubmit' in hooks.hooks));
+check('hooks.json registers exactly ONE event: the SubagentStop recorder (0.6.0, task #30)',
+  Object.keys(hooks.hooks).join(',') === 'SubagentStop' && hooks.hooks.SubagentStop.length === 1);
+check('the recorder matches the lens agent type, plugin-scoped or bare (measured: dispatches use verifiability-lens:verifiability-lens)',
+  hooks.hooks.SubagentStop[0].matcher === 'verifiability-lens$' &&
+  new RegExp(hooks.hooks.SubagentStop[0].matcher).test('verifiability-lens:verifiability-lens') &&
+  new RegExp(hooks.hooks.SubagentStop[0].matcher).test('verifiability-lens') &&
+  !new RegExp(hooks.hooks.SubagentStop[0].matcher).test('Explore'));
+check('the recorder script it names ships', exists('hooks/scripts/lens-record.js') &&
+  /lens-record\.js/.test(JSON.stringify(hooks.hooks.SubagentStop[0].hooks)));
+check('hooks.json says WHY the Stop hook stays retired', /retired/i.test(hooks.description || ''));
+check('the retired Stop hook script + suite are gone', !exists('hooks/scripts/verifiability-stop.js') && !exists('tests/verifiability-stop.test.js'));
+
+// ---------- the writer: trace schema v1 (plugin-toolkit references/trace-schema-v1.md) ----------
+const traceLine = require('../lib/trace-line');
+const recorder = require('../hooks/scripts/lens-record');
+const sample = JSON.parse(read(path.join('tests', 'fixtures', 'SubagentStop.sample.json')));
+{
+  const r = traceLine.parseRollup(sample.last_assistant_message);
+  check('parseRollup reads the REAL rollup shape: counts a/b/u', r.parsed && r.a === 7 && r.b === 0 && r.u === 0);
+  check('parseRollup counts a multi-line escalations list (the newline bug: 1 read as 0 before)', r.escalations === 1);
+  check('parseRollup counts an inline auto_resolved list', r.auto_resolved === 4);
+  check('parseRollup reads suppressed_count past a trailing comment', r.suppressed === 4);
+  check('parseRollup reads the 0.6.0 verification counts', r.verified === 7 && r.refuted === 0);
+  check('parseRollup reads completeness_verdict', r.completeness === 'complete');
+  const bare = traceLine.parseRollup('no rollup at all');
+  check('an absent rollup yields nulls, never zeros (a zero is a claim)', !bare.parsed && bare.a === null && bare.escalations === null && bare.verified === null);
+  const items = traceLine.parseRollup('- claim: x\n  verification:\n    verdict: verified\n- claim: y\n  verification:\n    verdict: refuted\nrollup:\n  counts: { a: 1, b: 1, u: 0 }\n  escalations: []\n');
+  check('per-item verdict lines are the fallback when the rollup omits verification counts', items.verified === 1 && items.refuted === 1 && items.escalations === 0);
+}
+{
+  const now = new Date('2026-09-09T00:05:00.000Z');
+  const line = traceLine.lineFor(sample, { now, version: '9.9.9', stats: { startedAt: now.getTime() - 9000, model: 'claude-x', tokens: { in: 1, out: 2, cache_read: 3, cache_write: 4 } } });
+  check('lineFor: v1 keys (plugin/agent/version/session_id/prompt_id/ms/decision/bytes)',
+    line.plugin === 'verifiability-lens' && line.agent === 'verifiability-lens' && line.version === '9.9.9' &&
+    line.session_id === sample.session_id && line.prompt_id === sample.prompt_id && line.ms === 9000 &&
+    line.decision === 'parsed' && line.bytes === Buffer.byteLength(sample.last_assistant_message));
+  check('lineFor: rollup counts + engine + tokens + the platform keys it saw',
+    line.a === 7 && line.escalations === 1 && line.verified === 7 && line.engine === 'claude-x' && line.tokens.out === 2 &&
+    line.payload_keys.includes('agent_transcript_path') && line.agent_type === sample.agent_type);
+  check('lineFor: no final message = crashed (never a silent all-clear)', traceLine.lineFor({ ...sample, last_assistant_message: '' }).decision === 'crashed');
+  check('lineFor: prose without a rollup = unparsed, counts null', (() => { const l = traceLine.lineFor({ ...sample, last_assistant_message: 'just prose' }); return l.decision === 'unparsed' && l.a === null; })());
+  check('examples() cover parsed / unparsed / crashed', traceLine.examples().map((e) => e.decision).join(',') === 'parsed,unparsed,crashed');
+  check('recorder: only lens payloads (matcher belt)', recorder.isLensPayload(sample) && !recorder.isLensPayload({ ...sample, agent_type: 'Explore' }) && !recorder.isLensPayload({}));
+  check('recorder: runningVersion reads the manifest beside the code', recorder.runningVersion() === JSON.parse(read('.claude-plugin/plugin.json')).version);
+}
+{
+  // E2E: the hook script over the REAL payload shape + a synthetic agent transcript, in a temp
+  // project. One line, one sample, nothing outside .claude/verifiability-lens/.
+  const os = require('os');
+  const { execFileSync } = require('child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lens-record-'));
+  fs.mkdirSync(path.join(dir, '.git'));
+  const agentTranscript = path.join(dir, 'agent.jsonl');
+  fs.writeFileSync(agentTranscript, [
+    JSON.stringify({ timestamp: '2026-09-09T00:00:00.000Z', message: { role: 'user', content: 'brief' } }),
+    JSON.stringify({ timestamp: '2026-09-09T00:00:05.000Z', message: { role: 'assistant', model: 'claude-test', usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40 }, content: [{ type: 'text', text: 'rollup…' }] } }),
+  ].join('\n'));
+  const payload = { ...sample, cwd: path.join(dir, 'sub'), agent_transcript_path: agentTranscript };
+  delete payload._provenance;
+  const script = path.join(ROOT, 'hooks', 'scripts', 'lens-record.js');
+  const run = (p, env) => execFileSync(process.execPath, [script], { input: JSON.stringify(p), encoding: 'utf8', env: { ...process.env, ...(env || {}) } });
+  const out1 = run(payload);
+  const traceFile = path.join(dir, '.claude', 'verifiability-lens', 'trace.jsonl');
+  check('E2E: the hook is silent (no stdout) and writes one line at the PROJECT root (nearest .git), not the payload cwd', out1 === '' && fs.existsSync(traceFile) && !fs.existsSync(path.join(dir, 'sub', '.claude')));
+  const first = JSON.parse(fs.readFileSync(traceFile, 'utf8').trim().split('\n')[0]);
+  check('E2E: the line carries duration + model + tokens from the agent transcript', first.ms >= 5000 && first.engine === 'claude-test' && first.tokens.in === 10 && first.tokens.cache_write === 40);
+  check('E2E: the line carries the rollup counts', first.a === 7 && first.escalations === 1 && first.verified === 7 && first.decision === 'parsed');
+  check('E2E: one real payload saved as the fixture under samples/', fs.existsSync(path.join(dir, '.claude', 'verifiability-lens', 'samples', 'SubagentStop.json')));
+  run({ ...payload, agent_type: 'Explore' });
+  check('E2E: a non-lens agent leaves no line', fs.readFileSync(traceFile, 'utf8').trim().split('\n').length === 1);
+  run(payload, { MK_TURN_END_DEPTH: '1' });
+  check('E2E: stands down in a judge child', fs.readFileSync(traceFile, 'utf8').trim().split('\n').length === 1);
+  run(payload);
+  check('E2E: a second dispatch = a second line, the sample stays one', fs.readFileSync(traceFile, 'utf8').trim().split('\n').length === 2);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 
 // ---------- the agent the duty dispatches ----------
 const agent = read('agents/verifiability-lens.md');
@@ -77,7 +150,8 @@ check('/verifiability command ships', exists('commands/verifiability.md'));
 
 // ---------- the claims the metadata makes ----------
 const meta = JSON.parse(read('.claude-plugin/plugin.json'));
-check('plugin.json description does not claim a Stop hook', !/Stop hook/.test(meta.description || ''));
+check('plugin.json description does not claim a LIVE Stop hook', !/(carries|has|via|fires on) (a|its|the) Stop hook|Stop hook (fires|blocks|spawns)/i.test(meta.description || ''));
+check('plugin.json description names the recorder + its trace file', /SubagentStop/.test(meta.description || '') && /trace\.jsonl/.test(meta.description || ''));
 check('plugin.json description names the real trigger', /quality-lens|turn-end/.test(meta.description || ''));
 const notes = read('RELEASE-NOTES.md');
 check('RELEASE-NOTES top version matches plugin.json', new RegExp(`##\\s*v?${meta.version.replace(/\./g, '\\.')}\\b`).test(notes));

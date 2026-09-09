@@ -2174,6 +2174,188 @@ check('tool-record E2E: writes one ledger line + one sample per event where turn
 
 // ---------- report ----------
 
+// ---------- 0.9.0 (task #30): trace schema v1 — every evaluator leaves a line; acted-on derived ----------
+// Contract: plugin-toolkit references/trace-schema-v1.md. Writer: lib/trace-line.js (examples()
+// validated by plugin-toolkit's tests/trace-schema.test.js). Derivation: lib/acted-on.js.
+
+const traceLine30 = require('../lib/trace-line');
+const actedOn30 = require('../lib/acted-on');
+
+check('trace-line: hook / duty / acted-on builders carry the v1 keys and keep the 0.7.x fields', () => {
+  const [hook, duty, dutyErr, acted] = traceLine30.examples();
+  for (const l of [hook, duty, dutyErr, acted]) {
+    for (const k of ['t', 'plugin', 'version', 'session_id', 'prompt_id', 'ms', 'decision', 'bytes']) assert.ok(k in l, `${k} on ${JSON.stringify(l).slice(0, 60)}`);
+    assert.strictEqual(l.plugin, 'turn-end');
+  }
+  assert.strictEqual(hook.hook, 'turn-end');
+  assert.strictEqual(hook.decision, 'advise');
+  assert.strictEqual(hook.bytes, 515);
+  assert.ok(Array.isArray(hook.supplied) && Array.isArray(hook.payload_keys) && typeof hook.emitted_chars === 'number', '0.7.x fields kept');
+  assert.strictEqual(duty.duty, 'context-recall');
+  assert.strictEqual(duty.decision, 'chosen:1');
+  assert.strictEqual(duty.engine, 'judge');
+  assert.strictEqual(duty.cost_usd, 0.035);
+  assert.deepStrictEqual([duty.index_size, duty.judge_chosen, duty.ranker_top], [42, ['kb::a'], ['kb::a', 'kb::b']], 'agreement inputs (Q20)');
+  assert.strictEqual(dutyErr.decision, 'error');
+  assert.strictEqual(dutyErr.prompt_id, null);
+  assert.strictEqual(acted.duty, 'acted-on');
+  assert.strictEqual(acted.decision, 'derived');
+  assert.strictEqual(acted.acted_on.sources['kb:kb-pull'].surfaced, 3);
+});
+
+check('extractTurn: the PREVIOUS owner span — calls with timestamps, kb_read refs, prompt ids (a wake inside it is the same span)', () => {
+  const dir = tmpdir('prev-span');
+  const f = path.join(dir, 't.jsonl');
+  const rec = (role, content, ts, promptId) => JSON.stringify({ promptId, timestamp: ts, message: { role, content } });
+  fs.writeFileSync(f, [
+    rec('user', 'first ask', '2026-09-09T10:00:00.000Z', 'p1'),
+    rec('assistant', [{ type: 'tool_use', id: 't1', name: 'mcp__plugin_kb_kb__kb_read', input: { id: 'kb::a' } }], '2026-09-09T10:00:05.000Z', 'p1'),
+    rec('assistant', [{ type: 'tool_use', id: 't2', name: 'Bash', input: { command: 'cat notes/b.md' } }], '2026-09-09T10:00:09.000Z', 'p1'),
+    rec('user', '<task-notification>\n<tool-use-id>t9</tool-use-id>\ndone\n</task-notification>', '2026-09-09T10:01:00.000Z', 'p1-wake'),
+    rec('assistant', [{ type: 'tool_use', id: 't3', name: 'Edit', input: { file_path: 'src/x.js' } }], '2026-09-09T10:01:05.000Z', 'p1-wake'),
+    rec('user', 'second ask', '2026-09-09T10:05:00.000Z', 'p2'),
+    rec('assistant', [{ type: 'text', text: 'working' }], '2026-09-09T10:05:03.000Z', 'p2'),
+  ].join('\n'));
+  const t = extractTurn(f);
+  assert.strictEqual(t.userRequest, 'second ask');
+  assert.ok(t.previous, 'previous span present');
+  assert.strictEqual(t.previous.requestAt, Date.parse('2026-09-09T10:00:00.000Z'));
+  assert.strictEqual(t.previous.endAt, Date.parse('2026-09-09T10:05:00.000Z'));
+  assert.deepStrictEqual(t.previous.promptIds.sort(), ['p1', 'p1-wake'], 'the wake is a different prompt_id inside the SAME span');
+  assert.deepStrictEqual(t.previous.toolCalls.map((c) => c.name), ['mcp__plugin_kb_kb__kb_read', 'Bash', 'Edit']);
+  assert.strictEqual(t.previous.toolCalls[0].ref, 'kb::a');
+  assert.strictEqual(t.previous.toolCalls[2].at, Date.parse('2026-09-09T10:01:05.000Z'));
+  assert.strictEqual(extractTurn(path.join(dir, 'missing.jsonl')).previous, null);
+  // A transcript with ONE genuine prompt has no previous span.
+  const g = path.join(dir, 'one.jsonl');
+  fs.writeFileSync(g, [rec('user', 'only ask', '2026-09-09T10:00:00.000Z', 'p1'), rec('assistant', [{ type: 'text', text: 'ok' }], '2026-09-09T10:00:01.000Z', 'p1')].join('\n'));
+  assert.strictEqual(extractTurn(g).previous, null);
+});
+
+check('acted-on: derive scores recall / kb-pull / lens per closed span, by prompt-id set, reading sibling traces read-only', () => {
+  const cwd = process.platform === 'win32' ? 'C:\\proj' : '/proj';
+  const line = (o) => JSON.stringify(o);
+  const traces = {
+    'turn-end': [
+      line({ t: '2026-09-09T10:00:30.000Z', plugin: 'turn-end', duty: 'context-recall', prompt_id: 'p1', surfaced: ['.claude/kb/captures/a.md', '.claude/kb/captures/b.md'] }),
+      line({ t: '2026-09-09T10:00:31.000Z', plugin: 'turn-end', hook: 'turn-end', prompt_id: 'p1', supplied: [] }),
+      line({ t: '2026-09-09T10:05:30.000Z', plugin: 'turn-end', duty: 'context-recall', prompt_id: 'p2', surfaced: ['.claude/kb/captures/z.md'] }), // NOT in span
+    ].join('\n'),
+    kb: [
+      line({ t: '2026-09-09T09:59:59.000Z', plugin: 'kb', hook: 'kb-pull', prompt_id: 'p1', hints: ['kb-captures::.claude/kb/captures/c.md', 'steward-model::.steward/tasks.md::preamble', 'x::y'] }),
+      line({ t: '2026-09-09T10:01:00.000Z', tool: 'kb-pull-hook', prompt_id: 'p1-wake', hints: ['legacy::shape'] }), // pre-v1 shape still counts
+    ].join('\n'),
+    'verifiability-lens': [
+      line({ t: '2026-09-09T10:02:00.000Z', plugin: 'verifiability-lens', agent: 'verifiability-lens', prompt_id: 'p1', escalations: 2 }),
+      line({ t: '2026-09-09T10:03:00.000Z', plugin: 'verifiability-lens', agent: 'verifiability-lens', prompt_id: 'p1', escalations: 0 }), // nothing to act on
+    ].join('\n'),
+  };
+  const span = {
+    from: Date.parse('2026-09-09T10:00:00.000Z'), to: Date.parse('2026-09-09T10:05:00.000Z'), promptIds: ['p1', 'p1-wake'],
+    toolCalls: [
+      { name: 'Bash', command: 'head -c 400 .claude/kb/captures/a.md', at: Date.parse('2026-09-09T10:00:40.000Z') },
+      { name: 'mcp__plugin_kb_kb__kb_read', ref: 'steward-model::.steward/tasks.md::preamble', at: Date.parse('2026-09-09T10:00:50.000Z') },
+      { name: 'Read', target: path.join(cwd, '.claude', 'kb', 'captures', 'c.md'), at: Date.parse('2026-09-09T10:00:55.000Z') },
+      { name: 'Edit', target: 'src/x.js', at: Date.parse('2026-09-09T10:02:30.000Z') },
+    ],
+  };
+  const { sources } = actedOn30.derive(traces, span, cwd);
+  assert.deepStrictEqual(sources['turn-end:context-recall'], { surfaced: 2, touched: 1 }, 'a.md opened via Bash head; b.md not');
+  assert.deepStrictEqual(sources['kb:kb-pull'], { surfaced: 4, touched: 2 }, 'c.md by Read, tasks.md by kb_read; x::y + legacy untouched');
+  assert.deepStrictEqual(sources['verifiability-lens'], { surfaced: 1, touched: 1 }, 'the escalating dispatch was followed by an Edit');
+  // Time-window fallback when the trace lines carry no prompt_id.
+  const noIds = { kb: line({ t: '2026-09-09T10:00:01.000Z', hook: 'kb-pull', hints: ['kb-captures::.claude/kb/captures/c.md'] }) };
+  assert.deepStrictEqual(actedOn30.derive(noIds, span, cwd).sources['kb:kb-pull'], { surfaced: 1, touched: 1 });
+  assert.deepStrictEqual(actedOn30.derive(noIds, { ...span, from: Date.parse('2026-09-09T11:00:00.000Z'), to: null }, cwd).sources, {}, 'outside the window: nothing');
+  assert.deepStrictEqual(actedOn30.derive({}, span, cwd).sources, {}, 'absent files: absent sources, no throw');
+});
+
+check('ledger: actedOnUpTo is SESSION span — survives a prompt rollover, resets on a new sitting, kept by advance', () => {
+  const dir = tmpdir('ledger-acted');
+  const l0 = { ...ledgerStore.emptyLedger('p1', 's1'), actedOnUpTo: 1000 };
+  ledgerStore.writeLedger(dir, l0);
+  assert.strictEqual(ledgerStore.readLedger(dir, 'p1', 's1').actedOnUpTo, 1000, 'same prompt');
+  assert.strictEqual(ledgerStore.readLedger(dir, 'p2', 's1').actedOnUpTo, 1000, 'new prompt, same sitting');
+  assert.strictEqual(ledgerStore.readLedger(dir, 'p2', 's2').actedOnUpTo, null, 'new sitting');
+  assert.strictEqual(ledgerStore.advance(l0, [], [], []).actedOnUpTo, 1000);
+  assert.strictEqual(ledgerStore.emptyLedger('p', 's').actedOnUpTo, null);
+});
+
+checkAsync('recall: every return carries the AGREEMENT inputs — index_size, ranker_top, judge_chosen (Q20 computable from disk)', async () => {
+  const dir = tmpdir('recall-agreement');
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'porter-ferry-rejected.md'), '# porter ferry caste rejected\nbody');
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'other.md'), '# unrelated note\nbody');
+  const realJudge = claudeP.judge;
+  const chosen = () => ({ ok: true, lean: 'applied', durationMs: 5, costUsd: 0.002, text: JSON.stringify({ needed: [{ id: 'kb-captures::.claude/kb/captures/other.md', why: 'w' }] }) });
+  const none = () => ({ ok: true, lean: 'applied', durationMs: 5, costUsd: 0.002, text: JSON.stringify({ needed: [] }) });
+  const dead = () => ({ ok: false, error: 'spawnSync claude ETIMEDOUT', durationMs: 60000, lean: 'applied' });
+  const ctx = () => fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'the porter ferry caste was rejected earlier', turn: { userRequest: 'porter ferry caste?', text: 'the porter ferry caste was rejected earlier', toolCalls: [] } });
+  try {
+    claudeP.judge = chosen;
+    const a = await contextRecall.supply(ctx());
+    assert.strictEqual(a.indexSize, 2);
+    assert.deepStrictEqual(a.judgeChosen, ['kb-captures::.claude/kb/captures/other.md']);
+    assert.deepStrictEqual(a.rankerTop, ['kb-captures::.claude/kb/captures/porter-ferry-rejected.md'], 'the ranker disagrees with the judge — and the line can say so');
+    claudeP.judge = none;
+    const b = await contextRecall.supply(ctx());
+    assert.deepStrictEqual([b.indexSize, b.judgeChosen, b.rankerTop.length], [2, [], 1], 'the common "nothing needed" answer still carries them');
+    claudeP.judge = dead;
+    const c = await contextRecall.supply(ctx());
+    assert.strictEqual(c.engine, 'fallback-ranker');
+    assert.strictEqual(c.judgeChosen, null, 'no judge pick when the judge died');
+    assert.deepStrictEqual(c.rankerTop, ['kb-captures::.claude/kb/captures/porter-ferry-rejected.md']);
+  } finally {
+    claudeP.judge = realJudge;
+  }
+});
+
+check('E2E: v1 hook line (plugin/version/session_id/ms/decision/bytes) + ONE acted-on line per closed span, never twice', () => {
+  const dir = withoutRecall(tmpdir('e2e-v1-acted'));
+  fs.mkdirSync(path.join(dir, '.claude', 'kb'), { recursive: true });
+  fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  // A sibling trace (kb-pull) surfaced two hints during prompt p1; the session kb_read one of them.
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'trace.jsonl'), `${JSON.stringify({ t: '2026-09-09T10:00:00.500Z', plugin: 'kb', hook: 'kb-pull', prompt_id: 'p1', hints: ['kb::hinted', 'kb::ignored'] })}\n`);
+  const transcript = path.join(dir, 't.jsonl');
+  const rec = (role, content, ts, promptId) => JSON.stringify({ promptId, timestamp: ts, message: { role, content } });
+  fs.writeFileSync(transcript, [
+    rec('user', 'first ask', '2026-09-09T10:00:00.000Z', 'p1'),
+    rec('assistant', [{ type: 'tool_use', id: 't1', name: 'mcp__plugin_kb_kb__kb_read', input: { id: 'kb::hinted' } }], '2026-09-09T10:00:05.000Z', 'p1'),
+    rec('assistant', [{ type: 'text', text: 'answered' }], '2026-09-09T10:00:09.000Z', 'p1'),
+    rec('user', 'second ask', '2026-09-09T10:05:00.000Z', 'p2'),
+    // Real work without a check, so self-check demands and a hook line is written (a text-only
+    // answer satisfies every duty -> silent allow -> no hook line, by design).
+    rec('assistant', [{ type: 'tool_use', id: 't5', name: 'Edit', input: { file_path: path.join(dir, 'src', 'y.js') } }], '2026-09-09T10:05:02.000Z', 'p2'),
+    rec('assistant', [{ type: 'text', text: 'edited y.js' }], '2026-09-09T10:05:03.000Z', 'p2'),
+  ].join('\n'));
+  const payload = (extra) => JSON.stringify({
+    cwd: dir, session_id: 'sess-e2e', prompt_id: 'p2', stop_hook_active: false, permission_mode: 'default',
+    last_assistant_message: 'edited y.js', transcript_path: transcript, hook_event_name: 'Stop', ...extra,
+  });
+  const script = path.join(__dirname, '..', 'hooks', 'scripts', 'turn-end.js');
+  execFileSync(process.execPath, [script], { input: payload({}), encoding: 'utf8' });
+  execFileSync(process.execPath, [script], { input: payload({ stop_hook_active: true }), encoding: 'utf8' });
+  const trace = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const acted = trace.filter((l) => l.duty === 'acted-on');
+  assert.strictEqual(acted.length, 1, `exactly one acted-on line over two fires: ${JSON.stringify(trace.map((l) => l.duty || l.hook))}`);
+  assert.strictEqual(acted[0].plugin, 'turn-end');
+  assert.strictEqual(acted[0].session_id, 'sess-e2e');
+  assert.strictEqual(acted[0].prompt_id, 'p2');
+  assert.deepStrictEqual(acted[0].acted_on.sources['kb:kb-pull'], { surfaced: 2, touched: 1 });
+  assert.strictEqual(acted[0].acted_on.span.from, '2026-09-09T10:00:00.000Z');
+  const hooks = trace.filter((l) => l.hook === 'turn-end');
+  assert.ok(hooks.length >= 1, 'a hook line was written (self-check demanded on the unchecked edit)');
+  const h = hooks[hooks.length - 1];
+  for (const k of ['plugin', 'version', 'session_id', 'prompt_id', 'ms', 'decision', 'bytes', 'action', 'payload_keys']) assert.ok(k in h, `hook line carries ${k}`);
+  assert.strictEqual(h.plugin, 'turn-end');
+  assert.strictEqual(h.session_id, 'sess-e2e');
+  assert.strictEqual(h.decision, h.action);
+  assert.ok(Number.isInteger(h.bytes) && h.bytes > 0 && Number.isInteger(h.ms), 'bytes counts the emitted tail; ms is the fire wall-clock');
+  assert.deepStrictEqual(hooks.map((l) => l.decision), ['advise', 'block'], 'the ladder, as decisions: nudge, then block once ignored');
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'ledger.json'), 'utf8')).actedOnUpTo, Date.parse('2026-09-09T10:00:00.000Z'));
+});
+
 // Async checks resolve after the sync pass, so the report waits on them — otherwise a failing
 // async test would print after the exit code was already decided.
 Promise.all(pending).then(() => {

@@ -296,13 +296,23 @@ module.exports = {
     const verdict = claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
     // Telemetry that every return carries, so a fire is accountable from the trace alone.
     const cost = { costUsd: verdict.costUsd, durationMs: verdict.durationMs, lean: verdict.lean };
+    /*
+     * AGREEMENT INPUTS (task #30, Q20): the judge picks differently on identical input, and
+     * whether it beats the deterministic ranker is decidable only if BOTH picks and the index
+     * size sit on the trace line. So the ranker runs on every fire — pure, cheap, the same code
+     * the fallback uses — and the duty line carries index_size / judge_chosen / ranker_top.
+     */
+    const rankerTop = fallbackPick(ctx, index, limits).map((n) => n.id);
     let needed = null;
     let judgeDeath = null;
+    let judgeChosen = null;
     if (!verdict.ok) judgeDeath = verdict.error;
     else {
       needed = parseVerdict(verdict.text);
       if (needed === null) judgeDeath = 'judge returned unparseable output';
+      else judgeChosen = needed.map((n) => n.id);
     }
+    const agreement = { indexSize: index.length, rankerTop, judgeChosen };
     /*
      * Fail-open fallback (owner ruling 2026-08-23, stack-a-blueprint §6 Q2 — "we go for
      * quality, not necessarily speed"): the judge STAYS the default because its choice
@@ -318,11 +328,11 @@ module.exports = {
       if (!needed.length) {
         return {
           ...cannotRun(`${judgeDeath}; the fallback ranker found no strongly-matching notes either`),
-          engine: 'none', ...cost,
+          engine: 'none', ...cost, ...agreement,
         };
       }
     }
-    if (!needed.length) return { material: null, chosen: [], error: null, engine: 'judge', ...cost }; // the strict, common, correct answer
+    if (!needed.length) return { material: null, chosen: [], error: null, engine: 'judge', ...cost, ...agreement }; // the strict, common, correct answer
 
     // Cap what the judge asked for only if the project set a limit — and say so if it bites,
     // so a dropped note is never mistaken for one the judge deemed irrelevant.
@@ -346,12 +356,12 @@ module.exports = {
       } catch (_e) { /* skip a source that cannot read its own files */ }
     }
     const engine = judgeDeath ? 'fallback-ranker' : 'judge';
-    if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost };
+    if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost, ...agreement };
 
     // A note this turn already OPENED (Read, or `cat`/`head`/`sed -n`/`grep` through Bash)
     // was used, whatever the judge inferred from the text. Deterministic; the trace names it.
     const { kept: unread, alreadyRead } = dropAlreadyRead(items, ctx);
-    if (!unread.length) return { material: null, chosen: [], error: null, engine, alreadyRead, ...cost };
+    if (!unread.length) return { material: null, chosen: [], error: null, engine, alreadyRead, ...cost, ...agreement };
     items = unread;
 
     // Split what the session already holds from what is new to it this sitting.
@@ -371,6 +381,7 @@ module.exports = {
       engine,
       ...(alreadyRead.length ? { alreadyRead } : {}),
       ...cost,
+      ...agreement,
     };
   },
 };

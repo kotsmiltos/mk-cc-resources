@@ -241,12 +241,16 @@ function digestPointer(raw) {
 function trace(root, record) {
   try {
     const { writeTrace } = require('../../mcp/kb-mcp-server');
-    writeTrace(root, { t: new Date().toISOString(), tool: 'kb-pull-hook', ...record });
+    // Trace schema v1 (lib/trace-line.js): { t, plugin, hook, version, session_id, prompt_id,
+    // ms, decision, bytes, … } — the shape the scorecard reads across plugins (task #30).
+    const traceLine = require('../../lib/trace-line');
+    writeTrace(root, traceLine.pullLine({ now: new Date(), version: traceLine.runningVersion(), ...record }));
   } catch (_e) { /* telemetry never blocks */ }
 }
 
 async function main() {
   if (isChildSession()) process.exit(0);
+  const startedMs = Date.now();
   const input = await readStdin();
   let prompt = '';
   let payloadCwd = '';
@@ -346,15 +350,15 @@ async function main() {
       });
     }
     trace(root, {
-      fired: true,
-      session_id: sessionId,
-      prompt_id: promptId,
+      sessionId,
+      promptId,
+      ms: Date.now() - startedMs,
       hints: shown.map((h) => h.entry.id),
       held,
       scores: strong.map((h) => ({ id: h.entry.id, score: Number(h.score.toFixed(2)) })),
       digest: digestMode,
       bytes: Buffer.byteLength(text),
-      config_error: configError ? true : undefined,
+      configError: Boolean(configError),
     });
   }
   process.exit(0);

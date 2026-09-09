@@ -61,18 +61,14 @@ function writeTrace(root, record) {
   }
 }
 
-function traceFor(tool, args, payload) {
-  const rec = { t: new Date().toISOString(), tool };
-  if (args && args.text !== undefined) rec.text = args.text;
-  if (args && args.id !== undefined) rec.id = args.id;
-  if (args && args.kind) rec.kind = args.kind;
-  if (args && args.caste) rec.caste = args.caste;
-  if (payload && typeof payload.matched === 'number') {
-    rec.matched = payload.matched;
-    rec.returned = Array.isArray(payload.hits) ? payload.hits.map((h) => h.id) : [];
-  }
-  if (payload && payload.isError) rec.error = payload.message;
-  return rec;
+/**
+ * The per-call line, trace schema v1 (lib/trace-line.js — task #30): { t, plugin, tool,
+ * version, session_id, prompt_id, ms, decision, bytes, text?, id?, kind?, caste?, matched?,
+ * returned?, error? }. The server never sees a prompt or a session, so both ids are null.
+ */
+function traceFor(tool, args, payload, ms, bytes) {
+  const traceLine = require('../lib/trace-line');
+  return traceLine.toolLine({ now: new Date(), version: SERVER_INFO.version, tool, args, payload, ms, bytes });
 }
 
 // Latest MCP protocol revision this server knows; echoed when the client asks for
@@ -317,15 +313,19 @@ function main() {
         const handler = HANDLERS[name];
         if (!handler) return replyError(id, INVALID_PARAMS, `unknown tool '${name}'`);
         const args = (params && params.arguments) || {};
+        const startedMs = Date.now();
         try {
           const payload = handler(getKb(), args);
-          writeTrace(root, traceFor(name, args, payload));
-          return reply(id, toolResult(payload));
+          const result = toolResult(payload);
+          writeTrace(root, traceFor(name, args, payload, Date.now() - startedMs, Buffer.byteLength(result.content[0].text)));
+          return reply(id, result);
         } catch (err) {
           // Facade-level rejections (unknown kind/caste, malformed config) go back
           // as isError content so the model reads the message and self-corrects.
-          writeTrace(root, traceFor(name, args, { isError: true, message: err.message }));
-          return reply(id, toolResult({ isError: true, message: err.message }));
+          const failure = { isError: true, message: err.message };
+          const result = toolResult(failure);
+          writeTrace(root, traceFor(name, args, failure, Date.now() - startedMs, Buffer.byteLength(result.content[0].text)));
+          return reply(id, result);
         }
       }
       if (method === 'ping') {
