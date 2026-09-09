@@ -1187,3 +1187,35 @@ lines updated. LIVE legs pending a ship + restart: first Stop of the next-next s
 lens suite 58/58 (+18, E2E over the real payload shape); toolkit trace-schema drift suite 74/74
 over 3 writers (kb, turn-end, verifiability-lens); `registry-check --root .` consistent (exit 0);
 `repo-guard` from the root clean (exit 0, 4 detectors); `test-all --root .` = 33/34 suites, 1957 checks; the one red is `essense-flow:test/run-all.cjs` (exit 1 under the sweep, exit 0 / 54 total / 0 failures run DIRECT a minute later — the #9-class intermittent, untouched this sitting; no essense-flow file in the diff).
+
+## 2026-09-09 · #31 BUILT — `harness-stats`, the scorecard gate: 13 drop-in metric sources / 93 keys; audit 2 REPRODUCED at +0.0% on all 25 overlapping numbers
+
+`plugins/plugin-toolkit/bin/harness-stats.js` (CLI, never writes) over the pure runner
+`lib/harness-stats.js` and the registry `lib/metrics/index.js` — repo-guard's detector shape: context
+gathered ONCE, every source reads the frozen object, a crashed source is a finding, a declared key
+that comes back absent is NAMED, an undeclared key is flagged. Sources: hook-bytes · hint-followed ·
+turn-end-fires · stop-durations · judge (engine/ms/cost/empty picks + judge-vs-ranker agreement from
+0.9.0 duty lines — Q20 computable) · tail-bytes (vs the measured 9.9 KB bound) · kb-pull · acted-on ·
+lens (`trace.lines_per_dispatch`) · checks · spawns (Stop hooks per fire exact = 5; UPS records per
+prompt = a LOWER bound, silent hooks leave no record; REGISTERED counts from settings + enabled
+plugins = 7 UPS / 5 Stop / 24 total on this machine) · running-vs-installed · briefing-vs-log
+(registered, honestly null until #8). `lib/metrics/transcripts.js` = audit 2's `usage_scan.py`
+in-repo definition for definition; every event carries its record timestamp and the sources window
+EVENTS, not only prompts. Why: the first run drifted +8..+47% on six numbers — the audit had scanned
+while its own session was in flight, so that span kept accumulating injections and fires for an hour
+after the snapshot; windowing at the audit output's mtime (09:52:54Z) reproduces everything.
+`defaults/harness-baselines.json` carries the audit numbers with provenance; the report prints drift
+beside every baselined key. `--line` prints the `[instr]` form ONLY for keys the owner picks in
+`.claude/harness-stats.json` — empty until then (the done-check's "nothing ships always-on without
+that pick"). Live numbers on this repo NOW (whole life, 46 prompts): hook bytes avg 8930 / p50 7358 /
+p95 29519; hints 31 → 3 strict (9.7%) / 5 loose; nudges 20 / blocks 13 / give-ups 12; judge 85 fires,
+chosen empty 49.4%, ms/cost unknown (all pre-0.7.0 lines); tail: 0 of 121 fires carry bytes yet;
+kb-pull 275 fires, hints/fire 2.69; lens 6 dispatches / 0 lines; acted-on 0 spans; checks 4 lines
+(this sitting); running: installed≠checkout for turn-end/kb/lens (the unshipped bumps).
+**Check:** `tests/harness-stats.test.js` 66/66 (registry, runner crash/silent-key/absent-surface,
+scanner over the REAL record shapes incl. stubbed previews, every source, CLI E2E on a temp root with
+a fake home + projects dir); `tests/trace-schema.test.js` 74/74; `node bin/harness-stats.js --root .
+--until 2026-09-06T09:52:54.368Z` → 25/25 baselined keys at +0.0% (prompts 45, avg 8094, p50 7239,
+p95 22673, max 30915, total 355.7 KB, UPS avg 3869 / p50 2737 / p95 9314, hints 30/3/5/10%, nudges
+19, blocks 13, give-ups 12, w/block 10, ≥3 blocks 1, turn-end 128 fires / p50 190 / p95 56539 / max
+60184 / 2092 s, 5 Stop hooks per fire); gates: `test-all --root .` 35/35 suites / 2023 checks (the harness-stats suite is the 35th; essense-flow green in this sweep); `registry-check --root .` consistent (exit 0); `repo-guard` from the root clean (exit 0) after ONE real finding — three leaked-path hits on the lens parser's `a:\s*`-shaped regex fragments (a one-letter key + colon + backslash reads as a drive path; the file was untracked during the #30 run, so unscanned) — fixed in source, not allowlisted. Nothing pushed; installed still 0.8.0 / 0.13.0 / 0.5.1 / 1.11.0 — a ship needs the owner's push + `claude plugin update` + restart.

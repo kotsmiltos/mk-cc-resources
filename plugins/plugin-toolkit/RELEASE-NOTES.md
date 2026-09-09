@@ -1,5 +1,38 @@
 # Release notes — plugin-toolkit
 
+## 1.12.0 — 2026-09-09 — harness-stats: the scorecard (task #31, harness G5) + trace schema v1 (task #30, harness G4)
+
+**`bin/harness-stats.js`** — the fourth gate: ONE run over every trace, ledger and transcript a
+project left behind, printed IN the session (invariant 13). Pure runner `lib/harness-stats.js` over
+the drop-in registry `lib/metrics/index.js` (the repo-guard detector shape: the CLI gathers the
+context ONCE, every source reads the same frozen object, a crashed source is a finding, a declared
+key that comes back absent is NAMED — silence is not a value). 13 sources / 93 keys: per-prompt hook
+bytes (avg/p50/p95/max, UPS-only, stubbed chunks, top families), kb-hints followed strict/loose,
+turn-end nudges/blocks/give-ups/loop candidates, Stop-hook durations, the recall judge (engine mix,
+ms, cost, empty picks, judge-vs-ranker AGREEMENT from v1 duty lines — Q20 computable), tail bytes
+vs the measured 9.9 KB bound, kb-pull bytes/digest mode, acted-on ratios (recall / kb-pull / lens),
+the lens (`trace.lines_per_dispatch`, verified/refuted, escalations), the exec-result ledger,
+spawns per prompt (Stop hooks per fire exact, UPS records lower bound, REGISTERED counts from
+settings + enabled plugins), running≠installed (stale lines + installed-vs-checkout drift), and
+briefing-vs-log — registered and honestly null until #8. `lib/metrics/transcripts.js` is audit 2's
+`usage_scan.py` brought in-repo definition for definition, with every event TIMESTAMPED and
+windowed (the audit scanned while its own session was in flight; a whole-span model cannot
+reproduce a mid-span snapshot). `defaults/harness-baselines.json` carries the audit's mk-cc
+numbers with provenance; the report prints drift beside every baselined key.
+**MEASURED:** `--until 2026-09-06T09:52:54.368Z` (the audit output's mtime) reproduces all 25
+overlapping numbers at +0.0% — prompts 45, avg 8094 / p50 7239 / p95 22673 / max 30915, hints
+30 → 3 strict / 5 loose, nudges 19 / blocks 13 / give-ups 12, turn-end 128 fires p50 190 ms /
+p95 56.5 s / 2092 s. `--line` prints the `[instr]` form for the keys the OWNER picks in
+`.claude/harness-stats.json` — empty until picked; nothing ships always-on without that pick.
+`--json`, `--since/--until`, `--no-transcripts`, `--home`, `--projects-dir` (tests).
+Suite `tests/harness-stats.test.js` 66 checks (registry, runner, scanner over the REAL record
+shapes, every source, CLI E2E on a temp root with a fake home + projects dir).
+
+**Trace schema v1** (task #30): `lib/metrics/trace-schema.js` validator +
+`references/trace-schema-v1.md` contract + `tests/trace-schema.test.js` — the drift suite that
+discovers every sibling `plugins/<name>/lib/trace-line.js` by shape and validates its `examples()`
+(74 checks over turn-end 0.9.0, kb 0.14.0, verifiability-lens 0.6.0).
+
 ## 1.11.0 — 2026-09-06 — repo-guard: machine-guard-drift detector
 
 Fourth detector: finds every `MACHINE_TEXT_MARKERS` / `MACHINE_TEXT_PREFIXES` /

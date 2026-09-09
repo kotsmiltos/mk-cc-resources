@@ -37,7 +37,10 @@ const EXAMPLE_VERSION = '0.0.0-example';
 const idOrNull = (v) => (typeof v === 'string' && v ? v : null);
 const intOrNull = (m) => (m ? Number(m[1]) : null);
 
-const COUNTS_RX = /counts:\s*\{\s*a:\s*(\d+)\s*,\s*b:\s*(\d+)\s*,\s*u:\s*(\d+)\s*\}/;
+// Bracketed blanks after each one-letter key on purpose: a single letter, a colon and a backslash
+// read as a Windows drive path to repo-guard's leaked-path detector (measured: three blocking
+// findings on this line, 2026-09-09 — the detector models the shape, and so must the source).
+const COUNTS_RX = /counts:\s*\{\s*a:[ \t]*(\d+)\s*,\s*b:[ \t]*(\d+)\s*,\s*u:[ \t]*(\d+)\s*\}/;
 const SUPPRESSED_RX = /suppressed_count:\s*(\d+)/;
 const VERIFIED_RX = /verification:\s*\{[^}]*\bverified:\s*(\d+)/;
 const REFUTED_RX = /verification:\s*\{[^}]*\brefuted:\s*(\d+)/;

@@ -1,0 +1,39 @@
+{
+  "_provenance": "Audit 2 (2026-09-06, usage_scan.py over ~/.claude/projects, scratchpad usage_scan_out.md). Scope for every value below: the mk-cc-resources project, whole-life through the audit's scan (45 real prompts, 5 real sessions, 61 judge sessions). Reproduce with: node bin/harness-stats.js --root <repo> --until 2026-09-06T13:40 . Fleet-wide numbers the plan quotes (hint-followed 7% strict / 16% loose over 89 hinted prompts; per-prompt p95 20.5 KB over 212 prompts) are NOT per-project and are listed under fleet for the record only.",
+  "scope": "mk-cc-resources whole-life through 2026-09-06T13:40Z",
+  "tolerance_pct": 3,
+  "metrics": {
+    "hook_bytes.prompts": { "value": 45, "source": "usage_scan_out.md §a" },
+    "hook_bytes.per_prompt.avg": { "value": 8094, "source": "usage_scan_out.md §a" },
+    "hook_bytes.per_prompt.p50": { "value": 7239, "source": "usage_scan_out.md §a" },
+    "hook_bytes.per_prompt.p95": { "value": 22673, "source": "usage_scan_out.md §a" },
+    "hook_bytes.per_prompt.max": { "value": 30915, "source": "usage_scan_out.md §a" },
+    "hook_bytes.total_kb": { "value": 355.7, "source": "usage_scan_out.md §a" },
+    "hook_bytes.ups_only.avg": { "value": 3869, "source": "usage_scan_out.md §a.1" },
+    "hook_bytes.ups_only.p50": { "value": 2737, "source": "usage_scan_out.md §a.1" },
+    "hook_bytes.ups_only.p95": { "value": 9314, "source": "usage_scan_out.md §a.1" },
+    "hints.prompts_with_hints": { "value": 30, "source": "usage_scan_out.md §d" },
+    "hints.followed_strict": { "value": 3, "source": "usage_scan_out.md §d" },
+    "hints.followed_loose": { "value": 5, "source": "usage_scan_out.md §d" },
+    "hints.strict_pct": { "value": 10, "source": "usage_scan_out.md §d" },
+    "turn_end.prompts": { "value": 45, "source": "usage_scan_out.md §c" },
+    "turn_end.nudges": { "value": 19, "source": "usage_scan_out.md §c" },
+    "turn_end.blocks": { "value": 13, "source": "usage_scan_out.md §c" },
+    "turn_end.giveups": { "value": 12, "source": "usage_scan_out.md §c" },
+    "turn_end.prompts_with_block": { "value": 10, "source": "usage_scan_out.md §c" },
+    "turn_end.prompts_with_3plus_blocks": { "value": 1, "source": "usage_scan_out.md §c" },
+    "stop.turn_end.fires": { "value": 128, "source": "usage_scan_out.md §c.2" },
+    "stop.turn_end.ms.p50": { "value": 190, "source": "usage_scan_out.md §c.2" },
+    "stop.turn_end.ms.p95": { "value": 56539, "source": "usage_scan_out.md §c.2" },
+    "stop.turn_end.ms.max": { "value": 60184, "source": "usage_scan_out.md §c.2" },
+    "stop.turn_end.total_s": { "value": 2092, "source": "usage_scan_out.md §c.2" },
+    "spawns.stop_hooks_per_fire": { "value": 5, "source": "audit-2 errata: 5 Stop hooks registered; measured 5 per stop_hook_summary" }
+  },
+  "fleet": {
+    "hints.strict_pct": 7,
+    "hints.loose_pct": 16,
+    "hook_bytes.per_prompt.p95": 20492,
+    "hook_bytes.per_prompt.avg": 6361,
+    "spawns.registered.UserPromptSubmit": 8
+  }
+}

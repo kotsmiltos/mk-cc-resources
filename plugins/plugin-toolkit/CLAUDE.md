@@ -6,8 +6,8 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-Plugin/skill dev + maintenance toolkit: six composable skills for working ON plugins, plus three
-repo-level CLI gates (repo-guard, test-all, registry-check) usable from any repo.
+Plugin/skill dev + maintenance toolkit: six composable skills for working ON plugins, plus FOUR
+repo-level CLI gates (repo-guard, test-all, registry-check, harness-stats) usable from any repo.
 
 ## Layout
 
@@ -101,6 +101,43 @@ lib/registry-claims/    # extension surface: index.js registry + plugin-version 
 bin/registry-check.js   # CLI adapter. Exit 0 consistent / 1 drift / 2 cannot run.
                         #   CHECKS, never generates: only the facts in those files are
                         #   derivable, and the prose around them is written for a human
+lib/harness-stats.js    # 1.12.0 (task #31, harness G5): PURE runner over the metric-source
+                        #   registry — the SCORECARD. Same shape as repo-guard: context gathered
+                        #   once, every source reads the frozen object, a crashed source is a
+                        #   finding, a declared key that comes back absent is NAMED (silence is
+                        #   not a value), an undeclared key is flagged. format() = the full
+                        #   report with drift vs baselines; line() = the [instr] form for the
+                        #   keys the OWNER picked (.claude/harness-stats.json line.keys) — empty
+                        #   until picked, nothing ships always-on without that pick
+lib/metrics/            # the extension surface + shared readers. index.js registry (contract:
+                        #   {id, title, surface: traces|checks|transcripts|steward|installs,
+                        #   keys[], run(ctx, options) -> {metrics, notes}}; every mechanism
+                        #   registers its METRIC KEY here or does not ship — invariant 12);
+                        #   trace-schema.js (v1 validator, the reader's copy of the contract);
+                        #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
+                        #   definition, every event TIMESTAMPED + windowed — a whole-span model
+                        #   cannot reproduce a mid-span snapshot); stats.js (the audit's
+                        #   nearest-rank percentile). 13 sources / 93 keys: hook-bytes,
+                        #   hint-followed, turn-end-fires, stop-durations, judge (agreement
+                        #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
+                        #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
+                        #   briefing-vs-log (registered, null until #8)
+bin/harness-stats.js    # CLI adapter: reads .claude/*/trace.jsonl by shape, checks.jsonl, the
+                        #   project's transcripts under <home>/.claude/projects/<slug>/ (slug =
+                        #   root path with every non-alphanumeric char -> "-"), .steward/, the
+                        #   install ledger + hook registrations. Never writes. --json / --line /
+                        #   --since / --until / --no-transcripts / --home / --projects-dir.
+                        #   MEASURED: --until <audit output mtime> reproduces all 25 audit-2
+                        #   numbers at +0.0% (defaults/harness-baselines.json, provenance inside)
+references/trace-schema-v1.md  # the cross-plugin trace contract (task #30) — writers keep their
+                        #   own lib/trace-line.js + examples(); tests/trace-schema.test.js
+                        #   discovers them by shape and validates every example (the drift test)
+defaults/harness-baselines.json  # audit-2 mk-cc numbers + fleet numbers, with provenance
+tests/harness-stats.test.js   # 66 checks — registry, runner (crash / silent key / absent surface),
+                        #   scanner over the REAL record shapes, every source, CLI E2E on a temp
+                        #   root with a fake home + projects dir; never reads the host repo
+tests/trace-schema.test.js    # 74 checks — validator contract + the drift half over every
+                        #   sibling writer
 tests/test-sweep.test.js      # 27 checks, synthetic units only
 tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since
                         #   a checker only ever run on a consistent repo has proved nothing
