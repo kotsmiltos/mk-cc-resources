@@ -1,4 +1,4 @@
-# State — current truth (2026-09-08 · Tier 1 SHIPPED `bc39fe0` + INSTALLED, NOT YET RUNNING in the live process · harness plan filed · HEAD bc39fe0 at pass start)
+# State — current truth (2026-09-09 · Phase 0 SHIPPED `68ce999` + INSTALLED, NOT YET RUNNING in the live process · four rulings law · HEAD 68ce999 at pass start)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,78 +8,98 @@
 
 ## Ship position
 
-**local main @ `bc39fe0`** (ref file read this pass) = the Tier 1 ship — pushed
-`2ffa2d0..bc39fe0` on 2026-09-06 15:15 (owner "@ship it"): nine plugins + marketplace
-metadata 2.48.0, 75 files, 5 deletions, 3 new. Gates at push (root cwd, direct exit reads):
-test-all `--root` 33/33 suites / 1,783 checks · registry-check 0 (6 pre-existing "worth a
-decision" rows) · repo-guard 0 (4 detectors). Post-push install measured from
-`installed_plugins.json` + cache: every bumped plugin at its new version; the cache carries
-the new code (LEAN_ARGS, `lib/deferral.js`, kb `isChildSession`, lens scripts dir gone,
-steward `status.derive`).
-**2026-09-08 sitting = research only** (`design/harness.md`; no code changed, no suites
-run). Working tree at snapshot: `.steward/log.md` modified per the session's git status;
-whether `design/harness.md` is committed was NOT verifiable this pass (the agent has no git
-tool) — the next session's status shows it. The tree did not move mid-pass.
+**local main @ `68ce999`** (ref file read this pass) = the Phase 0 ship — four commits
+(turn-end / kb / steward / docs+model) pushed `bc39fe0..68ce999` on 2026-09-09 (owner: "Yes,
+ship it"). Gates at ship per the log entry: test-all `--root` 33/33 suites / 1,849 checks ·
+registry-check 0 · repo-guard 0 (incl. the five new files once tracked). `claude plugin
+marketplace update` + `claude plugin update` after the push → **`installed_plugins.json`
+read this pass: turn-end 0.8.0, kb 0.13.0, steward 0.5.2, each `gitCommitSha` = `68ce999…`,
+`lastUpdated` 2026-09-08T23:47Z** (installed == HEAD for the three). Working tree at
+snapshot: `.steward/log.md` + the session digest only (per the session); the tree did not
+move mid-pass. The 09-08→09 sitting: research + plan, four rulings, owner law, Q15 slim,
+#29 → #27 → #28, ship — one sitting, owner present throughout.
 
 ## Versions on disk (all 16 plugin.json grep-read this pass)
 
-Moved at `bc39fe0`: **turn-end 0.7.0 · steward 0.5.1 · kb 0.12.0 · plugin-toolkit 1.11.0 ·
-thorough-mode 1.11.2 · verifiability-lens 0.5.1 · patterns 0.1.1 · essense-flow 0.26.2 ·
-essense-autopilot 0.4.1** · marketplace metadata 2.48.0 · bundle 2.27.0 (unchanged, read).
-Unchanged: prism 0.1.0 · statusline 0.2.0 · session-lifecycle 1.3.1 · schema-scout 1.2.1 ·
-project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0.
+Moved at `68ce999`: **turn-end 0.8.0 · kb 0.13.0 · steward 0.5.2** (marketplace rows +
+descriptions, README rows, RELEASE-NOTES, plugin + root CLAUDE.md per the build entries).
+Unchanged: plugin-toolkit 1.11.0 · thorough-mode 1.11.2 · verifiability-lens 0.5.1 ·
+patterns 0.1.1 · essense-flow 0.26.2 · essense-autopilot 0.4.1 · prism 0.1.0 · statusline
+0.2.0 · session-lifecycle 1.3.1 · schema-scout 1.2.1 · project-note-tracker 1.8.0 ·
+alert-sounds 1.1.1 · reuse-gate 0.1.0. Marketplace metadata / bundle versions not re-read
+this pass (no item touched them; registry-check exit 0 at ship is the evidence).
 
-## INSTALLED ≠ RUNNING — the live finding that gates every Tier-1 verdict (G1)
+## INSTALLED ≠ RUNNING — now INSTRUMENTED (#29), still TRUE of this process
 
-The owner's session process started 2026-09-06 12:32, BEFORE the 15:15 install; `/clear`
-does not reload plugins. Every turn-end trace line since the ship carries the 0.6.0 field
-set — `"deferred"` occurrences in `.claude/turn-end/trace.jsonl`: **0 of 128 lines
-(re-grepped this pass; 0/127 on 09-08)** — so nothing built on 09-06 has yet fired in this
-repo, and the deferral primitive that would have stood the closure duties down while four
-agents ran on 09-08 was not running. "SHIPPED + PUSHED + INSTALLED" was true of the disk
-and false of the process, and nothing on disk could show it → tasks #29 (running-version
-instrument). **Tier 1 status is therefore BUILT + INSTALLED, live-proof PENDING a restart**
-— the legs to watch ride #1(e).
+Measured this pass: `.claude/turn-end/trace.jsonl` = 138 lines; lines carrying `"version"`
+or `"stale"` = **0**; `.claude/turn-end/samples/` absent → no turn-end fire since 0.7.1 has
+happened in this repo, i.e. the process this pass runs under predates the 09-09 update
+(0.7.0's `"deferred"` legs from Tier 1 are likewise still unproven — one restart proves
+both ships). Since 0.7.1 / 0.5.2 the fact is PRINTED instead of inferred: a stale process
+gets `[instr] running steward 0.5.2 ≠ installed … — restart Claude Code to load it` in the
+briefing and one prefixed first line on turn-end's tail; equal → silent (both shapes probed
+live against the real ledger at build; pre-bump the same probe traced `stale:false`). **The
+live check for the first sitting after a restart (log ship entry):** a Stop trace line with
+`"version":"0.8.0"` and no stale prefix; the first Bash call writes
+`.claude/turn-end/samples/PostToolUse.json` (the recorder's real fixture); a kb-pull fire
+≤ 8,192 B with `digest: cut|pointer`. → tasks #1 leg (f).
 
-## Tier 1 — what `bc39fe0` closed (per the four 2026-09-06 build entries in log.md; suites at build)
+## Phase 0 — what `68ce999` closed (three 2026-09-09 build entries; suites at build)
 
-- **#23 + #22 (turn-end 0.7.0):** judge child spawned LEAN (`--setting-sources ""
-  --disable-slash-commands --strict-mcp-config`; fail-open retry without them on an
-  argument-class failure, never on a timeout; verdict carries `lean`/`durationMs`/`costUsd`);
-  give-up note ONCE at the budget line, then silent (lens correction 5); DEFERRAL primitive
-  (`lib/deferral.js`, present on disk — agents in flight derived from the TRANSCRIPT,
-  `background_tasks` honoured if ever present; plan mode) — request-closure + quality-lens
-  defer while agents run, session-digest also under plan mode; tail = DEMANDS → errors →
-  material, hard-capped at 9,000 chars with the pointer form substituted and NAMED;
-  `sessionSupplied` memory (a note handed over this sitting returns as one pointer line);
-  trace carries engine / ms / costUsd / lean / deferred / errors / satisfied_by /
-  agents_in_flight / emitted_chars / payload_keys / permission_mode; errored duties never
-  silent; session-digest satisfied against the REQUEST's timestamp. Suite 170/170 in ~1 s
-  (E2E fixtures disable recall). **Open remainder:** the lens-amended recall-quality check
-  (10 real turns, lean vs plain, `chosen` identical or better) came back UNINTERPRETABLE —
-  see the judge finding below.
-- **#24 (steward 0.5.1):** brief `inbox:` line, `[instr] items`, fleet table and turn-end's
-  steward-sync all derive from `status.json` (turn-end's own port of the predicate);
-  `[instr]` adds `(oldest Nd)`; fleet dedupe case-insensitive. Check: all readers printed
-  the same number on this repo; steward suites 45/45 + 13/13. Dogfood leg (c) CLOSED.
-- **#25 (thorough-mode 1.11.2, patterns 0.1.1, kb 0.12.0, turn-end, two home hooks):** six
-  machine-text markers identical everywhere (verification-rules.js gained a guard it never
-  had — it had fired 378× across 212 human prompts); kb-pull stands down on
-  `MK_TURN_END_DEPTH`; plugin-toolkit 1.11.0 ships the 4th repo-guard detector
-  `machine-guard-drift` (blocks when copies differ). Caveman's third-party tracker still
-  unguarded (121 B/prompt, not ours).
-- **#26 (kb, lens 0.5.1, steward, turn-end, plugin-toolkit):** `kb-scribe-stop.js` + 42-check
-  suite and lens `verifiability-stop.{js,sh}` + 39-check suite DELETED (glob-verified absent
-  this pass); lens contract test 33 checks; kb-session suite pins a fake HOME; 4,458 temp
-  test dirs removed; home cue file 84 → 5 real roots; this repo's dead `kb.json
-  scribe.focus` migrated into `.claude/turn-end.json` `duties.session-digest.important`;
-  lens/kb/turn-end/steward docs no longer describe dead hooks or stale counts.
-- **1b (lens-restored; essense-flow 0.26.2, essense-autopilot 0.4.1):** both pipeline hooks
-  stand down before importing `lib/state.js` + js-yaml unless `.pipeline/` exists (measured
-  154 → 105 ms, 129 → 104 ms, 125+197 → 99 ms in a non-pipeline repo); autopilot's bash
-  wrapper gone. Its Stop hook is still REGISTERED (invariant 9's hole stays → #3).
+- **#29 (turn-end 0.7.1 + steward 0.5.2):** `plugins/turn-end/lib/installed.js` (fail-soft;
+  running = manifest beside the executing script, installed = `installed_plugins.json`
+  entry for the same name, user scope preferred, newest wins); `version` + `stale` on every
+  trace line; a stale process PREPENDS one line to the tail it already emits; steward
+  `instrRunning` — third `INSTRUMENTS` entry, own copy (cross-plugin duplication
+  deliberate). turn-end 175/175 (+5), steward-brief 50/50 (+5), status 13/13.
+- **Q15 slim (the owner's global CLAUDE.md — an owner-side file, not this repo):**
+  Generalize-First Gate 1,788 B → ~640 B (the five steps live in the `generalize-first`
+  hook; one-line summary + anti-signals stay), the `++` augment restatement dropped
+  (hook-injected twice already); 6,528 → 5,228 B; hooks untouched per the ruling; backup
+  `CLAUDE.md.pre-slim-20260909.md` beside it.
+- **#27 (kb 0.13.0):** kb-pull's WHOLE output within `PLATFORM_INLINE_BOUND_BYTES = 8192`
+  (measured: the smallest output the platform ever stubbed was 9.9 KB, three times; 10 KB
+  once); digest cut on a line boundary with a marker naming the platform; per-session hint
+  dedupe + `(+N more above the floor (k already hinted this session) — kb_query "<terms>")`
+  cue; unchanged digest → ONE pointer line; malformed `.claude/kb.json` → one visible line,
+  digest still injected; `lib/pull-state.js` (home-side `~/.claude/kb/pull-state/<root-hash>
+  .json`, session-scoped, presence-gated, `KB_PULL_STATE_DIR` test seam); kb-session-start
+  clears the digest hash every fire (compaction throws the transcript copy away); the
+  body-repeat bonus routed to the body side (the `term-overlap.js` floor leak). kb 276/276,
+  kb-pull 88/88 (+37), footprint 31/31 (the new writer audited with its why). **Live probe
+  on this repo's REAL 11,353 B digest, same prompt ×3:** fire 1 = 8,110 B (`digest: cut`,
+  3 hints), fires 2–3 = 324 B (`digest: pointer`, `held: 3`, cue present) — the sitting's
+  own digest had been past the bound all evening, stubbed unread.
+- **#28 (turn-end 0.8.0):** `lib/file-touch.js` — ONE extractor (tool targets + Bash/
+  PowerShell argv → mutations `sed -i`/`>`/`>>`/`tee`/heredoc/`cp`-`mv` dest/`touch`; reads
+  `cat`/`head`/`tail`/`sed -n`/`grep FILE`; pure, conservative — flags/vars/globs/devices
+  never files; sed's script arg and a bare `>>` were the two parser bugs the suite caught).
+  self-check: mutations via file-touch (Bash edits count); named-check FLOOR
+  (`namedCheckAnchored`: a ratio, a touched basename, or a command head the turn ran —
+  "Check: none" is a confession); `MODALITIES` registry (prose re-read / scene look / code
+  run); `requireGreen` knob reads the recorder ledger, default OFF (= Q19 ran-and-observed).
+  context-recall: `dropAlreadyRead` drops notes at paths the turn opened (Read OR Bash), the
+  judge prompt lists "FILES THIS TURN OPENED", trace carries `alreadyRead`. NEW hook pair
+  PostToolUse + PostToolUseFailure on `Bash|PowerShell` → `hooks/scripts/tool-record.js` →
+  `.claude/turn-end/checks.jsonl` + one real payload per event under `samples/` (fixtures
+  first, the lens's escalation 4; Bash `tool_response` is undocumented — keys recorded,
+  exit parsed best-effort, null never guessed); footprint only where turn-end keeps state;
+  silent in judge children. Item 4 (`startedAt` from the transcript) was already live since
+  0.7.0 — not rebuilt. 189/189 (+14). **Live through the real hook** (temp project, `sed -i`
+  edit in the transcript): "Check: none" → nudged; "verified by inspection" → nudged;
+  "Check: node tests/parser.test.js → 12/12" → silent allow; "Check: re-read parser.js
+  against the ask; result: matches" → silent allow.
 
-## The judge finding (2026-09-06 — SUPERSEDES the "slow from startup" reading)
+## Rulings that became law this sitting (inbox 20260909-0015; verbatim in questions.md)
+
+Q19 "done" = a check RAN after the last change AND observed, not required green,
+per-project override · Q18 the goal duty arms EVERY task the owner starts, advise; the
+metric rule RATIFIED → invariant 12 · Q16 KEEP THE CUE (no auto-seed, no one-keystroke
+seed; owner chose against both proposals) · Q15 SLIM ONLY (no registry fold; #17's fold leg
+OFF). Owner law (inbox 20260909-0010): never point the owner to files, everything digestible
+in-environment, do as much as possible alone, least clicks → invariant 13.
+
+## The judge finding (2026-09-06 — SUPERSEDES the "slow from startup" reading; Q20 open)
 
 Measured on one real 8.8 KB recall prompt (haiku, 28-entry index; inbox `20260906-1700`):
 `api_ms ≈ wall` — the time is INFERENCE; the child DELIBERATES 2.1–8.9k output tokens for a
@@ -87,23 +107,25 @@ Measured on one real 8.8 KB recall prompt (haiku, 28-entry index; inbox `2026090
 56.9 s on two identical runs; `--effort medium` 95.8 s, past the judge's own 60 s budget —
 the mechanism behind the 12 ETIMEDOUTs audit 2 counted). Same configuration twice →
 DIFFERENT picks in every pairing tried; 10-turn replay: identical verdict sets 3/10, lean
-avg 28.4 s vs plain 32.7 s, $0.026 vs $0.040. So the lean flags buy no-boot + −36% cost +
-no state pollution (235 children had polluted fleet.json / cued.json / kb traces), NOT
-speed; the one-word probe's "33 s → 3.9 s" was startup on a trivial prompt. The judge's
-verdict is a distribution, not a fact → Q20 (five options, each with its check; owner
-decides).
+avg 28.4 s vs plain 32.7 s, $0.026 vs $0.040. Lean buys no-boot + −36% cost + no state
+pollution, NOT speed. The judge's verdict is a distribution, not a fact → Q20 (five
+options, each with its check; #30 writes the agreement inputs).
 
-## LIVE — the status spine (dogfood, tasks #1)
+## LIVE — the status spine AND the two ships (dogfood, tasks #1)
 
 - (a) staleness: ⚠ line right 5/5 ships; false git-HEAD ⚠ after a model commit + authored
   prose wrong 4/5 → #8 (unchanged).
-- (b) fallback fires: 0.7.0 WRITES `engine`/`ms`/`costUsd` — readable from disk the moment a
-  0.7.0 trace line exists (none yet, above).
-- (c) ledger truth: CLOSED by #24 (all readers = one predicate).
+- (b) fallback fires: 0.7.0 WRITES `engine`/`ms`/`costUsd` — readable the moment a 0.7.0+
+  trace line exists (none yet, above).
+- (c) ledger truth: CLOSED by #24.
 - (d) statusline: correct (110 B / 50 ms).
-- (e) NEW — 0.7.0 live legs (from the ship entry): a Stop trace line with `engine`, `ms`,
-  `lean`, `deferred`, `payload_keys`; a tail under 9,000 chars with demands first; no
-  kb-pull fire inside a judge child; `[instr] items: N new (oldest Nd)`.
+- (e) 0.7.0 live legs: `engine`/`ms`/`lean`/`deferred`/`payload_keys` on a Stop line; tail
+  under 9,000 chars, demands first; no kb-pull fire inside a judge child; `[instr] items:
+  N new (oldest Nd)`; one real wake-turn ending on the owner's request.
+- (f) NEW — 0.8.0 / 0.13.0 / 0.5.2 live legs: `"version":"0.8.0"` with no stale prefix;
+  `[instr] running` line ABSENT after the restart; `samples/PostToolUse.json` after the
+  first Bash call; `checks.jsonl` growing; kb-pull ≤ 8,192 B, `digest: cut` then `pointer`,
+  no repeated hint id in one session; a self-check nudge naming a real un-checked mutation.
 
 ## Audit verdicts (2026-09-06 — still the evidence base; numbers per the lens errata)
 
@@ -118,14 +140,14 @@ decides).
   skill/agent (0 since 08-10), reuse-gate (dormant since 07-07).
 - **Cost:** hook text per real prompt avg 6,361 B / p50 4.5 / p95 20.5 / max 31.7 KB
   (1,316.8 KB total); recall supply 382.6 KB (largest), kb-hints 339 KB seen of 920 KB
-  produced, verification-rules 378 × 424 B (now guarded), caveman 44 KB. kb-hints 84%
-  ignored (top-3 ids fill 40% of slots). After 08-23 the per-prompt tax ROSE while pull
-  fell to ~0. Spawns per prompt: ≥8 UserPromptSubmit + 5 Stop (lens correction — "9"
-  undercounted); standing context 25.6 KB per session AND per sub-agent (global CLAUDE.md
-  6.5 KB, 27% the Generalize-First Gate). Every judge child paid the whole harness
-  (~3.75 MB) — CLOSED by the lean flags, pending live proof.
+  produced (bounded since 0.13.0), verification-rules 378 × 424 B (guarded since #25),
+  caveman 44 KB. kb-hints 84% ignored (top-3 ids fill 40% of slots — dedupe since 0.13.0;
+  re-measure is #31). Spawns per prompt: ≥8 UserPromptSubmit + 5 Stop; standing context
+  25.6 KB per session AND per sub-agent (global CLAUDE.md 6.5 → 5.2 KB after the Q15 slim).
+  Every judge child paid the whole harness (~3.75 MB) — CLOSED by the lean flags, pending
+  live proof.
 - **Where the owner felt the loss:** the two projects with NO kb/steward (psience 09-01
-  *"i said it in the previous session why is it not saved?"*) → Q16.
+  *"i said it in the previous session why is it not saved?"*) → Q16 RULED keep the cue.
 - **Works (evidence):** steward recompute + model quality · root anchoring · turn-end 0
   `errored` across ~380 fires · kb frontmatter 174/174 · prism adopted unprompted ·
   statusline · patterns catalog 41 valid, gate once per prompt_id.
@@ -133,73 +155,80 @@ decides).
 ## PLATFORM INVARIANTS (measured — design against them)
 
 1. **>~10 KB hook output → a 2 KB preview stub** (53× kb-pull, 2× recall tails in real
-   sessions; 77× in judge sessions). An injection over 10 KB is NOT READ. Turn-end's tail
-   is now hard-capped at 9,000 chars (0.7.0); kb-pull's digest is NOT yet (#27).
+   sessions; 77× in judge sessions; the smallest stubbed output measured 9.9 KB). An
+   injection over the bound is NOT READ. Turn-end's tail hard-capped at 9,000 chars
+   (0.7.0); kb-pull's whole output at 8,192 B (0.13.0) — every push surface is now bounded
+   and names its cut.
 2. **A background-agent completion wakes a NEW prompt span and re-fires every
    UserPromptSubmit hook** (62 prompts show 2–12× re-fires). The Stop payload does NOT
-   carry `background_tasks` (hooks reference: session_id, prompt_id, transcript_path, cwd,
-   permission_mode, effort, hook_event_name, last_assistant_message) — 0.7.0 derives
-   agents in flight from the transcript; `payload_keys` in the trace will show if it ever
-   arrives.
+   carry `background_tasks` — 0.7.0 derives agents in flight from the transcript;
+   `payload_keys` in the trace will show if it ever arrives.
 3. **`additionalContext` on a Stop hook continues the turn** — 0.7.0 emits the give-up
    note once, then silence.
 4. **`/clear` does not reload plugins; a process keeps the hook code it started with**
-   (G1, 2026-09-08). Until #29 lands, "installed" is a disk fact only.
+   (G1, 2026-09-08). Since 0.7.1 / 0.5.2 the running-vs-installed mismatch is PRINTED
+   (#29); "installed" is a disk fact, "running" is what the trace's `version` says.
+5. **Hooks register at process start** — a NEW hook event (the 0.8.0 PostToolUse pair)
+   fires nowhere until the process that installed it restarts; its real-payload fixtures
+   therefore land only in the next sitting.
 
-## Hook-event coverage (grep over `plugins/*/hooks/hooks.json` this pass)
+## Hook-event coverage (turn-end `hooks.json` grep-read this pass)
 
 Registered: SessionStart 3 · UserPromptSubmit 5 · PreToolUse 2 · Stop 4 · Notification 1
-(per the 09-08 log check). **Zero** registrations of PostToolUse, PreCompact, PostCompact,
-SubagentStart, SubagentStop or SessionEnd (grep = 0 matches this pass) — the events the
-harness plan's G2 (check-recorder, #28), G8 (compaction guard, #33) and G10 (sub-agent
-trace, #35) need.
+(per the 09-08 count) · **PostToolUse 1 + PostToolUseFailure 1 (turn-end 0.8.0, NEW — the
+recorder pair, informational)**. Still ZERO: PreCompact, PostCompact, SubagentStart,
+SubagentStop, SessionEnd (0 on 09-08; no item touched them) — the events #33 (compaction
+guard) and #35 (sub-agent trace) need.
 
 ## Known-broken / known-gaps (parts.md carries the file:line gap maps)
 
-- **Verification has no ground truth (G2):** self-check's named-check regex accepts
-  "Check: none" / "verified by inspection" / "exit 0" (`self-check.js:119-120`); `sed` sits
-  on the non-run heads list (`:53-55`/`:78`) so `Bash sed -i` mutations are invisible; NEW
-  09-08 — context-recall's "did not use" detector is blind to Bash reads (re-served the
-  audit capture the session had read via `head -c`). → #28 (absorbs G2's PostToolUse
-  recorder + shared file-touch extractor; strictness = Q19).
-- **No goal-based termination (G3):** "stopping while there is planned work" (owner, twin
-  08-12) has no mechanism; briefing Next: wrong 4/5 ships. → #32 (scope = Q18).
+- **Verification ground truth (G2): CLOSED at 0.8.0**, live proof → #1(f). Residual: Bash
+  `tool_response` is undocumented — the recorder records keys and parses exit best-effort
+  until the real fixtures exist; `requireGreen` is the per-project knob (Q19).
+- **No goal-based termination (G3):** → #32, UNBLOCKED (Q18 every task, advise; satisfied by
+  the 0.8.0 `checks.jsonl`, ran-and-observed per Q19). `/goal` itself: excluded by default
+  under invariant 1 (harness §9.5, not ruled).
 - **Evaluators unmeasured (G4):** lens 27 dispatches / 0 trace; judge nondeterministic
-  (above), `chosen` empty ~50% of supplies. → #30.
-- **No scorecard (G5):** "does it do anything?" took two audits + seven agents; the audit's
-  method lives in a scratchpad. → #31.
+  (above), `chosen` empty ~50% of supplies. → #30 — NEXT.
+- **No scorecard (G5):** the audit's method lives in a scratchpad. → #31.
 - **Briefing staleness — NOT dead:** authored prose wrong 4/5; false git-HEAD ⚠ → #8.
-- **kb (0.12.0):** digest injected WHOLE and UNCAPPED every prompt (twin 9,963 B); no
-  per-session hint dedupe; floor leak (`term-overlap.js:185,235`); malformed `kb.json`
-  silently drops the digest; `source` facet unfilterable. → #27. (Dead weight + home
-  pollution: CLOSED at #26.)
-- **turn-end (0.7.0):** `DUTIES` hard-coded array (`lib/duties/index.js:59`); whole
+- **kb (0.13.0):** cap / dedupe / pointer / malformed-config / floor-leak CLOSED. RESIDUAL
+  (audit citations, out of #27's scope): `source` facet advertised but unfilterable;
+  archived digests titled by stamp → noise hits; 8-digit runs in h2 titles become
+  timestamps; a BOM defeats frontmatter → swept under #38 (knowledge hygiene).
+- **turn-end (0.8.0):** `DUTIES` hard-coded array (`lib/duties/index.js:59`); whole
   transcript re-read every Stop (`context.js:122-123`, 170 MB → 1.4 s) → #17; no per-duty
-  supply budget (lens item 20) → #17; no compaction guard → #33; sub-agents observed only
-  by transcript scan, each inheriting 25.6 KB → #35; no budgets → #34.
-- **steward (0.5.1):** `agents/steward.md:59-60` still instructs a done/-move; `:62-66`
-  claims an install instrument the hook lacks (#29 builds a running-version one); protocol
-  text not yet anchored to `<git root>/…` everywhere (lens item 21: `SKILL.md:55-56,79`,
+  supply budget → #17; no compaction guard → #33; sub-agents observed only by transcript
+  scan → #35; cost recorded, never told → #34.
+- **steward (0.5.2):** `agents/steward.md:59-60` still instructs a done/-move → #8; the
+  `:62-66` install-instrument claim is now TRUE by construction (`instrRunning`); protocol
+  text not yet anchored to `<git root>/…` everywhere (`SKILL.md:55-56,79`,
   `commands/next.md:8`, `agents/steward.md:24`, `session-digest.js:76,78`) → #8;
   wrong-root drops in aithseis from twin-game's MODEL text → #12.
-- **harness / hooks:** `++` injected THREE ways; the design-open concern has FIVE surfaces
-  (1,645 B per design prompt, 1,788 B standing); `@prompt`'s steward check uses cwd;
-  modifier propagation to sub-agents is prose only (lens item 22 → #35). → #17 / Q15.
-  Guard lists: CLOSED (#25).
-- **Generativity under-delivery (owner 08-26):** vocabulary + nudge shipped (patterns);
-  the measurement half → #15; `/patterns` never invoked; outcome change unmeasured (the
-  scorecard, #31, is how it gets measured).
+- **harness / hooks:** `++` now injected TWO ways (both hooks; the CLAUDE.md restatement
+  dropped 09-09); the design-open concern keeps its five surfaces BY RULING (Q15 slim only —
+  text retires only as #37's measured duty proves itself); `@prompt`'s steward check uses
+  cwd; modifier propagation to sub-agents is prose only → #35.
+- **Generativity under-delivery (owner 08-26, re-stated 09-08):** vocabulary + nudge
+  shipped (patterns); the MEASURED half → #37 (ambient duty + `@ship` gate) with #15's
+  executor-step wiring; `/patterns` never invoked; outcome change unmeasured until #31.
+- **Knowledge accretes (owner 09-08):** standing 25.6 KB per session + sub-agent; log 82 KB,
+  parts 49 KB; no lifecycle on kb entries → #38, Q21.
 - **code-glossary:** signature signal DEAD for JS/untyped params (`signals/signature.py:
-  46-48`, `with_signature_hash` 0/128 on plugins/kb; lens item 18) → #15.
+  46-48`, `with_signature_hash` 0/128 on plugins/kb) → #15 (precondition for #37's signals).
+- **Test sweep datum (2026-09-09):** essense-flow `test/run-all.cjs` reported exit 1 under
+  test-all on 2 of 5 sweeps while the same suite run directly passed 54/0 — INTERMITTENT
+  under the sweep, untouched by the work; a second suspect beside ledger-compaction → #9.
 - **Git hygiene across ships:** unchanged (aithseis uncommitted 43 days; volatile
   `.claude/turn-end/` committed in Endure + twin; lens state committed in psience +
   aithseis; 11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5.
 - Standing, unchanged: invariant-9 hole (#3) · Q12 CI · Q13 sonnet · absolute-path debt
-  (#7) · counts-in-prose (#6) · ledger-compaction UNCERTAIN (#9) · crowd deep-seed (#5) ·
-  Diploma banner (#10) · #21 patterns interactive legs · kb MCP version-proof (#4).
+  (#7) · counts-in-prose (#6) · crowd deep-seed (#5) · Diploma banner (#10) · #21 patterns
+  interactive legs · kb MCP version-proof (#4, now expects 0.13.0).
 
 ## Outside-repo (log-only context)
 
 Five ships: mk-cc-resources, twin-game, crowd-game, aithseis, Endure. Status contract
 adopted in 1/5 (this one) → #12. Marketplace: github source, `autoUpdate: true`; a push is
-required before any install sees a change, and a RESTART before the running process does.
+required before any install sees a change, and a RESTART before the running process does —
+and since 0.7.1 / 0.5.2 the ship tells the owner which of the two it is in.

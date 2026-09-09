@@ -6,6 +6,75 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
+Surfacing rule (owner law 2026-09-09, vision invariant 13): a question reaches the owner as
+ONE one-keystroke choice with the recommended default first, batched with its siblings —
+never as a file to read. The context below is for the model and the asking session.
+
+## Q21 · Who may mark knowledge WRONG or unnecessary? [harness §7.8 / G15 — the garden job's authority; feeds #38]
+
+**Context.** Owner, 2026-09-08 (verbatim): *"we are storing too many things. we should be
+able to clean up wrong things or things that are not necessary and also keep learning from
+what we are seeing."* Measured: standing context 25.6 KB per session AND per sub-agent;
+`.steward/log.md` 82 KB, parts 49 KB; 23 archived digests titled by stamp produce noise
+hits; top-3 kb ids fill 40% of hint slots, 84% of hints unread. Proposed (Claude's, §7.8):
+kb entries get a LIFECYCLE — `live | superseded-by:<id> | refuted-by:<id> | archived` — set
+in `status.json` (steward = only writer), joined onto entries at collect (the 0.11.0 shape,
+zero engine change), held back by default and SAID ("2 superseded held back"); the history
+stays — dead ends are the toolkit's most-queried knowledge. A GARDEN job (steward,
+background, one per sitting like `integrate`, diff visible) proposes merges, supersessions,
+archives and CLAUDE.md cuts from usage / size / contradiction measures; the lens's
+refute/confirm marks `refuted-by`. What removes knowledge is the owner's to say
+(invariants 1 + 2); what proposes it can be automatic.
+
+**Options:** (a) proposal-only — every removal or supersession lands in the garden diff and
+the owner ratifies it (one keystroke per batch); (b) the steward may AUTO-ARCHIVE entries
+never pulled, hinted or cited in N sittings, with a visible diff and one-delete reversal —
+N per project, suggested by the scorecard; refutations stay proposal-only; (c) automatic for
+SUPERSESSIONS the substrate already proves (a capture carrying a CORRECTION / supersedes
+header names its target), proposal-only for archives and refutations.
+
+**Recommended default (Claude's): (a) to start, (c) once #30's acted-on trace exists** —
+a lifecycle mark that hides knowledge is a removal in effect, and no removal moves unseen;
+(c) is safe only where the evidence is in the entry itself, and it removes the most
+ritual. (b) needs the usage measure to exist first.
+
+**Blocks:** #38's removal policy; nothing built yet.
+
+---
+
+## Q22 · Design-duty severity — advise, or BLOCK on a measured regression at `@ship` only? [harness §7.7 / G14; feeds #37]
+
+**Context.** Owner, 2026-09-08 (verbatim): *"as new things are added and context is
+enriched we need to be designing better code. code is cheap now so we need to be designing
+better codebases."* Today the concern is enforced by TEXT (five surfaces, kept by the Q15
+ruling) and one advisory pre-code gate; the measured substrate exists and never runs
+ambiently — the code-glossary engine's extensibility measure, dispatch scanner
+(switch-on-type / registry detection), coupling and DRY clusters (2.1 s on `plugins/kb`).
+#37 builds a turn-end duty over the files the turn touched (the 0.8.0 file-touch extractor):
+the DELTA — a new switch-on-subtype or hard-coded concrete target, coupling edges added, a
+duplicate cluster that gained a member, extensibility score down — named with file:line and
+the catalog seam that closes it; a cluster reaching THREE members demands an extraction
+decision (extract / accept with reason). Per project only, never across independently
+installed plugins (invariant 7's scope limit); the signature signal is dead for untyped
+params, so the duty must say which signals ran (#15 precondition).
+
+**Options:** (a) ADVISE everywhere — one tail line naming the regression + the closing
+seam, never blocks (invariant 8); (b) advise in-session, BLOCK at `@ship` when the baseline
+score drops — a baseline file per project makes "lower" a number; (c) block in-session too
+when a cluster reaches three members (extract / accept-with-reason demanded before yield),
+the "context enriched" trigger made hard.
+
+**Recommended default (Claude's): (b).** In-session hooks stay advisory (invariant 8); the
+owner's own gate moment is `@ship` (5 uses, the real workflow), and a ship that lowers a
+measured score is exactly what the owner said should not happen. (c) only if the scorecard
+(#31) shows the advise is ignored. Under invariant 12 the duty ships with its key:
+regressions caught per sitting — and the Q15-kept text surfaces retire only when that
+number is non-zero over a week.
+
+**Blocks:** #37's severity defaults; nothing built yet.
+
+---
+
 ## Q12 · CI: the tree now has ZERO workflows — was the revert deliberate?
 
 **The facts (disk-read 2026-07-31):** `51f139e` (plugin-toolkit 1.9.0) added
@@ -22,8 +91,8 @@ the workflow "is replaced by `.github/workflows/checks.yml`" — false on disk.
 **Options:** (a) **No CI, on purpose** — fix the RELEASE-NOTES claim and done; the gates
 stay laptop-run (they now travel via the standalone install, see tasks #2). (b) **Re-add
 checks.yml** — recoverable from `51f139e` in minutes; note the ledger-compaction suite's
-status is now UNCERTAIN (tasks #9 adjudicates whether it is red or test-all misses it).
-(c) Re-add later, gated behind #9 going green.
+status is now UNCERTAIN (tasks #9 adjudicates whether it is red or test-all misses it, and
+09-09 added a second intermittent). (c) Re-add later, gated behind #9 going green.
 
 **Recommended default (Claude's): (a).** The revert survived a push in the same sitting, so
 treat it as deliberate; correct the stale prose (folds into tasks #6). Re-adding is cheap
@@ -74,7 +143,9 @@ Genuinely unbuilt (verified: zero `extensib` matches in essense-flow): /glossary
 EXTENSIBILITY.yaml · a review `extensibility` lens · verify compliance items · the C
 correction sweeps — pure consumer wiring on an engine that already accepts declared axes.
 But essense-flow DISSOLVES at Phase E per v3; the craft survives in steward + executor
-protocols, where #15 Phase A wires the same measures.
+protocols, where #15 Phase A wires the same measures — and since 2026-09-08 the owner's
+two-axes wish routes the AMBIENT half to #37 (a measured design duty), which is (a) taken
+one step further.
 
 **Owner-words evidence toward (a), 2026-08-26 (verbatim):** *"the essense flow aprts are
 rarely used so i don't know if it is what we are looking to populate. i want claude
@@ -84,9 +155,9 @@ essense-flow is rarely exercised, and the same reasoning executed: the vocabular
 shipped AMBIENT (patterns 0.1.0), not into the pipeline.
 
 **Options:** (a) surviving path only — #15 wires coupling/extensibility into executor
-steps + ambient sessions; the named-shape vocabulary is DONE ambient-side (patterns
-0.1.0); essense-flow keeps rung-2 + criteria 8/9, no new pipeline build. (b) Both sides —
-pipeline projects get the consumers too (~consumer wiring only, the engine exists).
+steps + #37 covers ambient sessions; the named-shape vocabulary is DONE ambient-side
+(patterns 0.1.0); essense-flow keeps rung-2 + criteria 8/9, no new pipeline build. (b) Both
+sides — pipeline projects get the consumers too (~consumer wiring only, the engine exists).
 (c) Execute the 2026-06-26 plan as written, pipeline-first.
 
 **Recommended default (Claude's): (a), now with owner-words support.** Building consumers
@@ -94,62 +165,7 @@ into a plugin slated to dissolve spends budget where the craft is leaving, and t
 targets "the way we write code with Claude" GENERALLY — the surviving path's job.
 Reversible: (b) is additive later if a live pipeline project shows the gap.
 
-**Blocks:** the essense-flow half of the wish's scope; #15 proceeds either way.
-
----
-
-## Q15 · The design-moment injection — now MEASURED: five surfaces, 1,645 B per design prompt, 1,788 B standing
-
-**Context.** The push half is CLOSED (patterns installed 08-27, menu hook fired live).
-Audit 2 (2026-09-06) put a number on the injection half: the design-open concern has
-FIVE surfaces — the global CLAUDE.md Generalize-First Gate (1,788 B STANDING = 27% of the
-global file, paid per session AND per sub-agent) · the generalize-first hook · pattern-menu
-· pattern-gate · reuse-gate/@build — firing 1,645 B together on one design prompt. Also
-measured: `++` is injected THREE ways, `@verify` restates 3 of the 4 always-on rules,
-and per-prompt process spawns are 9. `/patterns` was never invoked in a real session;
-whether any of these surfaces changes outcomes is unmeasured (the 09-04 doubt datum).
-
-**Options:** (a) after ONE live-verified fire of both patterns hooks, slim the global
-hook + CLAUDE.md gate down to what patterns does not carry. (b) Keep all surfaces —
-redundancy as belt-and-suspenders. (c) **Fold the per-prompt regex stack into ONE
-UserPromptSubmit hook over a `{trigger, injection}` registry** (verification-rules +
-generalize-first + thorough-mode + pattern-menu), inject `++` once, move the gate out of
-global CLAUDE.md into pattern-menu's footer on design prompts — Tier-2 item 14 of the
-audit plan; check: plain prompt unchanged, `++` prompt −363 B, design prompt one block,
-global CLAUDE.md < 5 KB, spawns 9 → 6.
-
-**Recommended default (Claude's): (c)** — it is (a) done generically (a registry is the
-drop-in surface a sixth trigger needs), still only AFTER a live fire of both patterns
-hooks proves the replacement (quality over speed: nothing retires on a promise).
-
-**Blocks:** #21 step 2; #17's first concrete cut.
-
----
-
-## Q16 · Zero-setup memory — seed kb + steward automatically on first open of an un-seeded project? [Tier 3, audit 2]
-
-**Context.** Audit 2 measured WHERE the owner felt the loss: the two projects with NO
-kb/steward (psience 09-01, verbatim: *"i said it in the previous session why is it not
-saved?"*; 09-04: *"can you tell me what happened there?"*). The `/kb-seed` cue-once
-mechanism fired in both and was acted on in neither — measured dead. Owner 08-23:
-*"ideally i don't want to spend time setting them up when i wanna work on them."*
-Invariant 6 says a tool self-activates on PRESENCE (seeding is the on-switch); invariant 1
-says the ship never moves unseen. Auto-seeding writes files into every git project the
-owner opens — the owner must ratify that.
-
-**Options:** (a) on first open of an un-seeded git project, dispatch `kb-seed` + steward
-`seed` in the BACKGROUND (zero questions), show the diff at the next open, `unseed`
-reverts — the audit plan's proposal. (b) One-keystroke gate: the first open asks ONE
-question ("seed memory here?"), then (a) runs. (c) Keep the cue, make it louder — the
-measured-dead path, not recommended. Whichever: the seed must be root-anchored, skip
-scratch/temp roots, and leave a visible marker so a wrong seed is one delete.
-
-**Recommended default (Claude's): (b)** — the owner's words support (a)'s zero-effort
-goal, but a silent write into every project opened (incl. one-off checkouts) is the
-"moves unseen" shape invariant 1 forbids; one keystroke keeps the owner's say and
-costs nothing to remember.
-
-**Blocks:** nothing built yet; would become a task on the answer.
+**Blocks:** the essense-flow half of the wish's scope; #15 and #37 proceed either way.
 
 ---
 
@@ -162,77 +178,22 @@ replaced it; kb's `handoffs` source then indexes nothing); essense-flow 0 uses s
 until Phase D/E); code-glossary never invoked interactively, engine sound (2.1 s, found
 two identical registries inside kb). Each is an EXTENSION-SURFACE question — what stays
 ambient, what becomes a gate, what goes to `archive/benched-plugins` — not a keep/kill vote.
+Since 2026-09-08 the code-glossary half has a concrete shape: #37's `@ship` design gate IS
+the ★ option below, sharpened by the owner's two-axes wish.
 
 **Options per surface (Claude's defaults marked ★):** reuse-gate — ★fold into
 pattern-gate (one pre-write nudge, one guard) / keep as is · session-lifecycle — ★archive
 to benched (drop kb's `handoffs` source config with it) / keep for public users / keep
 only retro+meta-review as future steward verbs · essense-flow — ★FREEZE (no new
 investment; Phase E retires; Q5 doc repositioning may move earlier) / keep investing /
-archive now · code-glossary — ★make it a GATE inside `@ship` (drift + duplicate-registry
-check, deterministic) rather than a skill to remember / keep skill-only / archive.
+archive now · code-glossary — ★make it a GATE inside `@ship` (drift + duplicate-registry +
+design-score check, deterministic — #37) rather than a skill to remember / keep skill-only
+/ archive.
 
 **Recommended default (Claude's): the four ★ marks** — each is a fold or a freeze, none
 deletes a capability the owner uses; all reversible from the archive branch.
 
 **Blocks:** Q5's timing; #17's fold scope; nothing else.
-
----
-
-## Q18 · Goal-based termination — which tasks arm the goal duty? [harness plan G3, Phase 2 — also ratifies the "ships with its metric" rule]
-
-**Context.** The harness research (`design/harness.md` §6 G3, Claude's, 2026-09-08) found
-NO goal-based termination anywhere in the layer: the loop ends when Claude says so, and
-"stopping while there is planned work" (owner, twin 08-12) is a plea in prose — the shape
-invariant 3 rejects. Anthropic's own harnesses hold the loop to a checked list (`/goal`,
-feature lists, the "35 of 50 items" laziness); the steward already keeps per-task
-DONE-CHECKS in tasks.md — the criterion exists, nothing consumes it. Proposed mechanism
-(#32): a session-scoped turn-end DEMAND duty whose criterion is the armed task's done-check,
-satisfied by a RECORDED check (the #28 ledger) or an explicit owner "stop", capped by fires
-(3), never by a promise phrase. The base supports every arming policy; the DEFAULT is the
-owner's because it changes when a sitting is allowed to end. Bundled here: the doc's
-proposed rule *"a mechanism ships with its result-metric key or does not ship"* is
-Claude's — say yes/no once and it becomes invariant 12 or stays a design value.
-
-**Options:** (a) every `steward:next` arms the duty (the task you picked IS the goal);
-(b) only an explicit `steward:goal <n>` arms it — opt-in per sitting; (c) every task whose
-done-check is machine-checkable arms automatically, prose done-checks never do (an LLM
-evaluator for prose is a later drop-in, never default).
-
-**Recommended default (Claude's): (a), with `severity: advise` first** — the owner's motion
-is already `@prompt`/`steward:next`, so (a) adds zero vocabulary (invariant 6); advise never
-traps a sitting (invariant 8); escalate to `block` once the scorecard (#31) shows the nudge
-is heeded. (b) is the fallback if (a) nags on exploratory sittings. Rule: ratify.
-
-**Blocks:** #32's default; nothing else.
-
----
-
-## Q19 · Ground truth for "done": must a recorded check be GREEN, or merely RUN and observed? — and is any deny rule wanted? [harness plan G2, §9.2 + §9.4]
-
-**Context.** Self-check today is satisfied by prose ("Check: none", "verified by
-inspection", "exit 0" — `self-check.js:119-120`) and is blind to Bash mutations (`sed -i`);
-on 09-08 context-recall's "did not use" detector was likewise blind to a Bash read. Every
-harness the research compared (SWE-agent, Aider, OpenAI) verifies by TOOL RESULT, never by
-claim. #28 builds the PostToolUse check-recorder (a per-root ledger of `{prompt_id, kind:
-check|mutation, cmd, exit, files}`) and a shared file-touch extractor; the question is what
-SATISFIES: canon says green ("task verifier nearly perfect"); the owner's Unity sittings
-asked for LESS testing (*"no testing on your side is necessary"*) and self-check blocked
-42× (twin 30). Separately, no PreToolUse `deny` exists anywhere (invariant 8: hooks never
-block a tool call); the doc's §7.6 asks whether any should.
-
-**Options — strictness:** (a) GREEN — a check ran after the last mutation AND exited 0;
-(b) RUN-AND-OBSERVED — a check ran after the last mutation and its output was Read/echoed;
-the exit code is reported in the tail either way; (c) per-project registry default
-(`turn-end/config.json`) — (a) for code repos, (b) where the owner says so. **Deny-list:**
-(d) none until the scorecard shows a class of irreversible mistakes; (e) a minimal list now
-(e.g. `git push` without owner words, `rm -rf` outside the repo).
-
-**Recommended default (Claude's): (b) as the floor + (c) as the surface, and (d).** (b) is
-what invariant 10 actually says (a run OBSERVED, compared, probed — not necessarily green: a
-red check honestly reported is evidence); a project can raise itself to (a) in config; (d)
-keeps invariant 8 intact until a measured class earns a rule.
-
-**Blocks:** #28's ledger leg; #32 (a goal satisfied by a recorded check inherits this).
 
 ---
 
@@ -247,7 +208,8 @@ configuration twice → DIFFERENT picks in every pairing tried; 10-turn replay: 
 verdict sets 3/10. The lean flags buy −36% cost + no harness boot in the child + no state
 pollution, NOT speed (shipped in 0.7.0 for those). Every option below is measurable with
 ONE check: 10 repeats on 3 real turns → agreement rate, p95 ms, cost, against the measured
-rows.
+rows. Since 0.8.0 the judge also sees "FILES THIS TURN OPENED" and drops already-read notes
+— a smaller candidate set for free; whether agreement moved is part of the same check.
 
 **Options:** (1) keep as is — accountable now (trace `engine`/`ms`/`costUsd`/`lean`),
 fallback ranker on timeout; (2) `--effort low` as the default — cheapest measured, still
@@ -258,7 +220,7 @@ keep the intersection — halves false positives, doubles cost; (5) ranker + per
 dedupe replaces the LLM judge; the saved tokens go to the lens.
 
 **Recommended default (Claude's): (1) NOW, (3) as the pre-registered candidate** — nothing
-retires on a promise (invariant 11): keep the judge until a 0.7.0 trace exists (#1 leg e)
+retires on a promise (invariant 11): keep the judge until a 0.8.0 trace exists (#1 leg f)
 and #30 writes the agreement inputs; then run the one check with (3) against (1) and adopt
 (3) only if agreement is not worse and p95 ms is lower. (5) is the fallback if agreement
 stays near chance — a coin-flip judge is a dead mechanism, and a dead mechanism is a quality
@@ -270,14 +232,54 @@ failure by the owner's own law.
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
+- **Owner rulings (2026-09-09, one-keystroke panel — four questions, defaults marked; two
+  answers differ from Claude's recommendation and are recorded as LAW, not argued):**
+  **Q19 · ground truth for "done" → RAN AND OBSERVED:** a check ran after the last file
+  change AND was observed (exit code recorded); not required green; per-project override
+  allowed (the `requireGreen` knob, shipped turn-end 0.8.0, default off). Claude's default,
+  chosen; deny-list not raised — the doc's default (none until the scorecard shows a class
+  of irreversible mistakes; settings-level `permissions.deny`, never a hook) stands. #28's
+  ledger leg BUILT under it. **Q18 · goal duty → arms EVERY task the owner starts** (`do
+  it` / `steward:next`): the task's done-check is the termination criterion; one tail line
+  if the session yields with it unmet; advise, never block. ALSO ratifies *"a mechanism
+  ships with its metric key"* → vision invariant 12. Claude's default, chosen; #32
+  UNBLOCKED. Not ruled: harness §9.5 (`/goal` with idle check-ins) — the doc's default
+  EXCLUDED stands under invariant 1; #32 carries the goal inside the one tail. **Q16 ·
+  zero-setup memory → KEEP THE CUE.** No auto-seed, no one-keystroke seed; the existing
+  one-time `/kb-seed` cue stays. The owner chose against BOTH proposals — CLOSED as "no
+  change"; G11 carries no task; Phase D's on-ramp is hand-seeding. **Q15 · the design-moment
+  injection → SLIM ONLY.** Trim the global CLAUDE.md Generalize-First Gate (and the `++`
+  restatement) to what the patterns / generalize-first hooks do not already inject; keep
+  every hook as it is; NO fold into a registry hook. The owner chose (a)-shaped over the
+  recommended (c); APPLIED the same sitting (gate 1,788 → ~640 B, file 6,528 → 5,228 B,
+  backup kept); #17's registry-fold leg is OFF the plan; the measured design-duty path
+  (§7.7 → #37) stands separately and is the only way the text retires. Executor consequence
+  the owner saw: #29 → #27 → #28 → the slim, then #30/#31, #32 after #28 — Phase 0 built
+  and shipped `68ce999` in that order. Provenance:
+  `inbox/20260909-0015-owner-rulings-q19-q18-q16-q15.md`.
+- **Owner LAW (2026-09-09): no pointers — everything in-environment, least clicks.**
+  Verbatim: *"also this cannot be poitning me to files. it needs to be giving me eveyrhting
+  i need in a digestible manner within this environment or i need to be seeing something
+  it needs to be doing as many of the thigns on it's own and leaving the least amount of
+  clicks to me"* (said after an answer that ended "see §7.7 / §7.8"). Now vision invariant
+  13, sharpening 2 and 6; applies to every owner-facing surface; the surfacing rule at the
+  top of this file. Provenance:
+  `inbox/20260909-0010-owner-no-pointers-everything-in-environment-least-clicks.md`.
+- **Owner wish (2026-09-08, two more harness axes — nothing decided beyond the wish):**
+  modular/decoupled code that improves as context enriches; documents kept clean (prune
+  wrong/unnecessary, keep learning). Verbatim in vision (the frame); Claude's answer in
+  `design/harness.md` §7.7 / §7.8 = G14 / G15 → tasks #37 / #38; the two decisions only the
+  owner can make → Q21 / Q22 above. Extends the HFDP wish and invariants 4 + 7. Provenance:
+  `inbox/20260908-1905-owner-two-more-axes-modular-code-and-clean-docs.md`.
 - **Owner request (2026-09-08, EXECUTED as research; decisions parked): "research what a
   Claude harness is… is what I currently have a harness? … complete management of managing
   memory, of managing context, of pushing the work further, of verifying the work."** →
   `design/harness.md` (log 2026-09-08): Claude Code IS the harness, this toolkit is a
   harness LAYER (vision frame); ten components with measured status; gaps G1–G13 → tasks
   #29–#36 (+ #27 #28 #17 and Q15–Q17 as already homed); §9 owner decisions → Q18 (goal
-  scope + the rule), Q19 (strictness + deny). Two live findings on the way:
-  installed≠running (G1 → #29) and recall's Bash-blind detector (G2 → #28). Provenance:
+  scope + the rule), Q19 (strictness + deny) — both RULED 09-09 (entry above). Two live
+  findings on the way: installed≠running (G1 → #29, BUILT) and recall's Bash-blind detector
+  (G2 → #28, BUILT). Provenance:
   `inbox/20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness.md`.
 - **Owner directive (2026-09-06, EXECUTED same sitting): "ok, decide what is the best way to
   handle it. the need is that my vision is applied and works."** Reply to Claude's prism
@@ -406,7 +408,7 @@ failure by the owner's own law.
   gate — the un-gate is now an OWNER CALL parked in blueprint Phase 4 (tasks #11).
   **Re-read 2026-09-06 (audit 2):** hints are ignored for REPETITION + SIZE (84% ignored,
   top-3 ids in 40% of slots, digest stubbed by the platform), not for vocabulary — rung 2
-  is the wrong lever before #27; #11 stays parked and re-measures after it.
+  is the wrong lever before #27; #27 SHIPPED 0.13.0 on 09-09, #11 re-measures after it.
   Provenance: `inbox/done/20260725-0337-retrieval-improvement-direction.md`,
   `inbox/done/20260725-1400-first-retrieval-miss-splitter-class.md`.
 - **Owner direction (not a question, EXECUTED): kb-seed judges on its own.** "It should be
@@ -431,14 +433,16 @@ failure by the owner's own law.
   sure this has happened before finishing and me having to ask?"* Sparked by a
   terrain-project incident: Claude authored blind, verified by sampling numbers, never
   rendered/looked, shipped "verifiably correct" instead of "looks right". Vision
-  invariant 10; shipped as turn-end 0.4.0 `self-check`, live-proven 08-10/08-23.
+  invariant 10; shipped as turn-end 0.4.0 `self-check`, live-proven 08-10/08-23; given
+  GROUND TRUTH in 0.8.0 (Bash-aware file-touch, named-check floor, exec-result recorder).
   Provenance: `inbox/done/20260801-2349-self-check-before-done.md`.
 - **Owner pass 2 on self-check (2026-08-02, EXECUTED in turn-end 0.4.0 pre-release):** a
   run is a check only if OBSERVED (*"it needs to have used enough logs for it to be able
   to understand what happened"*), COMPARED vs the ASK (*"and if it was what was asked"*),
   and probed to BREAK (*"tested to break it and not only happy paths"*). Executed:
   `ran-and-looked` detector, result-tense-only named checks, ask teaches
-  run→LOOK→compare→break. Vision invariant 10 sharpened. Provenance:
+  run→LOOK→compare→break. Vision invariant 10 sharpened; Q19 (09-09) made OBSERVED, not
+  green, the floor of "done". Provenance:
   `inbox/done/20260802-0040-self-check-must-look-log-and-break.md`.
 - **Owner economics directives (2026-08-02 + 2026-08-03, both EXECUTED same sitting):**
   *"steward fires too often and for too long"* → steward 0.3.0 (ONE background pass per

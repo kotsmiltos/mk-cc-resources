@@ -1,5 +1,5 @@
-# mk-cc-resources — briefing (2026-09-08)
-Ship: Tier 1 (#22–#26 + 1b) shipped + installed 09-06 — but this process predates the install: 0.7.0 has NOT run yet (0/128 trace lines carry it). Restart before trusting any Tier-1 verdict.
-Last: harness research (design/harness.md) — the toolkit is a harness LAYER over Claude Code; memory + loop work, goal/verify/observe/guard under-built; the recall judge measured nondeterministic.
-Next: #29 running≠installed instrument (hours) → #27 digest cap → #28 ground-truth self-check + shared file-touch → #30 trace schema → #31 harness-stats scorecard.
-Waiting: Q18 goal-duty scope + ratify the metric rule (default: every steward:next, advise) · Q19 check strictness (default: run-and-observed, no deny-list) · Q20 recall judge (default: keep, pre-register top-K) · Q16 · Q17 · Q15.
+# mk-cc-resources — briefing (2026-09-09)
+Ship: Phase 0 (#29 running≠installed · #27 kb-pull bounded · #28 ground-truth self-check + exec recorder) shipped + installed 09-09 — this process still predates it; the running-version line above now says so itself. One restart proves both ships live.
+Last: one sitting 09-08→09 — rulings Q19 ran-and-observed · Q18 goal arms every task, metric rule = invariant 12 · Q16 keep the cue · Q15 slim only (applied) · owner law no pointers / least clicks = invariant 13 · two-axes wish → #37 #38.
+Next: #30 trace schema v1 + lens telemetry → #31 harness-stats scorecard → #1 live check after restart → #32 goal duty.
+Waiting: Q21 who may mark knowledge wrong (default proposal-only) · Q22 design-duty severity (default advise, block at @ship) · Q20 recall judge · Q17 · Q14 · Q13 · Q12.

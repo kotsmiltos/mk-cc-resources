@@ -96,13 +96,27 @@ the lens untraced), **OBSERVE** (no scorecard; installed≠running invisible —
 09-08 on this repo's own process) and **GUARD** (no budgets) are under-built. The owner's
 four axes map onto those components one-to-one.
 
-**Proposed rule (Claude's, NOT owner law until Q18 ratifies it): a mechanism ships with its
-result-metric key or it does not ship.** prism already meets it ("owner invokes it again
-unprompted" — met); nothing else in the toolkit does yet. Companion practice from
-Anthropic's own harnesses (they dropped context resets + the sprint construct when Opus 4.6
-landed): on every model release, re-run the scorecard and remove any mechanism whose metric
-is flat. What the plan does NOT do: add injections, add a second judge, or run unattended
-(invariant 1).
+**Rule — RATIFIED by the owner 2026-09-09 (Q18, one-keystroke panel; Claude's proposal):
+a mechanism ships with its result-metric key or it does not ship.** Now invariant 12.
+prism already meets it ("owner invokes it again unprompted" — met); nothing else in the
+toolkit does yet — `harness-stats` (#31) is the thing that reads the keys. Companion
+practice from Anthropic's own harnesses (they dropped context resets + the sprint construct
+when Opus 4.6 landed): on every model release, re-run the scorecard and remove any
+mechanism whose metric is flat. What the plan does NOT do: add injections, add a second
+judge, or run unattended (invariant 1). **Phase 0 of the plan (#29 #27 #28) was built and
+SHIPPED `68ce999` in the same sitting (09-09)** — the first ship that can SAY whether it is
+running.
+
+**Two more axes from the owner, same evening (inbox `20260908-1905`, verbatim):** *"one more
+aspect i need is good and modular and decoupled code. i've been tryin to enforce it but the
+idea is that as new things are added and context is enriched we need to be designing better
+code. code is cheap now so we need to be designing better codebases. we need to also be
+keeping our documents clean because i think now we are storing too many things. we should
+be able to clean up wrong things or things that are not necessary and also keep learning
+from what we are seeing. how could these fit into my harness layer?"* → harness G14 (code
+design MEASURED, not texted — `design/harness.md` §7.7) + G15 (knowledge lifecycle + garden
+job — §7.8): tasks #37/#38, owner decisions Q21/Q22. Extends invariants 4 and 7 below;
+nothing beyond the wish is decided.
 
 ## The turn-end law (2026-07-27) — one blocking tail
 
@@ -146,7 +160,13 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
 3. **Mechanisms, not text.** Disciplines become hooks/gates/roles, not preached rules.
    (Owner: "if you just add the line somewhere, you're not gonna respect it.")
 4. **Recompute, never accrete.** Re-derivation over patching, at every altitude —
-   turn, code, project, and this repo's own design docs.
+   turn, code, project, and this repo's own design docs. **Extended by the owner
+   2026-09-08 (two-axes wish, docs half):** the knowledge itself is in scope — *"we are
+   storing too many things… clean up wrong things or things that are not necessary and
+   also keep learning."* Recompute includes DELETION of knowledge: a lifecycle for kb
+   entries (`live / superseded-by / refuted-by / archived`, owned by `status.json`, joined
+   at collect, held back by default and SAID) and a garden job whose removals the owner
+   ratifies as one diff → #38, Q21 (who may mark wrong).
 5. **Per-task cost budget:** one build pass + deterministic checks + max one review
    pass. Nothing loops. Tool quality×cost is a first-class design constraint —
    deterministic > LLM, fold > add, fire conditionally. Standing injections are part
@@ -175,6 +195,14 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
    output is a FAILURE even where no gate flags it, and the invariant covers EVERY
    code-writing surface — pipeline, executor, AND ambient sessions. Ambient coverage
    today is injected rule text only, the load-bearing shape invariant 3 rejects.
+   **Extended 2026-09-08 (same wish, code half):** *"as new things are added and context
+   is enriched we need to be designing better code. code is cheap now so we need to be
+   designing better codebases"* — not only "don't regress" but CONVERGE: a duplicate
+   cluster reaching three members demands an extraction decision; measured on the files a
+   turn touched (the 0.8.0 file-touch extractor) with the glossary engine's signals, advise
+   with the closing seam named → #37, Q22 (severity). **Q15 ruled 2026-09-09 SLIM ONLY:**
+   the text surfaces stay as they are (global gate slimmed 1,788 → ~640 B, hooks untouched)
+   and retire only as the measured duty proves itself — never folded into a registry hook.
 8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they
    don't apply. The ONE hook that may block blocks the turn's END, never a tool call,
    and fails open on every path.
@@ -205,6 +233,23 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
     failure — fix fragility with fail-open fallbacks that NAME which engine answered,
     never with cheaper replacements. Bounds invariant 5: the cost budget prices the
     loop, never the discipline or the result.
+12. **A mechanism ships with its result-metric key or it does not ship.** (Claude's
+    proposal from the harness research; RATIFIED by the owner 2026-09-09 via Q18.) The key
+    is what `harness-stats` (#31) reads; on every model release the scorecard is re-run and
+    a flat mechanism is removed. prism meets it today; the goal duty (#32) is the first new
+    mechanism built under it, and every task in tasks.md that ships a mechanism names its
+    key in its done-check.
+13. **In-environment delivery, least clicks.** (Owner, verbatim, 2026-09-09: *"this cannot
+    be poitning me to files. it needs to be giving me eveyrhting i need in a digestible
+    manner within this environment or i need to be seeing something it needs to be doing as
+    many of the thigns on it's own and leaving the least amount of clicks to me"*; echoes
+    aithseis 08-10 *"i don't wanna read all that, sum it up for me neatly"*.) Sharpens 2
+    (the diff IS the reading, never a pointer to it) and 6 (no motion the owner must make
+    to see). Applies to EVERY owner-facing surface — session replies, briefing, turn-end
+    tail, steward diffs, question surfacing: paths, ids and §refs are for machines and the
+    model, never the owner's reading path; decisions reach the owner as one-keystroke
+    questions, recommended default first, batched; work that needs no ruling proceeds
+    within the sitting without asking.
 
 ## Declared growth axes (change expected here)
 
@@ -236,9 +281,13 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
   duty may stand down for is a predicate, never runner code).
 - **Harness-layer drop-ins (2026-09-08, planned — the plan's extension surfaces):** METRIC
   sources for the `harness-stats` gate (pure runner over a registry, the house gate
-  pattern); trace schema v1 fields every plugin's own writer emits; injection-registry
-  entries `{trigger, injection, budget, metric, provenance}` (Q15 option c); goal-duty
-  arming policies (Q18); ground-truth strictness per project (Q19).
+  pattern); trace schema v1 fields every plugin's own writer emits; goal-duty arming
+  policies (the base supports all three; Q18 ruled EVERY task the owner starts arms it);
+  ground-truth strictness per project (Q19 ruled ran-and-observed as the floor —
+  `requireGreen` is the per-project knob, shipped 0.8.0); code-design MEASURES
+  (`code_glossary/` signals) + catalog entries (#37); knowledge-lifecycle status types
+  (data) + garden motions (#38). The injection-registry fold is OFF the plan (Q15: slim
+  only, 2026-09-09).
 - kb axes are drop-in surfaces: kinds (all four now written — `working` since the 0.5.0
   session digest), castes, source types (`markdown-dir` is the first; its `split` knob is
   its own extension point — `h2`, then `pattern` for non-heading ledgers), rankers

@@ -1098,3 +1098,37 @@ Not pushed, not committed. Next: #28 (ground-truth self-check + shared file-touc
 Owner ruling Q19 (ran-and-observed) applied. Built: `lib/file-touch.js` (ONE extractor: tool targets + Bash/PowerShell argv → mutations `sed -i`/`>`/`>>`/`tee`/heredoc/`cp`-`mv` dest/`touch`; reads `cat`/`head`/`tail`/`sed -n`/`grep FILE`; pure, conservative — flags/vars/globs/devices never files; sed's script arg and a bare `>>` were the two parsing bugs the suite caught). self-check: mutations via file-touch (Bash edits count); named-check FLOOR (`namedCheckAnchored`: ratio, touched basename, or a command head the turn ran; "Check: none" is a confession); MODALITIES registry (prose re-read / scene look / code run); `requireGreen` knob reads the recorder ledger (default off). context-recall: `dropAlreadyRead` drops notes at paths the turn opened (Read OR Bash), judge prompt lists "FILES THIS TURN OPENED", trace carries `alreadyRead`. New hook pair PostToolUse + PostToolUseFailure on `Bash|PowerShell` → `hooks/scripts/tool-record.js` → `.claude/turn-end/checks.jsonl` + one real payload per event under `samples/` (fixtures first, per the lens's escalation 4; `tool_response` for Bash is undocumented — keys recorded, exit parsed best-effort, null never guessed); footprint only where turn-end keeps state; stands down in judge children. Item 4 (`startedAt` from the transcript) was already live since 0.7.0 (`session-digest.js:132`) — not rebuilt. Versions: turn-end 0.7.1 → 0.8.0 (manifest, marketplace row + description, README row, RELEASE-NOTES, turn-end + root CLAUDE.md).
 **Checks:** `node plugins/turn-end/tests/turn-end.test.js` → 189/189 (+14: file-touch ×4, self-check Bash/floor/modality/requireGreen ×6, recall drop ×1, tool-record unit + E2E ×2 — E2E asserts ledger lines, per-event samples, truncated bodies, no footprint without state, judge-child silence) · registry-check exit 0 · repo-guard exit 0 · test-all `--root .` 33/33 · 1,849 checks (was 1,835). **Live through the real hook** (temp project, `sed -i` edit of parser.js in the transcript): final message "Check: none" → nudged; "verified by inspection" → nudged; "Check: node tests/parser.test.js → 12/12" → silent allow; "Check: re-read parser.js against the ask; result: matches" → silent allow. The recorder's real-payload fixtures land on the first Bash call after the owner restarts (hooks register at process start).
 **Sitting total (2026-09-08/09):** research + plan (`design/harness.md`), rulings Q18/Q19/Q16/Q15, owner law "no pointers, least clicks", Q15 slim (global CLAUDE.md −1,300 B), #29 (turn-end 0.7.1 + steward 0.5.2), #27 (kb 0.13.0), #28 (turn-end 0.8.0). Tree: 4 plugins bumped, ~30 files changed, NOT committed, NOT pushed. Next: #30 trace schema v1 + lens telemetry → #31 harness-stats. Standing datum: essense-flow suite intermittent under the sweep (red 2 of 5 runs tonight, green direct) — #9-class.
+
+## 2026-09-09 · SHIPPED `bc39fe0..68ce999` — turn-end 0.8.0 · kb 0.13.0 · steward 0.5.2 · harness plan + model (owner: "Yes, ship it")
+
+Four commits (turn-end / kb / steward / docs+model), pushed to origin main; `claude plugin marketplace update` refreshed; `claude plugin update` → turn-end 0.7.0→0.8.0, kb 0.12.0→0.13.0, steward 0.5.1→0.5.2, all at `68ce999` (installed_plugins.json read after the update). Gates at ship: test-all 33/33 · 1,849 checks, registry-check 0, repo-guard 0 (incl. the five new files, once tracked). Not yet live: the owner's process must restart; the first trace line after restart should carry `"version":"0.8.0"` and no stale prefix, and the first Bash call writes `.claude/turn-end/samples/PostToolUse.json` (the recorder's real fixture) — that is the live check for the next sitting. Reminder from the 08-27 capture held true: installs read the GitHub remote, so the push was load-bearing, not ceremony.
+
+## 2026-09-09 · Three items + the sitting's four outcomes integrated at 68ce999 — Phase 0 CLOSED (#29 #27 #28 → #1f), Q15/Q16/Q18/Q19 law, owner law → invariant 13, two axes → #37/#38 + Q21/Q22
+
+Steward integrate pass (owner present, new sitting). Inbox: `20260908-1905` two-more-axes (owner
+wish → vision frame + invariants 4/7 extended verbatim; harness §7.7/§7.8 = G14/G15 → tasks #37
+code-design duty + `@ship` design gate, #38 knowledge lifecycle + garden job, Phase 4b; §9.6/§9.7
+→ Q21 who may mark knowledge wrong (default proposal-only), Q22 design-duty severity (default
+advise, block at `@ship`)); `20260909-0010` owner law no pointers / in-environment / least clicks
+→ vision invariant 13 (sharpens 2 + 6) + the questions.md surfacing rule; `20260909-0015` four
+rulings → resolved ledger verbatim: Q19 ran-and-observed (#28 ledger leg = `requireGreen` off),
+Q18 every task arms the goal duty + the metric rule RATIFIED → invariant 12 (#32 UNBLOCKED),
+Q16 KEEP THE CUE (closed, no change; #18's on-ramp = hand-seeding), Q15 SLIM ONLY (#17's
+registry-fold leg struck; #21 step 2 done). Log outcomes reconciled: #29 #27 #28 BUILT + SHIPPED
+`bc39fe0..68ce999` → CLOSED, deleted from tasks.md; their live legs fold into #1(f). Cascade:
+state.md rewritten (ship 68ce999, versions, G1 now instrumented, Phase 0 closure, hook coverage
++PostToolUse pair, gap list); parts.md turn-end 0.8.0 / kb 0.13.0 / steward 0.5.2 bullets + gap
+maps reconciled (self-check gameable, recall Bash-blind, kb-pull uncapped, install-instrument
+claim → CLOSED); tasks.md recomputed (order #30 → #31 → #1 → #32 → #8 → #17 → #33 → #35 → #34
+→ #36 → #37 → #38 → rest; every mechanism task now names its metric key); #9 gains the 09-09
+intermittent datum. Snapshot HEAD `68ce999` (ref file read); the tree did not move mid-pass.
+Ledger `at` stamps approximate to the hour (the agent has no clock).
+**Check:** `installed_plugins.json` read — turn-end 0.8.0 / kb 0.13.0 / steward 0.5.2 each at
+`gitCommitSha` 68ce999… (installed == HEAD); all 16 `plugins/*/.claude-plugin/plugin.json`
+versions grep-read = the ship list; turn-end `hooks/hooks.json` registers PostToolUse +
+PostToolUseFailure (grep); `.claude/turn-end/trace.jsonl` = 138 lines, `"version"` /
+`"stale"` = 0 occurrences, `samples/` absent (glob) → running process predates the update,
+recorded as PENDING not claimed; `design/harness.md` §7.7 (l.491), §7.8 (l.520), G14/G15
+(l.428-429), §9.1–9.7 (l.612-631) read for #37/#38/Q21/Q22; the global CLAUDE.md gate as
+injected this session is the slimmed one-line + anti-signals form (Q15 applied). No code
+touched; no suites run (model-only pass).

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260908-1900",
+  "updated": "20260909-1400",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -403,14 +403,44 @@
       "groups": ["harness"],
       "log": "2026-09-08 · Five items integrated at bc39fe0 — Tier 1 CLOSED as built (live proof pending a restart), the judge datum re-opens recall as Q20, harness plan → #29–#36 + Q18/Q19, #13 deleted",
       "check": "design/harness.md §0, §5.0, §6, §8, §9 read; log 2026-09-08 entry read; '\"deferred\"' in .claude/turn-end/trace.jsonl = 0/128 (G1 re-verified); PostToolUse/PreCompact/PostCompact/SubagentStart/SubagentStop/SessionEnd over plugins/*/hooks/hooks.json = 0 matches (G2/G8/G10 substrate re-verified); frame + rule entered vision.md marked Claude's; G1–G13 mapped to tasks #29–#36 / existing ids; §9 decisions → Q18/Q19 with defaults marked Claude's"
+    },
+    {
+      "id": "20260908-1905-owner-two-more-axes-modular-code-and-clean-docs",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260909-1400",
+      "by": "steward-agent",
+      "groups": ["harness", "generativity", "knowledge-hygiene"],
+      "log": "2026-09-09 · Three items + the sitting's four outcomes integrated at 68ce999 — Phase 0 CLOSED (#29 #27 #28 → #1f), Q15/Q16/Q18/Q19 law, owner law → invariant 13, two axes → #37/#38 + Q21/Q22",
+      "check": "design/harness.md §7.7 (l.491) + §7.8 (l.520) + G14/G15 rows (l.428-429) + §9.6/§9.7 (l.627-630) read; the owner's words entered vision.md verbatim (frame + invariants 4/7 extensions); → tasks #37/#38 (Phase 4b, metric keys named) + Q21/Q22 with Claude's defaults marked; nothing decided beyond the wish"
+    },
+    {
+      "id": "20260909-0010-owner-no-pointers-everything-in-environment-least-clicks",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260909-1400",
+      "by": "steward-agent",
+      "groups": ["owner-law", "harness"],
+      "log": "2026-09-09 · Three items + the sitting's four outcomes integrated at 68ce999 — Phase 0 CLOSED (#29 #27 #28 → #1f), Q15/Q16/Q18/Q19 law, owner law → invariant 13, two axes → #37/#38 + Q21/Q22",
+      "check": "verbatim carried into vision.md invariant 13 (sharpens 2 + 6) and the questions.md surfacing rule; propagated into #8/#16/#31/#32/#38 done-checks; no code claim entered the model"
+    },
+    {
+      "id": "20260909-0015-owner-rulings-q19-q18-q16-q15",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260909-1400",
+      "by": "steward-agent",
+      "groups": ["harness", "rulings", "tier-1"],
+      "log": "2026-09-09 · Three items + the sitting's four outcomes integrated at 68ce999 — Phase 0 CLOSED (#29 #27 #28 → #1f), Q15/Q16/Q18/Q19 law, owner law → invariant 13, two axes → #37/#38 + Q21/Q22",
+      "check": "four rulings recorded verbatim in the questions.md resolved ledger (Q15/Q16/Q18/Q19 removed from open); metric rule → vision invariant 12; Q15 slim verified applied (the global CLAUDE.md gate as injected this session is the one-line + anti-signals form); Q19's requireGreen knob + the recorder pair per the #28 log entry and turn-end hooks.json (PostToolUse + PostToolUseFailure grep-read); #17 fold leg struck, #32 unblocked, #18 on-ramp rewritten, #21 step 2 closed"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness"
+      "derived_through": "20260909-0015-owner-rulings-q19-q18-q16-q15"
     },
     "model": {
-      "derived_through": "20260908-1748-owner-research-what-a-harness-is-and-plan-to-make-toolkit-a-complete-harness"
+      "derived_through": "20260909-0015-owner-rulings-q19-q18-q16-q15"
     }
   }
 }

@@ -15,9 +15,13 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.7.0) — THE single blocking Stop hook (0.7.0 SHIPPED + INSTALLED 2026-09-06 at `bc39fe0`; NOT yet running in the owner's process — state.md G1)
+## turn-end (0.8.0) — THE single blocking Stop hook + the exec-result recorder (0.8.0 SHIPPED + INSTALLED 2026-09-09 at `68ce999`; NOT yet running in the owner's process — state.md, and since 0.7.1 the tail SAYS so)
 
-- **Exposes:** one `Stop` registration for the whole toolkit. Plugins ship DUTIES; the
+- **Exposes:** one `Stop` registration for the whole toolkit — plus, since 0.8.0, an
+  INFORMATIONAL PostToolUse + PostToolUseFailure pair on `Bash|PowerShell`
+  (`hooks/scripts/tool-record.js` → `.claude/turn-end/checks.jsonl` + one real payload per
+  event under `samples/`): the ground truth self-check reads; never blocks, stands down in
+  judge children, writes only where turn-end already keeps state. Plugins ship DUTIES; the
   runner checks each applicable duty against real state and emits ONE consolidated message
   per user request (two duties = one tail with two items, never two tails). Escalation
   ladder: `hookSpecificOutput.additionalContext` first (continues the turn, labelled "Stop
@@ -132,7 +136,31 @@ capability reach) — it CHECKS, never generates.
   ms / costUsd / lean / deferred / errors / satisfied_by / agents_in_flight / emitted_chars
   / payload_keys / permission_mode; errored duties never vanish; session-digest satisfied
   against the REQUEST's own timestamp, not first-fire time.
-- **GAP MAP — audit 2, reconciled at 0.7.0 (2026-09-08; ✓ = file:line re-read by a steward
+- **SHIPPED 0.7.1 (2026-09-09, tasks #29 CLOSED — harness G1):** `lib/installed.js`
+  (fail-soft): running version = the manifest beside the executing script; installed = the
+  `installed_plugins.json` entry of the same plugin name (user scope preferred, newest wins).
+  Every trace line carries `version` + `stale`; a stale process PREPENDS one line to the
+  tail it already emits (`[turn-end] running turn-end 0.7.1 ≠ installed 0.7.0 (installed
+  2026-09-06) — …`), equal → nothing. Probed live against the real ledger both ways at
+  build. "Installed" is a disk fact; "running" is what the trace says — the G1 class is
+  visible by construction.
+- **SHIPPED 0.8.0 (2026-09-09, tasks #28 CLOSED — harness G2, Q19 ran-and-observed):**
+  `lib/file-touch.js` — ONE extractor for both detectors (tool targets + Bash/PowerShell
+  argv → mutations `sed -i`/`>`/`>>`/`tee`/heredoc/`cp`-`mv` dest/`touch`; reads
+  `cat`/`head`/`tail`/`sed -n`/`grep FILE`; pure and conservative — flags, vars, globs,
+  devices are never files). `self-check`: mutations via file-touch (a Bash edit counts);
+  named-check FLOOR `namedCheckAnchored` (a ratio, a touched basename, or a command head the
+  turn actually ran — "Check: none" is a confession, not a check); `MODALITIES` registry
+  (prose re-read / scene look / code run — the ask matches the work's medium);
+  `requireGreen` knob reads the recorder ledger, default OFF (Q19). `context-recall`:
+  `dropAlreadyRead` drops notes at paths the turn opened via Read OR Bash, the judge prompt
+  lists "FILES THIS TURN OPENED", trace carries `alreadyRead`. The recorder pair (Exposes
+  above) registers PostToolUseFailure too (PostToolUse fires only on success — lens
+  escalation 4) and captures real payload fixtures first: Bash `tool_response` is
+  undocumented, so keys are recorded, exit parsed best-effort, null never guessed. Suite
+  189/189. Live through the real hook on a `sed -i` edit: "Check: none" and "verified by
+  inspection" → nudged; a named suite result or a prose re-read → silent allow.
+- **GAP MAP — audit 2, reconciled at 0.8.0 (2026-09-09; ✓ = file:line re-read by a steward
   pass, otherwise the audit's or the harness doc's citation).** CLOSED at 0.7.0 / the
   09-06 ship: tail order + size (`runner.js:98` ✓ material-first → demands-first under a
   9,000-char cap) · closure duties ignoring in-flight agents (`context.js:218` ✓ →
@@ -142,16 +170,12 @@ capability reach) — it CHECKS, never generates.
   (`context-recall.js:287` ✓ → traced with ms/costUsd) · errored duties vanishing
   (`runner.js:170`) · `steward-sync` counting raw files (`steward-sync.js:45` ✓ → port of
   `status.derive`) · the suite spawning real judges (`tests/turn-end.test.js:912-919` →
-  fixtures disable recall, #26). REMAINING:
-  - **`self-check` is gameable + Bash-blind:** the named-check regex (`self-check.js:
-    109-120` ✓; `:119-120` per the harness doc) accepts "Check: none" / "verified by
-    inspection" / "exit 0"; `sed` sits on the non-run heads list (`:78` ✓; `:53-55`) so a
-    `Bash sed -i` mutation is invisible — the very edit mode the owner's harness
-    prescribes; blocked 42× (twin 30) while the owner asked for LESS testing on Unity
-    (*"no testing on your side is necessary"*). → #28.
-  - **context-recall's "did not use" detector is Bash-blind** (measured 2026-09-08: it
-    re-served the audit capture the session had just read via `head -c`) — the same
-    missing primitive as self-check's: ONE shared file-touch extractor. → #28.
+  fixtures disable recall, #26) · `self-check` gameable + Bash-blind (`self-check.js:
+  109-120` ✓ accepted "Check: none" / "verified by inspection" / "exit 0"; `sed` on the
+  non-run heads list `:78` ✓ — blocked 42×, twin 30, while the owner asked for LESS testing
+  on Unity → 0.8.0 floor + file-touch, #28) · context-recall's "did not use" detector
+  Bash-blind (re-served the audit capture read via `head -c` on 09-08 → `dropAlreadyRead`,
+  #28) · installed ≠ running invisible (→ 0.7.1, #29). REMAINING:
   - **The judge is a noisy sample** (Judges bullet above) → Q20; `chosen` empty in ~50%
     of supplies (audit) → #30 traces the agreement inputs.
   - `DUTIES` is a hard-coded array (`lib/duties/index.js:59`, harness doc re-read 09-08 —
@@ -192,11 +216,11 @@ capability reach) — it CHECKS, never generates.
   `hasFilesIn` derives from it, one readdir for both. Duties MODEL what counts as an item
   rather than enumerating names — that is what keeps `done/` and the next placeholder some
   tool drops in out of every count.
-- **Files:** `plugins/turn-end/{lib/{runner,context,ledger,deferral}.js, lib/duties/,
-  lib/sources/, lib/judges/, hooks/, defaults/config.json}` · **Tests:**
-  `node plugins/turn-end/tests/turn-end.test.js` — 170 checks in ~1 s per the 0.7.0
-  landing (146 in 43 s at 0.6.0 — E2E fixtures now disable recall; the exe test SKIPS by
-  name without a binary).
+- **Files:** `plugins/turn-end/{lib/{runner,context,ledger,deferral,installed,file-touch}.js,
+  lib/duties/, lib/sources/, lib/judges/, hooks/scripts/{turn-end,tool-record}.js,
+  defaults/config.json}` · **Tests:** `node plugins/turn-end/tests/turn-end.test.js` — 189
+  checks per the 0.8.0 landing (170 at 0.7.0; 146 in 43 s at 0.6.0 — E2E fixtures disable
+  recall; the exe test SKIPS by name without a binary).
   Replays of measured failures include: ten work turns do not oscillate, the lens is
   asked at most once per request, `done/` + `.gitkeep` are not inbox items, and
   self-check's full ladder end-to-end (nudge → comply → allow; ignore → block; a check
@@ -204,9 +228,10 @@ capability reach) — it CHECKS, never generates.
   transcript shape).
 - **Ledger:** `.claude/turn-end/ledger.json` — per-`prompt_id` `asked`/`fires` plus a
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
-  mtime comparison. Trace: `.claude/turn-end/trace.jsonl`.
+  mtime comparison. Trace: `.claude/turn-end/trace.jsonl` (every line `version` + `stale`
+  since 0.7.1). Exec ledger (0.8.0): `.claude/turn-end/checks.jsonl` + `samples/`.
 
-## steward (0.5.1) — the active thrust
+## steward (0.5.2) — the active thrust
 
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
   capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
@@ -235,6 +260,13 @@ capability reach) — it CHECKS, never generates.
   (lens item 19's nag half; the block-past-age knob is unbuilt → #8); fleet dedupe
   case-insensitive. Check at ship: all readers printed the same number on this repo;
   suites 45/45 + 13/13. Dogfood leg (c) CLOSED.
+- **SHIPPED 0.5.2 (2026-09-09, `68ce999` — tasks #29's steward half):** third instrument
+  `instrRunning` in `steward-brief.js`'s `INSTRUMENTS` registry (own copy of the
+  running-vs-installed read — cross-plugin duplication deliberate): a stale process gets
+  ONE `[instr] running steward 0.5.2 ≠ installed 0.5.1 (installed 2026-09-06) — restart
+  Claude Code to load it` line, silent when equal; probed live against the real ledger at
+  build. The agent text's install-instrument claim (`agents/steward.md:62-66`) is now TRUE
+  by construction. Hook suite 50/50 (+5), status 13/13.
 - **BUDGETED 0.3.0 · LIGHTER 0.3.1 (owner, twice in two days: "fires too often and for
   too long" → "can we make the steward lighter? it is unbearable right now"):** at most
   ONE background integration pass per sitting — captures and task landings ACCUMULATE
@@ -289,11 +321,10 @@ capability reach) — it CHECKS, never generates.
   - **Authored prose lags:** Ship/Last/Next contradicted by the log's last entry in 4/5
     ships; the ⚠ line right in 5/5. Only `Ship:` cannot be computed. → #8.
   - **Agent text vs tools:** `agents/steward.md:59-60` still instructs a done/-move the
-    agent's toolset cannot perform (audit); `:62-66` claims an install instrument —
-    `INSTRUMENTS = [instrGit, instrItems]` (`:151` ✓) has none — #29 builds a
-    RUNNING-version instrument there (the claim becomes true by construction) and #8
-    deletes the done/-move text; lens item 21 adds the un-anchored protocol paths
-    (`SKILL.md:55-56,79`, `commands/next.md:8`, `agents/steward.md:24`). → #29 / #8.
+    agent's toolset cannot perform (audit) → #8 deletes it; the `:62-66` install-instrument
+    claim is CLOSED at 0.5.2 (`INSTRUMENTS` now carries `instrRunning`); lens item 21's
+    un-anchored protocol paths (`SKILL.md:55-56,79`, `commands/next.md:8`,
+    `agents/steward.md:24`) → #8.
   - **Status contract adopted in 1/5 ships** — the done/-ritual + stub litter stand on
     the other four until `steward-backfill` runs there. → #12.
   - **Wrong-root drops still land** in the aithseis inbox — not the hook (root anchoring
@@ -310,7 +341,7 @@ capability reach) — it CHECKS, never generates.
   copy-plus-stub ritual (the agent's toolset cannot delete/move) until a session runs
   `bin/steward-backfill.js` — Phase 2 (#12) backfills the fleet.
 
-## kb (0.12.0) — the memory organ: pull core + ambient push
+## kb (0.13.0) — the memory organ: pull core + ambient push (bounded since 0.13.0)
 
 - **0.10.3 (2026-08-23, strike 1 — installed same day):** new `lib/project-root.js`;
   kb-pull + kb-session-start anchor to the nearest `.git` ancestor (payload cwd
@@ -325,6 +356,21 @@ capability reach) — it CHECKS, never generates.
   (`isChildSession`) — a judge child never pays a kb-pull fire; `kb-scribe-stop.js` + its
   42-check suite DELETED (glob-verified absent 2026-09-08); the kb-session suite pins a
   fake HOME (the source of the 79 temp roots in the real cue file). kb-pull 51/51 at ship.
+- **SHIPPED 0.13.0 (2026-09-09, `68ce999` — tasks #27 CLOSED, harness G6):** kb-pull's
+  WHOLE output stays within `PLATFORM_INLINE_BOUND_BYTES = 8192` (measured: the smallest
+  output the platform ever stubbed was 9.9 KB ×3, 10 KB ×1 — the bound sits under the
+  floor, not at the nominal 10 KB); the digest is cut on a line boundary with a marker
+  naming the platform; per-session hint dedupe via `lib/pull-state.js` (home-side
+  `~/.claude/kb/pull-state/<root-hash>.json`, session-scoped, presence-gated, no
+  `session_id` = never suppress; `KB_PULL_STATE_DIR` test seam) + a `(+N more above the
+  floor (k already hinted this session) — kb_query "<terms>")` cue so a held hint becomes a
+  deliberate pull; an unchanged digest → ONE pointer line (the prior copy sits in the
+  transcript); a malformed `.claude/kb.json` → one visible line, digest still injected;
+  trace carries `session_id/prompt_id/held/scores/digest mode/bytes` (feeds #30/#31);
+  kb-session-start clears the digest hash every fire (compaction discards the transcript
+  copy); the body-repeat bonus routed to the body side (`term-overlap.js` floor leak). kb
+  276/276, kb-pull 88/88, footprint 31/31 (the new writer audited with its why). Live probe
+  on this repo's real 11,353 B digest ×3: 8,110 B cut → 324 B pointer → 324 B pointer.
 
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a second
@@ -379,17 +425,20 @@ capability reach) — it CHECKS, never generates.
   stay EVIDENCE-GATED; the first foreign datum did NOT gate them (the crowd-game miss was
   SPLITTER-class, closed by the pattern split mode). The deep re-seed is the next chance.
 - **Parked (design decided, unbuilt):** `kb_capture` MCP write tool.
-- **GAP MAP — audit 2 (measured 2026-09-06; citations are the audit capture's):**
-  - **kb-pull is the largest unread surface:** the digest is injected WHOLE and UNCAPPED
-    every prompt (`kb-pull.js:50`; twin 9,963 B / 110 lines) — 51 of the 53 platform
-    stubs (>10 KB → 2 KB preview) carried it; hints have no per-session dedupe (top-3 ids
-    fill 40% of slots) and are 84% ignored; no `MK_TURN_END_DEPTH` guard (40/78 judge
-    Stops preceded by a kb-pull fire — patterns' menu hook has the guard, this one does
-    not); body-repeat bonus leaks into the subject floor (`term-overlap.js:185,235`); a
-    malformed `.claude/kb.json` silently drops the digest (`kb-pull.js:157` throws before
-    `:170`); `source` facet advertised but unfilterable; archived digests titled by stamp
-    → noise hits; 8-digit runs in h2 titles become timestamps; a BOM defeats frontmatter.
-    → #27 (cap + dedupe + change-aware digest), #25 (depth guard).
+- **GAP MAP — audit 2 (measured 2026-09-06; citations are the audit capture's; reconciled
+  at 0.13.0):**
+  - **kb-pull the largest unread surface — CLOSED at 0.13.0 (#27) + 0.12.0 (#25):** the
+    digest was injected WHOLE and UNCAPPED every prompt (`kb-pull.js:50`; twin 9,963 B /
+    110 lines — 51 of the 53 platform stubs carried it) → bounded at 8,192 B; no
+    per-session dedupe (top-3 ids in 40% of slots, 84% ignored) → dedupe + cue; no
+    `MK_TURN_END_DEPTH` guard → 0.12.0; body-repeat bonus leaking into the subject floor
+    (`term-overlap.js:185,235`) → routed; malformed `.claude/kb.json` silently dropping the
+    digest (`kb-pull.js:157`) → one visible line. Whether the hints are now FOLLOWED is
+    #31's re-measure (baseline 7% strict / 16% loose).
+  - **RESIDUAL small defects (audit, out of #27's scope):** `source` facet advertised but
+    unfilterable; archived digests titled by stamp → noise hits; 8-digit runs in h2 titles
+    become timestamps; a BOM defeats frontmatter. → swept under #38 (knowledge hygiene —
+    the stamp-titled digests are G15's own evidence).
   - **Dead weight + home pollution — CLOSED at 0.12.0 (#26):** scribe script + tests
     deleted; this repo's `kb.json scribe.focus` migrated into `.claude/turn-end.json`
     `duties.session-digest.important` (crowd still carries the dead key → #5); the
@@ -533,9 +582,10 @@ capability reach) — it CHECKS, never generates.
 - **Files:** `plugins/thorough-mode/hooks/thorough-mode.js`.
 - **Audit 2 (2026-09-06):** `@prompt` 11 + `@ship` 5 + `++ @verify` 1 = the owner's REAL
   workflow (the "obsoleted by the model" role below is refuted by usage — @prompt renders
-  FROM the model and is how the owner starts work). Gaps (audit citations): `++` is
+  FROM the model and is how the owner starts work). Gaps (audit citations): `++` was
   injected THREE ways (THOROUGH_AUGMENT 363 B + thorough-mode 1,007 B + global CLAUDE.md
-  restating it under a line that says "not restated here"); `@verify` re-injects 3 of the
+  restating it under a line that says "not restated here") — TWO since the 09-09 Q15 slim
+  dropped the CLAUDE.md restatement (hooks untouched by ruling); `@verify` re-injects 3 of the
   4 always-on rules; the `++` regex fires on pasted code `x ++ ;`, hints fire on "push to"
   / "select … from" / "carefully"; `@prompt`'s steward check uses `process.cwd()` not the
   git root; sub-agent modifier propagation is prose only (no Agent-matcher hook); a
@@ -589,12 +639,13 @@ capability reach) — it CHECKS, never generates.
   footprint lesson) · **standalone, NOT in mk-cc-all** — load-bearing: hook-carrying AND
   the bundle ships skills only, a bundled `/patterns` would find no `catalog/` · fail-open
   everywhere · own copy of the nearest-`.git` walk (cross-plugin duplication deliberate).
-- **Overlap pending (Q15) — now MEASURED (audit 2):** the design-open concern has FIVE
+- **Overlap — RULED 2026-09-09 (Q15: SLIM ONLY):** the design-open concern had FIVE
   surfaces (global CLAUDE.md gate 1,788 B STANDING, per session and per sub-agent ·
   generalize-first hook · pattern-menu · pattern-gate · reuse-gate/@build) firing
-  1,645 B together on one design prompt. `/patterns` was never invoked in any real
-  session; the hooks fire (gate once per prompt_id verified); outcome change unmeasured.
-  Slim / fold-to-one-hook / keep is the owner's call.
+  1,645 B together on one design prompt. The owner kept every hook as it is and slimmed
+  the CLAUDE.md gate to ~640 B (applied same sitting); NO fold into a registry hook. The
+  text surfaces retire only as #37's MEASURED design duty proves itself. `/patterns` was
+  never invoked in any real session; outcome change unmeasured until #31.
 - **Later drop-ins documented, not built:** turn-end pattern-check duty · review lens ·
   essense-flow citation.
 - **Files:** `plugins/patterns/{catalog/patterns.json, hooks/, lib/{render-menu,
@@ -681,5 +732,8 @@ gate proves it stayed a copy. (Caveman's third-party tracker remains unguarded �
 
 **A ship is not live until the process restarts (2026-09-08, G1):** "SHIPPED + PUSHED +
 INSTALLED" describes the disk; a session process keeps the hook code it started with and
-`/clear` does not reload plugins. Until #29 prints the running version, every post-ship
-verdict must name a RESTART in its check.
+`/clear` does not reload plugins. Since 0.7.1 / 0.5.2 (#29, shipped `68ce999`) the running
+version is PRINTED — a stale process sees one line in the briefing and one on the tail —
+so a post-ship verdict reads the trace's `version` field, never the install cache. A NEW
+hook EVENT (0.8.0's PostToolUse pair) fires nowhere until the restart, so its first real
+fixtures belong to the next sitting by construction.
