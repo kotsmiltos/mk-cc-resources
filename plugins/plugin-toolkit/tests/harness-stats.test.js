@@ -252,9 +252,19 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   check('CLI: checks + kb-pull + digest on disk', v('checks.checks') === 1 && v('kb_pull.fires') === 1 && v('kb_pull.digest_bytes_on_disk') === Buffer.byteLength('# digest\n'));
   const text = run([]);
   check('CLI: the full report renders in the terminal with the window header and baselines line', /harness-stats — /.test(text) && /window: beginning → now/.test(text) && /baselines:/.test(text) && /ran: hook-bytes/.test(text));
-  check('CLI: --line prints nothing without an owner pick', run(['--line']).trim() === '');
+  {
+    // The shipped default pick (owner delegated it, 2026-09-10): five keys, in this order, from defaults/harness-stats.json.
+    const shipped = JSON.parse(fs.readFileSync(cli.DEFAULT_CONFIG_FILE, 'utf8'));
+    check('shipped defaults carry the five delegated line keys, every one registered', eq(shipped.line.keys, ['hook_bytes.per_prompt.p50', 'hook_bytes.per_prompt.p95', 'hints.strict_pct', 'judge.ms.p95', 'turn_end.blocks_per_prompt']) && shipped.line.keys.every((k) => k in registry.keyRegistry()));
+    const l = run(['--line']).trim();
+    check('CLI: --line prints the shipped default keys when the project has no config', l.startsWith('[instr] harness: hook_bytes.per_prompt.p50=') && /hints\.strict_pct=100/.test(l) && /turn_end\.blocks_per_prompt=0/.test(l));
+  }
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ line: { keys: ['hook_bytes.prompts', 'hints.strict_pct'] } }));
-  check('CLI: --line prints the picked keys once configured', /^\[instr\] harness: hook_bytes\.prompts=1 · hints\.strict_pct=100/.test(run(['--line']).trim()));
+  check('CLI: a project config replaces the line keys wholesale', /^\[instr\] harness: hook_bytes\.prompts=1 · hints\.strict_pct=100$/.test(run(['--line']).trim()));
+  fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), '{not json');
+  check('CLI: a malformed project config is reported and the shipped defaults stand', run(['--line']).trim().startsWith('[instr] harness: hook_bytes.per_prompt.p50='));
+  fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ sources: { lens: { enabled: false } } }));
+  check('CLI: project sources merge by id over the shipped defaults; line keys stay shipped when unstated', (() => { const j = JSON.parse(run(['--json'])); return j.skipped.includes('lens') && run(['--line']).trim().startsWith('[instr] harness: hook_bytes.per_prompt.p50='); })());
   check('CLI: --no-transcripts skips the transcript sources and names their keys', (() => { const j = JSON.parse(run(['--json', '--no-transcripts'])); return j.skipped.includes('hook-bytes') && j.missingKeys.some((m) => m.key === 'hints.strict_pct'); })());
   check('CLI: --since / --until window the numbers', JSON.parse(run(['--json', '--since', '2026-09-07'])).metrics['hook_bytes.prompts'].value === 0);
   let bad = 0;

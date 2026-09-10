@@ -10,6 +10,41 @@ Surfacing rule (owner law 2026-09-09, vision invariant 13): a question reaches t
 ONE one-keystroke choice with the recommended default first, batched with its siblings —
 never as a file to read. The context below is for the model and the asking session.
 
+## Q23 · Which `harness-stats` keys earn the standing `[instr]` line? [#31's done-check — the owner's one-keystroke pick; NOTHING is always-on until it lands]
+
+**Context.** `harness-stats` (plugin-toolkit 1.12.0, built 2026-09-09 at `fde02fe`, unpushed)
+reads 93 registered keys from 13 sources and prints the full report IN the session on demand
+(`node plugins/plugin-toolkit/bin/harness-stats.js --root .`). Its `--line` form prints ONE
+`[instr]` line at session open for ONLY the keys named in `<root>/.claude/harness-stats.json`
+(`line.keys`) — that file does not exist on this repo (Read this pass), so the line is empty
+by construction: the #31 done-check said nothing ships always-on without the owner's pick,
+because injected text is a per-session tax (owner 08-02/08-03: "make the steward lighter").
+Whole-life numbers on this repo at the #31 run, for scale: hook bytes p50 7,358 / p95 29,519
+B per prompt; hints strict 9.7%; blocks 13 / nudges 20 over 46 prompts; judge 85 fires,
+chosen-empty 49.4%, ms unknown until 0.7.0+ lines exist. Note what NO key measures yet: a
+Stop hook that never runs (this sitting, state.md) — the transcript-side
+`spawns.stop_hooks_per_fire` vs trace-side `turn_end.prompts` gap is the nearest reading;
+#1 leg 0 names it.
+
+**Options (each a set of registered keys; the pick writes `line.keys`):**
+(a) push cost + follow-through — `hook_bytes.per_prompt.p50`, `hook_bytes.per_prompt.p95`,
+`hints.strict_pct`, `judge.ms.p95`, `turn_end.blocks_per_prompt` (Claude's proposal: the five
+numbers audit 2 argued from); (b) (a) + two liveness keys — `running.installed_vs_checkout`
+(a process behind its install) and `tail.under_bound_pct` (injections the platform would
+stub); (c) nothing standing — full report on demand only, zero bytes at open; (d) the owner
+names any set from the 93.
+
+**Recommended default (Claude's): (b).** Five numbers say whether the harness is cheap and
+followed; the two liveness keys name the two classes that bit real sittings (a stale process
+on 09-06/09-08, stubbed injections 53× in audit 2). One line, far under the bound; reversible
+by editing one array. Under invariant 13 the pick is one keystroke; the session writes the
+file.
+
+**Blocks:** the always-on half of #31 (built, dormant); nothing else — the full report works
+without the pick.
+
+---
+
 ## Q21 · Who may mark knowledge WRONG or unnecessary? [harness §7.8 / G15 — the garden job's authority; feeds #38]
 
 **Context.** Owner, 2026-09-08 (verbatim): *"we are storing too many things. we should be
@@ -33,10 +68,11 @@ N per project, suggested by the scorecard; refutations stay proposal-only; (c) a
 SUPERSESSIONS the substrate already proves (a capture carrying a CORRECTION / supersedes
 header names its target), proposal-only for archives and refutations.
 
-**Recommended default (Claude's): (a) to start, (c) once #30's acted-on trace exists** —
-a lifecycle mark that hides knowledge is a removal in effect, and no removal moves unseen;
-(c) is safe only where the evidence is in the entry itself, and it removes the most
-ritual. (b) needs the usage measure to exist first.
+**Recommended default (Claude's): (a) to start, (c) once the 0.9.0 acted-on trace is LIVE
+(built at `8e0dba4`, unpushed)** — a lifecycle mark that hides knowledge is a removal in
+effect, and no removal moves unseen; (c) is safe only where the evidence is in the entry
+itself, and it removes the most ritual. (b) needs the usage measure live first (`acted_on.*`
+keys, 1.12.0 — 0 spans at the #31 run).
 
 **Blocks:** #38's removal policy; nothing built yet.
 
@@ -226,7 +262,9 @@ and #30 writes the agreement inputs; then run the one check with (3) against (1)
 stays near chance — a coin-flip judge is a dead mechanism, and a dead mechanism is a quality
 failure by the owner's own law.
 
-**Blocks:** nothing built; #30's judge trace is the instrument.
+**Blocks:** nothing. The instrument is BUILT (turn-end 0.9.0 writes `judge_chosen` +
+`ranker_top` on every recall fire; plugin-toolkit 1.12.0 reads `judge.agreement_pct` /
+`judge.agreement_n`) — the one check runs the moment #1 leg 1 puts 0.9.0 lines on disk.
 
 ---
 

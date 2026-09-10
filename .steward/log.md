@@ -1218,4 +1218,46 @@ a fake home + projects dir); `tests/trace-schema.test.js` 74/74; `node bin/harne
 --until 2026-09-06T09:52:54.368Z` → 25/25 baselined keys at +0.0% (prompts 45, avg 8094, p50 7239,
 p95 22673, max 30915, total 355.7 KB, UPS avg 3869 / p50 2737 / p95 9314, hints 30/3/5/10%, nudges
 19, blocks 13, give-ups 12, w/block 10, ≥3 blocks 1, turn-end 128 fires / p50 190 / p95 56539 / max
-60184 / 2092 s, 5 Stop hooks per fire); gates: `test-all --root .` 35/35 suites / 2023 checks (the harness-stats suite is the 35th; essense-flow green in this sweep); `registry-check --root .` consistent (exit 0); `repo-guard` from the root clean (exit 0) after ONE real finding — three leaked-path hits on the lens parser's `a:\s*`-shaped regex fragments (a one-letter key + colon + backslash reads as a drive path; the file was untracked during the #30 run, so unscanned) — fixed in source, not allowlisted. Nothing pushed; installed still 0.8.0 / 0.13.0 / 0.5.1 / 1.11.0 — a ship needs the owner's push + `claude plugin update` + restart.
+60184 / 2092 s, 5 Stop hooks per fire); gates: `test-all --root .` 35/35 suites / 2023 checks (the harness-stats suite is the 35th; essense-flow green in this sweep); `registry-check --root .` consistent (exit 0); `repo-guard` from the root clean (exit 0) after ONE real finding — three leaked-path hits on the lens parser's counts regex (a one-letter YAML key, a colon and a backslash-s whitespace class in a row) (a one-letter key + colon + backslash reads as a drive path; the file was untracked during the #30 run, so unscanned) — fixed in source, not allowlisted. Nothing pushed; installed still 0.8.0 / 0.13.0 / 0.5.1 / 1.11.0 — a ship needs the owner's push + `claude plugin update` + restart.
+
+## 2026-09-09 · Steward pass at fde02fe — #30 + #31 CLOSED as built (Phase 1), live legs → #1(g), Q23 opened; FOUND: turn-end's Stop hook silent for the whole sitting
+
+Inputs: the three tail entries (arrival check, #30, #31); inbox empty (every file carries a
+ledger id). Snapshot HEAD `fde02fe` (ref file read) = 2 commits past origin `68ce999` (remote
+ref read): `8e0dba4` (#30) + `fde02fe` (#31), subjects read from the reflog; NOT pushed, NOT
+installed. Recompute: state.md rewritten (ship position, checkout vs installed versions, Phase 1
+section, hook coverage +SubagentStop, platform invariant 2 amended + 6 new, gap list); parts.md —
+turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 / plugin-toolkit 1.12.0 bullets (harness-stats = the
+fourth gate; trace schema v1 = the contract), gap maps reconciled, cross-reference law extended;
+tasks.md — #30 #31 DELETED as closed, #1 rewritten and moved to the top, #32 inherits #31's
+second-run leg, #8 names the key it unblocks, #35 gains the measured SubagentStop substrate,
+#6/#9/#4/#11/#14/#15/#17/#19/#36/#37/#38 re-pointed at the built 1.12.0 / 0.9.0; questions.md —
+Q23 (the `[instr]` key pick, default (b)) opened, Q20/Q21 re-pointed at the built instruments;
+status.json — no new ids (the inputs were landings, not captures), cursors unchanged, `updated`
+advanced; vision.md untouched (no pivot). Every remaining mechanism task (#32 #8 #17 #33 #35 #34
+#36 #37 #38) names its metric key (re-read).
+**FOUND on disk, in no entry:** `.claude/turn-end/trace.jsonl` = 141 lines, last `t`
+2026-09-09T00:25:49Z, `2da1777e` (this session) = 0 matches, `"version"` = 0 matches in the
+file; `ledger.json` names only `5e8e08b4`; `checks.jsonl` carries 116 lines for `2da1777e` and
+both `samples/` fixtures exist → the 0.8.0 recorder runs in this process while the Stop hook
+wrote NOTHING all sitting. Arrival legs 1 + 5 are therefore FAILED, not unobserved; recorded in
+state.md + parts.md and as #1 leg 0 (diagnose IN this process before any restart; inbox item
+per #1's rule). Also from lines 139–141: the Stop payload now carries `background_tasks` (+
+`session_crons`, `effort`, `scratchpad_dir`) → invariant 2 amended.
+**Checks this pass:** both refs read · `.git/logs/HEAD` grep for both shas · all 16
+`plugins/*/.claude-plugin/plugin.json` versions grep-read · `installed_plugins.json` grep-read
+(turn-end 0.8.0 / kb 0.13.0 / steward 0.5.2 @ 68ce999; lens 0.5.1 / toolkit 1.11.0 @ bc39fe0) ·
+glob: every #30/#31 file present (three `lib/trace-line.js`, `lens-record.js`, `acted-on.js`,
+`trace-schema.test.js`, `harness-stats.test.js`, `bin/harness-stats.js`, `lib/metrics/*`,
+`trace-schema-v1.md`, `harness-baselines.json`) · `lib/metrics/index.js` read (13 sources) +
+every `keys:` array grep-read (`trace.lines_per_dispatch`, `acted_on.*`,
+`briefing.contradictions`, `judge.agreement_pct`, `running.installed_vs_checkout` spelled as
+written) · `.claude/harness-stats.json` Read → absent · lens `hooks/hooks.json` read
+(SubagentStop, matcher `verifiability-lens$`, timeout 10) · `trace-schema-v1.md` "The line"
+table read · capture `20260909-0355` read · `bin/harness-stats.js` grep (`CONFIG_REL`,
+`--line`, `--until`) · root `CLAUDE.md` grep (`:196` three gates vs `:33` harness-stats) ·
+trace.jsonl lines 139–141 read + three greps · `ledger.json` / `checks.jsonl` greps ·
+`.claude/turn-end/` glob. No code touched; no suites run (model-only pass). Stamps are
+approximate (the agent has no clock): this pass `20260909-0500`, placed from the #31 commit
+epoch (~04:32 local); the prior pass's `1400` stamp is not chronological — treat `updated`
+as approximate.

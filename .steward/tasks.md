@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-09-09 · Phase 0 CLOSED at 68ce999 · Q15/Q16/Q18/Q19 law · numbers are stable ids, file order is the order; next free id 39)
+# Tasks — ordered, executor-ready (recomputed 2026-09-09 · Phase 1 BUILT at fde02fe, UNPUSHED · turn-end's Stop hook found SILENT in the live process · numbers are stable ids, file order is the order; next free id 39)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,94 +6,73 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale (2026-09-09 recompute).** Phase 0 (#29 #27 #28) is CLOSED as built +
-shipped `68ce999` + installed — NOT yet running in the owner's process, so its live legs ride
-#1(f) beside Tier 1's (e): one restart proves both ships, and since 0.7.1 the ship itself
-prints whether it is running. Phase 1 (#30 #31) is next and unblocked. Phase 2 (#32 #8) is
-UNBLOCKED by the 09-09 rulings: #32 arms every task the owner starts, advise, satisfied by
-the 0.8.0 exec ledger (ran-and-observed). Phase 3 shrinks — Q15 ruled SLIM ONLY, so #17
-loses its registry-fold leg and keeps the prism run + the runtime cuts; #33 #35 unchanged.
-Phase 4 (#34 #36). **Phase 4b — the owner's two-axes wish** (#37 code-design duty + `@ship`
-design gate; #38 knowledge lifecycle + garden job): preconditions are #28 (built) and
-#30/#31, so either may be pulled forward by an owner pick the moment Phase 1 lands. Under
-invariant 12 (ratified 09-09) every task below that ships a mechanism names its METRIC KEY
-in its done-check — no key, not done. The rest keeps its relative order. #13 stays deleted;
-ids 1–38 are stable, never reused.
+**Ordering rationale (2026-09-09 second recompute).** Phase 1 (#30 trace schema v1 → turn-end
+0.9.0 / kb 0.14.0 / lens 0.6.0; #31 `harness-stats` → plugin-toolkit 1.12.0) is CLOSED as
+BUILT at `8e0dba4` + `fde02fe` — both commits UNPUSHED, nothing installed, so their live legs
+ride #1(g) beside Phase 0's (f) and Tier 1's (e). **#1 moves to the top and changes shape:**
+the steward pass found turn-end's Stop hook SILENT for this entire sitting (0 ledger entries /
+0 trace lines for the session vs 116 recorder lines from the same 0.8.0 cache) — a failed leg
+that the running-version instrument cannot see, so diagnosing it comes before any restart
+(the evidence lives in this process). Phase 2 (#32 #8) follows, UNBLOCKED by the 09-09
+rulings; #32 also inherits #31's "second run shows the deltas" leg; #8 now unblocks a
+registered-but-null key (`briefing.contradictions`). Phase 3 (#17 prism run — the baseline
+numbers now exist; #33; #35 — its SubagentStop substrate is measured). Phase 4 (#34 #36).
+Phase 4b (#37 #38): preconditions #28 + #30 + #31 are all built; either may be pulled forward
+by an owner pick. Under invariant 12 every task below that ships a mechanism names its METRIC
+KEY in its done-check, and since 1.12.0 the key must be REGISTERED in
+`plugins/plugin-toolkit/lib/metrics/index.js` (a key absent from a run is named) — no key, not
+done. The rest keeps its relative order. #13 stays deleted; ids 1–38 stable, never reused.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives. Under invariant 13, a task's done-check is what the
 executor RUNS; the owner reads the outcome in the session, never this file.
 
-## 30. Trace schema v1 + lens telemetry — every evaluator leaves a line (harness G4, Phase 1; S/M) — NEXT
+## 1. Dogfood — FIRST: why is turn-end's Stop hook SILENT in the live process? Then push + update + restart, then the live legs of all three ships (standing watch; gates Phase 2, #12)
 
-- **Why:** the lens has 27 dispatches and ZERO trace — its value is unmeasurable; the
-  judge's pick is nondeterministic (Q20) and `chosen` is empty in ~50% of supplies;
-  turn-end (now with `version`/`stale`/`alreadyRead`), kb-pull (now with
-  `session_id/prompt_id/held/scores/digest mode/bytes`) and the brief hook each write their
-  own trace shape — three writers, no contract. Anthropic's law: every harness component
-  encodes an assumption that goes stale — you can only take out what you can measure.
-- **What:** one schema shared by turn-end, kb, lens, patterns, thorough-mode —
-  `{t, plugin, hook|duty|agent, version, session_id, prompt_id, ms, cost_usd?, engine?,
-  decision, bytes, acted_on?}` (each plugin keeps its OWN writer — plugins install
-  standalone; the schema is a documented contract + a shared drift test, the
-  machine-guard precedent; the 0.7.1 `version` field and 0.13.0 kb-pull fields are already
-  v1-shaped — keep them); lens rollup appends `{a, b, u, escalations, refuted, verified}`
-  from `/verifiability` and the quality-lens duty; `acted_on` derived at the NEXT prompt
-  (did the session touch a hinted/escalated path? — the 0.8.0 file-touch extractor is the
-  reader); the judge writes agreement inputs (index size, chosen ids, `alreadyRead`) so
-  Q20's check is computable from disk. The advancing-vs-oscillating classifier stays parked
-  until this shows escalations get acted on.
-- **Done-check:** one lens dispatch → one line; refute/confirm and acted-on ratios
-  computable from disk; a deliberately malformed line fails the drift test; touched suites
-  green. **Metric key:** `trace.lines_per_dispatch` (lens ≥ 1) and `acted_on` computable.
-
-## 31. `harness-stats` — the scorecard: one gate over drop-in METRIC sources (harness G5 + the inbox-1500 scorecard; Phase 1; absorbs the deleted #13's gate)
-
-- **Why:** "does it do anything?" took two audits and seven agents (08-23, 09-06); the
-  audit's method lives in a session scratchpad; the owner's own frame is *"result based"*;
-  the metric rule is now LAW (invariant 12, Q18) — this is the thing that reads the keys,
-  and without it no key means anything.
-- **What:** `plugin-toolkit/bin/harness-stats.js`, a pure runner over `lib/metrics/` (the
-  repo-guard detector shape: one context gathered once, silence is a finding, a crashed
-  source is reported not skipped) over traces + `checks.jsonl` + transcripts + status.json +
-  log.md: hint-followed % (strict/loose; baseline 7%/16% — first re-measure since 0.13.0's
-  dedupe), tail bytes p50/p95 + % under the bound, kb-pull bytes + `cut|pointer` mix, judge
-  ms p95 + engine mix + agreement (from #30), blocks + wasted nudges per prompt + self-check
-  nudges that named a real mutation (0.8.0), briefing-vs-log contradictions (computable
-  once #8 derives the lines), spawns per prompt (baseline ≥8 UPS + 5 Stop), running≠installed
-  (#29's line count); the audit's scripts become the first sources; printed as ONE `[instr]`
-  line at open + full on demand. **Under invariant 13 the full report renders IN the
-  session** — never "see the file".
-- **Done-check (the gate the old #13 carried):** run once on this repo → numbers reproduce
-  audit 2 within 3% on the overlapping metrics; the owner picks (one keystroke, batched)
-  which numbers earn a standing `[instr]` place — nothing ships always-on without that pick;
-  a second run after #32 shows the deltas. **Metric key:** the scorecard IS the key registry;
-  a plugin whose key is absent from a run is NAMED.
-
-## 1. Dogfood — the live check after the restart: status spine + the 0.7.0 AND 0.8.0/0.13.0/0.5.2 ships (standing watch; gates Phase 2, #12)
-
-- **Why #1 stays open:** two ships (Tier 1 at `bc39fe0`, Phase 0 at `68ce999`) are BUILT,
-  PUSHED and INSTALLED; neither is proven by disk alone. Measured this pass: trace.jsonl
-  138 lines, `"version"`/`"stale"` = 0, `samples/` absent — the owner's process still
-  predates BOTH updates. Step zero of every leg is a RESTART; since 0.7.1 the briefing's
-  `[instr] running …` line says whether it happened.
+- **Why #1 is now the top task:** measured at the 09-09 steward pass — this session
+  (`2da1777e`) has 116 recorder lines in `.claude/turn-end/checks.jsonl` (the 0.8.0-only
+  PostToolUse pair, so the running cache IS 0.8.0) and ZERO Stop-hook output: `trace.jsonl`
+  ends at the previous session's 00:25Z line, `ledger.json` names only the previous session,
+  and no line in the file carries `"version"`. The single blocking tail (self-check, recall,
+  digest, steward-sync, request-closure, quality-lens) was absent for the whole sitting that
+  built #30/#31, and the 0.7.1 instrument cannot report a hook that never runs. On top:
+  two ships installed unproven (Tier 1 `bc39fe0`, Phase 0 `68ce999`) and two commits
+  UNPUSHED (`8e0dba4` #30, `fde02fe` #31).
+- **Leg 0 — diagnose the silence IN THIS PROCESS, before any restart (the evidence dies
+  with it):** (a) the session transcript's hook summaries — is there a Stop-hook record per
+  turn, with what status/duration? (a platform kill at the 90 s timeout shows there; a
+  registration that never took shows nothing); (b) run the INSTALLED 0.8.0
+  `hooks/scripts/turn-end.js` by hand over this session's transcript with a real-shaped Stop
+  payload and TIME it — a crash names its line, a runtime past 90 s names the timeout
+  (candidates, Claude's, unproven: 0.8.0's transcript passes for file-touch +
+  `dropAlreadyRead` on a very long transcript stacked on a 48–54 s judge; a throw before the
+  ledger write); (c) record the finding as an inbox item — per this task's own rule a failed
+  leg is an inbox item, never a hotfix; a code fix is its own task WITH its key.
+- **Leg 1 — ship + load:** push (owner word), `claude plugin update` (turn-end, kb,
+  verifiability-lens, plugin-toolkit), RESTART; the briefing's `[instr] running` line and
+  `harness-stats`'s `running.installed_vs_checkout` say whether both happened.
 - **Legs + status:** (a) staleness — ⚠ right 5/5; false git-HEAD ⚠ + authored prose wrong
-  4/5 → #8; (b) fallback fires — 0.7.0 traces `engine`/`ms`/`costUsd`; readable the moment
-  a 0.7.0+ line exists; (c) ledger truth — CLOSED (#24); (d) statusline — correct;
-  (e) 0.7.0 live legs — a Stop trace line with `engine`, `ms`, `lean`, `deferred`,
-  `payload_keys`; a tail under 9,000 chars with demands first; no kb-pull fire inside a
-  judge child; `[instr] items: N new (oldest Nd)`; one real wake-turn ending on the owner's
-  request (request-closure, never yet observed live); **(f) Phase 0 live legs** — the
-  first Stop line carries `"version":"0.8.0"` and NO stale prefix, the `[instr] running`
-  line is ABSENT after the restart; the first Bash call writes `samples/PostToolUse.json`
-  and `checks.jsonl` grows (the recorder's real fixtures — read them and fix the parser if
-  the keys differ from the guess); kb-pull ≤ 8,192 B, `digest: cut` then `pointer`, no
-  repeated hint id in one session, the `kb_query` cue seen; one self-check nudge naming a
-  real un-checked mutation, one silent allow on a named check. Any new failed leg becomes
-  an inbox item, not a hotfix.
-- **Done-check:** each leg observed at least once with zero UNEXPLAINED instrument lies AND
-  legs (b), (e), (f) read from trace lines carrying `"version"`; then #12 unblocks.
+  4/5 → #8; (b) fallback fires — readable the moment a 0.7.0+ line exists here (none does);
+  (c) ledger truth — CLOSED (#24); (d) statusline — correct; (e) 0.7.0 legs — `engine` /
+  `ms` / `lean` / `deferred` / `payload_keys` SEEN on the previous session's trace lines
+  139–141; still open: no kb-pull fire inside a judge child, `[instr] items: N new (oldest
+  Nd)`, one real wake-turn ending on the owner's request; (f) Phase 0 legs — recorder
+  fixtures REAL, kb-pull inline + `cut`, `[instr] running` absent = equal (all arrival
+  entry); OPEN: a Stop line with `"version"` and no stale prefix, a self-check nudge naming
+  a real un-checked mutation, a silent allow on a named check, `digest: pointer` + the
+  `kb_query` cue; **(g) Phase 1 legs** — first Stop line `"version":"0.9.0"`; a `duty:<id>`
+  line per recall fire with `judge_chosen` + `ranker_top`; a `duty: acted-on` line at the
+  next genuine prompt; kb lines keyed `hook: kb-pull`; after one lens dispatch,
+  `.claude/verifiability-lens/trace.jsonl` holds one `agent: verifiability-lens` line; then
+  `node plugins/plugin-toolkit/bin/harness-stats.js --root .` shows `trace.lines_per_dispatch`
+  ≥ 1, `acted_on.spans` > 0, `judge.agreement_n` > 0, `running.installed_vs_checkout` empty.
+  Any new failed leg becomes an inbox item, not a hotfix.
+- **Done-check:** leg 0's cause named in log.md with the command that showed it; each
+  remaining leg observed at least once with zero UNEXPLAINED instrument lies AND legs (b),
+  (f), (g) read from trace lines carrying `"version"`; then #12 unblocks. **Metric keys:**
+  the silence gap = the transcript's Stop-hook records per prompt (`spawns.stop_hooks_per_fire`
+  source) vs `turn_end.prompts` from the trace; `running.*`.
 
 ## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19
 
@@ -115,11 +94,14 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   the one tail. TaskCreated/TaskCompleted (if the platform exposes them) → status ledger
   entries, never a second task list. The nudge text obeys invariant 13: it names the task
   and the check to run, in the tail, not a file.
-- **Done-check:** arm #30 → a turn that yields without its check → exactly one tail line
-  naming the task and the check; after the suite goes green (recorded in `checks.jsonl`) →
-  silent; a sitting with no armed goal shows no line; turn-end + steward suites green.
-  **Metric key:** `goal.met_before_yield` (sittings whose armed task's check ran before the
-  last yield / armed sittings) + `goal.nudge_heeded`.
+- **Done-check:** arm a task (#8 is the next mechanism) → a turn that yields without its
+  check → exactly one tail line naming the task and the check; after the suite goes green
+  (recorded in `checks.jsonl`) → silent; a sitting with no armed goal shows no line; turn-end
+  + steward suites green; **the second `harness-stats` run** (the leg #31 carried) shows the
+  deltas against `defaults/harness-baselines.json` with the new keys present. Precondition:
+  #1 leg 0 — a duty inside a Stop hook that never runs nudges nobody. **Metric key:**
+  `goal.met_before_yield` (sittings whose armed task's check ran before the last yield /
+  armed sittings) + `goal.nudge_heeded`, registered in `lib/metrics/`.
 
 ## 8. Briefing: compute what drifts, author only what cannot be computed (audit-2 Tier 2 item 12; Phase 2; absorbs the write-time budget check + lens item 21)
 
@@ -131,7 +113,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   this moves the drifting narrative lines to the computed side. Nothing checks a real
   briefing's budget at write time either — computing the lines makes that moot. Invariant
   13 sharpens the target: the briefing is the owner's READING, so every line must be true
-  at the moment it is read.
+  at the moment it is read. **Unblocks a registered key:** `briefing.contradictions`
+  (1.12.0 `briefing-vs-log` source) is `null` by construction until these lines are
+  computed — the scorecard names it as absent on every run until then.
 - **What:** the hook prints `briefing: <date> (<age>d)`, `Last:` = log.md's last heading,
   `Next:` = tasks.md's top-3 headings, `Waiting:` = questions.md's open headings; the
   agent authors ONLY `Ship:`; freshness by SHA — the agent records `views.briefing.head`
@@ -151,7 +135,8 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 
 ## 17. Phase C — the push side re-economized under the quality-over-speed law (audit-2 Tier 2 items 15–16 + harness G7 + the prism run; Phase 3) — registry-fold leg OFF (Q15 SLIM ONLY, 09-09)
 
-- **What:** (0) with the #31 baseline numbers in the brief, ONE `/prism` run on the
+- **What:** (0) `harness-stats` EXISTS (1.12.0) — put its current numbers (`hook_bytes.*`,
+  `hints.*`, `spawns.*`, `tail.*`, `kb_pull.*`) in the brief, then ONE `/prism` run on the
   push-side question — verbatim brief + owner-named lens *what-I-actually-experience* in
   inbox `20260906-1500` — build the winner, re-measure; (1) ~~fold the per-prompt regex
   stack into ONE registry hook~~ — REMOVED by the Q15 ruling: every hook stays as it is;
@@ -191,10 +176,20 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **Why:** agents are found by transcript scan (0.7.0 deferral); each inherits the 25.6 KB
   standing context (25.2 after the slim); the 235 judge children paid the whole harness
   until the lean flags; prism's panel cost ~370k tokens; modifier propagation to sub-agents
-  (`++`, `@verify`) is prose only. No SubagentStart/SubagentStop registration exists.
-- **What:** SubagentStart/SubagentStop hooks → one trace line per agent (type, ms, bytes
-  returned; #30 schema) and the AUTHORITATIVE in-flight set for `defer()` (transcript scan
-  stays the fallback); an isolation policy per agent definition — lean flags for judges,
+  (`++`, `@verify`) is prose only. **Substrate now MEASURED (09-09, capture
+  `20260909-0355`):** SubagentStop carries `agent_id, agent_type, prompt_id,
+  agent_transcript_path, last_assistant_message, stop_hook_active, background_tasks,
+  session_crons`; SubagentStart carries `agent_id, agent_type, prompt_id` and NO
+  `agent_transcript_path` (docs drift) — `agent_id` is the Start↔Stop join key; a plugin
+  agent's type is plugin-scoped (`verifiability-lens:verifiability-lens`), so matchers are
+  regexes; the ONE registration today is lens 0.6.0's recorder (matcher
+  `verifiability-lens$`, checkout only) — the generic hook must not duplicate its line.
+- **What:** SubagentStart/SubagentStop hooks (turn-end, empty matcher = every agent) → one
+  trace-schema-v1 line per agent (`agent: <type>`, ms Start→Stop by `agent_id`, bytes of
+  `last_assistant_message`, model/tokens from the agent transcript) and the AUTHORITATIVE
+  in-flight set for `defer()` (Start without Stop = in flight; transcript scan stays the
+  fallback; `background_tasks` now arrives on Stop payloads too — state.md invariant 2); an
+  isolation policy per agent definition — lean flags for judges,
   `tools`/`effort`/`maxTurns` floors for panel lenses; a PreToolUse hook (matcher `Agent`)
   that injects the prompt's active modifiers recorded home-side by prompt_id (lens
   item 22).
@@ -224,8 +219,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   system-prompt change; the audit's replay scripts sit in a scratchpad; the 0.8.0
   recorder's `samples/` are the first REAL hook payload fixtures the repo will own.
 - **What:** `plugin-toolkit/bin/harness-replay.js` runs every hook over RECORDED payloads
-  (fixtures in-repo, scrubbed of paths — the `samples/` shape) and diffs the #31 scorecard
-  against the committed baseline; test-all discovers it by shape; later `claude plugin
+  (fixtures in-repo, scrubbed of paths — the `samples/` shape; the lens's
+  `SubagentStop.sample.json` and turn-end's `samples/` are the first two) and diffs the
+  `harness-stats` scorecard against `defaults/harness-baselines.json`; test-all discovers it by shape; later `claude plugin
   eval` cases per plugin if/when early access lands.
 - **Done-check:** a deliberate 400 B injection bump shows as a red delta; the sweep still
   runs with no network/judge spawn; test-all `--root` green. **Metric key:** the replay
@@ -240,7 +236,7 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   measure, dispatch scanner, coupling, DRY clusters — 2.1 s on `plugins/kb`, 8 real
   clusters) never runs ambiently. Instance-shaped output is a failure invariant 7 cannot
   SEE. Preconditions now met: the 0.8.0 file-touch extractor names the files a turn
-  touched; #31 gives the key a reader.
+  touched; `harness-stats` (1.12.0) reads the key the moment it is registered.
 - **What:** (1) a turn-end DEMAND duty `design` (advise by default; Q22 may raise `@ship`
   to block) that computes the DELTA on the touched files, per project only (invariant 7's
   scope limit): new switch-on-subtype / hard-coded concrete target, coupling edges added, a
@@ -269,7 +265,8 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   seeing."* Measured: standing 25.6 KB per session AND per sub-agent; log 82 KB, parts
   49 KB; 23 archived digests titled by stamp = noise hits; 84% of hints unread; no
   lifecycle on kb entries — the status contract has one for inbox items only. Precondition:
-  #30's `acted_on` trace gives the usage measure.
+  the 0.9.0 `acted_on` trace + the 1.12.0 `acted_on.*` keys give the usage measure (built;
+  live pending #1).
 - **What:** (1) extend the status contract's item types to kb entries — `live |
   superseded-by:<id> | refuted-by:<id> | archived` in `status.json` (steward = only writer),
   joined at collect (the 0.11.0 `status-join` shape, zero engine change); the engine holds
@@ -348,9 +345,10 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   should report the freshly-installed build. Audit 2 counted 38 MCP calls fleet-wide but
   did not read the version. Same class as G1 — turn-end/steward now print theirs (#29);
   the MCP server's `kb_overview` is the equivalent read. A restart is step zero.
-- **Done-check:** one `kb_overview` call reports `version: 0.13.0` AND a
-  `kb_query`/`kb_read` line with a post-restart timestamp appears in the trace. Both, or
-  the leg is not closed.
+- **Done-check:** one `kb_overview` call reports the INSTALLED version (0.13.0 today; 0.14.0
+  once #1 leg 1 lands) AND a `tool: kb_query|kb_read` line (0.14.0 shape; `tool: kb-pull-hook`
+  was the old key) with a post-restart timestamp appears in the trace. Both, or the leg is
+  not closed.
 
 ## 5. Crowd-game: commit its config, run the DEEP seed, and collect the post-fix turn-end data
 
@@ -380,14 +378,17 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   lines subsume the VOLATILE half; #8 takes the briefing's narrative lines; this sweep
   keeps the STATIC prose half. Open instances, each read from the file that claims it:
   test-all totals (re-run `node plugins/plugin-toolkit/bin/test-all.js --root <repo>` and
-  let ITS output be the number — last ship gate 33/33 suites / 1,849) · plugin-toolkit
+  let ITS output be the number — last gate 35/35 suites / 2,023 at the #31 build) · plugin-toolkit
   1.10.0 RELEASE-NOTES entry (last verified missing 08-01) · RELEASE-NOTES 1.9.0
   checks.yml claim (wording per Q12's answer) · 613 Python glossary-engine checks in no
   documented total · moved-content references from the 07-31 restructure · marketplace
   metadata non-bump convention (decide, then bump-or-drop) · steward CLAUDE.md test-count
   line (50 + 13 since 0.5.2 — re-read the CLAUDE.md side) · the hook-event table in root
-  CLAUDE.md now that turn-end registers PostToolUse. Prefer printing the command over the
-  number wherever the number earns nothing.
+  CLAUDE.md now that turn-end registers PostToolUse and lens 0.6.0 SubagentStop · **root
+  `CLAUDE.md:196` "three repo-level gates" while `:33` and a gate-table row already name
+  harness-stats — four (grep 09-09).** Prefer printing the command over the number wherever
+  the number earns nothing; `harness-stats` now prints the VOLATILE numbers, so any of them
+  hand-written in prose is a defect by construction.
 - **Done-check:** a check (registry-check claim source or peer) fails on today's
   instances and passes after correction; one command re-verifies every documented count
   and hook claim.
@@ -409,10 +410,11 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **What:** two suspects now. (1) The model holds
   `plugins/essense-flow/tests/ledger-compaction.test.js` red on a clean tree (calendar
   drift, governance entries past the 30-day archive threshold), yet repo-wide `test-all
-  --root` runs report all-green (33/33 at the 09-09 ship). (2) NEW 09-09: `test/run-all.cjs`
-  reported exit 1 under test-all on 2 of 5 sweeps in one evening while the same suite run
-  directly passed 54/0 — intermittent under the parallel sweep, untouched by the work (the
-  08-23 transient, stale-lock timing suspect, was never reproduced until now). Run each
+  --root` runs report all-green (33/33 at the 09-09 ship; 35/35 at the #31 build). (2) NEW
+  09-09: `test/run-all.cjs` reported exit 1 under test-all on 3 of 7 sweeps in one day (2/5
+  in the evening, the #30 sweep 33/34, the #31 sweep green) while the same suite run
+  directly passed 54/0 — intermittent under the parallel sweep, untouched by any of the work
+  (the 08-23 transient, stale-lock timing suspect, was never reproduced until now). Run each
   suite DIRECTLY first, then under the sweep five times. If red: author the archive sibling
   (the root fix; raising the threshold re-fires in 30 days — #38's garden job wants the
   same motion) AND find why test-all's shape-discovery missed it; for the intermittent, find
@@ -438,8 +440,10 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   audit 2 says the hints are ignored for REPETITION + SIZE (84% ignored, top-3 ids in 40%
   of slots, the digest stubbed by the platform) — not for vocabulary; an LLM
   characterization pass is the wrong lever before the push side is readable. #27 SHIPPED
-  (kb 0.13.0: bounded, deduped, cued); now re-measure the hint-followed ratio (#31) and the
-  miss classes (#5's crowd list adds the second corpus); bring the Q9 ladder to the owner
+  (kb 0.13.0: bounded, deduped, cued); now re-measure the hint-followed ratio — `node
+  plugins/plugin-toolkit/bin/harness-stats.js --root . --since <the 0.13.0 install stamp>` →
+  `hints.strict_pct` / `hints.loose_pct` (whole-life at the #31 run: 9.7% strict; the
+  post-0.13.0 window is the number that matters) — and the miss classes (#5's crowd list adds the second corpus); bring the Q9 ladder to the owner
   ONLY if misses are then vocabulary-class.
 - **Done-check:** a post-0.13.0 measurement recorded in log.md naming the miss classes; if
   the owner says build: enrich job cached + incremental, ranker tests green, previously
@@ -467,8 +471,8 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **What:** re-run the 2026-07-21 audit methodology on crowd-game transcripts; 5 signals,
   full rules preserved verbatim in
   `.steward/inbox/done/20260721-2345-eval-measurement-recipe.md`. The 08-23 + 09-06
-  audits cover the OTHER ships; this is the crowd-specific before/after — and once #31
-  exists, its numbers replace the hand method.
+  audits cover the OTHER ships; this is the crowd-specific before/after — `harness-stats
+  --root <crowd checkout>` (1.12.0) replaces the hand method.
 - **Done-check:** before/after table with confidence notes. **Owner annoyance = veto
   regardless of numbers.** Unlocks the deferred drop-channel decision (Q8).
 
@@ -476,7 +480,7 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 
 - **What:** coupling/extensibility + tests into every executor step; a deterministic
   model-vs-code drift check (parts.md contracts vs `runner map`). test-all +
-  registry-check + repo-guard + (#31) harness-stats + (#37) the `@ship` design gate are
+  registry-check + repo-guard + harness-stats (1.12.0) + (#37) the `@ship` design gate are
   the gate family #6 extends — reuse, don't re-derive. Respect the coupling scope limit:
   per project, never across the marketplace. Ambient sessions are #37's job (the 08-26 +
   09-08 wishes): patterns 0.1.1 covers the VOCABULARY + pre-write nudge, #37 the
@@ -519,7 +523,7 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **What:** docs + marketplace reposition; classic pipeline preserved (frozen per Q17's
   default); essense-autopilot retires (Q4 — #3 may make this a deletion rather than a
   migration); session-lifecycle + reuse-gate per Q17. Standing rule, now LAW via invariant
-  12: on every model release re-run `harness-stats` (#31) and remove any mechanism whose
+  12: on every model release re-run `harness-stats` (1.12.0) and remove any mechanism whose
   metric is flat. Absorption fodder: handoff/resume redundant in steward projects
   (measured: 0 uses ever); retro/meta-review → steward verbs; truth split memory=owner /
   model=project / CLAUDE.md=code / kb=queryable everything.

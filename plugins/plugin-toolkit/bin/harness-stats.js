@@ -43,6 +43,7 @@ const DIGEST_REL = path.join('.claude', 'kb', 'session-digest.md');
 const LEDGER_REL = path.join('.claude', 'plugins', 'installed_plugins.json');
 const SETTINGS_REL = path.join('.claude', 'settings.json');
 const DEFAULT_BASELINES = path.join(__dirname, '..', 'defaults', 'harness-baselines.json');
+const DEFAULT_CONFIG_FILE = path.join(__dirname, '..', 'defaults', 'harness-stats.json');
 const TRACE_FILE = 'trace.jsonl';
 const TRANSCRIPT_EXT = '.jsonl';
 const PREFERRED_SCOPE = 'user';
@@ -188,16 +189,39 @@ function gatherInstalls(root, home) {
   return { installed, checkout: Object.keys(checkout).length ? checkout : null, registeredHooks, ledgerFound: Boolean(ledger) };
 }
 
+/**
+ * Shipped defaults (defaults/harness-stats.json — `line.keys` is the delegated owner pick,
+ * 2026-09-10) under the project's <root>/.claude/harness-stats.json: `line.keys` replaces the
+ * list wholesale when the project states one; `sources` merge BY ID so a project can tune one
+ * source without restating the rest (repo-guard's config precedent). A malformed project file
+ * is reported and ignored — a scorecard must never refuse to run over its own config.
+ */
 function loadConfig(root) {
-  const cfg = readJson(path.join(root, CONFIG_REL));
-  return cfg && typeof cfg === 'object' ? cfg : { line: { keys: [] }, sources: {} };
+  const shipped = readJson(DEFAULT_CONFIG_FILE) || { line: { keys: [] }, sources: {} };
+  const projectFile = path.join(root, CONFIG_REL);
+  let project = null;
+  if (fs.existsSync(projectFile)) {
+    project = readJson(projectFile);
+    if (!project) console.error(`[harness-stats] ignoring malformed ${CONFIG_REL}`);
+  }
+  const merged = {
+    line: { keys: Array.isArray(shipped.line && shipped.line.keys) ? shipped.line.keys.slice() : [] },
+    sources: { ...((shipped.sources && typeof shipped.sources === 'object') ? shipped.sources : {}) },
+  };
+  if (project && typeof project === 'object') {
+    if (project.line && Array.isArray(project.line.keys)) merged.line.keys = project.line.keys.slice();
+    for (const [id, opts] of Object.entries(project.sources && typeof project.sources === 'object' ? project.sources : {})) {
+      merged.sources[id] = { ...(merged.sources[id] || {}), ...(opts && typeof opts === 'object' ? opts : {}) };
+    }
+  }
+  return merged;
 }
 
 function usage() {
   return 'harness-stats — the scorecard over every trace, ledger and transcript this project left behind\n' +
     '  node bin/harness-stats.js [--root <dir>] [--since <iso>] [--until <iso>] [--json] [--line] [--no-transcripts]\n' +
     '                            [--projects-dir <dir>] [--home <dir>] [--baselines <file>]\n' +
-    '  --line prints the one-line [instr] form for the keys named in <root>/.claude/harness-stats.json (line.keys) — empty until the owner picks.';
+    '  --line prints the one-line [instr] form for line.keys — the shipped default pick (defaults/harness-stats.json), overridden wholesale by <root>/.claude/harness-stats.json.';
 }
 
 function main() {
@@ -245,4 +269,4 @@ function main() {
 
 if (require.main === module) process.exit(main());
 
-module.exports = { parseArgs, projectSlug, gatherTraces, gatherChecks, gatherTranscripts, gatherSteward, gatherInstalls, countHooks, loadConfig, resolveProjectRoot, CONFIG_REL };
+module.exports = { parseArgs, projectSlug, gatherTraces, gatherChecks, gatherTranscripts, gatherSteward, gatherInstalls, countHooks, loadConfig, resolveProjectRoot, CONFIG_REL, DEFAULT_CONFIG_FILE };

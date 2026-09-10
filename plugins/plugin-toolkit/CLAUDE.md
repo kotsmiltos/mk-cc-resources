@@ -107,8 +107,10 @@ lib/harness-stats.js    # 1.12.0 (task #31, harness G5): PURE runner over the me
                         #   finding, a declared key that comes back absent is NAMED (silence is
                         #   not a value), an undeclared key is flagged. format() = the full
                         #   report with drift vs baselines; line() = the [instr] form for the
-                        #   keys the OWNER picked (.claude/harness-stats.json line.keys) — empty
-                        #   until picked, nothing ships always-on without that pick
+                        #   keys in line.keys — the SHIPPED pick (defaults/harness-stats.json:
+                        #   hook bytes p50/p95, hints strict %, judge ms p95, blocks per prompt;
+                        #   owner delegated it 2026-09-10), overridden wholesale by a project's
+                        #   .claude/harness-stats.json; sources merge by id
 lib/metrics/            # the extension surface + shared readers. index.js registry (contract:
                         #   {id, title, surface: traces|checks|transcripts|steward|installs,
                         #   keys[], run(ctx, options) -> {metrics, notes}}; every mechanism

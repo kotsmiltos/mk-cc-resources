@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.8.0) — THE single blocking Stop hook + the exec-result recorder (0.8.0 SHIPPED + INSTALLED 2026-09-09 at `68ce999`; NOT yet running in the owner's process — state.md, and since 0.7.1 the tail SAYS so)
+## turn-end (0.9.0 on disk · 0.8.0 INSTALLED at `68ce999` · this process runs 0.8.0's recorder while its Stop hook is SILENT — state.md) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
 
 - **Exposes:** one `Stop` registration for the whole toolkit — plus, since 0.8.0, an
   INFORMATIONAL PostToolUse + PostToolUseFailure pair on `Bash|PowerShell`
@@ -160,6 +160,19 @@ capability reach) — it CHECKS, never generates.
   undocumented, so keys are recorded, exit parsed best-effort, null never guessed. Suite
   189/189. Live through the real hook on a `sed -i` edit: "Check: none" and "verified by
   inspection" → nudged; a named suite result or a prose re-read → silent allow.
+- **BUILT 0.9.0 (2026-09-09, `8e0dba4`, tasks #30 CLOSED — harness G4; NOT pushed, NOT
+  installed):** `lib/trace-line.js` — the pure v1 writer (builders + `examples()`, discovered
+  by plugin-toolkit's drift suite). The hook line keeps the 0.7.x shape and adds the v1 keys
+  (`plugin`, `version`, `session_id`, `prompt_id`, `ms`, `decision`, `bytes`); one
+  `duty:<id>` line per SUPPLY duty that ran, carrying engine / ms / cost_usd / surfaced /
+  index_size / judge_chosen / ranker_top — the ranker now runs on EVERY recall fire, so the
+  judge-vs-ranker agreement Q20 needs is computable from disk, not from a re-run; one
+  `duty: acted-on` line per closed owner span, derived at the NEXT genuine prompt
+  (`context.js` turn.previous with timestamps, kb_read ids and prompt ids — a wake is the
+  same span; `lib/acted-on.js` reads the sibling traces READ-ONLY; ledger `actedOnUpTo`).
+  Suite 195/195 (+6). **Metric keys:** `acted_on.*`, `judge.agreement_pct` / `agreement_n`
+  (1.12.0 registry). LIVE → #1(g): the first Stop line with `"version":"0.9.0"`, a
+  `duty:<id>` line per recall fire, a `duty: acted-on` line at the next prompt.
 - **GAP MAP — audit 2, reconciled at 0.8.0 (2026-09-09; ✓ = file:line re-read by a steward
   pass, otherwise the audit's or the harness doc's citation).** CLOSED at 0.7.0 / the
   09-06 ship: tail order + size (`runner.js:98` ✓ material-first → demands-first under a
@@ -177,7 +190,12 @@ capability reach) — it CHECKS, never generates.
   Bash-blind (re-served the audit capture read via `head -c` on 09-08 → `dropAlreadyRead`,
   #28) · installed ≠ running invisible (→ 0.7.1, #29). REMAINING:
   - **The judge is a noisy sample** (Judges bullet above) → Q20; `chosen` empty in ~50%
-    of supplies (audit) → #30 traces the agreement inputs.
+    of supplies (49.4% at the #31 run) — the agreement inputs are TRACED since 0.9.0 (#30
+    CLOSED); the one check reads `judge.agreement_pct` once 0.9.0 lines exist live.
+  - **NEW 2026-09-09 — the Stop hook ran ZERO times in the owner's process for a whole
+    sitting** (state.md: 0 ledger entries / 0 trace lines for the session vs 116 recorder
+    lines from the same 0.8.0 cache). Cause unknown from disk; the 0.7.1 instrument cannot
+    see a hook that never runs. → #1 first leg.
   - `DUTIES` is a hard-coded array (`lib/duties/index.js:59`, harness doc re-read 09-08 —
     not discovery by shape); the whole transcript is re-read every Stop
     (`context.js:122-123`, audit: 170 MB → 1.4 s, 673 MB RSS); no per-duty supply budget
@@ -216,11 +234,12 @@ capability reach) — it CHECKS, never generates.
   `hasFilesIn` derives from it, one readdir for both. Duties MODEL what counts as an item
   rather than enumerating names — that is what keeps `done/` and the next placeholder some
   tool drops in out of every count.
-- **Files:** `plugins/turn-end/{lib/{runner,context,ledger,deferral,installed,file-touch}.js,
-  lib/duties/, lib/sources/, lib/judges/, hooks/scripts/{turn-end,tool-record}.js,
-  defaults/config.json}` · **Tests:** `node plugins/turn-end/tests/turn-end.test.js` — 189
-  checks per the 0.8.0 landing (170 at 0.7.0; 146 in 43 s at 0.6.0 — E2E fixtures disable
-  recall; the exe test SKIPS by name without a binary).
+- **Files:** `plugins/turn-end/{lib/{runner,context,ledger,deferral,installed,file-touch,
+  trace-line,acted-on}.js, lib/duties/, lib/sources/, lib/judges/,
+  hooks/scripts/{turn-end,tool-record}.js, defaults/config.json}` · **Tests:** `node
+  plugins/turn-end/tests/turn-end.test.js` — 195 checks per the 0.9.0 landing (189 at 0.8.0;
+  146 in 43 s at 0.6.0 — E2E fixtures disable recall; the exe test SKIPS by name without a
+  binary).
   Replays of measured failures include: ten work turns do not oscillate, the lens is
   asked at most once per request, `done/` + `.gitkeep` are not inbox items, and
   self-check's full ladder end-to-end (nudge → comply → allow; ignore → block; a check
@@ -229,7 +248,10 @@ capability reach) — it CHECKS, never generates.
 - **Ledger:** `.claude/turn-end/ledger.json` — per-`prompt_id` `asked`/`fires` plus a
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
   mtime comparison. Trace: `.claude/turn-end/trace.jsonl` (every line `version` + `stale`
-  since 0.7.1). Exec ledger (0.8.0): `.claude/turn-end/checks.jsonl` + `samples/`.
+  since 0.7.1; v1-shaped since 0.9.0 — `hook: turn-end` per Stop, `duty:<id>` per supply
+  duty, `duty: acted-on` per derived span; on this repo NO such line exists yet — state.md).
+  Exec ledger (0.8.0): `.claude/turn-end/checks.jsonl` + `samples/` (real fixtures since
+  09-09).
 
 ## steward (0.5.2) — the active thrust
 
@@ -341,7 +363,7 @@ capability reach) — it CHECKS, never generates.
   copy-plus-stub ritual (the agent's toolset cannot delete/move) until a session runs
   `bin/steward-backfill.js` — Phase 2 (#12) backfills the fleet.
 
-## kb (0.13.0) — the memory organ: pull core + ambient push (bounded since 0.13.0)
+## kb (0.14.0 on disk · 0.13.0 INSTALLED) — the memory organ: pull core + ambient push (bounded since 0.13.0, v1-traced since 0.14.0)
 
 - **0.10.3 (2026-08-23, strike 1 — installed same day):** new `lib/project-root.js`;
   kb-pull + kb-session-start anchor to the nearest `.git` ancestor (payload cwd
@@ -371,6 +393,14 @@ capability reach) — it CHECKS, never generates.
   copy); the body-repeat bonus routed to the body side (`term-overlap.js` floor leak). kb
   276/276, kb-pull 88/88, footprint 31/31 (the new writer audited with its why). Live probe
   on this repo's real 11,353 B digest ×3: 8,110 B cut → 324 B pointer → 324 B pointer.
+- **BUILT 0.14.0 (2026-09-09, `8e0dba4` — #30's kb half; NOT pushed, NOT installed):**
+  kb-pull, kb-session-start and the MCP tool calls write trace-schema-v1 lines through
+  `lib/trace-line.js` (present on disk): kb-pull keyed `hook: kb-pull` (was `tool:
+  kb-pull-hook` — the 1.12.0 `kb_pull` source reads BOTH spellings, so history stays
+  countable), `hook: kb-session-start` per open, `tool: kb_query|kb_read|kb_overview` per
+  MCP call with null session/prompt ids by construction (a stdio server has neither).
+  Suites at build: kb-pull 89 · kb-session 79 · mcp 45 · footprint 31 · kb 276. LIVE →
+  #1(g) after push + install + restart.
 
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a second
@@ -447,35 +477,64 @@ capability reach) — it CHECKS, never generates.
     push tax rose. The hints-ignored cause is REPETITION + SIZE, not vocabulary — rung 2
     (#11) stays parked behind #27.
 
-## verifiability-lens (0.5.1) — no hook, and since 0.5.1 no dead hook either
+## verifiability-lens (0.6.0 on disk · 0.5.1 INSTALLED) — no Stop hook; since 0.6.0 ONE informational SubagentStop recorder
 
 - **Exposes:** A/B/U classification + completeness + quality-bar checks; surfacing triage
   via recipient profile; per-project override (`.claude/verifiability-lens/profile.yaml`) +
   `focus:` list + 3 presets, read-once rule; `/verifiability`.
-- **Carries NO hook:** `hooks/hooks.json` is `{"hooks": {}}`. The old Stop hook's
-  fire-once guard bounded CONSECUTIVE blocks rather than total fires (a steady 50% duty
-  cycle — 8 fires over ONE user request) and keyed on a hash of the turn's text, so every
-  correction turn looked new. Its trigger is now turn-end's `quality-lens` duty, `advise`.
-- **Files:** `plugins/verifiability-lens/` · design: `design/verifiability-awareness.md`.
+- **Carries NO Stop hook (installed 0.5.1: `hooks/hooks.json` is `{"hooks": {}}`).** The
+  old Stop hook's fire-once guard bounded CONSECUTIVE blocks rather than total fires (a
+  steady 50% duty cycle — 8 fires over ONE user request) and keyed on a hash of the turn's
+  text, so every correction turn looked new. Its trigger is now turn-end's `quality-lens`
+  duty, `advise`.
+- **BUILT 0.6.0 (2026-09-09, `8e0dba4`, tasks #30 CLOSED — harness G4; NOT pushed, NOT
+  installed): ONE informational SubagentStop RECORDER.** `hooks/hooks.json` (read this pass)
+  registers SubagentStop, matcher `verifiability-lens$` — real dispatches carry the
+  plugin-scoped type `verifiability-lens:verifiability-lens` (81 transcripts), so the matcher
+  is a regex tolerant of both spellings — → `hooks/scripts/lens-record.js`, timeout 10: one
+  trace-schema-v1 line per dispatch (`agent: verifiability-lens`) to
+  `.claude/verifiability-lens/trace.jsonl` from the payload's `last_assistant_message` (the
+  rollup: a/b/u, escalations, auto_resolved, suppressed, verified/refuted, completeness — a
+  count not stated is null, never 0) + duration / model / tokens from
+  `agent_transcript_path`; one real payload saved under `samples/` (the 0.8.0 recorder
+  precedent); zero output, never blocks, stands down in judge children, writes only under
+  the project root. `lib/trace-line.js` = the pure writer (`parseRollup`, `lineFor`,
+  `examples()`), discovered by the toolkit drift suite; the agent def now states
+  `verification: {verified, refuted, unverifiable}` in its rollup. **Substrate MEASURED
+  live** (capture `20260909-0355`; a lean `claude -p` haiku probe with a `--plugin-dir`
+  dump plugin, 9 s, $0.036): SubagentStop keys `session_id, transcript_path, cwd,
+  prompt_id, permission_mode, agent_id, agent_type, hook_event_name, stop_hook_active,
+  agent_transcript_path, last_assistant_message, background_tasks, session_crons`;
+  SubagentStart has NO `agent_transcript_path` although the hooks reference shows one (docs
+  drift) — `agent_id` at Start and Stop is the join key #35 stands on. Parser bug caught on
+  the real 2026-08-23 rollup before ship (`\s*` in a YAML key regex swallowed the first
+  `- item` line — escalations 1 read as 0). Suite 58/58 (+18, E2E over the real payload
+  shape; fixture `tests/fixtures/SubagentStop.sample.json`, paths sanitized). **Metric key:**
+  `trace.lines_per_dispatch` (1.12.0 `lens` source — 6 dispatches / 0 lines at the #31 run,
+  the recorder being uninstalled). LIVE → #1(g): push + install + restart + one dispatch.
+- **Files:** `plugins/verifiability-lens/{agents/, hooks/{hooks.json, scripts/lens-record.js},
+  lib/trace-line.js, tests/}` · design: `design/verifiability-awareness.md` · **Tests:**
+  `node plugins/verifiability-lens/tests/verifiability-lens.test.js` (58 per the 0.6.0
+  landing).
   Its plugin CLAUDE.md now records the 0.5.0 retirement (patched in the 2026-07-31
   restructure, grep-verified) — that drift instance is CLOSED.
 - **Audit 2 (2026-09-06) → 0.5.1 the same day (#26):** ON everywhere via the user-global
   config; 27 dispatches; ZERO telemetry (no trace, no refute/confirm ratio, no cost) — its
-  value is UNMEASURABLE → #30 (trace schema + lens rollup). The RETIRED Stop hook scripts
+  value was UNMEASURABLE → CLOSED at 0.6.0 (the recorder above; live proof pending). The RETIRED Stop hook scripts
   + their 39-check suite are DELETED (glob-verified absent 2026-09-08), replaced by
   `tests/verifiability-lens.test.js` — 33 contract checks over agent/rubric/profile/
   presets/metadata/no-hook; CLAUDE.md/README/plugin.json/agent.md no longer describe a
   live hook (the drift instance is CLOSED again, this time by deletion). The
   advancing-vs-oscillating classifier stays deliberately unbuilt (`quality-lens.js:25-27`)
-  until #30 shows escalations get acted on.
+  until `acted_on.lens.pct` (0.9.0 trace + 1.12.0 key) shows escalations get acted on.
 - **v3 role:** kept, re-economized at Phase C.
 
-## plugin-toolkit (1.11.0) — dev/maintenance + measurement + THREE gates (two more planned in the same shape: #31 `harness-stats`, #36 `harness-replay`)
+## plugin-toolkit (1.12.0 on disk · 1.11.0 INSTALLED) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
 
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit, /code-glossary
   (deterministic `code_glossary/` Python engine: glossary, MAP.md,
   `runner diff|coupling|extensibility`), /dry-refactor (preflight + dry-run, zero source
-  writes), and three one-command gates, each a pure runner over a drop-in registry:
+  writes), and four one-command gates, each a pure runner over a drop-in registry:
   - **repo-guard** (`bin/repo-guard.js`, 1.8.0) over `lib/detectors/` — ONE frozen
     context; exit 0 clean / 1 blocking / 2 cannot-run. **Root cwd REQUIRED + read the
     exit code DIRECT, never after a pipe (measured 2026-08-27, the 1.10.1 catch-up
@@ -501,6 +560,43 @@ capability reach) — it CHECKS, never generates.
     MISMATCH fails, INFORMATIONAL reports (`capability-reach`: `lib|bin|defaults` do not
     travel in a bundle install — measured from the installed cache). Every claim source
     has a negative control in the suite.
+  - **harness-stats** (`bin/harness-stats.js`, 1.12.0 — BUILT 2026-09-09 `fde02fe`, tasks
+    #31 CLOSED, harness G5; NOT pushed, NOT installed) over `lib/metrics/` — the SCORECARD,
+    in repo-guard's shape: context gathered ONCE (`.claude/*/trace.jsonl` by shape,
+    `checks.jsonl`, the project's transcripts under the home projects dir, `.steward/`, the
+    install ledger + hook registrations), every source reads the frozen object; a crashed
+    source is a finding, a declared key that comes back absent is NAMED, an undeclared key
+    is flagged. Source contract (`lib/metrics/index.js`, read this pass): `{id, title,
+    surface: traces|checks|transcripts|steward|installs, keys[], run(ctx, options) ->
+    {metrics, notes}}` — **the key registry invariant 12 points at:** a mechanism registers
+    its key here or does not ship. 13 sources / 93 keys: `hook_bytes.*` · `hints.*` ·
+    `turn_end.*` · `stop.*` · `judge.*` (incl. `agreement_pct` from 0.9.0 duty lines — Q20)
+    · `tail.*` · `kb_pull.*` · `acted_on.*` · `lens.*` + `trace.lines_per_dispatch` ·
+    `checks.*` · `spawns.*` (Stop hooks per fire EXACT; UPS records per prompt a LOWER
+    bound — silent hooks leave no record; registered counts from settings + enabled plugins)
+    · `running.*` · `briefing.has_model` + `briefing.contradictions` (null until #8).
+    `lib/metrics/transcripts.js` = audit 2's scanner in-repo, every event TIMESTAMPED and
+    windowed (`--since` / `--until`) — a whole-span model cannot reproduce a mid-span
+    snapshot; that is how the first run's +8..+47% drift on six numbers was found and closed.
+    `defaults/harness-baselines.json` carries the audit numbers with provenance; the report
+    prints drift beside every baselined key; renders IN the session (invariant 13); never
+    writes. `--line` prints the `[instr]` form ONLY for the keys the owner picks in
+    `.claude/harness-stats.json` (`line.keys`) — the file does not exist on this repo yet
+    (Q23), so nothing is always-on. MEASURED: `--until 2026-09-06T09:52:54.368Z` reproduces
+    all 25 audit-2 numbers at +0.0%. Suite `tests/harness-stats.test.js` 66/66 (registry,
+    runner crash / silent key / absent surface, scanner over the REAL record shapes incl.
+    stubbed previews, every source, CLI E2E on a temp root with a fake home — never the
+    host repo).
+  - **Trace schema v1** (`references/trace-schema-v1.md` + validator
+    `lib/metrics/trace-schema.js`, #30 — the cross-plugin CONTRACT, ratified 2026-09-09; read
+    this pass): required `t / plugin / version / session_id / prompt_id / ms / decision /
+    bytes`, exactly one of `hook | duty | agent | tool`, optional `cost_usd / engine /
+    acted_on`; writer-specific keys ride along; legacy lines (no `plugin` key) are never
+    malformed. Each plugin keeps its OWN pure `lib/trace-line.js` exporting builders +
+    `examples()` (plugins install standalone — no shared writer); `tests/trace-schema.test.js`
+    (74/74) discovers every sibling writer BY SHAPE and validates every example, plus the
+    negative (a line minus `decision` fails) — the machine-guard-drift precedent: sameness
+    checked mechanically. Writers today: turn-end 0.9.0, kb 0.14.0, verifiability-lens 0.6.0.
 - **`runner coupling` SCOPE LIMIT (measured 2026-07-28, first run over `plugins/`):**
   assumes one codebase; across independently-installed plugins it fabricates edges
   (5-module cycle, `alert-sounds → kb`) and clustering flags cross-plugin duplicates
@@ -512,11 +608,14 @@ capability reach) — it CHECKS, never generates.
   (malformed config THROWS).
 - **Tests:** `uv run pytest tests/` from the code-glossary skill folder (613 checks that
   appeared in no documented count until test-all found them);
-  `node plugins/plugin-toolkit/tests/{repo-guard,test-sweep,registry-check}.test.js` —
-  in-memory/synthetic fixtures only.
-- **Doc gap (this pass):** 1.10.0 shipped with NO RELEASE-NOTES entry (plugin.json +
-  marketplace row moved, the notes did not); RELEASE-NOTES 1.9.0 still claims
-  `.github/workflows/checks.yml` exists — reverted in `3633ff7`, see Q12.
+  `node plugins/plugin-toolkit/tests/{repo-guard,test-sweep,registry-check,harness-stats,
+  trace-schema}.test.js` — in-memory/synthetic fixtures only (the trace-schema suite reads
+  the sibling plugins' `lib/trace-line.js` on purpose: that IS the drift check).
+- **Doc gap:** 1.10.0 shipped with NO RELEASE-NOTES entry (plugin.json + marketplace row
+  moved, the notes did not); RELEASE-NOTES 1.9.0 still claims `.github/workflows/checks.yml`
+  exists — reverted in `3633ff7`, see Q12; **NEW 09-09:** root `CLAUDE.md:196` still says
+  "three repo-level gates" while `:33` and a gate-table row already name harness-stats
+  (grep this pass) → #6.
 - **DISTRIBUTION — CHANGED 2026-07-31 (owner-approved via /doctor; see state.md):**
   installed STANDALONE at user scope (1.10.0 @ current HEAD) with the mk-cc-all bundle
   DISABLED. A standalone install carries `lib/`, `bin/`, `defaults/`, so the three gates
@@ -736,4 +835,7 @@ INSTALLED" describes the disk; a session process keeps the hook code it started 
 version is PRINTED — a stale process sees one line in the briefing and one on the tail —
 so a post-ship verdict reads the trace's `version` field, never the install cache. A NEW
 hook EVENT (0.8.0's PostToolUse pair) fires nowhere until the restart, so its first real
-fixtures belong to the next sitting by construction.
+fixtures belong to the next sitting by construction. **And a hook that never RUNS leaves no
+line (2026-09-09, state.md):** the running-version instrument is only as alive as the hook
+carrying it — a post-ship verdict pairs the Stop trace with a sibling ledger
+(`checks.jsonl`) or the transcript's hook summaries before reading silence as "no Stop yet".

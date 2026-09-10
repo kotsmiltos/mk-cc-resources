@@ -1,0 +1,13 @@
+{
+  "_provenance": "Shipped defaults for bin/harness-stats.js. `line.keys` = the numbers that earn the one-line `[instr]` form. Owner ruling 2026-09-10: the pick was delegated (\"you decide\") — these five are Claude's choice, not the owner's, and a project overrides them in <root>/.claude/harness-stats.json (line.keys replaces the list wholesale; sources merge by id). Why these five: the per-prompt injection tax both audits led with (p50 + p95), whether the push is worth its bytes (hints followed, strict), the recall judge's wall-clock (the one Stop cost the owner feels), and friction (blocks per prompt).",
+  "line": {
+    "keys": [
+      "hook_bytes.per_prompt.p50",
+      "hook_bytes.per_prompt.p95",
+      "hints.strict_pct",
+      "judge.ms.p95",
+      "turn_end.blocks_per_prompt"
+    ]
+  },
+  "sources": {}
+}

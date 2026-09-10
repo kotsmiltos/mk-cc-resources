@@ -22,8 +22,10 @@ numbers with provenance; the report prints drift beside every baselined key.
 **MEASURED:** `--until 2026-09-06T09:52:54.368Z` (the audit output's mtime) reproduces all 25
 overlapping numbers at +0.0% — prompts 45, avg 8094 / p50 7239 / p95 22673 / max 30915, hints
 30 → 3 strict / 5 loose, nudges 19 / blocks 13 / give-ups 12, turn-end 128 fires p50 190 ms /
-p95 56.5 s / 2092 s. `--line` prints the `[instr]` form for the keys the OWNER picks in
-`.claude/harness-stats.json` — empty until picked; nothing ships always-on without that pick.
+p95 56.5 s / 2092 s. `--line` prints the five-key `[instr]` form — the owner delegated the pick (2026-09-10), so it ships as
+`defaults/harness-stats.json` (hook bytes p50/p95, hints strict %, judge ms p95, blocks per prompt),
+overridden wholesale by a project's `.claude/harness-stats.json` (sources merge by id). The standing
+line AT SESSION OPEN is not wired yet — a SessionStart instrument is the next small step.
 `--json`, `--since/--until`, `--no-transcripts`, `--home`, `--projects-dir` (tests).
 Suite `tests/harness-stats.test.js` 66 checks (registry, runner, scanner over the REAL record
 shapes, every source, CLI E2E on a temp root with a fake home + projects dir).

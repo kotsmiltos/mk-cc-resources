@@ -1,5 +1,5 @@
 # mk-cc-resources — briefing (2026-09-09)
-Ship: Phase 0 (#29 running≠installed · #27 kb-pull bounded · #28 ground-truth self-check + exec recorder) shipped + installed 09-09 — this process still predates it; the running-version line above now says so itself. One restart proves both ships live.
-Last: one sitting 09-08→09 — rulings Q19 ran-and-observed · Q18 goal arms every task, metric rule = invariant 12 · Q16 keep the cue · Q15 slim only (applied) · owner law no pointers / least clicks = invariant 13 · two-axes wish → #37 #38.
-Next: #30 trace schema v1 + lens telemetry → #31 harness-stats scorecard → #1 live check after restart → #32 goal duty.
-Waiting: Q21 who may mark knowledge wrong (default proposal-only) · Q22 design-duty severity (default advise, block at @ship) · Q20 recall judge · Q17 · Q14 · Q13 · Q12.
+Ship: Phase 1 BUILT — #30 trace schema v1 (turn-end / kb / lens writers + drift suite + acted-on) and #31 harness-stats (the 4th gate; audit 2 reproduced at +0.0%) — two commits local, unpushed, uninstalled.
+Last: the steward pass found turn-end's Stop hook SILENT all sitting — 0 trace/ledger lines vs 116 recorder lines from the same 0.8.0 cache: the tail's six duties were absent. #30 #31 closed as built.
+Next: #1 leg 0 — diagnose the silent Stop hook IN this process before any restart; then push + update + restart + live legs; then #32 goal duty, #8 briefing.
+Waiting: Q23 which harness-stats keys go standing (default: 5 cost/follow-through keys + 2 liveness) · Q21 · Q22 · Q20 · Q17 · Q14 · Q13 · Q12.
