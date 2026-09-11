@@ -16,7 +16,7 @@ repo-level CLI gates (repo-guard, test-all, registry-check, harness-stats) usabl
 skills/
   skill-heal/           # Audit plugin's skill set against best practices
   plugin-scaffold/      # Bootstrap new plugin: dirs + cross-refs in one invocation
-  version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + RELEASE-NOTES
+  version-bump/         # Cascade version updates across plugin.json + marketplace + bundle + CHANGELOG
   docs-audit/           # Cross-check CLAUDE.md + README + marketplace.json vs disk state
   code-glossary/        # Functionality glossary + DRY audit (v2): deterministic Python engine
                         #   (code_glossary/ package: AST + tree-sitter, 5 signals, Pass A

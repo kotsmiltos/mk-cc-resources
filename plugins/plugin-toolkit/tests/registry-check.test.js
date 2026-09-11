@@ -19,6 +19,7 @@ const assert = require('assert');
 const checker = require('../lib/registry-check');
 const registry = require('../lib/registry-claims');
 const docVersion = require('../lib/registry-claims/doc-version');
+const pluginDocs = require('../lib/registry-claims/plugin-docs');
 const referencedPath = require('../lib/registry-claims/referenced-path');
 const bundlePaths = require('../lib/registry-claims/bundle-paths');
 
@@ -34,6 +35,12 @@ function check(name, fn) {
     console.error(`FAIL: ${name}\n      ${err.message}`);
   }
 }
+
+/** The per-plugin docs a consistent fixture always has; an `exists` override keeps them. */
+const DOC_PATHS = [
+  'plugins/alpha/README.md', 'plugins/alpha/CHANGELOG.md',
+  'plugins/beta/README.md', 'plugins/beta/CHANGELOG.md'
+];
 
 /** A synthetic repo: two plugins, a bundle, a marketplace, a README — all consistent. */
 function ctx(over = {}) {
@@ -54,9 +61,15 @@ function ctx(over = {}) {
       { name: 'alpha', dir: 'plugins/alpha', manifestPath: 'plugins/alpha/.claude-plugin/plugin.json', manifest: { version: '1.0.0' } },
       { name: 'beta', dir: 'plugins/beta', manifestPath: 'plugins/beta/.claude-plugin/plugin.json', manifest: { version: '2.1.0' } }
     ],
-    docs: { 'README.md': '| Plugin | Version |\n|---|---|\n| **alpha** | 1.0.0 | does things |\n| **beta** | 2.1.0 | does other things |\n' },
+    docs: {
+      'README.md': '| Plugin | Version |\n|---|---|\n| **alpha** | 1.0.0 | does things |\n| **beta** | 2.1.0 | does other things |\n',
+      // Every plugin ships a README + a CHANGELOG whose newest entry is the shipped version —
+      // the consistent state plugin-docs exists to defend.
+      'plugins/alpha/CHANGELOG.md': '# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### Added\n- it exists\n',
+      'plugins/beta/CHANGELOG.md': '# Changelog\n\n## [2.1.0] - 2026-01-02\n\n### Fixed\n- a thing\n'
+    },
     workflows: { 'workflows/ci.yml': '    run: node plugins/alpha/bin/go.js\n' },
-    exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin/go.js'].includes(rel)
+    exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin/go.js', ...DOC_PATHS].includes(rel)
   };
   return { ...base, ...over };
 }
@@ -143,6 +156,75 @@ check('versionRows reads only bolded-name + bare-semver rows', () => {
   assert.deepStrictEqual(rows, [{ line: 1, name: 'a', version: '1.2.3' }]);
 });
 
+// ---------- plugin-docs: the install card and the two files behind it ----------
+
+check('plugin-docs: a consistent repo produces nothing', () => {
+  assert.deepStrictEqual(checker.check(ctx()).mismatches.filter((m) => m.source === 'plugin-docs'), []);
+});
+
+check('NEGATIVE CONTROL plugin-docs: a plugin with no README is caught', () => {
+  const c = ctx();
+  const had = c.exists;
+  c.exists = (rel) => rel !== 'plugins/beta/README.md' && had(rel);
+  const f = checker.check(c).mismatches.find((m) => m.source === 'plugin-docs');
+  assert.ok(f, 'expected a finding');
+  assert.match(f.where, /plugins\/beta\/README\.md/);
+});
+
+check('NEGATIVE CONTROL plugin-docs: a plugin with no CHANGELOG is caught', () => {
+  const c = ctx();
+  const had = c.exists;
+  c.exists = (rel) => rel !== 'plugins/alpha/CHANGELOG.md' && had(rel);
+  delete c.docs['plugins/alpha/CHANGELOG.md'];
+  const f = checker.check(c).mismatches.find((m) => m.source === 'plugin-docs');
+  assert.ok(f && /CHANGELOG/.test(f.where), 'expected the changelog finding');
+});
+
+check('NEGATIVE CONTROL plugin-docs: a bumped plugin whose newest CHANGELOG entry is older is caught', () => {
+  // The doc half of the version-pin law: the shipped version must have something to read.
+  const c = ctx();
+  c.docs['plugins/beta/CHANGELOG.md'] = '# Changelog\n\n## [2.0.0] - 2026-01-01\n\n### Fixed\n- an older thing\n';
+  const f = checker.check(c).mismatches.find((m) => m.source === 'plugin-docs');
+  assert.ok(f, 'expected a finding');
+  assert.match(f.claimed, /2\.0\.0/);
+  assert.match(f.actual, /2\.1\.0/);
+});
+
+check('plugin-docs accepts the older `## 1.2.3 — summary` heading shape', () => {
+  const c = ctx();
+  c.docs['plugins/beta/CHANGELOG.md'] = '# Release notes\n\n## 2.1.0 — a summary line\n\nprose\n';
+  assert.deepStrictEqual(checker.check(c).mismatches.filter((m) => m.source === 'plugin-docs'), []);
+});
+
+check('NEGATIVE CONTROL plugin-docs: a marketplace description longer than the cap is caught', () => {
+  const c = ctx();
+  c.marketplace.plugins[0].description = 'x'.repeat(pluginDocs.MAX_DESCRIPTION_CHARS + 1);
+  const f = checker.check(c).mismatches.find((m) => m.source === 'plugin-docs');
+  assert.ok(f, 'expected a finding');
+  assert.match(f.where, /marketplace\.json \(alpha\.description\)/);
+});
+
+check('plugin-docs leaves a description AT the cap alone', () => {
+  const c = ctx();
+  c.marketplace.plugins[0].description = 'x'.repeat(pluginDocs.MAX_DESCRIPTION_CHARS);
+  assert.deepStrictEqual(checker.check(c).mismatches.filter((m) => m.source === 'plugin-docs'), []);
+});
+
+check('doc-version reads a LINKED plugin name and a version in a later cell', () => {
+  // The 2026-09-11 README moved every catalog row to `| [name](path) | B | 1.2.3 | … |`.
+  // A checker that only knew `| **name** | 1.2.3 |` went blind on the table it guards.
+  const rows = docVersion.versionRows('| [alpha](plugins/alpha/README.md) | B | 1.0.0 | does things |\n');
+  assert.deepStrictEqual(rows, [{ line: 1, name: 'alpha', version: '1.0.0' }]);
+});
+
+check('NEGATIVE CONTROL doc-version: a stale LINK-form row is caught, in a per-plugin doc', () => {
+  const c = ctx();
+  c.docs['plugins/alpha/README.md'] = '| Plugin | | Version |\n|---|---|---|\n| [beta](../beta/README.md) | B | 2.0.0 | x |\n';
+  const f = checker.check(c).mismatches.find((m) => m.source === 'doc-version');
+  assert.ok(f, 'expected a finding');
+  assert.match(f.where, /plugins\/alpha\/README\.md:3/);
+});
+
 check('NEGATIVE CONTROL bundle-paths: a manifest path that resolves to nothing is caught', () => {
   const c = ctx();
   c.bundle.skills.push('./plugins/gone/skills/');
@@ -151,7 +233,7 @@ check('NEGATIVE CONTROL bundle-paths: a manifest path that resolves to nothing i
 });
 
 check('bundle-paths reports an unbundled skill plugin as a DECISION, not a failure', () => {
-  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/beta/skills', 'plugins/alpha/bin/go.js'].includes(rel) });
+  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/beta/skills', 'plugins/alpha/bin/go.js', ...DOC_PATHS].includes(rel) });
   const r = checker.check(c);
   assert.deepStrictEqual(r.mismatches, [], 'must not fail the run');
   assert.strictEqual(r.informational.length, 1);
@@ -188,7 +270,7 @@ check('NEGATIVE CONTROL capability-reach: an executable that cannot travel is ca
   // MEASURED from the installed bundle cache: plugins/<n>/skills travels, plugins/<n>/bin does
   // not. A pre-push guard with 94 passing checks existed in exactly one checkout while the ship
   // checklist told every project to run it.
-  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin', 'plugins/alpha/bin/go.js'].includes(rel) });
+  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin', 'plugins/alpha/bin/go.js', ...DOC_PATHS].includes(rel) });
   const r = checker.check(c);
   const f = r.informational.find((m) => m.source === 'capability-reach');
   assert.ok(f, `informational: ${r.informational.map((x) => x.source).join(',')}`);
@@ -198,7 +280,7 @@ check('NEGATIVE CONTROL capability-reach: an executable that cannot travel is ca
 check('capability-reach does NOT fail the run — it is an owner decision, not a wrong fact', () => {
   // Got wrong first: every plugin also has its own marketplace row, so a standalone install
   // does carry these. Failing the build would wedge CI on a distribution choice.
-  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin', 'plugins/alpha/bin/go.js'].includes(rel) });
+  const c = ctx({ exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin', 'plugins/alpha/bin/go.js', ...DOC_PATHS].includes(rel) });
   const r = checker.check(c);
   assert.ok(!ids(r).includes('capability-reach'));
   assert.strictEqual(r.clean, true);

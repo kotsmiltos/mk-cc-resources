@@ -1,6 +1,6 @@
 ---
 name: plugin-scaffold
-description: Bootstrap a new mk-cc-resources plugin with proper structure. Generates directory tree + plugin.json + SKILL.md skeletons for named skills + marketplace.json entry + mk-cc-all bundle update + README active-plugins table entry + dedicated README section + CLAUDE.md architecture tree entry + RELEASE-NOTES.md v1.0.0. Use when starting a new plugin from scratch. Mechanical 9-step chain — does it all in one invocation. Asks for plugin name + skill names + descriptions.
+description: Bootstrap a new mk-cc-resources plugin with proper structure. Generates directory tree + plugin.json + SKILL.md skeletons for named skills + marketplace.json entry + mk-cc-all bundle update + README active-plugins table entry + dedicated README section + CLAUDE.md architecture tree entry + CHANGELOG.md v1.0.0. Use when starting a new plugin from scratch. Mechanical 9-step chain — does it all in one invocation. Asks for plugin name + skill names + descriptions.
 disable-model-invocation: true
 argument-hint: "<plugin-name> <skill-name>[,<skill-name>...]"
 ---
@@ -153,21 +153,26 @@ Add to the **Architecture** code block under `plugins/`:
 
 If the plugin warrants its own section (multi-skill or significant), add a top-level `## <Plugin Title>` section after the existing per-plugin sections.
 
-## 9. Create RELEASE-NOTES.md
+## 9. Create CHANGELOG.md + README.md
 
-Path: `plugins/<plugin-name>/RELEASE-NOTES.md`
+`plugins/<plugin-name>/CHANGELOG.md` — Keep a Changelog format, written for whoever INSTALLS it:
 
 ```markdown
-# Release notes — <plugin-name>
+# Changelog
 
-## 1.0.0 — Initial release
+All notable changes to **<plugin-name>** are recorded here, newest first, in the terms that matter
+to someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<plugin description>
+## [1.0.0] - <YYYY-MM-DD>
 
-Skills:
-- **<skill-name>**: <description>
-- ...
+### Added
+- <what the user can now do — one bullet per capability, not per file>
 ```
+
+`plugins/<plugin-name>/README.md` — every plugin has one (registry-check's `plugin-docs` claim
+fails the run without it): what it does, the install command
+(`/plugin install <plugin-name>@mk-cc-resources`), one real usage example, and its requirements.
 
 ## 10. Verify + report
 

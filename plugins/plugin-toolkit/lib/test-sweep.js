@@ -56,7 +56,12 @@ const FAILURE_MARKERS = [
 const COUNT_PATTERNS = [
   { rx: /Total:\s*(\d+);\s*Failures:\s*(\d+)/gi, take: (m) => ({ passed: +m[1] - +m[2], total: +m[1] }) },
   { rx: /(\d+)\/(\d+)\s+(?:checks\s+)?passed/gi, take: (m) => ({ passed: +m[1], total: +m[2] }) },
-  { rx: /#\s*pass\s+(\d+)[\s\S]*?#\s*fail\s+(\d+)/g, take: (m) => ({ passed: +m[1], total: +m[1] + +m[2] }) },
+  // node:test summary. TWO markers, because node changed it: `# pass 13` through node 20, and
+  // `\u2139 pass 13` from node 22 on (measured on node 24.13.1, 2026-09-11). Matching only `#`
+  // silently scored every node-file suite in this repo as ZERO checks — the count stayed
+  // identical when 16 real tests were added AND when they were removed, which is precisely the
+  // "looks like coverage while under-reporting it" failure this file's header warns about.
+  { rx: /[#\u2139]\s*pass\s+(\d+)[\s\S]*?[#\u2139]\s*fail\s+(\d+)/g, take: (m) => ({ passed: +m[1], total: +m[1] + +m[2] }) },
   { rx: /(\d+)\s+passed(?:,\s*(\d+)\s+failed)?/gi, take: (m) => ({ passed: +m[1], total: +m[1] + (+m[2] || 0) }) }
 ];
 
@@ -67,8 +72,8 @@ const COUNT_PATTERNS = [
  * aggregate, which is how a suite checking nothing gets counted as coverage.
  */
 const SKIP_PATTERNS = [
-  /#\s*skipped\s+(\d+)/gi,   // node:test summary
-  /(\d+)\s+skipped/gi        // pytest
+  /[#\u2139]\s*skipped\s+(\d+)/gi,   // node:test summary — `#` to node 20, `\u2139` from node 22
+  /(\d+)\s+skipped/gi                 // pytest
 ];
 
 const OK = 'ok';

@@ -37,7 +37,7 @@ Read these files fully:
 Read disk state:
 - `plugins/*/` directories
 - Each plugin's `.claude-plugin/plugin.json` (for version + description)
-- Each plugin's `RELEASE-NOTES.md` (if exists)
+- Each plugin's `CHANGELOG.md` (if exists) and `README.md`
 
 ## 3. Drift checks
 

@@ -12,24 +12,45 @@
  * review rounds was a stale number", and the fix it prescribes is a deterministic check, because
  * "text can't fix text".
  *
- * Modelled by SHAPE, not by document: a markdown table row whose first cell is a bolded plugin
- * name and whose second cell is a bare semver. That works on any doc that adopts the convention,
+ * Modelled by SHAPE, not by document: a markdown table row that NAMES a plugin in its first cell
+ * and states a bare semver in one of its cells. That works on any doc that adopts the convention,
  * including ones not written yet — naming the two files we happen to have today is how a sweep
  * stops covering the third.
  *
- * Deliberately NOT flagged: a version appearing anywhere else in prose. Release notes, changelog
- * headings and historical narration all legitimately name OLD versions, and flagging those would
- * train the owner to ignore this check — which costs more than the drift it would catch.
+ * The first cell may name the plugin as `**bold**` or as a `[link](path)` — the 2026-09-11 README
+ * rewrite moved every row to the link form (a catalog row should reach the plugin's own page), and
+ * a checker that only knew the bold form would have gone quietly blind on the very table it exists
+ * to guard. The version may sit in any cell, because a catalog row carries other columns first.
+ *
+ * `ctx.docs` carries the root docs AND every `plugins/<name>/README.md` + `CHANGELOG.md`, so the
+ * sweep reaches the per-plugin pages too.
+ *
+ * Deliberately NOT flagged: a version appearing anywhere else in prose. Changelog headings and
+ * historical narration legitimately name OLD versions, and flagging those would train the owner
+ * to ignore this check — which costs more than the drift it would catch. (A CHANGELOG's TOP
+ * heading matching the shipped version IS checked — by `plugin-docs`, which knows which heading
+ * is the current one.)
  */
 
-const VERSION_ROW_RX = /^\|\s*\*\*([a-z0-9][a-z0-9-]*)\*\*\s*\|\s*(\d+\.\d+\.\d+)\s*\|/i;
+const PLUGIN_NAME = '[a-z0-9][a-z0-9-]*';
+// First cell names the plugin: **name** or [name](...). Case-insensitive, like the old shape.
+const ROW_NAME_RX = new RegExp(`^\\|\\s*(?:\\*\\*(${PLUGIN_NAME})\\*\\*|\\[(${PLUGIN_NAME})\\]\\([^)]*\\))\\s*\\|`, 'i');
+// A cell holding nothing but a semver — `1.2.3`, never `v1.2.3` and never prose around it.
+const VERSION_CELL_RX = /^\s*(\d+\.\d+\.\d+)\s*$/;
 
 /** Table rows in `text` that state a plugin's version. */
 function versionRows(text) {
   const rows = [];
   text.split(/\r?\n/).forEach((line, i) => {
-    const m = VERSION_ROW_RX.exec(line);
-    if (m) rows.push({ line: i + 1, name: m[1], version: m[2] });
+    const named = ROW_NAME_RX.exec(line);
+    if (!named) return;
+    const name = named[1] || named[2];
+    // Cells after the name cell; the first that is EXACTLY a semver is the version claim.
+    const cells = line.split('|').slice(2);
+    for (const cell of cells) {
+      const v = VERSION_CELL_RX.exec(cell);
+      if (v) { rows.push({ line: i + 1, name, version: v[1] }); return; }
+    }
   });
   return rows;
 }

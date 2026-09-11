@@ -49,6 +49,7 @@ const SOURCES = [
   require('./plugin-version'),
   require('./plugin-listing'),
   require('./doc-version'),
+  require('./plugin-docs'),
   require('./bundle-paths'),
   require('./referenced-path'),
   require('./capability-reach'),

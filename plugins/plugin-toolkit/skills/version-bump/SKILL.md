@@ -1,12 +1,12 @@
 ---
 name: version-bump
-description: Cascade a version bump across plugin.json + marketplace.json plugin entry + mk-cc-all bundle (if affected) + marketplace.json metadata + RELEASE-NOTES.md entry. Accepts patch/minor/major bump type. Validates semver consistency across all touch points. Use when shipping changes to any plugin. Composable — @ship references this; /plugin-scaffold creates v1.0.0 directly (doesn't call this).
+description: Cascade a version bump across plugin.json + marketplace.json plugin entry + mk-cc-all bundle (if affected) + marketplace.json metadata + CHANGELOG.md entry. Accepts patch/minor/major bump type. Validates semver consistency across all touch points. Use when shipping changes to any plugin. Composable — @ship references this; /plugin-scaffold creates v1.0.0 directly (doesn't call this).
 disable-model-invocation: true
 argument-hint: "<plugin-name> <patch|minor|major> [release notes text]"
 ---
 
 <objective>
-Bump a plugin's version consistently across all 4 touch points (plugin.json, marketplace.json entry, mk-cc-all bundle, marketplace metadata) + add RELEASE-NOTES entry. No drift between docs and reality.
+Bump a plugin's version consistently across all 4 touch points (plugin.json, marketplace.json entry, mk-cc-all bundle, marketplace metadata) + add a CHANGELOG entry. No drift between docs and reality.
 </objective>
 
 ## Current state
@@ -69,21 +69,29 @@ If not bundled: skip the bump — but still run the equality check in step 8; th
 Edit `.claude-plugin/marketplace.json`:
 - `metadata.version`: bump matching the dominant change (use minor if any plugin had minor/major; else patch)
 
-## 7. Add RELEASE-NOTES entry
+## 7. Add CHANGELOG entry
 
-Path: `plugins/<plugin-name>/RELEASE-NOTES.md`
+Path: `plugins/<plugin-name>/CHANGELOG.md` (Keep a Changelog format — the file a person who
+INSTALLS the plugin reads; engineering detail belongs in the commit and in
+`design/notes/<plugin>-history.md`).
 
-Prepend a new section (after the title heading, before existing entries):
+Prepend a new section (after the intro paragraph, before existing entries):
 
 ```markdown
-## <new-version> — <one-line summary>
+## [<new-version>] - <YYYY-MM-DD>
 
-<release notes text from step 1, or "<TBD — fill in>" if not provided>
+### Added | Changed | Fixed | Removed | Deprecated | Security
+- <what a user of this plugin now sees, does, or no longer suffers — not what the code does>
 ```
 
-Date is NOT included (let the user date when they want).
+Rules that make the difference between a changelog and a commit log:
+- Group under the standard headings; drop the ones with nothing in them.
+- Lead with the user-visible effect, then the measurement or reason if there is one.
+- Name the version's date; an unreleased entry may use `## [Unreleased]`.
+- No internal ids, task numbers, or file-level narration.
 
-If RELEASE-NOTES.md doesn't exist, create it with title `# Release notes — <plugin-name>`.
+If CHANGELOG.md doesn't exist, create it with the standard header:
+`# Changelog` + the Keep a Changelog / SemVer sentence, then the entry.
 
 ## 8. Verify all touch points
 
@@ -93,7 +101,7 @@ Run grep-style checks:
 - If bundled: mk-cc-all bundle version updated
 - ALWAYS (bundled or not): root `.claude-plugin/plugin.json` version == marketplace.json `mk-cc-all` entry version — if unequal, a prior ship dropped one write; fix now, don't carry the drift
 - marketplace.json metadata.version updated
-- RELEASE-NOTES.md has new entry at top
+- CHANGELOG.md has a new entry at top, under a standard heading
 
 Report each check with file path + observed version.
 
@@ -107,7 +115,7 @@ Updated:
 - .claude-plugin/marketplace.json (entry)
 - .claude-plugin/marketplace.json (metadata: <old> → <new>)
 - mk-cc-all bundle: <bumped to X.Y.Z | unchanged | not bundled>
-- plugins/<plugin-name>/RELEASE-NOTES.md (new entry at top)
+- plugins/<plugin-name>/CHANGELOG.md (new entry at top)
 
 Next: commit + push (or invoke @ship to verify all pre-push checks).
 ```

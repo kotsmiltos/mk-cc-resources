@@ -13,7 +13,7 @@
  *
  * MEASURED, from the installed bundle cache rather than from documentation:
  *   plugins/<name>/skills/          travels
- *   plugins/<name>/RELEASE-NOTES.md travels
+ *   plugins/<name>/CHANGELOG.md travels
  *   plugins/<name>/lib|bin|defaults DOES NOT
  * The bundle manifest declares `skills` paths, and packaging honours exactly that. So a plugin
  * whose executable lives outside a declared surface reaches the owner only in a standalone

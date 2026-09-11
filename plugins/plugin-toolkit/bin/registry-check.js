@@ -27,6 +27,8 @@ const PLUGINS_DIRNAME = 'plugins';
 const PLUGIN_MANIFEST_REL = '.claude-plugin/plugin.json';
 const WORKFLOWS_REL = '.github/workflows';
 const DOC_NAMES = ['README.md', 'CLAUDE.md'];
+// Per-plugin pages carry version claims too, and a CHANGELOG is itself a claim about the ship.
+const PLUGIN_DOC_NAMES = ['README.md', 'CHANGELOG.md'];
 
 const EXIT_CLEAN = 0;
 const EXIT_DRIFT = 1;
@@ -91,6 +93,15 @@ function buildContext(root) {
     try {
       docs[name] = fs.readFileSync(path.join(root, name), 'utf8');
     } catch (_e) { /* a doc that does not exist makes no claims */ }
+  }
+  // Keyed by repo-relative path, so a finding's `where` opens the right file.
+  for (const plugin of plugins) {
+    for (const name of PLUGIN_DOC_NAMES) {
+      const rel = path.posix.join(plugin.dir, name);
+      try {
+        docs[rel] = fs.readFileSync(path.join(root, rel), 'utf8');
+      } catch (_e) { /* absent is plugin-docs' finding, not a read error */ }
+    }
   }
 
   return Object.freeze({

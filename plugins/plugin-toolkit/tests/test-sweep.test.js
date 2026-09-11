@@ -195,10 +195,12 @@ check('skippedTests does not collide with the disabled-runners list', () => {
   assert.strictEqual(s.skippedTests, 2, 'test count intact');
 });
 
-check('parseSkips reads both harness spellings, last match wins', () => {
+check('parseSkips reads every harness spelling, last match wins', () => {
   assert.strictEqual(sweep.parseSkips('# skipped 0\n# skipped 4\n'), 4);
   assert.strictEqual(sweep.parseSkips('3 passed, 2 skipped in 1.2s'), 2);
   assert.strictEqual(sweep.parseSkips('nothing here'), 0);
+  // node 22+ marker — same blind spot the count parser had.
+  assert.strictEqual(sweep.parseSkips('\u2139 skipped 3'), 3);
 });
 
 check('a suite that could not launch is CANNOT-RUN, distinct from a passing one', () => {
@@ -225,6 +227,11 @@ check('counts are read from the common harness styles', () => {
   assert.deepStrictEqual(sweep.parseCounts('110/110 checks passed'), { passed: 110, total: 110 });
   assert.deepStrictEqual(sweep.parseCounts('27/27 passed'), { passed: 27, total: 27 });
   assert.deepStrictEqual(sweep.parseCounts('# pass 13\n# fail 0'), { passed: 13, total: 13 });
+  // node changed its own summary marker: `#` through node 20, `\u2139` from node 22 on. Matching
+  // only the first scored every node-file suite as ZERO checks (measured on node 24.13.1) —
+  // under-reported coverage that no failing test revealed, because the verdict never used counts.
+  assert.deepStrictEqual(sweep.parseCounts('\u2139 tests 16\n\u2139 pass 16\n\u2139 fail 0'), { passed: 16, total: 16 });
+  assert.deepStrictEqual(sweep.parseCounts('\u2139 pass 14\n\u2139 fail 2'), { passed: 14, total: 16 });
   assert.deepStrictEqual(sweep.parseCounts('613 passed in 12.01s'), { passed: 613, total: 613 });
   assert.strictEqual(sweep.parseCounts('no numbers here'), null);
 });
