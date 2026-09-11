@@ -1,5 +1,23 @@
 # Release notes — essense-flow
 
+## 0.26.3 - 2026-09-11 - vendored js-yaml ships its ESM entry point
+
+An installed plugin cannot run `npm install`, so js-yaml is vendored - but this plugin's
+`.gitignore` ignores `node_modules/`, so the force-added files went in WITHOUT `dist/`, and
+js-yaml 4's exports map resolves `import "js-yaml"` to `./dist/js-yaml.mjs`.
+
+Consequence: `lib/state.js` threw `ERR_MODULE_NOT_FOUND` in EVERY installed copy, which killed
+`bin/essense-flow-tools.cjs` - the single gateway for `state-reconcile`, `record-task-completion`,
+`register-add` and the `/status` / `/heal` paths. Silent, because the hooks write that error class
+to stderr and exit 0. The `DEGRADED (corrupt)` banner was meanwhile telling owners to run
+`essense-flow-tools state-reconcile`, a command that could not run.
+
+Now committed whole (3 `dist/` files); both loaders verified. Guarded going forward by
+plugin-toolkit's `vendored-entrypoint` registry-check claim, which resolves every vendored
+`exports`/`main`/`module` target against disk and FAILS the run on a miss - per CONDITION, not
+per package. Version bumped because a plugin is pinned to its version string: without a bump the
+fix would never reach an install.
+
 ## 0.26.2 — 2026-09-06 — hooks stand down BEFORE loading anything in non-pipeline repos
 
 context-inject (UserPromptSubmit + SessionStart) and next-step (Stop) now test for

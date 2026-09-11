@@ -1,5 +1,34 @@
 # steward — Release Notes
 
+## 0.6.0 - 2026-09-11 - integrate whenever anything is unintegrated; the briefing stops being truncated
+
+Owner ruling 2026-09-11, verbatim: "i don't care for cost in tokens or context. I CARE ABOUT
+Quality." Two caps sized against cost were measurably costing quality.
+
+**The one-pass-per-sitting cadence is retired.** Across 88 sessions in one ship the inbox still
+held 9 unintegrated items with `briefing.md` 5 days behind its own `log.md`. Root cause was not
+the satisfaction logic - turn-end's `steward-sync` ask literally ended "otherwise let them
+accumulate for the next batch point", an instruction to skip. Integration now dispatches whenever
+there is something to integrate: a staged item, or a briefing whose cursor trails the ledger.
+Still BACKGROUND, so the owner never waits, and the agent's per-pass Economy is UNCHANGED - the
+fix is pass FREQUENCY, never a rushed pass.
+
+**The briefing's 900-char hard cap was deleting the owner's asks.** Measured live: "dropped 1
+line(s) / 138 chars" - and the tail of a briefing is `NEXT:` / `WAITING:`, the decisions blocked
+on the owner. The 6-line SPEC stands; the hook's cap is now a runaway-file guard (30 lines /
+4,500 chars) that says FLOOD GUARD when it fires, because reaching it means the file is
+pathological rather than merely long.
+
+**A model with no prior history is BORN on the contract.** Every live ship had no `status.json` at
+all, so every pass took the pre-contract move-to-`done/` path - which the agent cannot do. Its own
+returns said so: "I have no move/delete tool, so the seven captures...", "moving the five inbox
+files needs a shell I do not have, so it goes to you". The owner never did it, and the inbox
+silted up. The agent now creates `status.json` when there is no past to fabricate; a ship WITH
+real `done/` history still adopts via `bin/steward-backfill.js`, never by hand.
+
+**A stale briefing is a directive, not a disclaimer**: "the position claims below are STALE. Do
+not answer 'where are we' from them." Suite 64 checks.
+
 ## 0.5.2 — 2026-09-09 — running ≠ installed instrument (harness G1, task #29)
 
 `[instr]` gains a third instrument: the hook reports ITS OWN version (the plugin.json beside

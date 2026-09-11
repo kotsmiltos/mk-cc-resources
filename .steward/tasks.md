@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-09-09 · Phase 1 BUILT at fde02fe, UNPUSHED · turn-end's Stop hook found SILENT in the live process · numbers are stable ids, file order is the order; next free id 39)
+# Tasks — ordered, executor-ready (recomputed 2026-09-11 · Phase 1 PUSHED + INSTALLED and LIVE · one UNCOMMITTED phase on disk · plugin-toolkit uninstalled → Q24 · numbers are stable ids, file order is the order; next free id 39)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,20 +6,22 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale (2026-09-09 second recompute).** Phase 1 (#30 trace schema v1 → turn-end
-0.9.0 / kb 0.14.0 / lens 0.6.0; #31 `harness-stats` → plugin-toolkit 1.12.0) is CLOSED as
-BUILT at `8e0dba4` + `fde02fe` — both commits UNPUSHED, nothing installed, so their live legs
-ride #1(g) beside Phase 0's (f) and Tier 1's (e). **#1 moves to the top and changes shape:**
-the steward pass found turn-end's Stop hook SILENT for this entire sitting (0 ledger entries /
-0 trace lines for the session vs 116 recorder lines from the same 0.8.0 cache) — a failed leg
-that the running-version instrument cannot see, so diagnosing it comes before any restart
-(the evidence lives in this process). Phase 2 (#32 #8) follows, UNBLOCKED by the 09-09
-rulings; #32 also inherits #31's "second run shows the deltas" leg; #8 now unblocks a
+**Ordering rationale (2026-09-11 recompute — a CORRECTION pass).** Phase 1 (#30 trace schema v1
+→ turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0; #31 `harness-stats` → plugin-toolkit 1.12.0) is not
+merely built: it was PUSHED 09-10, three of its four plugins are INSTALLED, and its writers are
+OBSERVED live (state.md — 13 turn-end lines / 2 kb / 1 lens). **#1 therefore SHRINKS:** its
+diagnosis leg is DELETED as unrunnable (the 09-09 silence cannot be reproduced — the process is
+gone and `.claude/` state is per-checkout), and what remains is two disk reads, one ship, and a
+standing watch; it stays at the top only because #12 and the Phase 2 proofs hang off it. **#32
+loses its blocker** — a duty inside a Stop hook that never runs nudges nobody, and the hook now
+runs. **NEW: `plugin-toolkit` is not installed**, so every gate named in a done-check below is a
+CHECKOUT command → Q24, which #2 now waits on. Phase 2 (#32 #8) follows, UNBLOCKED by the 09-09
+rulings; #32 also inherits #31's "second run shows the deltas" leg; #8 unblocks a
 registered-but-null key (`briefing.contradictions`). Phase 3 (#17 prism run — the baseline
-numbers now exist; #33; #35 — its SubagentStop substrate is measured). Phase 4 (#34 #36).
-Phase 4b (#37 #38): preconditions #28 + #30 + #31 are all built; either may be pulled forward
-by an owner pick. Under invariant 12 every task below that ships a mechanism names its METRIC
-KEY in its done-check, and since 1.12.0 the key must be REGISTERED in
+numbers now exist; #33; #35 — its SubagentStop substrate is measured AND installed). Phase 4
+(#34 #36). Phase 4b (#37 #38): preconditions #28 + #30 + #31 are all built; either may be pulled
+forward by an owner pick. Under invariant 12 every task below that ships a mechanism names its
+METRIC KEY in its done-check, and since 1.12.0 the key must be REGISTERED in
 `plugins/plugin-toolkit/lib/metrics/index.js` (a key absent from a run is named) — no key, not
 done. The rest keeps its relative order. #13 stays deleted; ids 1–38 stable, never reused.
 
@@ -28,51 +30,41 @@ done. The rest keeps its relative order. #13 stays deleted; ids 1–38 stable, n
 detail here — name projects, not drives. Under invariant 13, a task's done-check is what the
 executor RUNS; the owner reads the outcome in the session, never this file.
 
-## 1. Dogfood — FIRST: why is turn-end's Stop hook SILENT in the live process? Then push + update + restart, then the live legs of all three ships (standing watch; gates Phase 2, #12)
+## 1. Dogfood — Phase 1 is LIVE: read the last legs off disk, ship today's phase, keep the hook-liveness WATCH (standing; gates Phase 2, #12)
 
-- **Why #1 is now the top task:** measured at the 09-09 steward pass — this session
-  (`2da1777e`) has 116 recorder lines in `.claude/turn-end/checks.jsonl` (the 0.8.0-only
-  PostToolUse pair, so the running cache IS 0.8.0) and ZERO Stop-hook output: `trace.jsonl`
-  ends at the previous session's 00:25Z line, `ledger.json` names only the previous session,
-  and no line in the file carries `"version"`. The single blocking tail (self-check, recall,
-  digest, steward-sync, request-closure, quality-lens) was absent for the whole sitting that
-  built #30/#31, and the 0.7.1 instrument cannot report a hook that never runs. On top:
-  two ships installed unproven (Tier 1 `bc39fe0`, Phase 0 `68ce999`) and two commits
-  UNPUSHED (`8e0dba4` #30, `fde02fe` #31).
-- **Leg 0 — diagnose the silence IN THIS PROCESS, before any restart (the evidence dies
-  with it):** (a) the session transcript's hook summaries — is there a Stop-hook record per
-  turn, with what status/duration? (a platform kill at the 90 s timeout shows there; a
-  registration that never took shows nothing); (b) run the INSTALLED 0.8.0
-  `hooks/scripts/turn-end.js` by hand over this session's transcript with a real-shaped Stop
-  payload and TIME it — a crash names its line, a runtime past 90 s names the timeout
-  (candidates, Claude's, unproven: 0.8.0's transcript passes for file-touch +
-  `dropAlreadyRead` on a very long transcript stacked on a 48–54 s judge; a throw before the
-  ledger write); (c) record the finding as an inbox item — per this task's own rule a failed
-  leg is an inbox item, never a hotfix; a code fix is its own task WITH its key.
-- **Leg 1 — ship + load:** push (owner word), `claude plugin update` (turn-end, kb,
-  verifiability-lens, plugin-toolkit), RESTART; the briefing's `[instr] running` line and
-  `harness-stats`'s `running.installed_vs_checkout` say whether both happened.
-- **Legs + status:** (a) staleness — ⚠ right 5/5; false git-HEAD ⚠ + authored prose wrong
-  4/5 → #8; (b) fallback fires — readable the moment a 0.7.0+ line exists here (none does);
-  (c) ledger truth — CLOSED (#24); (d) statusline — correct; (e) 0.7.0 legs — `engine` /
-  `ms` / `lean` / `deferred` / `payload_keys` SEEN on the previous session's trace lines
-  139–141; still open: no kb-pull fire inside a judge child, `[instr] items: N new (oldest
-  Nd)`, one real wake-turn ending on the owner's request; (f) Phase 0 legs — recorder
-  fixtures REAL, kb-pull inline + `cut`, `[instr] running` absent = equal (all arrival
-  entry); OPEN: a Stop line with `"version"` and no stale prefix, a self-check nudge naming
+- **Where it stands (measured 2026-09-11):** Phase 1 was pushed 09-10 and turn-end 0.9.0 /
+  kb 0.14.0 / lens 0.6.0 are INSTALLED (ledger, `gitCommitSha` 7e2bcd5); in this checkout the
+  Stop hook WRITES — 13 trace lines, all `"version":"0.9.0"`, incl. 4 `duty:"context-recall"`
+  and 2 `duty:"acted-on"` — plus 2 kb lines and 1 lens `agent:` line. Legs (b) (f) (g) moved
+  from "impossible" to mostly closed. The 09-09 Stop-hook SILENCE was never explained and can
+  no longer be diagnosed (that process ended; `.claude/` state is per-checkout), so the old
+  leg 0 is DELETED as unrunnable and replaced by leg C.
+- **Leg A — finish (g) from disk, two reads:** (1) read one `duty:"context-recall"` line and
+  confirm `judge_chosen` + `ranker_top` are actually present (Q20's input; this pass confirmed
+  the lines, not the fields); (2) `node plugins/plugin-toolkit/bin/harness-stats.js --root .`
+  from the checkout (the plugin is uninstalled — Q24) and record `trace.lines_per_dispatch`,
+  `acted_on.spans`, `judge.agreement_n` / `agreement_pct`, `running.installed_vs_checkout`
+  (non-empty by construction while today's four bumps are uncommitted).
+- **Leg B — ship today's phase:** commit + push the uncommitted work (turn-end 0.10.0 · lens
+  0.7.0 · toolkit 1.13.0 · steward 0.6.0 · marketplace metadata 2.49.0 — the session counted 62
+  files), then `claude plugin update` + RESTART; the briefing's `[instr] running` line and
+  `running.installed_vs_checkout` say whether both happened. Push needs the owner's word
+  (invariant 1).
+- **Leg C — the hook-liveness WATCH (replaces leg 0):** trigger = a sitting where `trace.jsonl`
+  gains NO Stop line while `checks.jsonl` grows. If it fires, capture IN THAT SITTING (it is
+  unreproducible afterwards): the transcript's per-turn hook summaries (status + duration) and
+  a TIMED hand-run of the installed hook over that transcript. Per this task's rule the finding
+  is an inbox item, never a hotfix.
+- **Still-open legs:** (a) staleness — ⚠ right 5/5, false git-HEAD ⚠ + authored prose wrong
+  4/5 → #8; (e) 0.7.0 legs — no kb-pull fire inside a judge child, `[instr] items: N new
+  (oldest Nd)`, one real wake-turn ending on the owner's request; (f) a self-check nudge naming
   a real un-checked mutation, a silent allow on a named check, `digest: pointer` + the
-  `kb_query` cue; **(g) Phase 1 legs** — first Stop line `"version":"0.9.0"`; a `duty:<id>`
-  line per recall fire with `judge_chosen` + `ranker_top`; a `duty: acted-on` line at the
-  next genuine prompt; kb lines keyed `hook: kb-pull`; after one lens dispatch,
-  `.claude/verifiability-lens/trace.jsonl` holds one `agent: verifiability-lens` line; then
-  `node plugins/plugin-toolkit/bin/harness-stats.js --root .` shows `trace.lines_per_dispatch`
-  ≥ 1, `acted_on.spans` > 0, `judge.agreement_n` > 0, `running.installed_vs_checkout` empty.
-  Any new failed leg becomes an inbox item, not a hotfix.
-- **Done-check:** leg 0's cause named in log.md with the command that showed it; each
-  remaining leg observed at least once with zero UNEXPLAINED instrument lies AND legs (b),
-  (f), (g) read from trace lines carrying `"version"`; then #12 unblocks. **Metric keys:**
-  the silence gap = the transcript's Stop-hook records per prompt (`spawns.stop_hooks_per_fire`
-  source) vs `turn_end.prompts` from the trace; `running.*`.
+  `kb_query` cue. (b) readable now · (c) CLOSED (#24) · (d) correct.
+- **Done-check:** leg A's numbers recorded in log.md with the command that printed them; after
+  leg B, `[instr] running` empty and `running.installed_vs_checkout` empty; each remaining leg
+  observed at least once with zero UNEXPLAINED instrument lies; then #12 unblocks. **Metric
+  keys:** `running.*` · `acted_on.spans` · `judge.agreement_n`; the watch reads
+  `spawns.stop_hooks_per_fire` (transcript) against `turn_end.prompts` (trace).
 
 ## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19
 
@@ -98,8 +90,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   check → exactly one tail line naming the task and the check; after the suite goes green
   (recorded in `checks.jsonl`) → silent; a sitting with no armed goal shows no line; turn-end
   + steward suites green; **the second `harness-stats` run** (the leg #31 carried) shows the
-  deltas against `defaults/harness-baselines.json` with the new keys present. Precondition:
-  #1 leg 0 — a duty inside a Stop hook that never runs nudges nobody. **Metric key:**
+  deltas against `defaults/harness-baselines.json` with the new keys present. **Precondition
+  SATISFIED 2026-09-11** — the Stop hook demonstrably runs (13 v1 lines), so a new duty can
+  actually nudge. **Metric key:**
   `goal.met_before_yield` (sittings whose armed task's check ran before the last yield /
   armed sittings) + `goal.nudge_heeded`, registered in `lib/metrics/`.
 
@@ -301,22 +294,22 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **Done-check:** both hooks observed in the owner's session once each; citation lines
   present or explicitly declined.
 
-## 2. Ratify the distribution layout the /doctor session set — or change it [needs owner]
+## 2. Ratify the distribution layout — and it is no longer the one the /doctor session set [needs owner → Q24]
 
 - **Why:** on 2026-07-31 the owner approved: mk-cc-all bundle DISABLED + plugin-toolkit
-  standalone INSTALLED (user scope). That is a STATE change, not a decision close: the
-  picker-duplication objection is voided only while the bundle stays off; the stale
-  `ab1ba82` bundle cache is DORMANT and returns the day it is re-enabled; what a PUBLIC
-  marketplace user should install (README/marketplace prose still centers the bundle) was
-  not decided. Audit 2: install fidelity 16/16 (installed == repo); 09-09: the three
-  updated plugins installed at `68ce999` == HEAD.
-- **What:** (1) decide with the owner (one keystroke): keep bundle-off + per-plugin
-  standalone as THE layout (then reposition README/marketplace prose), OR restore a slimmed
-  bundle (drop the six toolkit skills so both coexist), OR revisit the parked
-  executables-inside-a-declared-surface move; (2) prove the reach: run ONE gate
-  (repo-guard or test-all `--root`) from a DIFFERENT project via the installed toolkit;
-  (3) if the bundle ever returns: bump its version first so the `ab1ba82` cache updates,
-  then read the CACHED skill text; (4) the repo-guard detector for
+  standalone INSTALLED (user scope). **Measured 2026-09-11: the reverse is true** — the install
+  ledger has NO plugin-toolkit entry, while mk-cc-all 2.27.0 IS installed, so the four gates
+  reach a checkout only (state.md, parts.md). The unratified state drifted on its own, which is
+  exactly what an unclosed decision does. What a PUBLIC marketplace user should install
+  (README/marketplace prose still centers the bundle) was never decided either.
+- **What:** (1) the owner's one-keystroke pick is **Q24** (reinstall standalone / standalone +
+  slim the bundle / declare it checkout-only / wrapper) — then reposition README + marketplace
+  prose to the chosen layout; (2) prove the reach: run ONE gate
+  (repo-guard or test-all `--root`) from a DIFFERENT project via the installed toolkit —
+  possible only under Q24 (a)/(b); under (c) the leg becomes "run it from a checkout and say
+  so in the docs"; (3) the bundle is installed at 2.27.0 (`bc39fe0`, ledger-read 09-11) — any
+  bundle change needs its version bumped first so the cache updates, then read the CACHED
+  skill text; (4) the repo-guard detector for
   instruction-names-unreachable-path remains a candidate (Claude's proposal, unrequested).
 - **Done-check:** (1) decision recorded in log.md with its reason; (2) one gate run
   recorded from a different project (command + exit code); (3) README + marketplace
@@ -345,10 +338,11 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   should report the freshly-installed build. Audit 2 counted 38 MCP calls fleet-wide but
   did not read the version. Same class as G1 — turn-end/steward now print theirs (#29);
   the MCP server's `kb_overview` is the equivalent read. A restart is step zero.
-- **Done-check:** one `kb_overview` call reports the INSTALLED version (0.13.0 today; 0.14.0
-  once #1 leg 1 lands) AND a `tool: kb_query|kb_read` line (0.14.0 shape; `tool: kb-pull-hook`
-  was the old key) with a post-restart timestamp appears in the trace. Both, or the leg is
-  not closed.
+- **Done-check:** one `kb_overview` call reports the INSTALLED version — **0.14.0 since
+  2026-09-10, so this is runnable today** — AND a `tool: kb_query|kb_read` line (0.14.0 shape;
+  `tool: kb-pull-hook` was the old key) with a post-restart timestamp appears in the trace
+  (2 kb hook lines already exist in this checkout; the MCP-side line is the missing half).
+  Both, or the leg is not closed.
 
 ## 5. Crowd-game: commit its config, run the DEEP seed, and collect the post-fix turn-end data
 

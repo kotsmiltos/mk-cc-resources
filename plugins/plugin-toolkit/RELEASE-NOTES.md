@@ -1,5 +1,40 @@
 # Release notes — plugin-toolkit
 
+## 1.13.0 - 2026-09-11 - the scorecard stops reporting false zeros
+
+**`note-uptake`, a 14th metric source.** `acted_on.*` and `hints.followed_strict` read 0 in every
+project, which says nothing surfaced is ever used. False negative: they ask whether a FILE was
+opened of a mechanism that injects the file's body. Scoring the same spans by content -
+distinctive terms of each supplied note against the answer text of the same span - puts real
+uptake at `uptake.used_pct` 80.9 per cent (athena-onboarding) and 71.4 per cent
+(athena-clientele), with `uptake.by_family` showing kb-captures 21/27 used against steward-model
+just 4/16 (the steward files are already injected at session open, so recall re-supplying them
+adds nothing). Unknowns are reported beside the ratio, never folded into it. Term overlap is a
+PROXY and says so on every reading. A new `notes` context surface carries the note bodies;
+sources still never read disk.
+
+**VINTAGE annotation.** A zero from a writer that was not installed for the window is not a
+finding - it happened three times in one audit, and each time the bare number argued for deleting
+something that works (`lens.lines = 0` over 13 dispatches, all of which predated the recorder's
+2026-09-10T11:03:50Z install). A source now declares `writer: '<plugin>'` and raises
+`vintage: true` when its substrate is suspiciously empty; the runner - which alone holds the
+install ledger - appends the date. Only the source can tell "6 dispatches, 0 lines" from "0
+dispatches, 0 lines", which is why the judgment is not a rule over the values: the first attempt
+lived in the runner and never fired on the very case it was built for.
+
+**`vendored-entrypoint`, a 7th registry-check claim.** `essense-flow` vendors js-yaml because an
+installed plugin cannot `npm install`, but its `.gitignore` ignores `node_modules/`, so the
+force-added files shipped WITHOUT `dist/` - and js-yaml 4's exports map resolves
+`import "js-yaml"` to exactly that file. `essense-flow-tools`, the single gateway for every state
+op, was dead in every installed copy, silently (that error class writes to stderr and exits 0).
+The claim resolves every vendored `exports`/`main`/`module` target against disk and FAILS the run;
+its negative control reproduces the defect. Per CONDITION, not per package - `essense-autopilot`
+loads the same tree via `require` to `index.js` and is genuinely fine.
+
+Also: the `--line` default pick no longer headlines a byte count or a false-negative key; it leads
+with `uptake.used_pct`. `acted-on` reads the per-kind verdict and counts a pre-0.10 `touched`
+entry as unknown rather than publishing its zero. Suites 75 / 29 / 77 checks.
+
 ## 1.12.0 — 2026-09-09 — harness-stats: the scorecard (task #31, harness G5) + trace schema v1 (task #30, harness G4)
 
 **`bin/harness-stats.js`** — the fourth gate: ONE run over every trace, ledger and transcript a

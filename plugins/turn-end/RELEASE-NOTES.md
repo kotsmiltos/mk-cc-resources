@@ -1,5 +1,40 @@
 # turn-end — release notes
 
+## 0.10.0 - 2026-09-11 - the ask text was the bug: namespaced agent ids, per-kind acted-on, closure that reissues the answer
+
+**The lens was not being dispatched on some turns, and this plugin's own ask caused it.**
+`quality-lens`'s ask said `subagent_type: verifiability-lens` - the bare id, which does not
+resolve. Measured across 196 session transcripts: 3 bare attempts to 3 `Agent type not found`
+failures; 11 namespaced attempts to 11 successes. A duty's `ask()` is executable instruction, not
+documentation. Fixed to `verifiability-lens:verifiability-lens`, and the ask now also DEMANDS the
+machine-readable `rollup:` block the recorder parses - the two real dispatches whose prompts
+omitted it recorded `unparsed` with every count null (9,194 and 9,598 bytes of genuine verdict,
+uncountable), while the one that demanded it recorded verified=13 / refuted=1.
+
+**A coupled second bug, which only bites once the first is fixed.** `satisfied()` compared the
+BARE string with `.includes()`, so the 11 dispatches that really ran never satisfied the duty -
+and `self-check` imported the same constant. self-check is default-ON `severity: block`, so a turn
+that changed files AND correctly dispatched the lens was blocked *for doing the right thing*. One
+canonical address (`AGENT_TYPE`) plus one tolerant matcher (`AGENT_RX`, either spelling) now serve
+all three sites; `steward-sync` had this shape already and it had never propagated.
+
+**`acted-on` scores per surfacing KIND.** It asked "was the PATH opened?" of every source - but
+`context-recall` injects the note's BODY, so nothing is left to open, and it reported
+`acted_on.recall.pct = 0` in every project. Measured by content instead: 65 of 96 notes (68 per
+cent) visibly carried into the answer. `supply` sources now score content use
+(`lib/term-overlap.js`, new), `pointer` sources score the follow-up, and an undeclared kind scores
+`unknown`, never 0. It also read only v1 lines while 268 of 270 recall fires carry the pre-v1
+`supplied[]` shape.
+
+**`request-closure` reissues a corrected answer.** The lens verdict lands on a wake turn, after
+the answer it judges. When the span's lens refuted or escalated anything, closure now requires the
+answer RESTATED IN FULL with the correction marked - a summary leaves the owner holding the wrong
+version plus a footnote. An `aborted` dispatch instead emits a `WARNING ... UNCHECKED` line.
+
+**`steward-sync`** dispatches unconditionally (its ask used to end "otherwise let them accumulate
+for the next batch point" - an instruction to skip; it fired 30 times while a backlog of 9 items
+survived) and now also fires on a briefing whose cursor trails the ledger. Suite 205 checks.
+
 ## 0.9.0 — 2026-09-09 — trace schema v1: the fire, every evaluator, and acted-on — each its own line (task #30, harness G4)
 
 Three line kinds now, all in the cross-plugin contract

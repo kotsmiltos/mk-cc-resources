@@ -1,7 +1,7 @@
 {
   "name": "turn-end",
-  "version": "0.9.0",
-  "description": "The single blocking Stop hook. Plugins ship turn-end DUTIES instead of their own hooks; the runner checks each against real state and emits one consolidated message per user request. Replaces the mutually re-arming blocking hooks that fired eight times over one request. 0.9.0: TRACE SCHEMA v1 — the fire, every supply duty (engine / ms / cost / judge vs ranker picks) and a per-span acted-on derivation each leave their own line in the cross-plugin contract; hint-followed % is computable from disk.",
+  "version": "0.10.0",
+  "description": "The single blocking Stop hook. Plugins ship turn-end DUTIES instead of their own hooks; the runner checks each against real state and emits one consolidated message per user request. Replaces the mutually re-arming blocking hooks that fired eight times over one request. 0.9.0: TRACE SCHEMA v1 \u2014 the fire, every supply duty (engine / ms / cost / judge vs ranker picks) and a per-span acted-on derivation each leave their own line in the cross-plugin contract; hint-followed % is computable from disk.",
   "author": {
     "name": "kotsmiltos"
   },

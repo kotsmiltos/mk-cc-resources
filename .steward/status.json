@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260909-0500",
+  "updated": "20260911-1300",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -433,14 +433,24 @@
       "groups": ["harness", "rulings", "tier-1"],
       "log": "2026-09-09 · Three items + the sitting's four outcomes integrated at 68ce999 — Phase 0 CLOSED (#29 #27 #28 → #1f), Q15/Q16/Q18/Q19 law, owner law → invariant 13, two axes → #37/#38 + Q21/Q22",
       "check": "four rulings recorded verbatim in the questions.md resolved ledger (Q15/Q16/Q18/Q19 removed from open); metric rule → vision invariant 12; Q15 slim verified applied (the global CLAUDE.md gate as injected this session is the one-line + anti-signals form); Q19's requireGreen knob + the recorder pair per the #28 log entry and turn-end hooks.json (PostToolUse + PostToolUseFailure grep-read); #17 fold leg struck, #32 unblocked, #18 on-ramp rewritten, #21 step 2 closed"
+    },
+    {
+      "id": "20260911-1230-state-md-ship-position-and-installs-are-stale",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260911-1300",
+      "by": "steward-agent",
+      "groups": ["dogfood", "harness"],
+      "log": "2026-09-11 · Ship-position + install correction integrated at 7e2bcd5 — Phase 1 is pushed, INSTALLED and LIVE; plugin-toolkit uninstalled → Q24; #1 re-cut and its diagnosis leg deleted as unrunnable",
+      "check": "both git ref files read (HEAD == origin/main 7e2bcd5, 0 unpushed; reflog shows this checkout ff-pulled 6becb73 → 7e2bcd5) · installed_plugins.json grep-read: 13 marketplace keys + versions (turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 all gitCommitSha 7e2bcd5 @ 2026-09-10T11:03:50Z; steward 0.5.2 @ 68ce999; mk-cc-all 2.27.0; NO plugin-toolkit entry) · all 16 plugin.json versions grep-read (turn-end 0.10.0 / lens 0.7.0 / toolkit 1.13.0 / steward 0.6.0 uncommitted) · marketplace metadata 2.49.0 read · .claude/turn-end/trace.jsonl = 13 lines all \"version\":\"0.9.0\" incl. 4 duty:context-recall + 2 duty:acted-on, kb trace 2 lines, lens trace 1 agent line — all greps on EXPLICIT file paths, because a directory grep silently skips the gitignored .claude/ tree (a false-negative this pass caught and re-ran)"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260909-0015-owner-rulings-q19-q18-q16-q15"
+      "derived_through": "20260911-1230-state-md-ship-position-and-installs-are-stale"
     },
     "model": {
-      "derived_through": "20260909-0015-owner-rulings-q19-q18-q16-q15"
+      "derived_through": "20260911-1230-state-md-ship-position-and-installs-are-stale"
     }
   }
 }

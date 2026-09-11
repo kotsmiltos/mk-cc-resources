@@ -1,5 +1,24 @@
 # verifiability-lens — Release Notes
 
+## 0.7.0 - 2026-09-11 - a lost gate no longer looks like a clean one
+
+**New `decision` verdict: `aborted`.** `decision` was three-way, so a dispatch that never ran
+landed in `unparsed` - the same bucket as a real verdict the parser could not read. Measured
+2026-09-11: 1 of 13 dispatches returned, in full, "You've hit your session limit - resets 4:40pm"
+- 61 characters. The lens read no code, the turn went unchecked, and nothing said so.
+
+Decided on SUBSTRATE, never on a list of platform error strings: no rollup AND too little work to
+have produced one (text under 400 chars with under 50 assistant output tokens). Real verdicts in
+the same window ran 3,845-51,491 chars and thousands of tokens, so the floor sits far below every
+real verdict and far above the stub. Deliberately conservative in the other direction too - a
+short answer backed by real work (200 chars, 3,000 output tokens) stays `unparsed`, because
+mislabelling a real verdict would HIDE a finding.
+
+The real 61-character stub is pinned verbatim in `examples()`, so the cross-plugin drift suite
+validates the shape against measured substrate rather than an invented fixture. Surfaced in
+plugin-toolkit as `lens.aborted` + `lens.decision_mix`, and in turn-end's `request-closure` as an
+explicit `UNCHECKED` warning. Suite 61 checks.
+
 ## 0.6.0 — 2026-09-09 — every dispatch leaves a line (task #30, harness G4)
 
 Audit 2 (2026-09-06) measured 27 lens dispatches and ZERO telemetry — no refute/confirm ratio, no

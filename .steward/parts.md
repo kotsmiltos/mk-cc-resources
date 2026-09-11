@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.9.0 on disk · 0.8.0 INSTALLED at `68ce999` · this process runs 0.8.0's recorder while its Stop hook is SILENT — state.md) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
+## turn-end (0.10.0 on disk, UNCOMMITTED · 0.9.0 INSTALLED at `7e2bcd5` since 2026-09-10 and demonstrably RUNNING — 13 v1 trace lines read 09-11) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
 
 - **Exposes:** one `Stop` registration for the whole toolkit — plus, since 0.8.0, an
   INFORMATIONAL PostToolUse + PostToolUseFailure pair on `Bash|PowerShell`
@@ -160,8 +160,8 @@ capability reach) — it CHECKS, never generates.
   undocumented, so keys are recorded, exit parsed best-effort, null never guessed. Suite
   189/189. Live through the real hook on a `sed -i` edit: "Check: none" and "verified by
   inspection" → nudged; a named suite result or a prose re-read → silent allow.
-- **BUILT 0.9.0 (2026-09-09, `8e0dba4`, tasks #30 CLOSED — harness G4; NOT pushed, NOT
-  installed):** `lib/trace-line.js` — the pure v1 writer (builders + `examples()`, discovered
+- **SHIPPED 0.9.0 (built 2026-09-09 `8e0dba4`; PUSHED + INSTALLED 2026-09-10, tasks #30 CLOSED
+  — harness G4):** `lib/trace-line.js` — the pure v1 writer (builders + `examples()`, discovered
   by plugin-toolkit's drift suite). The hook line keeps the 0.7.x shape and adds the v1 keys
   (`plugin`, `version`, `session_id`, `prompt_id`, `ms`, `decision`, `bytes`); one
   `duty:<id>` line per SUPPLY duty that ran, carrying engine / ms / cost_usd / surfaced /
@@ -171,8 +171,9 @@ capability reach) — it CHECKS, never generates.
   (`context.js` turn.previous with timestamps, kb_read ids and prompt ids — a wake is the
   same span; `lib/acted-on.js` reads the sibling traces READ-ONLY; ledger `actedOnUpTo`).
   Suite 195/195 (+6). **Metric keys:** `acted_on.*`, `judge.agreement_pct` / `agreement_n`
-  (1.12.0 registry). LIVE → #1(g): the first Stop line with `"version":"0.9.0"`, a
-  `duty:<id>` line per recall fire, a `duty: acted-on` line at the next prompt.
+  (1.12.0 registry). **LIVE, OBSERVED 2026-09-11** (this checkout's trace, grep): 13 Stop lines
+  all `"version":"0.9.0"` · 4 `duty:"context-recall"` · 2 `duty:"acted-on"`. Residual #1(g): the
+  `judge_chosen` / `ranker_top` fields read off a recall line, and one `harness-stats` run.
 - **GAP MAP — audit 2, reconciled at 0.8.0 (2026-09-09; ✓ = file:line re-read by a steward
   pass, otherwise the audit's or the harness doc's citation).** CLOSED at 0.7.0 / the
   09-06 ship: tail order + size (`runner.js:98` ✓ material-first → demands-first under a
@@ -192,10 +193,12 @@ capability reach) — it CHECKS, never generates.
   - **The judge is a noisy sample** (Judges bullet above) → Q20; `chosen` empty in ~50%
     of supplies (49.4% at the #31 run) — the agreement inputs are TRACED since 0.9.0 (#30
     CLOSED); the one check reads `judge.agreement_pct` once 0.9.0 lines exist live.
-  - **NEW 2026-09-09 — the Stop hook ran ZERO times in the owner's process for a whole
-    sitting** (state.md: 0 ledger entries / 0 trace lines for the session vs 116 recorder
-    lines from the same 0.8.0 cache). Cause unknown from disk; the 0.7.1 instrument cannot
-    see a hook that never runs. → #1 first leg.
+  - **2026-09-09 — the Stop hook ran ZERO times for a whole sitting** (0 ledger entries / 0
+    trace lines for session `2da1777e` vs 116 recorder lines from the same 0.8.0 cache).
+    **Still unexplained, now UNREPRODUCIBLE** (that process and its `.claude/` tree are gone —
+    state.md); 0.9.0 writes normally in this checkout, so it was not a permanent defect. The
+    0.7.1 instrument still cannot see a hook that never runs → #1's WATCH leg + the pairing
+    rule (a Stop trace read beside `checks.jsonl`).
   - `DUTIES` is a hard-coded array (`lib/duties/index.js:59`, harness doc re-read 09-08 —
     not discovery by shape); the whole transcript is re-read every Stop
     (`context.js:122-123`, audit: 170 MB → 1.4 s, 673 MB RSS); no per-duty supply budget
@@ -249,11 +252,13 @@ capability reach) — it CHECKS, never generates.
   `sessionAsked` bucket that survives an agent-completion wake-up, and `startedAt` for the
   mtime comparison. Trace: `.claude/turn-end/trace.jsonl` (every line `version` + `stale`
   since 0.7.1; v1-shaped since 0.9.0 — `hook: turn-end` per Stop, `duty:<id>` per supply
-  duty, `duty: acted-on` per derived span; on this repo NO such line exists yet — state.md).
+  duty, `duty: acted-on` per derived span; 13 such lines exist in this checkout, read 09-11.
+  **Trace state is per-CHECKOUT** — `.claude/` is gitignored, so a second working copy of the
+  same project carries its own ledger and proves nothing about the first).
   Exec ledger (0.8.0): `.claude/turn-end/checks.jsonl` + `samples/` (real fixtures since
   09-09).
 
-## steward (0.5.2) — the active thrust
+## steward (0.6.0 on disk, UNCOMMITTED · 0.5.2 INSTALLED at `68ce999`) — the active thrust
 
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
   capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
@@ -363,7 +368,7 @@ capability reach) — it CHECKS, never generates.
   copy-plus-stub ritual (the agent's toolset cannot delete/move) until a session runs
   `bin/steward-backfill.js` — Phase 2 (#12) backfills the fleet.
 
-## kb (0.14.0 on disk · 0.13.0 INSTALLED) — the memory organ: pull core + ambient push (bounded since 0.13.0, v1-traced since 0.14.0)
+## kb (0.14.0 on disk AND INSTALLED since 2026-09-10) — the memory organ: pull core + ambient push (bounded since 0.13.0, v1-traced since 0.14.0)
 
 - **0.10.3 (2026-08-23, strike 1 — installed same day):** new `lib/project-root.js`;
   kb-pull + kb-session-start anchor to the nearest `.git` ancestor (payload cwd
@@ -393,14 +398,16 @@ capability reach) — it CHECKS, never generates.
   copy); the body-repeat bonus routed to the body side (`term-overlap.js` floor leak). kb
   276/276, kb-pull 88/88, footprint 31/31 (the new writer audited with its why). Live probe
   on this repo's real 11,353 B digest ×3: 8,110 B cut → 324 B pointer → 324 B pointer.
-- **BUILT 0.14.0 (2026-09-09, `8e0dba4` — #30's kb half; NOT pushed, NOT installed):**
+- **SHIPPED 0.14.0 (built 2026-09-09 `8e0dba4`; PUSHED + INSTALLED 2026-09-10 — #30's kb half):**
   kb-pull, kb-session-start and the MCP tool calls write trace-schema-v1 lines through
   `lib/trace-line.js` (present on disk): kb-pull keyed `hook: kb-pull` (was `tool:
   kb-pull-hook` — the 1.12.0 `kb_pull` source reads BOTH spellings, so history stays
   countable), `hook: kb-session-start` per open, `tool: kb_query|kb_read|kb_overview` per
   MCP call with null session/prompt ids by construction (a stdio server has neither).
-  Suites at build: kb-pull 89 · kb-session 79 · mcp 45 · footprint 31 · kb 276. LIVE →
-  #1(g) after push + install + restart.
+  Suites at build: kb-pull 89 · kb-session 79 · mcp 45 · footprint 31 · kb 276. **LIVE:**
+  `.claude/kb/trace.jsonl` in this checkout carries 2 lines on the kb-pull / kb-session-start
+  keys (grep 09-11; the `hook:` vs legacy `tool:` spelling not separated this pass) — the MCP
+  half is still #4's check.
 
 - **Exposes:** queryable knowledge base on KIND (episodic/semantic/procedural/working —
   CoALA) x CASTE (session/thread/project/fleet/owner; caste is an ARGUMENT, not a second
@@ -477,18 +484,19 @@ capability reach) — it CHECKS, never generates.
     push tax rose. The hints-ignored cause is REPETITION + SIZE, not vocabulary — rung 2
     (#11) stays parked behind #27.
 
-## verifiability-lens (0.6.0 on disk · 0.5.1 INSTALLED) — no Stop hook; since 0.6.0 ONE informational SubagentStop recorder
+## verifiability-lens (0.7.0 on disk, UNCOMMITTED · 0.6.0 INSTALLED since 2026-09-10) — no Stop hook; since 0.6.0 ONE informational SubagentStop recorder, now live
 
 - **Exposes:** A/B/U classification + completeness + quality-bar checks; surfacing triage
   via recipient profile; per-project override (`.claude/verifiability-lens/profile.yaml`) +
   `focus:` list + 3 presets, read-once rule; `/verifiability`.
-- **Carries NO Stop hook (installed 0.5.1: `hooks/hooks.json` is `{"hooks": {}}`).** The
+- **Carries NO Stop hook** (the pre-0.6.0 installs registered `{"hooks": {}}`; the installed
+  0.6.0 registers the SubagentStop recorder ONLY). The
   old Stop hook's fire-once guard bounded CONSECUTIVE blocks rather than total fires (a
   steady 50% duty cycle — 8 fires over ONE user request) and keyed on a hash of the turn's
   text, so every correction turn looked new. Its trigger is now turn-end's `quality-lens`
   duty, `advise`.
-- **BUILT 0.6.0 (2026-09-09, `8e0dba4`, tasks #30 CLOSED — harness G4; NOT pushed, NOT
-  installed): ONE informational SubagentStop RECORDER.** `hooks/hooks.json` (read this pass)
+- **SHIPPED 0.6.0 (built 2026-09-09 `8e0dba4`; PUSHED + INSTALLED 2026-09-10, tasks #30 CLOSED
+  — harness G4): ONE informational SubagentStop RECORDER.** `hooks/hooks.json` (read this pass)
   registers SubagentStop, matcher `verifiability-lens$` — real dispatches carry the
   plugin-scoped type `verifiability-lens:verifiability-lens` (81 transcripts), so the matcher
   is a regex tolerant of both spellings — → `hooks/scripts/lens-record.js`, timeout 10: one
@@ -511,7 +519,9 @@ capability reach) — it CHECKS, never generates.
   `- item` line — escalations 1 read as 0). Suite 58/58 (+18, E2E over the real payload
   shape; fixture `tests/fixtures/SubagentStop.sample.json`, paths sanitized). **Metric key:**
   `trace.lines_per_dispatch` (1.12.0 `lens` source — 6 dispatches / 0 lines at the #31 run,
-  the recorder being uninstalled). LIVE → #1(g): push + install + restart + one dispatch.
+  the recorder being uninstalled then). **LIVE: 1 `"agent":"verifiability-lens"` line in this
+  checkout's `.claude/verifiability-lens/trace.jsonl` (grep 09-11)** — the leg closes; the
+  ratio itself is a `harness-stats` read (#1(g)).
 - **Files:** `plugins/verifiability-lens/{agents/, hooks/{hooks.json, scripts/lens-record.js},
   lib/trace-line.js, tests/}` · design: `design/verifiability-awareness.md` · **Tests:**
   `node plugins/verifiability-lens/tests/verifiability-lens.test.js` (58 per the 0.6.0
@@ -529,7 +539,7 @@ capability reach) — it CHECKS, never generates.
   until `acted_on.lens.pct` (0.9.0 trace + 1.12.0 key) shows escalations get acted on.
 - **v3 role:** kept, re-economized at Phase C.
 
-## plugin-toolkit (1.12.0 on disk · 1.11.0 INSTALLED) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
+## plugin-toolkit (1.13.0 on disk, UNCOMMITTED · **NOT INSTALLED AT ALL** — its four gates reach a CHECKOUT only, measured 2026-09-11 → Q24) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
 
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit, /code-glossary
   (deterministic `code_glossary/` Python engine: glossary, MAP.md,
@@ -560,8 +570,9 @@ capability reach) — it CHECKS, never generates.
     MISMATCH fails, INFORMATIONAL reports (`capability-reach`: `lib|bin|defaults` do not
     travel in a bundle install — measured from the installed cache). Every claim source
     has a negative control in the suite.
-  - **harness-stats** (`bin/harness-stats.js`, 1.12.0 — BUILT 2026-09-09 `fde02fe`, tasks
-    #31 CLOSED, harness G5; NOT pushed, NOT installed) over `lib/metrics/` — the SCORECARD,
+  - **harness-stats** (`bin/harness-stats.js`, 1.12.0 — built 2026-09-09 `fde02fe`, tasks
+    #31 CLOSED, harness G5; PUSHED 09-10, and runnable only from a checkout since the plugin
+    is uninstalled — Q24) over `lib/metrics/` — the SCORECARD,
     in repo-guard's shape: context gathered ONCE (`.claude/*/trace.jsonl` by shape,
     `checks.jsonl`, the project's transcripts under the home projects dir, `.steward/`, the
     install ledger + hook registrations), every source reads the frozen object; a crashed
@@ -616,15 +627,15 @@ capability reach) — it CHECKS, never generates.
   exists — reverted in `3633ff7`, see Q12; **NEW 09-09:** root `CLAUDE.md:196` still says
   "three repo-level gates" while `:33` and a gate-table row already name harness-stats
   (grep this pass) → #6.
-- **DISTRIBUTION — CHANGED 2026-07-31 (owner-approved via /doctor; see state.md):**
-  installed STANDALONE at user scope (1.10.0 @ current HEAD) with the mk-cc-all bundle
-  DISABLED. A standalone install carries `lib/`, `bin/`, `defaults/`, so the three gates
-  travel for the first time. The picker-duplication objection is voided ONLY because the
-  bundle is off — both enabled at once would double-list six skills again. Final layout
-  (what a public user installs; whether the owner keeps bundle-off permanently; the
-  parked executables-inside-a-declared-surface move) remains the owner's call — tasks #2
-  is a ratification, not closed. NEW 2026-08-01: the install now LAGS HEAD by three
-  commits (@ `8d5cab6`; its cache lacks its own per-plugin CLAUDE.md).
+- **DISTRIBUTION — REVERSED SINCE THE 07-31 RECORD, measured 2026-09-11:** the install ledger
+  has **no `plugin-toolkit` entry at all**, while **mk-cc-all 2.27.0 IS installed** (@ bc39fe0) —
+  the exact inverse of the 07-31 /doctor state (standalone toolkit installed, bundle disabled).
+  How or when it went away is unknown from disk (a plugin uninstall leaves no ledger trace);
+  whether the bundle is ENABLED is a settings fact not read this pass. Consequence, not
+  speculation: a standalone install is what carries `lib/`, `bin/`, `defaults/`, so with no
+  standalone entry the four gates exist only where the repo is checked out, and `@ship`'s probe
+  for repo-guard finds nothing outside a checkout. Final layout is still the owner's call
+  (#2 = ratification) — now with a concrete first question: **Q24**.
 - **Skill shell blocks** now open with an explicit resolve-and-fallback —
   `ROOT="${CLAUDE_PROJECT_DIR}"; [ -d "$ROOT/plugins" ] || ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"`
   — which needs no answer about whether Claude Code substitutes the variable inside a
@@ -786,8 +797,10 @@ capability reach) — it CHECKS, never generates.
   `clear` step is a 290–410 ms Python interpreter whose whole job is unlinking one file —
   one of 9 process spawns per prompt (~0.85 s summed) → #17.
 - **statusline (0.2.0):** segment-based statusline (model | task | dir | steward
-  anchor+inbox | context counter); settings-level wiring, no hooks/skills, not a plugin
-  install; extend = drop a function into SEGMENTS. **0.2.0 (Phase 1): `segSteward` v2**
+  anchor+inbox | context counter); settings-level wiring, no hooks/skills; extend = drop a
+  function into SEGMENTS. **CORRECTED 2026-09-11:** the install ledger DOES carry
+  `statusline@mk-cc-resources` 0.2.0 (@ e6528e0, 08-24) — the "not a plugin install" note was
+  wrong; the statusline itself is still wired at settings level. **0.2.0 (Phase 1): `segSteward` v2**
   reads `status.json` (⚓N✱ ▲M), root-anchored, tolerant reader, fail-soft to the naive
   anchor when the ledger is absent/corrupt (20/20) — the tombstone-counting bug class is
   dead where the contract runs.
@@ -839,3 +852,7 @@ fixtures belong to the next sitting by construction. **And a hook that never RUN
 line (2026-09-09, state.md):** the running-version instrument is only as alive as the hook
 carrying it — a post-ship verdict pairs the Stop trace with a sibling ledger
 (`checks.jsonl`) or the transcript's hook summaries before reading silence as "no Stop yet".
+**And it must be captured IN the sitting (learned 2026-09-11):** the 09-09 silence became
+UNREPRODUCIBLE by the next pass — the process ended and `.claude/` state is per-CHECKOUT, so a
+second working copy of the same project cannot answer for the first. A hook-liveness finding
+deferred to "next session" is a finding discarded.

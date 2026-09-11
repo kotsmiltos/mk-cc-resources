@@ -12,20 +12,31 @@ steward agent RECOMPUTES on every input (add/edit/DELETE, cascade pivots) and di
 interface, zero commands to remember; owner-present work only (absent-owner = inbox staging,
 permanently). Carries a hook — standalone, not in mk-cc-all.
 
-BUDGETED since 0.3.0 (owner: "fires too often and for too long"; measured 12.5 min / 137k tokens
-for two items + moving-tree correction re-runs): at most ONE integration pass per sitting,
-dispatched in the BACKGROUND — captures and task landings accumulate (inbox/ + log.md) for the
-wrap-up sync or next open; explicit owner "sync" always dispatches. The agent's Economy section
-(agents/steward.md) bounds the pass itself: verify only what it WRITES (one targeted read per
-claim, never a repo re-audit), snapshot HEAD once and never chase a moving tree, routine diff
-≤10 lines, minutes not quarter-hours. Recompute discipline untouched — cuts are verification
-scope + prose, never skipped reconciliation.
+INTEGRATION CADENCE, 0.6.0 (owner ruling 2026-09-11, verbatim: "i don't care for cost in tokens
+or context. I CARE ABOUT Quality"): integrate WHENEVER anything is unintegrated — a staged inbox
+item, or a `briefing.md` whose cursor trails the ledger. This RETIRES the 0.3.0 one-pass-per-sitting
+cap (owner 2026-08-02, "fires too often and for too long"), which was sized against cost and had a
+measured quality price: 88 sessions in agents-card-process-automation left 9 items unintegrated with
+the briefing 5 days behind its own `log.md`. Root cause was not the satisfaction logic — turn-end's
+`steward-sync` ask literally ended "otherwise let them accumulate for the next batch point", an
+instruction to skip; it now dispatches unconditionally and also fires on a behind-cursor briefing
+with an empty inbox (the state nothing watched). Still BACKGROUND, so the owner never waits. The
+agent's per-pass Economy is UNCHANGED — verify only what it WRITES, snapshot HEAD once, routine diff
+≤10 lines: the fix is pass FREQUENCY, never a rushed pass. Also 0.6.0: a model with no prior history
+is BORN on the contract (the agent creates `status.json` when there is no past to fabricate), because
+off-contract passes need a file moved and the agent has no move tool — its returns said so
+("I have no move/delete tool…") and the inbox silted up. A ship WITH prior `done/` history still
+adopts via `bin/steward-backfill.js`, never by hand.
 
 LIGHTER since 0.3.1 (owner, the night 0.3.0 went live: "make the steward lighter — unbearable"):
 the standing per-session injection halved — protocol block 9 bullets → 4 dense lines (~0.75k
-chars; full protocol stays in the skill, on demand), briefing spec ≤6 lines / hard cap 900 chars,
-one-line inbox note, capture acks fold into the reply. Injected text is a per-session tax; every
-line earns its place.
+chars; full protocol stays in the skill, on demand), briefing spec ≤6 lines, one-line inbox note,
+capture acks fold into the reply. The ≤6-line SPEC stands — a dense briefing is a better briefing.
+What 0.6.0 retired is the hook's 900-char HARD CAP: it was cutting real briefings (measured
+2026-09-11, "dropped 1 line(s) / 138 chars" in a live ship — and the tail of a briefing is
+NEXT/WAITING, the asks the owner opens the session to read). The cap now sits at a runaway-file
+guard (30 lines / 4500 chars) and says FLOOD GUARD when it fires, because reaching it means the
+file is pathological rather than merely long.
 
 ## Layout
 

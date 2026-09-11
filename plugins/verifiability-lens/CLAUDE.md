@@ -18,7 +18,7 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.6.0)
+.claude-plugin/plugin.json       # metadata (v0.7.0)
 agents/verifiability-lens.md     # the read-only classifier + triager; its `rollup:` block is
                                  #   MACHINE-READ (0.6.0: + `verification: {verified, refuted}`)
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
@@ -35,7 +35,13 @@ hooks/scripts/lens-record.js     #   SubagentStop, matcher `verifiability-lens$`
                                  #   transcript (duration, model, tokens); one real payload saved
                                  #   under samples/ (0.8.0 recorder precedent). Zero output, stands
                                  #   down in judge children, writes only under the project root
-lib/trace-line.js                # the PURE writer: parseRollup (a count not stated is null, never
+lib/trace-line.js                # the PURE writer. `decision` is FOUR-way: parsed | unparsed (the lens
+                                 #   answered, the parser could not read it) | aborted (it never did the
+                                 #   work - a LOST GATE, decided on substrate: no rollup AND <400 chars
+                                 #   with <50 output tokens) | crashed. 0.7.0 split `aborted` out because
+                                 #   a 61-char "session limit" stub landed in `unparsed` and a vanished
+                                 #   gate was indistinguishable from a clean one.
+                                 #   parseRollup (a count not stated is null, never
                                  #   0), lineFor, examples() — plugin-toolkit's trace-schema drift
                                  #   suite discovers it by shape (references/trace-schema-v1.md)
 tests/verifiability-lens.test.js # contract tests over the shipped files (agent/rubric/profile/

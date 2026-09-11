@@ -10,9 +10,46 @@ Surfacing rule (owner law 2026-09-09, vision invariant 13): a question reaches t
 ONE one-keystroke choice with the recommended default first, batched with its siblings —
 never as a file to read. The context below is for the model and the asking session.
 
+## Q24 · plugin-toolkit is NOT INSTALLED — should the four repo gates reach an install, or stay a checkout-only maintainer tool? [NEW 2026-09-11; unblocks #2, and decides gate reach in every other project]
+
+**Context.** Measured this pass: `installed_plugins.json` carries no `plugin-toolkit` entry at
+all (all 13 mk-cc-resources ledger keys grep-read), while the `mk-cc-all` bundle 2.27.0 IS
+installed. A bundle carries `skills` only — registry-check's own `capability-reach` claim source
+says so — so `bin/repo-guard.js`, `bin/test-all.js`, `bin/registry-check.js` and
+`bin/harness-stats.js` exist ONLY where this repo is checked out. Live consequences: every gate
+named in a task done-check is a maintainer-only command; `@ship`'s repo-guard probe finds
+nothing from another project; #12 cannot run a gate on the other four ships; and the vision's own
+rule — *"a capability that no install can resolve does not exist for the owner"* — is broken by
+the toolkit's own gates. The 07-31 /doctor record said the opposite (standalone installed, bundle
+disabled); how it changed is NOT recoverable from disk, since an uninstall leaves no ledger
+trace. Nothing here is a bug in the gates: they pass (35/35 suites / 2,023 checks at the last
+sweep) — this is reach, not quality.
+
+**Options.** (a) install plugin-toolkit standalone again, leave the bundle as is — restores
+reach in one command, re-introduces the six double-listed skills the 07-31 session objected to;
+(b) install standalone AND drop the six toolkit skills from the bundle — one layout, no
+duplication, one version to bump, registry-check's bundle-path claim re-verified after;
+(c) declare it checkout-only ON PURPOSE — the gates are maintainer commands, the model stops
+implying an install, #2's reach leg becomes "run from a checkout" and #12's per-ship gate use is
+dropped; (d) keep it uninstalled and add a run-from-anywhere wrapper — a new mechanism, no
+budget, and invariant 5 prices it badly.
+
+**Recommended default (Claude's): (b).** The gate family is the toolkit's most exercised product
+this month, and reach is exactly what the vision's "reachability is part of shipped" clause
+protects; (b) is the only option that restores reach AND removes the duplication objection that
+ended the previous layout. (c) is honest and costs nothing — take it if the owner never intends
+to run a gate outside this repo, and the model will say so plainly instead of implying reach.
+
+**Blocks:** #2's ratification (it has been waiting on an unratified state since 07-31); #1(g)'s
+`harness-stats` leg, which runs from the checkout meanwhile; #12's per-ship gate use.
+
+---
+
 ## Q23 · Which `harness-stats` keys earn the standing `[instr]` line? [#31's done-check — the owner's one-keystroke pick; NOTHING is always-on until it lands]
 
-**Context.** `harness-stats` (plugin-toolkit 1.12.0, built 2026-09-09 at `fde02fe`, unpushed)
+**Context.** `harness-stats` (plugin-toolkit 1.12.0, built 2026-09-09 at `fde02fe`, PUSHED
+09-10; 1.13.0 sits uncommitted on disk and the plugin is UNINSTALLED — Q24, so the command runs
+from the checkout)
 reads 93 registered keys from 13 sources and prints the full report IN the session on demand
 (`node plugins/plugin-toolkit/bin/harness-stats.js --root .`). Its `--line` form prints ONE
 `[instr]` line at session open for ONLY the keys named in `<root>/.claude/harness-stats.json`
@@ -21,10 +58,10 @@ by construction: the #31 done-check said nothing ships always-on without the own
 because injected text is a per-session tax (owner 08-02/08-03: "make the steward lighter").
 Whole-life numbers on this repo at the #31 run, for scale: hook bytes p50 7,358 / p95 29,519
 B per prompt; hints strict 9.7%; blocks 13 / nudges 20 over 46 prompts; judge 85 fires,
-chosen-empty 49.4%, ms unknown until 0.7.0+ lines exist. Note what NO key measures yet: a
-Stop hook that never runs (this sitting, state.md) — the transcript-side
-`spawns.stop_hooks_per_fire` vs trace-side `turn_end.prompts` gap is the nearest reading;
-#1 leg 0 names it.
+chosen-empty 49.4%, ms unknown on pre-0.7.0 lines — 0.9.0 lines now exist (13, read 09-11), so
+the ms/cost keys have real input from here on. Note what NO key measures: a Stop hook that never
+runs (the 09-09 sitting) — the transcript-side `spawns.stop_hooks_per_fire` vs trace-side
+`turn_end.prompts` gap is the nearest reading; #1's watch leg names it.
 
 **Options (each a set of registered keys; the pick writes `line.keys`):**
 (a) push cost + follow-through — `hook_bytes.per_prompt.p50`, `hook_bytes.per_prompt.p95`,
@@ -68,11 +105,12 @@ N per project, suggested by the scorecard; refutations stay proposal-only; (c) a
 SUPERSESSIONS the substrate already proves (a capture carrying a CORRECTION / supersedes
 header names its target), proposal-only for archives and refutations.
 
-**Recommended default (Claude's): (a) to start, (c) once the 0.9.0 acted-on trace is LIVE
-(built at `8e0dba4`, unpushed)** — a lifecycle mark that hides knowledge is a removal in
-effect, and no removal moves unseen; (c) is safe only where the evidence is in the entry
-itself, and it removes the most ritual. (b) needs the usage measure live first (`acted_on.*`
-keys, 1.12.0 — 0 spans at the #31 run).
+**Recommended default (Claude's): (a) to start, (c) now available** — its condition is MET: the
+0.9.0 acted-on trace went LIVE with the 09-10 install (2 `duty:"acted-on"` lines read 09-11), so
+(c) can follow immediately. A lifecycle mark that hides knowledge is a removal in effect, and no
+removal moves unseen; (c) is safe only where the evidence is in the entry itself, and it removes
+the most ritual. (b) still needs the usage measure to ACCUMULATE (`acted_on.*` keys — spans are
+non-zero now, but "never pulled in N sittings" needs N sittings of it).
 
 **Blocks:** #38's removal policy; nothing built yet.
 
@@ -262,9 +300,9 @@ and #30 writes the agreement inputs; then run the one check with (3) against (1)
 stays near chance — a coin-flip judge is a dead mechanism, and a dead mechanism is a quality
 failure by the owner's own law.
 
-**Blocks:** nothing. The instrument is BUILT (turn-end 0.9.0 writes `judge_chosen` +
-`ranker_top` on every recall fire; plugin-toolkit 1.12.0 reads `judge.agreement_pct` /
-`judge.agreement_n`) — the one check runs the moment #1 leg 1 puts 0.9.0 lines on disk.
+**Blocks:** nothing — and the wait is OVER: turn-end 0.9.0 is installed and its recall duty
+lines are on disk (4 read 09-11), plugin-toolkit 1.12.0 reads `judge.agreement_pct` /
+`judge.agreement_n`, so the one check is a single `harness-stats` run from the checkout (Q24).
 
 ---
 

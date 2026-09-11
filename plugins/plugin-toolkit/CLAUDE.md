@@ -94,7 +94,10 @@ lib/registry-claims/    # extension surface: index.js registry + plugin-version 
                         #   ones) + bundle-paths + referenced-path (files a CI step invokes;
                         #   measured — the only workflow here ran a script deleted in
                         #   508e2a7, on a pull_request trigger in a repo with zero PRs) +
-                        #   capability-reach (bundle ships declared surfaces only, so
+                        #   vendored-entrypoint (1.13.0 - every vendored dep's
+                        #   exports/main/module target must exist on disk, per CONDITION not per
+                        #   package; essense-flow shipped js-yaml without dist/ and its CLI was dead
+                        #   in every install, silently) + capability-reach (bundle ships declared surfaces only, so
                         #   lib/bin/defaults do not travel — informational, because a
                         #   standalone install DOES carry them and which one the owner uses
                         #   is their call, not a wrong fact)
@@ -119,11 +122,17 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
                         #   definition, every event TIMESTAMPED + windowed — a whole-span model
                         #   cannot reproduce a mid-span snapshot); stats.js (the audit's
-                        #   nearest-rank percentile). 13 sources / 93 keys: hook-bytes,
+                        #   nearest-rank percentile). 14 sources: hook-bytes,
                         #   hint-followed, turn-end-fires, stop-durations, judge (agreement
                         #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
                         #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
-                        #   briefing-vs-log (registered, null until #8)
+                        #   briefing-vs-log (registered, null until #8), note-uptake (1.13.0 - notes
+                        #   SUPPLIED vs notes the answer USED, scored on content because acted-on's
+                        #   file-open question reported 0% where real uptake was 68%; needs the new
+                        #   `notes` context surface = note bodies). A source may declare
+                        #   `writer: '<plugin>'` and return `vintage: true`; the runner then names the
+                        #   install date, because a zero from a writer that was not yet installed is
+                        #   not a finding (it happened 3x in one audit)
 bin/harness-stats.js    # CLI adapter: reads .claude/*/trace.jsonl by shape, checks.jsonl, the
                         #   project's transcripts under <home>/.claude/projects/<slug>/ (slug =
                         #   root path with every non-alphanumeric char -> "-"), .steward/, the

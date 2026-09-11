@@ -137,7 +137,12 @@ lib/trace-line.js       # 0.9.0 (task #30): turn-end's OWN trace-schema-v1 write
 lib/acted-on.js         # 0.9.0: was a surfacing ACTED ON? Derived once per closed owner span at the
                         #   next genuine prompt (turn.previous — a wake is a different prompt_id in
                         #   the SAME span); reads the sibling traces read-only (recall lines, kb-pull
-                        #   hints, lens escalations) and scores { surfaced, touched } per source via
+                        #   hints, lens escalations) and scores per surfacing KIND - `supply` (the body was
+                        #   injected, so ACTING means the answer carried its words, lib/term-overlap.js)
+                        #   vs `pointer` (ids only, so the follow-up read is the signal); an undeclared
+                        #   kind scores `unknown`, NEVER 0. One scorer for both is what reported 0% in
+                        #   every project while real uptake was 68%. Reads BOTH trace shapes (v1 `duty`
+                        #   and pre-v1 `supplied[]`) - 268 of 270 recall fires carry the latter. Via
                         #   file-touch (opened path / kb_read id / mutation after an escalation).
                         #   Selection by the span's prompt-id set, time window as fallback; ledger
                         #   actedOnUpTo (session span) makes it once. Telemetry: never the decision
@@ -183,7 +188,7 @@ hooks/                  # the one Stop registration + (0.8.0) the exec-result RE
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 195 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
+tests/turn-end.test.js  # 205 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

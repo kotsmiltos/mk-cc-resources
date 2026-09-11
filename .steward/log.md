@@ -1261,3 +1261,55 @@ trace.jsonl lines 139–141 read + three greps · `ledger.json` / `checks.jsonl`
 approximate (the agent has no clock): this pass `20260909-0500`, placed from the #31 commit
 epoch (~04:32 local); the prior pass's `1400` stamp is not chronological — treat `updated`
 as approximate.
+
+## 2026-09-11 · CORRECTION integrated at 7e2bcd5 — Phase 1 was pushed AND installed 09-10 and is LIVE; plugin-toolkit is uninstalled (Q24); #1's diagnosis leg deleted as unrunnable
+
+Input: ONE inbox item (`20260911-1230-state-md-ship-position-and-installs-are-stale`) — a
+correction to the model's own current-truth claims, not a feature request. Snapshot HEAD
+`7e2bcd5` (ref file) == origin/main `7e2bcd5` (remote ref) → **0 unpushed commits**; the reflog
+shows THIS checkout fast-forwarded `6becb73` → `7e2bcd5` this session (85 commits), i.e. a
+second working copy of the project — so every `.claude/` fact is per-CHECKOUT.
+**Premises REPLACED (never appended beside the stale version):** "local main @ `fde02fe`, TWO
+commits UNPUSHED, NOT installed" → pushed + installed; the install table → turn-end 0.9.0 / kb
+0.14.0 / lens 0.6.0 (all `gitCommitSha` 7e2bcd5, 2026-09-10T11:03:50Z), steward 0.5.2
+(68ce999); the "0.8.0 / 0.13.0 / 0.5.1 / 1.11.0 INSTALLED" headers in parts.md for turn-end /
+kb / lens / toolkit / steward; the lens's installed-`{"hooks":{}}` claim; the 07-31 DISTRIBUTION
+record; parts.md's statusline "not a plugin install" note (the ledger carries
+`statusline@mk-cc-resources` 0.2.0 @ e6528e0).
+**NEW facts.** (1) `plugin-toolkit` is absent from the install ledger ENTIRELY while the
+mk-cc-all bundle 2.27.0 is installed — a bundle carries `skills` only, so the four repo gates
+(repo-guard · test-all · registry-check · harness-stats) reach a CHECKOUT only; the exact
+inverse of the 07-31 /doctor state, and unrecoverable from disk (an uninstall leaves no trace).
+→ **Q24** opened (default (b): reinstall standalone AND drop the six toolkit skills from the
+bundle), #2 rewritten to wait on it. (2) An UNCOMMITTED phase sits on disk: turn-end 0.10.0 ·
+lens 0.7.0 · toolkit 1.13.0 · steward 0.6.0 · marketplace metadata 2.49.0 (62 files / 0 commits,
+the session's count) — recorded as UNCOMMITTED so no later pass reads it as shipped; what it
+CONTAINS is deliberately absent from the model, since log.md's newest heading was still
+2026-09-09. (3) **Phase 1 is LIVE:** `.claude/turn-end/trace.jsonl` = 13 lines, every one
+`"version":"0.9.0"`, incl. 4 `duty:"context-recall"` and 2 `duty:"acted-on"`; `.claude/kb/
+trace.jsonl` 2 lines on the kb-pull / kb-session-start keys; `.claude/verifiability-lens/
+trace.jsonl` 1 `"agent":"verifiability-lens"` line. Dogfood legs (b) (f) (g) re-cut; (g) mostly
+CLOSED by observation.
+**#1 re-cut.** Leg 0 ("diagnose the silent Stop hook IN this process, before any restart")
+DELETED as unrunnable: that process ended and its `.claude/` tree belongs to the other checkout,
+so the 09-09 silence stays a real, UNEXPLAINED, unreproducible datum — replaced by leg C, a
+WATCH with a trigger (no Stop line while `checks.jsonl` grows → capture the transcript's hook
+summaries + a timed hand-run IN that sitting). Leg A = two disk reads that finish (g); leg B =
+commit + push + update + restart today's phase (owner word). #32's precondition is SATISFIED (a
+duty inside a live hook can nudge); Q20's one check and Q21's (c) trigger are unblocked by the
+live acted-on / judge lines; Q23's "unpushed" context corrected; #4 is runnable today (0.14.0 IS
+the installed version). Parts.md gains the lesson as law: a hook-liveness finding deferred to
+"next session" is a finding discarded.
+**Method note (kept on purpose):** two directory greps over `.claude/` returned "0 matches"
+because ripgrep skips gitignored trees — a false negative that would have entered the model as
+"kb and lens write nothing". Every `.claude/` claim above was re-measured with an EXPLICIT file
+path.
+**Checks this pass:** `.git/HEAD` + `refs/heads/main` + `refs/remotes/origin/main` read ·
+`.git/logs/HEAD` grep (the ff-pull line) · `installed_plugins.json` grepped three times
+(versions + name/sha/date fields + all 20 ledger keys, 13 of them from this marketplace) · all
+16 `plugins/*/.claude-plugin/plugin.json` versions grep-read · `.claude-plugin/marketplace.json`
+metadata `2.49.0` read · the three `.claude/*/trace.jsonl` files globbed and grepped by explicit
+path · log.md heading grep (newest = 2026-09-09). No code touched, no suites run (model-only
+pass). The item's own `git merge-base --is-ancestor` result is carried as the session's
+measurement, corroborated here by the install ledger rather than re-run (no shell in this pass).
+Stamps approximate (the agent has no clock): this pass `20260911-1300`.

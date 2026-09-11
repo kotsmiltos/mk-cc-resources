@@ -1,5 +1,21 @@
 # Release notes — essense-autopilot
 
+## 0.4.2 - 2026-09-11 - vendored js-yaml ships its ESM entry point
+
+An installed plugin cannot run `npm install`, so js-yaml is vendored - but this plugin's
+`.gitignore` ignores `node_modules/`, so the force-added files went in WITHOUT `dist/`, and
+js-yaml 4's exports map resolves `import "js-yaml"` to `./dist/js-yaml.mjs`.
+
+This plugin was NOT failing: it loads js-yaml through `require("js-yaml")` -> `index.js`, which was
+present. The missing file was latent - the first ESM `import` anywhere in its tree (or a
+dependency's) would have failed the same silent way essense-flow did. Fixed rather than exempted.
+
+Now committed whole (3 `dist/` files); both loaders verified. Guarded going forward by
+plugin-toolkit's `vendored-entrypoint` registry-check claim, which resolves every vendored
+`exports`/`main`/`module` target against disk and FAILS the run on a miss - per CONDITION, not
+per package. Version bumped because a plugin is pinned to its version string: without a bump the
+fix would never reach an install.
+
 ## 0.4.1 — 2026-09-06 — lazy yaml, no bash wrapper
 
 js-yaml loads only after the `.pipeline/` walk finds a pipeline; a non-pipeline repo pays
