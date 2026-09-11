@@ -1262,6 +1262,33 @@ approximate (the agent has no clock): this pass `20260909-0500`, placed from the
 epoch (~04:32 local); the prior pass's `1400` stamp is not chronological — treat `updated`
 as approximate.
 
+## 2026-09-10 · Phase 1 SHIPPED + INSTALLED — 68ce999..7e2bcd5 pushed (owner ruling: push + update); the [instr] pick delegated ("you decide") and shipped as the harness-stats default; the steward pass's "zero Stop fires" reading corrected via inbox
+
+Owner answered the one-keystroke panel: [instr] keys = "you decide" → five keys ship in
+`plugins/plugin-toolkit/defaults/harness-stats.json` (hook bytes per prompt p50/p95, hints strict %,
+judge ms p95, blocks per prompt; project override replaces the list wholesale, sources merge by id,
+malformed project config reported not fatal; suite 69/69); ship = "Push, then update the 4 plugins"
+→ `git push origin main` (68ce999..7e2bcd5: 8e0dba4 #30, fde02fe #31, 7e2bcd5 defaults + the steward
+model), `claude plugin marketplace update mk-cc-resources`, then `claude plugin update` for
+turn-end 0.8.0→0.9.0, kb 0.13.0→0.14.0, verifiability-lens 0.5.1→0.6.0, plugin-toolkit
+1.11.0→1.12.0, each "Restart to apply". THIS process still runs 0.8.0 / 0.13.0 / 0.5.1 / 1.11.0 —
+the live legs of #1 need the restart. The steward pass (owner present, background) closed #30/#31
+as built, opened Q23 (now answered), re-threaded #32/#8/#35 — and misread `trace.jsonl` having no
+line for this session as "the Stop hook died": the whole sitting was ONE unyielded assistant turn
+(one owner prompt at 00:29Z; AskUserQuestion + agent notifications are mid-turn), so no Stop event
+had happened; PostToolUse fires per tool call, hence 116 checks.jsonl lines. Filed as inbox
+`20260910-0510-zero-stop-fires-this-sitting-is-one-unyielded-turn-not-a-hook-failure.md` (strike
+#1 leg 0 + the proposed invariant 6; legs 1 + 5 stay unobserved until this turn ends). The
+`[instr] harness:` line on this repo, whole life: p50 7719 B · p95 27572 B · strict 9.3% · judge p95
+54456 ms · blocks/prompt 0.27. Standing line AT SESSION OPEN = a SessionStart instrument, not wired
+— a new small task for the model.
+**Check:** `installed_plugins.json` read after the updates — the four entries at version 0.9.0 /
+0.14.0 / 0.6.0 / 1.12.0, gitCommitSha 7e2bcd5, lastUpdated 2026-09-10T09:01Z; `git log origin/main
+-1` = 7e2bcd5; repo-guard exit 0 (one more real finding first: the log itself quoting the regex
+shape — reworded); registry-check exit 0; `harness-stats --line` printed the five keys. Next open:
+first Stop line of the new process carries `"version":"0.9.0"`; the second owner prompt writes a
+`duty: acted-on` line; the first lens dispatch writes `.claude/verifiability-lens/trace.jsonl`.
+
 ## 2026-09-11 · CORRECTION integrated at 7e2bcd5 — Phase 1 was pushed AND installed 09-10 and is LIVE; plugin-toolkit is uninstalled (Q24); #1's diagnosis leg deleted as unrunnable
 
 Input: ONE inbox item (`20260911-1230-state-md-ship-position-and-installs-are-stale`) — a
@@ -1313,3 +1340,4 @@ path · log.md heading grep (newest = 2026-09-09). No code touched, no suites ru
 pass). The item's own `git merge-base --is-ancestor` result is carried as the session's
 measurement, corroborated here by the install ledger rather than re-run (no shell in this pass).
 Stamps approximate (the agent has no clock): this pass `20260911-1300`.
+
