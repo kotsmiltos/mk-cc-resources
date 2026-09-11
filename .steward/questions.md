@@ -25,13 +25,19 @@ disabled); how it changed is NOT recoverable from disk, since an uninstall leave
 trace. Nothing here is a bug in the gates: they pass (35/35 suites / 2,023 checks at the last
 sweep) — this is reach, not quality.
 
-**UNCHANGED by the 2026-09-11 `019e007` ship, and sharper for it:** that ship pushed six
-plugins, so a `claude plugin update` now moves FIVE of them — and is a NO-OP for plugin-toolkit,
-because there is no entry to update. Closing Q24 takes an INSTALL (options a/b) or option (c)'s
-explicit declaration; nothing the owner does at update time will close it by accident. Note the
-loop it creates: the only instrument that can see checkout-ahead-of-install drift
-(`running.installed_vs_checkout`) ships inside the uninstalled plugin — the gate that measures
-reach is itself unreachable.
+**UNCHANGED by the ships since, and sharper with every one:** an update now moves SIX plugins
+(turn-end 0.11.0 · lens 0.7.0 · steward 0.6.0 · essense-flow 0.27.0 · autopilot 0.5.0 ·
+thorough-mode 1.11.3) and is still a NO-OP for plugin-toolkit, because there is no entry to
+update. Closing Q24 takes an INSTALL (options a/b) or option (c)'s explicit declaration; nothing
+the owner does at update time will close it by accident. Note the loop it creates: the only
+instrument that can see checkout-ahead-of-install drift (`running.installed_vs_checkout`) ships
+inside the uninstalled plugin — the gate that measures reach is itself unreachable.
+**NEW 2026-09-12, a second plugin now has the same shape:** `elicit` 0.1.0 exists on origin, has
+no ledger entry, and rides the mk-cc-all bundle only from version 2.28.0 while the INSTALLED
+bundle is 2.27.0 — so a brand-new capability the owner asked for reaches nobody until this
+layout question is answered and something is actually installed. Whatever the ruling, the
+practical follow-up is the same in options (a)/(b): the bundle needs updating for skill-only
+plugins, and hook/bin-carrying plugins need their own entry.
 
 **Options.** (a) install plugin-toolkit standalone again, leave the bundle as is — restores
 reach in one command, re-introduces the six double-listed skills the 07-31 session objected to;
@@ -50,43 +56,6 @@ to run a gate outside this repo, and the model will say so plainly instead of im
 
 **Blocks:** #2's ratification (it has been waiting on an unratified state since 07-31); #1(g)'s
 `harness-stats` leg, which runs from the checkout meanwhile; #12's per-ship gate use.
-
----
-
-## Q23 · Which `harness-stats` keys earn the standing `[instr]` line? [#31's done-check — the owner's one-keystroke pick; NOTHING is always-on until it lands]
-
-**Context.** `harness-stats` (plugin-toolkit 1.12.0, built 2026-09-09 at `fde02fe`, PUSHED
-09-10; 1.13.0 sits uncommitted on disk and the plugin is UNINSTALLED — Q24, so the command runs
-from the checkout)
-reads 93 registered keys from 13 sources and prints the full report IN the session on demand
-(`node plugins/plugin-toolkit/bin/harness-stats.js --root .`). Its `--line` form prints ONE
-`[instr]` line at session open for ONLY the keys named in `<root>/.claude/harness-stats.json`
-(`line.keys`) — that file does not exist on this repo (Read this pass), so the line is empty
-by construction: the #31 done-check said nothing ships always-on without the owner's pick,
-because injected text is a per-session tax (owner 08-02/08-03: "make the steward lighter").
-Whole-life numbers on this repo at the #31 run, for scale: hook bytes p50 7,358 / p95 29,519
-B per prompt; hints strict 9.7%; blocks 13 / nudges 20 over 46 prompts; judge 85 fires,
-chosen-empty 49.4%, ms unknown on pre-0.7.0 lines — 0.9.0 lines now exist (13, read 09-11), so
-the ms/cost keys have real input from here on. Note what NO key measures: a Stop hook that never
-runs (the 09-09 sitting) — the transcript-side `spawns.stop_hooks_per_fire` vs trace-side
-`turn_end.prompts` gap is the nearest reading; #1's watch leg names it.
-
-**Options (each a set of registered keys; the pick writes `line.keys`):**
-(a) push cost + follow-through — `hook_bytes.per_prompt.p50`, `hook_bytes.per_prompt.p95`,
-`hints.strict_pct`, `judge.ms.p95`, `turn_end.blocks_per_prompt` (Claude's proposal: the five
-numbers audit 2 argued from); (b) (a) + two liveness keys — `running.installed_vs_checkout`
-(a process behind its install) and `tail.under_bound_pct` (injections the platform would
-stub); (c) nothing standing — full report on demand only, zero bytes at open; (d) the owner
-names any set from the 93.
-
-**Recommended default (Claude's): (b).** Five numbers say whether the harness is cheap and
-followed; the two liveness keys name the two classes that bit real sittings (a stale process
-on 09-06/09-08, stubbed injections 53× in audit 2). One line, far under the bound; reversible
-by editing one array. Under invariant 13 the pick is one keystroke; the session writes the
-file.
-
-**Blocks:** the always-on half of #31 (built, dormant); nothing else — the full report works
-without the pick.
 
 ---
 
@@ -119,6 +88,18 @@ header names its target), proposal-only for archives and refutations.
 removal moves unseen; (c) is safe only where the evidence is in the entry itself, and it removes
 the most ritual. (b) still needs the usage measure to ACCUMULATE (`acted_on.*` keys — spans are
 non-zero now, but "never pulled in N sittings" needs N sittings of it).
+
+**REAL INPUT ARRIVED 2026-09-12 — the question is no longer argued from a wish (plugin-toolkit
+1.16.0 `asset-value`):** knowledge is now ranked per kb SOURCE and per ASSET, with an
+`unused_assets` keep/cut list the garden job can consume directly. First numbers: `.steward/log.md`
+scored **0 of 1 used across 5 surfacings** — the biggest file in the model and the least used
+when surfaced. Two cautions that change how (b) must be built: the uptake scorer credited
+BOILERPLATE as use until the same release added idf weighting (steward-model 79% → 64%), so any
+"never used" verdict predating 1.16.0 is unsound; and **`asset.origin_recorded` is FALSE** —
+`.claude/kb/` is gitignored, so no entry carries a commit, author or history, and provenance can
+only be captured by a frontmatter field AT WRITE time (owner deferred; → #38). An archive
+decision without provenance cannot answer "who said this and when", which is exactly what makes
+a wrong deletion unrecoverable.
 
 **Blocks:** #38's removal policy; nothing built yet.
 
@@ -266,28 +247,36 @@ the ★ option below, sharpened by the owner's two-axes wish.
 **Options per surface (Claude's defaults marked ★):** reuse-gate — ★fold into
 pattern-gate (one pre-write nudge, one guard) / keep as is · session-lifecycle — ★archive
 to benched (drop kb's `handoffs` source config with it) / keep for public users / keep
-only retro+meta-review as future steward verbs · essense-flow — ★**FREEZE-AND-EXTRACT** (new
-2026-09-11, see below) / plain FREEZE (no new investment; Phase E retires; Q5 doc repositioning
-may move earlier) / keep investing / archive now · code-glossary — ★make it a GATE inside
+only retro+meta-review as future steward verbs · essense-flow — the EXTRACT half is DONE (below),
+so the live vote is ★**FREEZE** (no new investment, keep the slot; Phase E retires it; Q5 doc
+repositioning may move earlier) / archive now / keep investing / extract `/research` + `/verify`
+too · code-glossary — ★make it a GATE inside
 `@ship` (drift + duplicate-registry + design-score check, deterministic — #37) rather than a
 skill to remember / keep skill-only / archive.
 
-**The essense-flow option MOVED 2026-09-11 — the owner's own session plan (Track 4) already
-walks toward it:** silence the pipeline's false-alarm hooks, and PROMOTE `/elicit` out of the
-pipeline into a standalone brainstorm/vision mode, then take the bench decision here. That makes
-the honest default **freeze-and-extract**: keep the one phase the owner actually wants ambiently
-(idea → shaped vision, which is what `/elicit` does and what the steward loop has no verb for
-until Phase B's `/discuss`), silence the rest so a non-pipeline repo pays nothing, and bench the
-remaining skills. What is still the OWNER's to rule: whether the benched remainder goes to
-`archive/benched-plugins` now or waits for Phase E (#19), and whether the promoted `/elicit`
-lands as its own plugin or as a steward verb — the second choice decides who owns the vision
-text (`/discuss` in #16 is the same seam). #39 builds Track 4; this question ratifies what it
-means for the other ten skills.
+**THE EXTRACTION IS DONE (2026-09-12, #39 CLOSED) — this question now has two facts it was
+missing, and neither was self-answered by the session that produced them:**
+1. **`/elicit` is out.** It landed as its own plugin, `plugins/elicit/` 0.1.0 (one SKILL.md,
+   zero code, bundle-safe), retargeted at `.steward/vision.md` + `questions.md`. So the one
+   capability with a life outside the pipeline no longer depends on essense-flow being
+   installed, whatever this question rules. The sub-choice "own plugin or steward verb" was
+   settled IN FACT by the build (own plugin); its consequence is that #16's Phase-B `/discuss`
+   must extend or absorb elicit, never duplicate it.
+2. **Keeping essense-flow installed now costs ~zero.** Its measured harm was never the skills
+   (0 invocations, no cost) — it was 535 DEGRADED banners + 305 autopilot halt diagnostics per
+   audit window, and 0.27.0 / 0.5.0 fixed both at the source. "Freeze" therefore means "stop
+   investing", not "endure the noise", and the ARCHIVE option loses its urgency argument: the
+   decision can be made on reach and maintenance alone.
+**Still the owner's to rule:** whether essense-flow keeps its bundle slot or goes to
+`archive/benched-plugins` now versus at Phase E (#19); and whether any OTHER skill deserves the
+same extraction — `/research` and `/verify` are the named candidates, both useful without a
+state machine (the session that built elicit did not touch them).
 
 **Recommended default (Claude's): the four ★ marks** — each is a fold, a freeze or an
 extraction, none deletes a capability the owner uses; all reversible from the archive branch.
 
-**Blocks:** Q5's timing; #17's fold scope; #39's bench leg (the build legs proceed without it).
+**Blocks:** Q5's timing; #17's fold scope; #19's Phase-E benching. (#39's build legs are CLOSED
+— nothing is waiting on this to ship, only to be retired.)
 
 ---
 
@@ -338,6 +327,15 @@ material the session then had to re-derive.
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
+- **Q23 · the standing `[instr]` keys → DELEGATED and SHIPPED (owner 2026-09-10, verbatim "you
+  decide"); the model carried it as open for two days too long.** Five keys ship in
+  `plugins/plugin-toolkit/defaults/harness-stats.json` (a project overrides the list wholesale in
+  `.claude/harness-stats.json`; sources merge by id, a malformed project config is reported, not
+  fatal). RE-PICKED 2026-09-11 under the quality-over-cost law (invariant 11): the line LEADS
+  with `uptake.used_pct` and carries NO byte count — the owner judges the harness by whether the
+  work improved, not by bytes. File read this pass, so the claim is disk-backed. Provenance:
+  log 2026-09-10 (the ship entry records the delegation and the check `harness-stats --line`
+  printing the five keys).
 - **Owner rulings (2026-09-09, one-keystroke panel — four questions, defaults marked; two
   answers differ from Claude's recommendation and are recorded as LAW, not argued):**
   **Q19 · ground truth for "done" → RAN AND OBSERVED:** a check ran after the last file

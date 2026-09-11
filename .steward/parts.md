@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.10.0 PUSHED at `019e007` 2026-09-11, NOT INSTALLED · 0.9.0 INSTALLED at `7e2bcd5` and demonstrably RUNNING — 13 v1 trace lines read 09-11) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
+## turn-end (0.11.0 PUSHED 2026-09-12, NOT INSTALLED · 0.9.0 INSTALLED at `7e2bcd5`, demonstrably RUNNING — 28 v1 trace lines + a timed hand-run, exit 0) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
 
 - **Exposes:** one `Stop` registration for the whole toolkit — plus, since 0.8.0, an
   INFORMATIONAL PostToolUse + PostToolUseFailure pair on `Bash|PowerShell`
@@ -180,6 +180,17 @@ capability reach) — it CHECKS, never generates.
   deferral/acted-on side and the lens recorder's `agent_type` side must agree). What the
   mechanisms do beyond these subjects is unclaimed, and none of it runs anywhere until an
   install + restart — the 0.9.0 lines above remain the only live turn-end evidence.
+- **PUSHED 0.11.0 (2026-09-12, NOT INSTALLED — subject level):** ships in the same fix as
+  plugin-toolkit 1.16.0, whose measured content is that the uptake scorer credited BOILERPLATE as
+  use and now weights by idf (steward-model uptake 79% → 64%). Which half of that fix lives in
+  turn-end and which in the scorecard is NOT claimed here — no file was read this pass; the bump
+  exists because a fix without one deploys nothing (the version-pin law below).
+- **LIVE PROOF that the installed 0.9.0 hook still works (2026-09-11 night, #1 leg C):** a timed
+  hand-run of the INSTALLED script over a real 760-line transcript — exit 0, 38,436 ms, a
+  2,334-byte tail naming 3 unmet duties, +2 trace lines. Two consequences for the model: those
+  two lines carry `prompt_id: "legC-handrun"` and must be excluded from per-fire measurements;
+  and 38.4 s on one transcript is half the 90 s hook budget, which is the transcript re-read of
+  `context.js:122-123` showing up as latency (→ #17), not a new defect.
 - **GAP MAP — audit 2, reconciled at 0.8.0 (2026-09-09; ✓ = file:line re-read by a steward
   pass, otherwise the audit's or the harness doc's citation).** CLOSED at 0.7.0 / the
   09-06 ship: tail order + size (`runner.js:98` ✓ material-first → demands-first under a
@@ -558,7 +569,7 @@ capability reach) — it CHECKS, never generates.
   until `acted_on.lens.pct` (0.9.0 trace + 1.12.0 key) shows escalations get acted on.
 - **v3 role:** kept, re-economized at Phase C.
 
-## plugin-toolkit (1.13.0 PUSHED at `019e007` 2026-09-11 · **NOT INSTALLED AT ALL, and `plugin update` cannot fix that — there is no entry to update** — its four gates reach a CHECKOUT only → Q24) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
+## plugin-toolkit (1.16.0 PUSHED 2026-09-12 · **NOT INSTALLED AT ALL, and `plugin update` cannot fix that — there is no entry to update** — its four gates reach a CHECKOUT only → Q24) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
 
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit, /code-glossary
   (deterministic `code_glossary/` Python engine: glossary, MAP.md,
@@ -583,12 +594,23 @@ capability reach) — it CHECKS, never generates.
     NO suite is NAMED (today: alert-sounds, project-note-tracker, schema-scout,
     session-lifecycle); a suite exiting 0 while printing a failure is SUSPECT, never
     green; 1.10.0 — a SKIPPED test is no longer indistinguishable from a passing one.
-    Policy is pure (`lib/test-sweep.js`), execution injected.
+    Policy is pure (`lib/test-sweep.js`), execution injected. **THE GATE ITSELF WAS BLIND
+    UNTIL 1.14.0 (2026-09-11):** it matched node:test's old `# pass N` marker, so under node 24
+    THIRTY of 35 suites counted ZERO checks — it reported 1,325 against a real 1,443 and the
+    total did not move when 16 tests were added or when 16 were removed (both measured). Fixed;
+    and the same blind spot had hidden `essense-flow tests/ledger-compaction.test.js` RUNNING AND
+    CHECKING NOTHING since the gate began. Law this instance writes: **a counter that cannot be
+    made to move is not a measurement** — every gate number in this model that predates 1.14.0 is
+    retired rather than compared (state.md).
   - **registry-check** (`bin/registry-check.js`, 1.9.0) over `lib/registry-claims/` — the
     claims the marketplace/bundle/doc tables make, verified against disk both directions;
     MISMATCH fails, INFORMATIONAL reports (`capability-reach`: `lib|bin|defaults` do not
     travel in a bundle install — measured from the installed cache). Every claim source
-    has a negative control in the suite.
+    has a negative control in the suite. **EIGHT sources since Track 5 (2026-09-11):**
+    `vendored-entrypoint` (1.13.0 — a vendored dep must resolve) and **`plugin-docs`** (1.14.0 —
+    README present · CHANGELOG's newest entry == the shipped version · description ≤200 chars),
+    with `doc-version` broadened to link-form rows and per-plugin docs. The public surface is
+    therefore GUARDED, not merely swept — the difference invariant 3 keeps asking for.
   - **harness-stats** (`bin/harness-stats.js`, 1.12.0 — built 2026-09-09 `fde02fe`, tasks
     #31 CLOSED, harness G5; PUSHED 09-10, and runnable only from a checkout since the plugin
     is uninstalled — Q24) over `lib/metrics/` — the SCORECARD,
@@ -610,9 +632,23 @@ capability reach) — it CHECKS, never generates.
     snapshot; that is how the first run's +8..+47% drift on six numbers was found and closed.
     `defaults/harness-baselines.json` carries the audit numbers with provenance; the report
     prints drift beside every baselined key; renders IN the session (invariant 13); never
-    writes. `--line` prints the `[instr]` form ONLY for the keys the owner picks in
-    `.claude/harness-stats.json` (`line.keys`) — the file does not exist on this repo yet
-    (Q23), so nothing is always-on. MEASURED: `--until 2026-09-06T09:52:54.368Z` reproduces
+    writes. **`--line` is SETTLED (Q23 CLOSED):** the owner delegated the pick 09-10 ("you
+    decide") and five keys ship in `defaults/harness-stats.json`, re-picked 09-11 to LEAD with
+    `uptake.used_pct` and carry no byte count (quality over cost); a project overrides the list
+    wholesale in `.claude/harness-stats.json` (file read this pass).
+    **The registry GREW three times after #31 — count it by running the gate, never from this
+    file:** `note-uptake` + VINTAGE (1.13.0 — a key absent because nothing has written it yet
+    stops reading as a measured ZERO; the last recorded run printed 14 sources), `digest-uptake`
+    (1.15.0 — measured: 1 injection in 5 CUT by the platform bound; `digest.live_used_pct` NULL
+    BY DESIGN, because scoring the live digest against the same session's answers is circular —
+    the duty writes it FROM those answers), `asset-value` (1.16.0 — knowledge ranked per kb
+    SOURCE and per ASSET with an `unused_assets` keep/cut list; `.steward/log.md` 0/1 used across
+    5 surfacings → Q21; `asset.origin_recorded` FALSE because `.claude/kb/` is gitignored → #38).
+    **And the scorer itself was wrong until 1.16.0:** it credited BOILERPLATE as use — the
+    four-instruction preamble every `.steward/` file carries by this model's own propagation
+    requirement — so idf weighting now discounts it and steward-model uptake reads 64% where it
+    read 79%. A measurement instrument is a mechanism like any other: it gets verified, and when
+    it lies the number it produced is retired, not adjusted. MEASURED: `--until 2026-09-06T09:52:54.368Z` reproduces
     all 25 audit-2 numbers at +0.0%. Suite `tests/harness-stats.test.js` 66/66 (registry,
     runner crash / silent key / absent surface, scanner over the REAL record shapes incl.
     stubbed previews, every source, CLI E2E on a temp root with a fake home — never the
@@ -635,6 +671,10 @@ capability reach) — it CHECKS, never generates.
   stops reading as a measured ZERO. That failure mode is exactly what made the #31 run's `tail
   0/121` and `lens 6 dispatches / 0 lines` ambiguous, so the fix matters to every number this
   model quotes from `harness-stats` — re-read the keys from a RUN before trusting either figure.
+  **1.14.0 → 1.16.0 followed within the same sitting** (test-all's counting fix + the
+  `plugin-docs` claim · `digest-uptake` · `asset-value` + idf weighting) — each recorded in the
+  gate bullets above; all four versions are PUSHED and none is installed, which for this plugin
+  changes nothing, because it has never had an install to be behind (Q24).
 - **`runner coupling` SCOPE LIMIT (measured 2026-07-28, first run over `plugins/`):**
   assumes one codebase; across independently-installed plugins it fabricates edges
   (5-module cycle, `alert-sounds → kb`) and clustering flags cross-plugin duplicates
@@ -676,7 +716,7 @@ capability reach) — it CHECKS, never generates.
   skill to remember is Q17.
 - **v3 role:** gates finally get WIRED into executor steps (Phase A).
 
-## essense-flow (0.26.3 PUSHED 2026-09-11, NOT INSTALLED · 0.26.2 installed) — classic pipeline (dissolves per v3 §2; hooks stand down without `.pipeline/` since 0.26.2)
+## essense-flow (0.27.0 PUSHED 2026-09-12, NOT INSTALLED · 0.26.2 installed) — classic pipeline (dissolves per v3 §2; SILENT in non-pipeline repos since 0.27.0; its one wanted phase now lives outside it as `elicit`)
 
 - **Exposes:** 11 phase skills + 14 commands; `.pipeline/` artifacts; state machine
   (artifacts-authoritative, `state-reconcile`); librarian unknowns[] protocol; generativity
@@ -686,12 +726,25 @@ capability reach) — it CHECKS, never generates.
   importing `lib/state.js` + js-yaml — 154 → 105 ms / 129 → 104 ms in a non-pipeline repo
   (~430 fires per ship for nothing before); hooks suite 11/11. **0.26.3 (PUSHED 2026-09-11
   `9739dda`, NOT INSTALLED — subject level):** vendors js-yaml's ESM entry point, shared with
-  autopilot 0.4.2. It also makes `state-reconcile` runnable locally again, which is what the
-  `.pipeline/` DEGRADED banner on this repo has been recommending (state.md).
-- **Known red:** `tests/ledger-compaction.test.js` — calendar drift (>30d unarchived
-  governance entries dated 2026-05-14..17), fails on a clean tree. NOTE the two test dirs:
-  `test/` (54 `.cjs`, driven by `test/run-all.cjs`) and `tests/` (`.js` suites incl.
-  ledger-compaction + hooks) — a green run-all says nothing about `tests/`.
+  autopilot 0.4.2. It also makes `state-reconcile` runnable locally again — though NOT as the
+  remedy for this repo's dead cache: `--apply` here would assert `phase: architecture` on a repo
+  that runs no pipeline (state.md).
+- **SHIPPED 0.27.0 (2026-09-12, NOT INSTALLED — tasks #39's first half):** the false alarms are
+  gone. The `DEGRADED (corrupt)` banner fires at **SessionStart only**, gated on
+  `payload.hook_event_name` with NO counter (535 identical injections per audit window → 1 per
+  sitting); `next-step` is silent on a degraded state; and both hooks anchor to the nearest
+  `.git` ancestor through a new `lib/project-root.js` (not the hard-failing `project-dir.cjs`) —
+  the same root-anchoring class turn-end fixed at 0.4.1, kb at 0.10.3 and steward at 0.4.0, now
+  closed in the fourth plugin. Verified live against this repo's own dead `.pipeline/`: banner at
+  SessionStart, NOTHING at UserPromptSubmit, nothing from next-step, and a subdir shell resolving
+  to the repo root. Hooks suite 16/16 (was 11). **The economics rule is unchanged and was never
+  the defect** (0.26.1: never-initialized repos silent, parse-corrupt loud) — the TRIGGER was.
+- **Known non-green — CORRECTED 2026-09-11:** `tests/ledger-compaction.test.js` is NOT "red from
+  calendar drift" as this model recorded for weeks; under 1.14.0's counting fix it turns out to
+  have been **running and asserting NOTHING** since the gate began. Treat the old diagnosis as
+  retired and see #9. NOTE the two test dirs: `test/` (54 `.cjs`, driven by `test/run-all.cjs`)
+  and `tests/` (`.js` suites incl. ledger-compaction + hooks) — a green run-all says nothing
+  about `tests/`.
 - **Known debt:** `test/` carries the author's real home paths as load-bearing fixture
   literals; it is the one entry in repo-guard's `leaked-path` allowlist.
 - **Consumes:** the plugin-toolkit code-glossary engine for /organize + /glossary (hard
@@ -701,28 +754,61 @@ capability reach) — it CHECKS, never generates.
   session since 08-10 (owner 08-26: "rarely used"). Largest surface in the marketplace,
   no live customers — freeze-vs-invest is Q17; Phase E (#19) already plans its retirement.
 
-## essense-autopilot (0.4.2 PUSHED 2026-09-11, NOT INSTALLED · 0.4.1 installed) — the last competing blocking hook (stands down cheaply since 0.4.1, still REGISTERED)
+## essense-autopilot (0.5.0 PUSHED 2026-09-12, NOT INSTALLED · 0.4.1 installed) — the last competing blocking hook (stands down cheaply AND silently since 0.5.0, still REGISTERED)
 
 - **Exposes:** Stop-hook auto-advance of essense-flow phases; halt conditions + stderr
   diagnostics. **0.4.1 (2026-09-06):** js-yaml lazy after the pipeline walk; `hooks.json`
   calls node directly (bash wrapper gone) — 125 (+197 wrapper) → 99 ms; suite 44/44, the
   `.pipeline` fixture still halts correctly. **0.4.2 (PUSHED 2026-09-11 `9739dda`, NOT
   INSTALLED — subject level):** the same vendored js-yaml ESM entry point; the bump exists
-  BECAUSE a fix without one deploys nothing (the version-pin law below). **Consumes:**
-  `.pipeline/state.yaml` + config opt-in.
+  BECAUSE a fix without one deploys nothing (the version-pin law below). **0.5.0 (2026-09-12,
+  NOT INSTALLED — #39's second half):** the `no .pipeline/` halt writes NO diagnostic (305
+  stderr lines per audit window → 0 outside a pipeline); **every other halt reason stays loud**,
+  which is the whole discipline — a halt the owner cannot act on is noise, a halt they can is the
+  product. Suite 44/44. **Consumes:** `.pipeline/state.yaml` + config opt-in.
 - **Files:** `plugins/essense-autopilot/hooks/scripts/autopilot.js` — decision logic is
   welded into `main()`; only `countInFlightAgents` is exported (`:421`). Extracting a pure
   `decide()` is the precondition for making it a turn-end duty (owner: "autopilot should
   become a duty").
 - Slated to retire with Phase E (Q4) regardless.
 
-## thorough-mode (1.11.2 — its guard is THE canonical machine-text list since #25)
+## elicit (0.1.0 — NEW 2026-09-12, PUSHED, never installed anywhere) — the idea → shaped-vision verb, extracted out of the pipeline
+
+- **Why it exists (owner, 2026-09-11, verbatim):** *"a mode where I can brainstorm to complete my
+  visions and be questioned in gaps I leave and be guided through processes I might not fully
+  understand."* The steward loop has no verb for that (Phase B's `/discuss` is unbuilt, #16) and
+  the one pipeline phase that did it — essense-flow's `/elicit` — was locked behind a state
+  machine the owner has not run since 08-10. So the gap-recursion ENGINE was retargeted rather
+  than reinvented, and the pipeline copy stays where it is, unchanged, for pipeline runs.
+- **Exposes:** ONE SKILL.md — zero code, zero hooks, zero state, zero preconditions, bundle-safe
+  (mk-cc-all 2.28.0 carries `plugins/elicit/skills/`). Points at `.steward/vision.md` +
+  `questions.md` instead of a pipeline SPEC; orients from kb + the model BEFORE the first
+  question so it never re-asks what is settled; recurses on the deeper gap with a visible queue;
+  sends genuine forks to `prism`; teaches a process before asking the owner to choose inside it.
+  Every dependency (kb, steward, prism, a `.steward/` model at all) degrades to one named line.
+- **Contract:** it writes exactly ONE thing — an inbox capture. It never writes the model, so
+  the steward agent remains the single writer and this plugin adds no second author. That is
+  what makes a brainstorm surface safe to run in any repo.
+- **INVARIANT 12 DEBT, named rather than waived:** it ships with NO registered metric key.
+  Claude's proposal (unratified) is prism's precedent — *the owner invokes it again unprompted* —
+  until a `harness-stats` key exists; recorded here so the exception is visible instead of
+  quietly setting a norm.
+- **Reach today: none.** No ledger entry, and the installed bundle is 2.27.0 — so neither path
+  delivers it until an update or a standalone install (Q24 decides which layout is the answer).
+- **Files (globbed this pass):** `plugins/elicit/{.claude-plugin/plugin.json,
+  skills/elicit/SKILL.md, CLAUDE.md, README.md, CHANGELOG.md}` · **Tests:** none (no code) —
+  test-all NAMES it as a no-suite unit, the prism precedent.
+
+## thorough-mode (1.11.3 — its guard is THE canonical machine-text list since #25)
 
 - **Exposes:** modifiers ++/@thorough @ship @present @debug @verify @fresh @prompt @build
   via UserPromptSubmit injection; protocol-shaped convention as extension surface;
   machine-text guard; steward-aware @prompt (kickoff rendered FROM the `.steward/` model).
   `@ship` now PROBES for repo-guard before naming it, and says so when absent — the rule
-  that an instruction may not name a path an install cannot resolve.
+  that an instruction may not name a path an install cannot resolve. **1.11.3 (2026-09-12, NOT
+  INSTALLED — Track 5):** `@ship`'s injected text retargeted from RELEASE-NOTES to CHANGELOG,
+  with `/version-bump`, `/plugin-scaffold` and `/docs-audit`. A convention change costs a bump in
+  every surface that STATES it — the injected copy is one of them.
 - **Files:** `plugins/thorough-mode/hooks/thorough-mode.js`.
 - **Audit 2 (2026-09-06):** `@prompt` 11 + `@ship` 5 + `++ @verify` 1 = the owner's REAL
   workflow (the "obsoleted by the model" role below is refuted by usage — @prompt renders
@@ -852,7 +938,13 @@ bundle `.claude-plugin/plugin.json` DESCRIPTION + README + CLAUDE.md** (the bund
 description is the one that drifted for turn-end); SKILL.md convention shared; handoff
 format → resume reads it; **a retired hook → the plugin's own CLAUDE.md and hooks.json
 description** (drifted for kb and verifiability-lens; both CLAUDE.md sides FIXED in the
-restructure); **a version bump → a RELEASE-NOTES entry** (1.10.0 shipped without one);
+restructure); **a version bump → a CHANGELOG.md entry — and since 1.14.0 that is a GATE, not a
+habit** (`registry-check`'s `plugin-docs` claim: README present, CHANGELOG's newest entry equal
+to the shipped version, description ≤200 chars). RELEASE-NOTES.md is RETIRED repo-wide as of
+Track 5 (2026-09-11): all 16 files migrated to Keep-a-Changelog `CHANGELOG.md`, the older bodies
+preserved verbatim in `design/notes/<plugin>-history.md`, and every producing surface retargeted
+(`/version-bump`, `/plugin-scaffold`, `/docs-audit`, `@ship`). Any model or doc reference to "a
+RELEASE-NOTES entry" now means the CHANGELOG;
 **a new duty → the root README's plugin-table row, not only the plugin's own docs** (the
 turn-end row lagged at three duties through 0.3.0; fixed by the 0.3.1 cascade, re-read
 2026-08-01 — the law stands, the instance is closed; `self-check` re-triggers it when it
@@ -862,7 +954,12 @@ lands).
 count or version in prose is a defect waiting to happen — the class has now produced
 instances in three different files that no one re-ran. Any doc edit that states a number
 must have just run the thing that produces it; where the number earns nothing, print the
-command instead.
+command instead. **And re-derived is not enough if the DERIVER is blind (2026-09-11):**
+test-all's totals were freshly produced by a command on every ship and still wrong for months,
+because the sweep could not read node 24's pass marker — 30 of 35 suites counted zero. The
+companion law: **a counter must be shown it can MOVE** (add tests, remove tests, see the number
+follow) before any number it prints is quoted, and a total whose deriver has since been fixed is
+retired rather than compared.
 
 **A retired hook is DELETED in the next release, never "kept one release" forever.** Both
 "kept" scripts outlived that promise by three releases (kb-scribe-stop.js + 42 tests;
@@ -904,6 +1001,16 @@ lives in first; `/version-bump` exists precisely so the cascade is not remembere
 **And "pushed" is not visible to any running instrument (2026-09-11).** Both running-version
 instruments compare the EXECUTING script's manifest against the install ledger, so a checkout
 ahead of its install is SILENT everywhere at runtime — the drift is measurable only by
-`running.installed_vs_checkout` (harness-stats, from a checkout — Q24). Until that is a standing
-line (Q23), "pushed but not installed" is a fact the briefing must AUTHOR, and it is the one
-class of position claim no hook can compute for the owner.
+`running.installed_vs_checkout` (harness-stats, from a checkout — Q24). Q23 is now CLOSED and
+the standing `[instr]` line ships five keys by default, but it does NOT carry that one, so
+"pushed but not installed" remains a fact the briefing must AUTHOR — the one class of position
+claim no hook computes for the owner.
+
+**PUSH THE BRANCH FIRST; TAGS ONLY AFTER IT LANDS (learned 2026-09-12).** The 18
+`<plugin>@<version>` tags were pushed BEFORE the branch; the branch push was then rejected
+(origin had moved to another session's commit), and the rebase orphaned six already-published
+tags — refs on origin naming commits unreachable from main. Detection that worked: walk every
+tag with `git merge-base --is-ancestor <tag> main`, then re-point and force-push, then diff
+`git ls-remote --tags` against local (29/29 match). A tag is a PUBLISHED ref: it inherits the
+same reach chain as a version (bump → push → install → restart) and must never be published
+against a commit that may still be rewritten.

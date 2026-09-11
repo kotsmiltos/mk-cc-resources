@@ -1,4 +1,4 @@
-# State — current truth (2026-09-11 · the six-plugin phase is COMMITTED + PUSHED at HEAD 019e007 == origin/main — and NOT INSTALLED: what runs is still the 09-10 generation (turn-end 0.9.0 · kb 0.14.0 · lens 0.6.0 · steward 0.5.2); plugin-toolkit has no install entry at all → Q24)
+# State — current truth (2026-09-12 · HEAD `a50fa75` == origin/main — Tracks 4 + 5 AND three unplanned toolkit ships are PUSHED, and NOTHING is installed: the ledger still reads the 09-10 generation, so SIX plugins run behind their checkout, the new `elicit` 0.1.0 has never been installed anywhere, and plugin-toolkit still has no entry at all → Q24)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,48 +8,56 @@
 
 ## Ship position
 
-**HEAD `019e007` == origin/main `019e007`** (both ref files read this pass) — **0 unpushed
-commits;** the only untracked path is `.pipeline/`, deliberately left uncommitted (below). The
-13:00 pass's *"a NEW UNCOMMITTED phase sits on disk"* is SUPERSEDED everywhere it appeared: the
-commit + push happened after that pass ran — `7e2bcd5..019e007`, **6 commits / 64 files /
-+2146/-378** (the session's count, carried; corroborated here by the two ref files and by all 16
-plugin.json versions grep-read).
-**NOTHING of this ship is INSTALLED.** `installed_plugins.json` (grep-read this pass) still
-carries the 2026-09-10T11:03:50Z generation — turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 at
-`7e2bcd5`, steward 0.5.2 at `68ce999`, essense-flow 0.26.2 / essense-autopilot 0.4.1 / mk-cc-all
-2.27.0 at `bc39fe0`. So the hook code running in any session is the 09-10 build, and
-`running.installed_vs_checkout` names FIVE behind-install plugins (turn-end 0.9.0→0.10.0 · lens
-0.6.0→0.7.0 · steward 0.5.2→0.6.0 · essense-flow 0.26.2→0.26.3 · autopilot 0.4.1→0.4.2) plus
-plugin-toolkit, which has no entry to update at all (Q24 — an INSTALL, not an update).
-**Every claim about this ship is CHECKOUT evidence; none of it is field-validated.**
-**THIS IS A SECOND CHECKOUT of the project** (reflog read at 13:00: `pull --ff-only`
-`6becb73` → `7e2bcd5` this session, 85 commits) — so every `.claude/` fact below is
-per-CHECKOUT, and the 09-09 evidence lives in a working copy this pass cannot read.
-**Gates at THIS ship** (each run on the committed tree — the session's records, not re-run
-here): repo-guard exit 0 (4 detectors) · registry-check exit 0 (7 claim sources) · **test-all
-33/35 suites / 1,325 checks**, with the session's own pre-work baseline at 27/35. The 2 reds are
-pre-existing and untouched by the work: essense-flow's CJS suite resolves fixtures outside the
-repo, and code-glossary's pytest deps are absent (→ #9, which now has NAMED causes instead of
-one intermittent). The #31 sweep's 35/35 · 2,023 checks is REPLACED, not kept beside this — a
-check total only means something with the suite set that produced it. The tree did not move
-mid-pass.
+**HEAD `a50fa75` == origin/main `a50fa75`** (both ref files read this pass) — **0 unpushed
+commits.** The 019e007 position is SUPERSEDED: since it, the same long sitting shipped Tracks 4
+and 5 of the 09-11 plan (four commits, pushed as `acb736b..7cc3d3d` after a rebase — the branch
+push was REJECTED first because another session had moved origin) plus three UNPLANNED
+plugin-toolkit ships, and 29 `<plugin>@<version>` tags now exist on origin. The only untracked
+path is still `.pipeline/`, the dead 2026-04-22 cache (below).
+**NOTHING of any of it is INSTALLED.** `installed_plugins.json` (grep-read this pass, every
+version/sha/lastUpdated field) is UNMOVED at the 2026-09-10T11:03:50Z generation — turn-end
+0.9.0 / kb 0.14.0 / lens 0.6.0 at `7e2bcd5`, steward 0.5.2 at `68ce999`, essense-flow 0.26.2 /
+autopilot 0.4.1 / thorough-mode 1.11.2 / patterns 0.1.1 / mk-cc-all 2.27.0 at `bc39fe0`. So the
+hook code running in any session is still the 09-10 build, and the drift is now SIX behind-install
+plugins (turn-end 0.9.0→**0.11.0** · lens 0.6.0→0.7.0 · steward 0.5.2→0.6.0 · essense-flow
+0.26.2→**0.27.0** · autopilot 0.4.1→**0.5.0** · thorough-mode 1.11.2→**1.11.3**) plus TWO with no
+entry at all: plugin-toolkit (Q24) and the new **elicit 0.1.0**. Elicit rides the mk-cc-all
+bundle (disk 2.28.0 carries `plugins/elicit/skills/`, read this pass) — but the INSTALLED bundle
+is 2.27.0, so today neither the bundle path nor a standalone install reaches it.
+**Every claim about this work is CHECKOUT evidence; none of it is field-validated.**
+**THIS IS A SECOND CHECKOUT of the project** (reflog read 09-11 at 13:00: `pull --ff-only`
+`6becb73` → `7e2bcd5`, 85 commits) — so every `.claude/` fact below is per-CHECKOUT, and the
+09-09 evidence lives in a working copy this pass cannot read.
+**Gates at HEAD** (run from the repo root by the session, exit codes read directly; the session's
+records, not re-run here): repo-guard exit 0 (4 detectors) · registry-check exit 0 (**8** claim
+sources — `plugin-docs` is the new one) · **test-all 32/35 suites / 1,476 checks / 1 skipped /
+exit 1** on three named non-green: two pre-existing (essense-flow's CJS suite resolves fixtures
+outside the repo; code-glossary's pytest deps absent) and the ledger-compaction SKIP, newly
+visible.
+**CHECK-COUNT CORRECTION — every test-all total this model recorded before 1.14.0 is unsound.**
+The sweep matched node:test's old `# pass N` marker, so on node 24 THIRTY of 35 suites counted
+ZERO: the `019e007` record of "1,325 checks" was measured against a real 1,443, and the number
+could not move when 16 tests were added or removed (both measured). Do not compare any pre-1.14.0
+total with a post-1.14.0 one; the 33/35 · 1,325 and 35/35 · 2,023 figures are retired, not
+baselines. The tree did not move mid-pass.
 
 ## Versions on disk (all 16 plugin.json grep-read this pass) vs installed (`installed_plugins.json` grep-read this pass)
 
-**PUSHED today at `019e007`, none installed:** turn-end **0.10.0** · verifiability-lens
-**0.7.0** · plugin-toolkit **1.13.0** · steward **0.6.0** · essense-flow **0.26.3** ·
-essense-autopilot **0.4.2** (+ marketplace metadata **2.50.0**, read). **Unchanged by this
-ship:** kb 0.14.0 · thorough-mode 1.11.2 · patterns 0.1.1 · prism 0.1.0 · statusline 0.2.0 ·
-session-lifecycle 1.3.1 · schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 ·
-reuse-gate 0.1.0.
+**On disk now (17 plugins — every plugin.json version grep-read this pass):** turn-end **0.11.0**
+· plugin-toolkit **1.16.0** · essense-flow **0.27.0** · essense-autopilot **0.5.0** ·
+thorough-mode **1.11.3** · **elicit 0.1.0 (NEW plugin)** · verifiability-lens 0.7.0 · steward
+0.6.0 · kb 0.14.0 · patterns 0.1.1 · prism 0.1.0 · statusline 0.2.0 · session-lifecycle 1.3.1 ·
+schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0
+(+ marketplace metadata **2.51.0** and the mk-cc-all bundle **2.28.0**, both read).
 **Installed (user scope — the ledger's marketplace keys grep-read):** turn-end 0.9.0 ·
 kb 0.14.0 · verifiability-lens 0.6.0 (all three `gitCommitSha` 7e2bcd5, 2026-09-10T11:03:50Z) ·
 steward 0.5.2 (68ce999, 2026-09-09T09:57Z) · mk-cc-all bundle 2.27.0 · essense-flow 0.26.2 ·
 essense-autopilot 0.4.1 · thorough-mode 1.11.2 · patterns 0.1.1 (those five at bc39fe0) ·
 session-lifecycle 1.3.1 (8d5cab6) · reuse-gate 0.1.0 (6becb73) · statusline 0.2.0 (e6528e0) ·
-alert-sounds 1.1.1. **kb is the one plugin this ship did not touch that is already current.**
-**ABSENT from the ledger:** plugin-toolkit · prism · schema-scout · project-note-tracker. The
-last three are bundle-carried SKILLS, so their absence is expected (the bundle IS installed).
+alert-sounds 1.1.1. **kb is the one plugin that is current on both sides.**
+**ABSENT from the ledger:** plugin-toolkit · elicit · prism · schema-scout ·
+project-note-tracker. The last three are bundle-carried SKILLS, so their absence is expected;
+elicit is bundle-carried too, but only from bundle 2.28.0, which is NOT the installed one.
 **`plugin-toolkit` is the finding (unchanged by this ship):** its skills ride the bundle, but
 `bin/` and `lib/` never do (registry-check's own `capability-reach` claim), so the four repo
 gates (repo-guard · test-all · registry-check · harness-stats) reach a CHECKOUT only — and
@@ -61,22 +69,54 @@ mid-flight because essense-flow and essense-autopilot carried no bump, so that p
 deployed zero. Any future "ship just this fix" decision reads the version of the plugin the fix
 lives in first. (Law recorded in parts.md's cross-reference discipline.)
 
-## What `019e007` CONTAINS (commit subjects — recorded at subject level; no file was re-read this pass, and nothing here has fired in the field)
+## What LANDED after `019e007` (five ships in one long sitting; all pushed, none installed — the session's own records + the model's targeted re-reads, never a re-audit)
 
-1. `9739dda` fix(essense-flow, essense-autopilot): vendor js-yaml's ESM entry point.
-2. `e39edf6` feat(plugin-toolkit): vendored-entrypoint claim (+ negative controls) — the 7th
-   registry-check claim source (the gate run above counted 7).
-3. `2ec159a` feat(plugin-toolkit): note-uptake + VINTAGE — the scorecard stops reporting false
-   zeros (a metric absent because nothing wrote it yet no longer reads as a measured 0).
-4. `c2c44a0` fix(turn-end, verifiability-lens): namespaced agent id, `aborted` verdict, closure
-   reissues.
-5. `8cd3763` feat(steward): integrate whenever unintegrated; briefing cap → flood guard;
-   born-on-contract.
-6. `019e007` chore(release): six bumps + doc sync + this model's own reconcile.
-
-What each mechanism DOES beyond its subject is deliberately not claimed — the pass that reads
-the code or watches a live fire records it. The doc sync did NOT close the counts-class defect:
-root `CLAUDE.md:196` still says "three repo-level gates" (grep this pass) → #6 stands.
+- **Track 4 — the pipeline's false alarms are silenced (essense-flow 0.27.0 · autopilot 0.5.0).**
+  535 identical `DEGRADED (corrupt)` banners → SessionStart ONLY (gated on
+  `payload.hook_event_name`, no counter); next-step silent on a degraded state; autopilot's 305
+  `no .pipeline/` halt diagnostics silent while every OTHER halt stays loud; both essense-flow
+  hooks root-anchored through a new `lib/project-root.js`. Verified live against this repo's own
+  dead `.pipeline/` (banner at SessionStart, nothing at UserPromptSubmit, 0 stderr bytes outside
+  a pipeline, a subdir shell resolving to the root); suites 16/16 + 44/44. **#39 CLOSED.**
+- **Track 4 — `plugins/elicit/` 0.1.0, a NEW plugin** (one SKILL.md, zero code, no hooks, no
+  state, bundle-safe): essense-flow's gap-recursion engine RETARGETED at `.steward/vision.md` +
+  `questions.md`, orienting from kb + the model before the first question, forking to prism, and
+  writing exactly ONE thing — an inbox capture, so the steward agent stays the model's only
+  writer. It answers the owner's 09-11 ask (*"a mode where I can brainstorm to complete my
+  visions and be questioned in gaps I leave"*) and it is the first capability the pipeline's
+  retirement has actually EXTRACTED rather than lost. The bench decision was routed to Q17, not
+  self-answered.
+- **Track 5 — the public half, first pass in months (#40 CLOSED).** README 382 lines/41 KB →
+  149/7.6 KB with corrected `<name>@mk-cc-resources` install commands; all 18 marketplace rows
+  ≤200 chars (longest 191, was 9,879) with the 7 recommended metadata fields (was 0/17); the 5
+  missing plugin READMEs written (17/17); all 16 `RELEASE-NOTES.md` migrated to `CHANGELOG.md`
+  (Keep a Changelog — recent 5 rewritten user-facing, older verbatim into
+  `design/notes/<plugin>-history.md`), with `/version-bump`, `/plugin-scaffold`, `/docs-audit`
+  and `@ship` retargeted (thorough-mode 1.11.3). Guarded so it cannot regress: registry-check's
+  new `plugin-docs` claim (README present · CHANGELOG top version == shipped version ·
+  description ≤200) and a broadened `doc-version`. 29 tags on origin.
+- **UNPLANNED, and the most consequential: plugin-toolkit 1.14.0 — test-all could not count.**
+  See the check-count correction above. The same blind spot had hidden
+  `essense-flow:tests/ledger-compaction.test.js` RUNNING AND CHECKING NOTHING since the gate
+  began — a third non-green that is newly VISIBLE, not newly broken (→ #9).
+- **UNPLANNED: plugin-toolkit 1.15.0 `digest-uptake`** — answers "are session digests used?".
+  Measured: **1 injection in 5 is CUT by the platform bound** (platform invariant 1, from the
+  inside). `digest.live_used_pct` ships **NULL BY DESIGN**: scoring the live digest against the
+  same session's answers is circular, because the duty writes it FROM those answers. A metric
+  that cannot be honestly computed is declared null and SAID — the house rule the VINTAGE fix
+  established, applied a second time.
+- **UNPLANNED: plugin-toolkit 1.16.0 + turn-end 0.11.0 — the uptake scorer credited BOILERPLATE
+  as use.** The four-instruction preamble this model's own propagation requirement puts in every
+  `.steward/` file was scoring as "the answer used the note". Fixed with idf weighting; measured
+  steward-model uptake **79% → 64%**. Also new: an `asset-value` source ranking knowledge per kb
+  SOURCE and per ASSET with an `unused_assets` keep/cut list (feeds Q21 with real numbers —
+  `.steward/log.md` scored 0/1 used across 5 surfacings), and `asset.origin_recorded` = FALSE:
+  `.claude/kb/` is gitignored, so no entry carries a commit, author or history, and recording
+  provenance needs a frontmatter field AT CAPTURE TIME (owner deferred → #38).
+- What each mechanism does beyond these records is not claimed here; none of it has fired in the
+  field, because none of it is installed. The doc pass did NOT close the counts-class defect:
+  the root CLAUDE.md text injected at THIS session's open still says "three repo-level gates"
+  while its own table lists four → #6 stands.
 
 ## THIS PROCESS — turn-end 0.9.0 RUNS and its Stop hook WRITES (measured 09-11 13:00 in THIS checkout; 0.9.0 is STILL what runs after this ship, until update + restart)
 
@@ -206,11 +246,25 @@ every recall fire writes judge_chosen + ranker_top → `judge.agreement_pct` / `
   trace and one `harness-stats --root .`, exit 0, 14 sources): the trace has grown to **28 v1
   lines, 9 of them `duty:"context-recall"`, and EVERY one carries `judge_chosen` + `ranker_top`**
   — Q20's missing input exists. Scorecard: `trace.lines_per_dispatch` 1 · `acted_on.spans` 6 ·
-  `judge.agreement_n` 3 / `agreement_pct` 66.7 · `uptake.used_pct` 100 (6 of 10 scorable notes)
-  · `tail.under_bound_pct` 100 · `running.stale_trace_lines` 0 · `briefing.contradictions` `n/a`
-  (waits on #8) · **`running.installed_vs_checkout` NON-EMPTY for exactly the five plugins named
-  above** — the ship position in this file, measured by the instrument rather than argued.
-  Nothing here required an install; it is all checkout evidence, per Q24.
+  `judge.agreement_n` 3 / `agreement_pct` 66.7 · ~~`uptake.used_pct` 100~~ **RETIRED — that
+  number came from the pre-idf scorer that credited this model's own four-line preamble as
+  "used" (1.16.0 above); it is not comparable to any later reading and is not a baseline** ·
+  `tail.under_bound_pct` 100 · `running.stale_trace_lines` 0 · `briefing.contradictions` `n/a`
+  (waits on #8) · **`running.installed_vs_checkout` NON-EMPTY for the five plugins behind at
+  THAT run** (six now, plus two absent — the list above) — the ship position in this file,
+  measured by the instrument rather than argued. Nothing here required an install; it is all
+  checkout evidence, per Q24.
+- (h) **#1 leg C — the hook-liveness WATCH FIRED, and it was a FALSE POSITIVE (2026-09-11 night,
+  captured IN the sitting as the leg requires).** Both halves of the trigger held: 142
+  `checks.jsonl` lines carrying this session's id against 0 Stop trace lines. Cause: the sitting
+  had never YIELDED — 760 transcript lines, ONE `promptId`, 0 `stop_hook_summary` entries, and a
+  Stop hook cannot write before a turn ends; `checks.jsonl` grew because PostToolUse fires per
+  tool call, which is itself proof the plugin was loaded. A timed hand-run of the INSTALLED 0.9.0
+  over that transcript: **exit 0, 38,436 ms, 2,334-byte tail ("3 duties are unmet"), +2 trace
+  lines** — the hook works. Those two lines carry `prompt_id: "legC-handrun"` and must be
+  EXCLUDED from any per-fire measurement. The predicate was missing its denominator and is
+  re-cut in #1 leg C; the 38.4 s hand-run also sits uncomfortably close to the 90 s hook budget
+  on a long transcript (a datum for #17's transcript tail-read, not a finding).
 - (g, prior reading) Phase 1 live legs — mostly closed by observation 2026-09-11 midday: first
   Stop line `"version":"0.9.0"` ✓ (13 lines) · `duty:<id>` per recall fire ✓ (4) ·
   `duty: acted-on` ✓ (2) · kb lines on the kb-pull / kb-session-start keys ✓ (2; the two
@@ -264,7 +318,12 @@ every recall fire writes judge_chosen + ranker_top → `judge.agreement_pct` / `
 6. **A Stop hook that dies leaves NO line** — from disk, "killed at the timeout" and "no Stop
    yet" read identically. Only a sibling ledger proves the process was alive (09-09: 116
    recorder lines vs 0 Stop lines). Every live check must pair the Stop trace with
-   `checks.jsonl` or the transcript's hook summaries.
+   `checks.jsonl` or the transcript's hook summaries. **AMENDED 2026-09-12 (leg C fired false):
+   the pairing also needs a YIELD denominator.** A sitting that has not yielded once has no Stop
+   line BY CONSTRUCTION — and a long single-turn sitting with hundreds of tool calls is this
+   project's normal shape, so "checks grow, trace flat" is the signature of a HEALTHY first turn,
+   not a dead hook. Read silence only after a `stop_hook_summary` exists (or ≥2 distinct
+   `promptId`s).
 
 ## Hook-event coverage (`plugins/*/hooks/hooks.json`)
 
@@ -272,7 +331,9 @@ Registered on disk: SessionStart 3 · UserPromptSubmit 5 · PreToolUse 2 · Stop
 1 · PostToolUse 1 + PostToolUseFailure 1 (turn-end, installed 0.9.0) · **SubagentStop 1
 (verifiability-lens — INSTALLED since 09-10 at 0.6.0, and one real `agent:` trace line exists
 in this checkout)**. Still ZERO: PreCompact, PostCompact, SubagentStart, SessionEnd — #33 (compaction
-guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
+guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key). **The 17th
+plugin adds nothing here: `elicit` 0.1.0 ships zero hooks, zero code and zero state** — the
+cheapest possible shape for a new capability, and the reason it costs no per-session tax.
 
 ## Known-broken / known-gaps (parts.md carries the file:line gap maps)
 
@@ -283,9 +344,12 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
   never runs — that is why the pairing rule (platform invariant 6) is the mechanism.
 - **Evaluators unmeasured (G4): CLOSED at 0.9.0 / 0.14.0 / 0.6.0 and LIVE since the 09-10
   install** — turn-end 13 lines / kb 2 / lens 1 read this pass; residual legs → #1(g).
-- **No scorecard (G5): CLOSED at 1.12.0 (1.13.0 PUSHED 09-11, still uninstalled)** — but plugin-toolkit is
-  UNINSTALLED, so the gate runs from a checkout only → Q24; the standing `[instr]` pick pending
-  → Q23; the "second run after #32 shows the deltas" leg → #32's done-check.
+- **No scorecard (G5): CLOSED at 1.12.0 and grown to 1.16.0 (16 metric sources; PUSHED, still
+  uninstalled)** — plugin-toolkit remains UNINSTALLED, so the gate runs from a checkout only →
+  Q24. The standing `[instr]` pick is NO LONGER open: the owner delegated it 09-10 ("you decide")
+  and five keys ship in `plugins/plugin-toolkit/defaults/harness-stats.json`, re-picked 09-11 to
+  lead with `uptake.used_pct` and carry no byte count (file read this pass) — Q23 CLOSED. The
+  "second run shows the deltas" leg → #32's done-check.
 - **Verification ground truth (G2): CLOSED at 0.8.0;** fixtures real (arrival). Residual:
   `requireGreen` per project (Q19).
 - **No goal-based termination (G3):** → #32, UNBLOCKED (Q18/Q19). `/goal` excluded by default
@@ -295,7 +359,7 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
 - **kb (0.14.0 on disk AND installed):** cap / dedupe / pointer / malformed-config / floor-leak CLOSED at
   0.13.0. RESIDUAL (audit): `source` facet unfilterable; stamp-titled archived digests → noise;
   8-digit runs in h2 titles read as timestamps; a BOM defeats frontmatter → #38.
-- **turn-end (0.10.0 PUSHED + uninstalled · 0.9.0 installed and running):** `DUTIES` hard-coded (`lib/duties/index.js:59`); whole transcript
+- **turn-end (0.11.0 PUSHED + uninstalled · 0.9.0 installed and running):** `DUTIES` hard-coded (`lib/duties/index.js:59`); whole transcript
   re-read every Stop (`context.js:122-123`, 170 MB → 1.4 s — and now a silent-hook suspect) →
   #17; no per-duty supply budget → #17; no compaction guard → #33; sub-agents observed only by
   transcript scan → #35 (the SubagentStop payload is measured; lens 0.6.0 is the first
@@ -304,34 +368,50 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
   text not anchored to `<git root>/…` everywhere (`SKILL.md:55-56,79`, `commands/next.md:8`,
   `agents/steward.md:24`, `session-digest.js:76,78`) → #8; wrong-root drops in aithseis from
   twin-game's MODEL text → #12.
-- **Docs (counts-class):** root `CLAUDE.md:196` still says "three repo-level gates" while
-  `:33` and a gate-table row already name harness-stats — **re-grepped AFTER this ship's doc
-  sync commit: still there** → #6.
+- **Docs (counts-class): the public surface was rebuilt and GUARDED (Track 5), the counts class
+  was not.** Root CLAUDE.md still says "three repo-level gates" while its own table lists four —
+  visible in the text injected at THIS session's open, i.e. it survived both the 019e007 doc sync
+  and the Track 5 pass → #6. What DID change: RELEASE-NOTES is retired repo-wide in favour of
+  `CHANGELOG.md` + `design/notes/<plugin>-history.md`, so every model reference to a
+  "RELEASE-NOTES entry" now means a CHANGELOG entry, and `plugin-docs` (registry-check) enforces
+  README + top-version + ≤200-char description mechanically.
 - **harness / hooks:** `++` injected TWO ways (both hooks; CLAUDE.md restatement dropped
   09-09); five design-open surfaces kept BY RULING (Q15); `@prompt`'s steward check uses cwd;
   modifier propagation to sub-agents is prose only → #35.
 - **Generativity under-delivery (owner 08-26, re-stated 09-08):** vocabulary + nudge shipped
   (patterns); the MEASURED half → #37 with #15's executor-step wiring; `/patterns` never
   invoked; outcome change now measurable by `harness-stats` once a `design.*` key exists.
-- **Knowledge accretes (owner 09-08):** standing 25.6 KB per session + sub-agent; log now
-  ~95 KB, parts ~52 KB; no lifecycle on kb entries → #38, Q21 (`acted_on.*` is the usage
-  measure, built 0.9.0).
+- **Knowledge accretes (owner 09-08) — now MEASURED per asset (1.16.0 `asset-value`):**
+  `.steward/log.md` scored **0 of 1 used across 5 surfacings**, and an `unused_assets` keep/cut
+  list exists; the digest is CUT by the platform bound in 1 injection of 5 (1.15.0); standing
+  25.6 KB per session + sub-agent; log ~100 KB, parts ~55 KB; no lifecycle on kb entries. Q21 now
+  has real input instead of an argument. **New defect the source found:** `asset.origin_recorded`
+  is FALSE — `.claude/kb/` is gitignored, so no entry has a commit, author or history, and
+  provenance can only be recorded by a frontmatter field at CAPTURE time (owner deferred) → #38.
 - **code-glossary:** signature signal DEAD for JS/untyped params (`signals/signature.py:46-48`,
   `with_signature_hash` 0/128 on plugins/kb) → #15 (precondition for #37's signals).
-- **Test sweep datum:** essense-flow `test/run-all.cjs` red under test-all in 3 of 7 sweeps on
-  09-09 (2/5 in the evening, the #30 sweep, not the #31 sweep) while green run direct →
-  INTERMITTENT under the parallel sweep, untouched by any of the work → #9. **09-11 adds NAMED
-  causes** for the ship's 2 reds (33/35): essense-flow's CJS suite resolves fixtures outside the
-  repo (the leaked-path debt of #7, seen from the test side) and code-glossary's pytest deps are
-  absent in this checkout — neither is the 09-09 intermittent, so #9 now carries three distinct
-  suspects and must not merge them.
+- **Test sweep datum — FOUR distinct suspects now, and they must not be merged (#9):** (1) the
+  09-09 intermittent (essense-flow `test/run-all.cjs` red in 3 of 7 sweeps, green run direct);
+  (2) its fixtures resolving OUTSIDE the repo (the #7 leaked-path debt from the test side);
+  (3) code-glossary's pytest deps absent in this checkout — a "not runnable here", which 1.10.0's
+  own skip discipline says must report as SKIPPED, not red; (4) **NEW 09-11:
+  `tests/ledger-compaction.test.js` was RUNNING AND CHECKING NOTHING since the gate began** — the
+  model held it "red on a clean tree (calendar drift)", and the truth is it asserted nothing at
+  all; only 1.14.0's counting fix made that visible. Suspect (4) also invalidates the old reading
+  that "test-all's shape-discovery missed it".
 - **Git hygiene across ships:** unchanged (aithseis uncommitted 43 days; volatile
   `.claude/turn-end/` committed in Endure + twin; lens state committed in psience + aithseis;
-  11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5. **NEW here 09-11:**
-  `.pipeline/` is untracked AND not gitignored (grep of `.gitignore` = 0 matches) — a corrupt
-  local state cache, deliberately NOT committed at this ship, so essense-flow's DEGRADED banner
-  persists until `state-reconcile` is run locally; that is possible for the first time, because
-  this ship's commit 1 fixed the CLI the banner recommends.
+  11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5. **This repo's own residue:**
+  `.pipeline/` is untracked AND not gitignored — the dead 2026-04-22 cache. Track 4 cut its cost
+  to ONE SessionStart banner (once installed), and `state-reconcile --apply` is the WRONG remedy
+  here: it would assert `phase: architecture` on a repo that runs no pipeline. So the remaining
+  choice is gitignore-or-delete, a one-minute chore parked under #12, not a defect.
+- **Publishing order, learned the hard way 2026-09-12:** 18 tags were pushed BEFORE the branch,
+  the branch push was then REJECTED (origin had moved), and the rebase orphaned six published
+  tags — refs on origin pointing at commits unreachable from main. Caught by walking every tag
+  with `git merge-base --is-ancestor <tag> main`, re-pointed and force-pushed; `ls-remote --tags`
+  now matches local for all 29. Law: **push the branch first, tags only after it lands** (parts.md
+  cross-reference discipline).
 - Standing, unchanged: invariant-9 hole (#3) · Q12 CI · Q13 sonnet · absolute-path debt (#7) ·
   counts-in-prose (#6) · crowd deep-seed (#5) · Diploma banner (#10) · #21 patterns
   interactive legs · kb MCP version-proof (#4 — 0.14.0 is now the INSTALLED version, so the

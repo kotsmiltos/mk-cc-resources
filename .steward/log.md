@@ -1499,3 +1499,74 @@ the numbers above are its, not re-run here.
   essense-flow essense-autopilot` + restart. It NOW carries today's work (essense-flow 0.27.0 ·
   autopilot 0.5.0 · thorough-mode 1.11.3 · toolkit 1.14.0 · the new elicit 0.1.0 needs
   `/plugin install elicit@mk-cc-resources`, and plugin-toolkit still has no ledger entry — Q24).
+
+## 2026-09-12 · Two items + five ships integrated at a50fa75 — #39 and #40 CLOSED and deleted, Q23 closed as answered two days ago, leg C's watch re-cut with a yield guard, every pre-1.14.0 test-all total RETIRED
+
+Input: TWO new inbox items (`20260911-2342-elicit-promoted-benching-routes-to-q17`,
+`20260912-0013-leg-c-watch-fired-false-positive-predicate-needs-a-yield-guard`) plus the
+session's own landings. The other two files in `inbox/` (`…-1230-…`, `…-1330-…`) were already
+recorded `integrated` in status.json by the 09-11 passes — under the contract an id in `items[]`
+stops counting as new, so they were NOT re-integrated; the files stay exactly where they landed.
+
+- **#39 CLOSED (Track 4).** essense-flow 0.27.0 + autopilot 0.5.0 silence the false alarms at
+  the source (banner SessionStart-only via `payload.hook_event_name`, no counter; next-step
+  silent on a degraded state; the `no .pipeline/` halt silent, every other halt loud; both hooks
+  root-anchored through a new `lib/project-root.js`). NEW plugin `plugins/elicit/` 0.1.0 — one
+  SKILL.md, zero code, bundle-safe — retargets the gap-recursion engine at `.steward/vision.md` +
+  `questions.md` and writes ONE inbox capture, so the steward agent stays the model's only
+  writer. Bench decision routed to Q17, not self-answered.
+- **#40 CLOSED (Track 5).** README 382 lines/41 KB → 149/7.6 KB with corrected
+  `<name>@mk-cc-resources` commands; 18 marketplace rows ≤200 chars (was 9,879 max) with the 7
+  metadata fields (was 0/17); 17/17 plugin READMEs; all 16 RELEASE-NOTES → CHANGELOG (older
+  bodies verbatim into `design/notes/`); every producing surface retargeted (thorough-mode
+  1.11.3); 18 tags backfilled; registry-check gained `plugin-docs` and a broadened
+  `doc-version`. The public half is now GUARDED, not swept — the difference invariant 3 asks for.
+- **Three unplanned toolkit ships absorbed.** 1.14.0: test-all could not read node 24's pass
+  marker, so 30 of 35 suites counted ZERO — **every test-all total this model recorded before it
+  is retired, not compared** (1,325 reported vs a real 1,443; the number would not move when 16
+  tests were added or removed), and the same blind spot had hidden
+  `essense-flow:tests/ledger-compaction.test.js` running and asserting NOTHING since the gate
+  began (#9's diagnosis rewritten: it was never "red from calendar drift"). 1.15.0
+  `digest-uptake`: 1 injection in 5 is CUT by the platform bound; `digest.live_used_pct` NULL BY
+  DESIGN because scoring the live digest against the same session's answers is circular. 1.16.0 +
+  turn-end 0.11.0: the uptake scorer credited BOILERPLATE — this model's own four-line propagation
+  preamble — as use; idf weighting drops steward-model uptake 79% → 64%, so leg A's
+  `uptake.used_pct` 100 is retired. New `asset-value` source ranks knowledge per kb source and
+  per asset with an `unused_assets` keep/cut list (`.steward/log.md` 0/1 used across 5
+  surfacings → Q21) and reports `asset.origin_recorded` FALSE, because `.claude/kb/` is
+  gitignored → new leg (5) on #38.
+- **#1 leg C — the watch fired FALSE and the model ruled on the predicate** (as the capture
+  asked, rather than a session patching it): the old trigger is true of the first turn of every
+  sitting. New trigger requires a YIELD (a `stop_hook_summary`, or ≥2 distinct `promptId`s) —
+  and platform invariant 6 gains the same denominator. Kept from the finding: the installed
+  0.9.0 hand-ran exit 0 / 38,436 ms / 2,334-byte tail (the hook works; 43% of the 90 s budget
+  spent re-reading the transcript → a datum on #17), and its two lines carry
+  `prompt_id: "legC-handrun"` and must be excluded from per-fire measurements.
+- **Q23 CLOSED as already answered.** The owner delegated the `[instr]` pick on 09-10 ("you
+  decide") and five keys shipped in `defaults/harness-stats.json`, re-picked 09-11 to lead with
+  `uptake.used_pct`; the model carried it as OPEN for two days. Recorded in the resolved ledger
+  with that lag named — it is a log-vs-model contradiction, the class #8's
+  `briefing.contradictions` and #38's contradiction measure exist to catch.
+- **Q17 and Q21 gained inputs; neither was answered.** Q17: the extraction half is DONE and the
+  cost of keeping essense-flow installed is now ~zero, so the live vote is freeze-vs-archive on
+  reach and maintenance alone, with `/research` + `/verify` named as further extraction
+  candidates. Q21: `asset-value` replaces the argument with numbers, and the provenance gap
+  bounds what auto-archiving can honestly claim.
+- **Ordering.** #39/#40 deleted; their residues folded (hook-bytes before/after → #1 leg D;
+  this repo's dead `.pipeline/` → #12's chore list, gitignore-or-delete, NOT
+  `state-reconcile --apply`). #1 stays first: the install still has not happened, and it now
+  moves SIX plugins with two more needing an install rather than an update (Q24).
+
+**Check:** both git ref files read — `.git/refs/heads/main` == `.git/refs/remotes/origin/main`
+== `a50fa75`, 0 unpushed · all 17 `plugin.json` versions grep-read (turn-end 0.11.0 · toolkit
+1.16.0 · essense-flow 0.27.0 · autopilot 0.5.0 · thorough-mode 1.11.3 · elicit 0.1.0 · lens
+0.7.0 · steward 0.6.0 · kb 0.14.0 …) · marketplace metadata 2.51.0 and bundle 2.28.0 read, the
+bundle's `skills` array carrying `plugins/elicit/skills/` · `installed_plugins.json` grep-read:
+UNMOVED at the 2026-09-10T11:03:50Z generation, so six plugins are behind and plugin-toolkit +
+elicit have no entry at all · `plugins/plugin-toolkit/defaults/harness-stats.json` read — the
+five `line.keys` exist and lead with `uptake.used_pct` (Q23's disk proof) · `plugins/elicit/**`
+globbed (plugin.json · skills/elicit/SKILL.md · CLAUDE.md · README.md · CHANGELOG.md) · the
+gates at HEAD are the session's own records, not re-run in this pass: repo-guard exit 0,
+registry-check exit 0 (8 sources), test-all 32/35 · 1,476 checks · 1 skipped · exit 1 on three
+named non-green · the root CLAUDE.md's "three repo-level gates" line was read in the text
+INJECTED at this session's open — #6's instance survived both doc passes.

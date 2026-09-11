@@ -75,6 +75,12 @@ works."* — the standing delegation shape: Claude decides HOW within the vision
 still rules vision-level forks. Under it Tier 1 (#22–#26 + the lens-restored 1b) was built
 and SHIPPED `bc39fe0` that sitting. **Built ≠ running** (2026-09-08): the owner's process
 predated the install and ran 0.6.0 for two days after — the G1 finding in the frame below.
+**The reading's own prescription started EXECUTING 2026-09-11/12** (Tracks 4 + 5): the pipeline's
+535 banners + 305 halt diagnostics per audit window were DELETED at the source rather than
+tuned, its one wanted phase was EXTRACTED into the `elicit` plugin instead of being retired with
+it, and the public surface — unread for months while the harness got all the attention — was
+rebuilt and then GUARDED by a claim source so it cannot rot again. Deletions, folds and guards,
+in that order, exactly as the reading said. Built ≠ running still bites: none of it is installed.
 
 ## The frame (2026-09-08) — a harness LAYER over Claude Code (Claude's reading; the owner asked)
 
@@ -256,7 +262,12 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
 - New plugins / prompt modifiers (protocol-shaped injection convention is the drop-in
   surface). prism (2026-09-04) adds a second shape: an axis open at the LANGUAGE level —
   naming a lens at invocation IS the extension, zero files.
-- Steward verbs beyond seed/brief/sync/next (/discuss, /test, /work — Phase B).
+- Steward verbs beyond seed/brief/sync/next (/discuss, /test, /work — Phase B). **The
+  idea → shaped-vision seam is FILLED first and from outside (2026-09-12):** `elicit` 0.1.0, one
+  SKILL.md that questions the owner's gaps against `vision.md` + `questions.md` and writes ONE
+  inbox capture. So this axis grows two ways — a verb inside steward, or a skill-only plugin that
+  feeds the inbox — and the second costs no hook, no state and no per-session tax. `/discuss`
+  must absorb it, never duplicate it (#16).
 - External-project generalization of the steward loop (mk-cc-resources = Phase 0
   pilot; crowd-game seeded 2026-07-21, running in parallel; EMDE/psience next).
 - Glossary engine language coverage (Python/TS/JS/C# today; extensibility measure is
