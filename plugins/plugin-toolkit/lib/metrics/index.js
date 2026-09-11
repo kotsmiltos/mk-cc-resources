@@ -50,6 +50,7 @@ const SOURCES = [
   require('./kb-pull'),
   require('./acted-on'),
   require('./note-uptake'),
+  require('./digest-uptake'),
   require('./lens'),
   require('./checks'),
   require('./spawns'),

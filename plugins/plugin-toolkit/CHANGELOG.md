@@ -5,6 +5,16 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-09-12
+
+### Added
+- **`digest-uptake`, a 15th metric source** — the session digest is the largest standing injection in the stack (it is written at every turn end and injected into every prompt) and it was the only one with no number attached. The run now reports how often it was injected as text versus a pointer, **how often the platform's size bound CUT it** so its tail was never shown, its size on disk, and whether a PAST session's digest was carried into a later session's answer.
+- `note-uptake` names digests as their own families (`session-digest-live`, `session-digest-past`) instead of lumping them into `other`.
+
+### Notes
+- **`digest.live_used_pct` is deliberately `null`, and the run says so every time.** Scoring the live digest against the same session's answers would be circular: the digest is written FROM those answers, and the only copy on disk is its final state, so bullets written after an answer would score as evidence that answer used them. Making it computable needs kb-pull to record the digest text at the fire; until then the honest value is nothing, not a flattering number.
+- The digest's own share of each injection is not recorded per fire either — the report names that rather than estimating it.
+
 ## [1.14.0] - 2026-09-11
 
 ### Fixed

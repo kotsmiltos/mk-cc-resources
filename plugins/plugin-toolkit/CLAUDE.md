@@ -122,14 +122,18 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
                         #   definition, every event TIMESTAMPED + windowed — a whole-span model
                         #   cannot reproduce a mid-span snapshot); stats.js (the audit's
-                        #   nearest-rank percentile). 14 sources: hook-bytes,
+                        #   nearest-rank percentile). 15 sources: hook-bytes,
                         #   hint-followed, turn-end-fires, stop-durations, judge (agreement
                         #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
                         #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
                         #   briefing-vs-log (registered, null until #8), note-uptake (1.13.0 - notes
                         #   SUPPLIED vs notes the answer USED, scored on content because acted-on's
                         #   file-open question reported 0% where real uptake was 68%; needs the new
-                        #   `notes` context surface = note bodies). A source may declare
+                        #   `notes` context surface = note bodies), digest-uptake (1.15.0 - the session digest's cost per
+                        #   prompt + whether a PAST digest is used later; `digest.live_used_pct` is
+                        #   null BY DESIGN and says so every run, because the digest is written FROM
+                        #   the answers it would be scored against - the circular metric is the one
+                        #   that would have shipped if the question had been answered naively). A source may declare
                         #   `writer: '<plugin>'` and return `vintage: true`; the runner then names the
                         #   install date, because a zero from a writer that was not yet installed is
                         #   not a finding (it happened 3x in one audit)

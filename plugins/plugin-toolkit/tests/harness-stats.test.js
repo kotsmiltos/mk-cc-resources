@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------- registry contract
-check('registry loads 14 sources, every one valid, no duplicate ids or keys', registry.all().length === 14 && registry.all().every((s) => registry.validate(s).length === 0));
+check('registry loads 15 sources, every one valid, no duplicate ids or keys', registry.all().length === 15 && registry.all().every((s) => registry.validate(s).length === 0));
 check('key registry maps every declared key to exactly one source', Object.keys(registry.keyRegistry()).length === registry.all().reduce((n, s) => n + s.keys.length, 0));
 check('validate rejects a bad surface', registry.validate({ id: 'x', title: 't', surface: 'moon', keys: ['k'], run() {} }).length === 1);
 check('validate rejects empty keys (a source without keys measures nothing)', registry.validate({ id: 'x', title: 't', surface: 'traces', keys: [], run() {} }).length === 1);
@@ -240,8 +240,61 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   check('checks: lines, sessions, checks, failed, mutations, per session', v('checks.lines') === 4 && v('checks.sessions') === 2 && v('checks.checks') === 2 && v('checks.failed') === 1 && v('checks.mutations') === 1 && v('checks.checks_per_session') === 1);
   check('running-vs-installed: stale lines counted among versioned lines; installed vs checkout drift named', v('running.stale_trace_lines') === 1 && v('running.versioned_trace_lines') === 5 && v('running.installed_vs_checkout').kb.checkout === '0.14.0' && !('turn-end' in v('running.installed_vs_checkout')));
   check('briefing-vs-log: registered, honestly null, with the #8 note', v('briefing.contradictions') === null && r.notes.some((n) => n.source === 'briefing-vs-log' && /#8/.test(n.note)));
+  // digest-uptake: the COST half rides on the same kb lines (pre-0.13.0 `digest: true` counts as
+  // text, the cut one counts as cut). live_used_pct is null BY DESIGN and must SAY so — a silent
+  // null here would read as "not computed yet" instead of "not computable without lying".
+  check('digest-uptake: fires, text fires, mode mix, cut share, file bytes reused from the runner',
+    v('digest.fires') === 3 && v('digest.fires_with_text') === 2 && v('digest.cut_pct') === 50
+    && v('digest.mode_mix').cut === 1 && v('digest.mode_mix').pointer === 1
+    && v('digest.file_bytes') === 2772 && v('digest.injection_bytes.p50') === 8100);
+  check('digest-uptake: live_used_pct is null and the run SAYS why (circular: written from the answers it would be scored against)',
+    v('digest.live_used_pct') === null && r.notes.some((n) => n.source === 'digest-uptake' && /BY DESIGN/.test(n.note) && /summariser/.test(n.note)));
+  check('digest-uptake: the per-fire digest share is named as NOT recorded, rather than estimated',
+    r.notes.some((n) => n.source === 'digest-uptake' && /own share is not recorded per fire/.test(n.note)));
+
   const windowed = stats({ ...ctx, since: '2026-09-07T00:00:00.000Z' });
   check('since/until windows apply to trace-backed sources too', windowed.metrics['judge.fires'].value === 0 && windowed.metrics['kb_pull.fires'].value === 0);
+}
+
+// ---------------------------------------------------------------- digest-uptake: the non-circular half
+{
+  // An archived digest is scored against a span it did NOT write — the only honest direction.
+  // Each term appears twice: term-overlap only counts words a note REPEATS (MIN_TERM_FREQUENCY),
+  // which is what makes them the note's subject rather than its passing vocabulary.
+  const body = 'quorum tolerant validator verbatim drift sweep protocol. the quorum stays tolerant, the validator reads the verbatim drift sweep protocol.';
+  const notes = { '.claude/kb/digests/digest-20260101-0900.md': body, '.claude/kb/session-digest.md': 'live one' };
+  const hint = 'session-digests::.claude/kb/digests/digest-20260101-0900.md';
+  const kbLine = (o) => ({ t: '2026-09-06T09:10:00.000Z', plugin: 'kb', hook: 'kb-pull', version: '0.14.0', decision: 'hints:1+digest:full', bytes: 4000, digest: 'full', ...o });
+  const withAnswer = (answerText, promptId) => ({
+    ...emptyCtx,
+    traces: { kb: { lines: [kbLine({ prompt_id: promptId, hints: [hint] })] } },
+    notes,
+    transcripts: { sessions: [{ prompts: [{ promptId, answerText }] }] },
+  });
+
+  const used = stats(withAnswer('the quorum is tolerant here; the validator re-reads the verbatim line and the drift sweep confirms the protocol', 'p9'));
+  check('digest-uptake: an archived digest hinted into a later span, its terms in the answer, counts as USED',
+    used.metrics['digest.past_hinted'].value === 1 && used.metrics['digest.past_used'].value === 1 && used.metrics['digest.past_used_pct'].value === 100);
+  check('digest-uptake: a small n is NAMED, so a 100% over one hint is not read as a verdict',
+    used.notes.some((n) => n.source === 'digest-uptake' && /too few to conclude from/.test(n.note)));
+
+  const unrelated = stats(withAnswer('bumped the version and pushed the tag', 'p9'));
+  check('digest-uptake: an unrelated answer does NOT count as used (the ratio can fall)',
+    unrelated.metrics['digest.past_hinted'].value === 1 && unrelated.metrics['digest.past_used'].value === 0 && unrelated.metrics['digest.past_used_pct'].value === 0);
+
+  const noAnswer = { ...withAnswer('x', 'p9'), transcripts: { sessions: [] } };
+  check('digest-uptake: no answer text for the span => UNKNOWN, never a zero',
+    stats(noAnswer).metrics['digest.past_unknown'].value === 1 && stats(noAnswer).metrics['digest.past_used_pct'].value === null);
+
+  const noKb = stats({ ...emptyCtx, notes });
+  check('digest-uptake: no kb trace at all => 0 fires and a note, not a crash',
+    noKb.metrics['digest.fires'].value === 0 && noKb.notes.some((n) => n.source === 'digest-uptake' && /kb-pull has not fired/.test(n.note)));
+
+  // note-uptake must ATTRIBUTE digests rather than hide them in 'other'.
+  const nu = require('../lib/metrics/note-uptake');
+  const fams = nu.run({ ...emptyCtx, traces: { 'turn-end': { lines: [{ t: '2026-09-06T09:10:00.000Z', plugin: 'turn-end', duty: 'context-recall', prompt_id: 'p9', surfaced: ['.claude/kb/digests/digest-20260101-0900.md', '.claude/kb/session-digest.md'] }] } }, notes, transcripts: { sessions: [{ prompts: [{ promptId: 'p9', answerText: 'quorum tolerant validator verbatim drift protocol sweep' }] }] } });
+  check('note-uptake: digest families are named (live vs past), not lumped into other',
+    'session-digest-past' in fams.metrics['uptake.by_family'] && 'session-digest-live' in fams.metrics['uptake.by_family'] && !('other' in fams.metrics['uptake.by_family']));
 }
 
 // ---------------------------------------------------------------- CLI end to end (temp root, fake projects dir + home)
@@ -289,7 +342,7 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   const v = (k) => out.metrics[k].value;
   check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 2 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 1);
   check('CLI: traces gathered by shape per plugin dir; malformed lines counted, not fatal', out.traces['turn-end'].legacy === 1 && out.traces['turn-end'].v1 === 1 && out.traces['turn-end'].malformed === 1 && out.traces.kb.v1 === 1);
-  check('CLI: every source ran, no key missing', out.ran.length === 14 && out.missingKeys.length === 0 && out.errored.length === 0);
+  check('CLI: every source ran, no key missing', out.ran.length === 15 && out.missingKeys.length === 0 && out.errored.length === 0);
   check('CLI: hints followed strict from the fake transcript', v('hints.followed_strict') === 1 && v('hints.prompts_with_hints') === 1);
   check('CLI: registered hooks = home settings + ENABLED plugins only (disabled plugin skipped)', v('spawns.registered.UserPromptSubmit') === 3 && v('spawns.registered.Stop') === 1);
   check('CLI: installed versions read from the ledger; checkout null outside a marketplace repo', v('running.installed').on === '1.0.0' && eq(v('running.installed_vs_checkout'), {}));

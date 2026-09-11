@@ -155,8 +155,12 @@ function gatherSteward(root) {
 const NOTE_DIRS = [
   path.join('.claude', 'kb', 'captures'),
   path.join('.claude', 'kb', 'extracted'),
+  path.join('.claude', 'kb', 'digests'),
   '.steward',
 ];
+/* Single files that are notes in their own right. The live digest is the largest standing
+ * injection in the stack; without its body every digest score would read 'unknown'. */
+const NOTE_FILES = [path.join('.claude', 'kb', 'session-digest.md')];
 /* A single note body is prose; anything far larger is a ledger or a paste and would dominate a
  * term profile without saying more about it. */
 const NOTE_BYTES_MAX = 400000;
@@ -182,6 +186,15 @@ function gatherNotes(root) {
       if (text === null) continue;
       out[`${rel.split(path.sep).join('/')}/${e.name}`] = text;
     }
+  }
+  for (const rel of NOTE_FILES) {
+    const abs = path.join(root, rel);
+    let st;
+    try { st = fs.statSync(abs); } catch (_e) { continue; }
+    if (st.size > NOTE_BYTES_MAX) continue;
+    const text = readText(abs);
+    if (text === null) continue;
+    out[rel.split(path.sep).join('/')] = text;
   }
   return out;
 }

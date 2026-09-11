@@ -155,7 +155,7 @@
       "source": "./plugins/plugin-toolkit",
       "displayName": "Plugin Toolkit",
       "description": "Build and maintain Claude Code plugins: skill-heal, plugin-scaffold, version-bump, docs-audit, code-glossary, dry-refactor, plus repo-guard, test-all, registry-check and harness-stats gates.",
-      "version": "1.14.0",
+      "version": "1.15.0",
       "author": {
         "name": "kotsmiltos"
       },

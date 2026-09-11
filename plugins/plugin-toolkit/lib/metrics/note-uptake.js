@@ -40,6 +40,11 @@ const FAMILIES = [
   ['kb-captures', /^\.claude\/kb\/captures\//],
   ['kb-extracted', /^\.claude\/kb\/extracted\//],
   ['steward-model', /^\.steward\//],
+  // Digests are named so they cannot hide inside 'other'. The LIVE one carries a caveat the
+  // ratio cannot: it is written from the answers it is scored against, so treat a high number
+  // here as circular and read `digest-uptake` instead, which says so per run.
+  ['session-digest-live', /^\.claude\/kb\/session-digest\.md$/],
+  ['session-digest-past', /^\.claude\/kb\/digests\//],
 ];
 const familyOf = (p) => (FAMILIES.find(([, rx]) => rx.test(p)) || ['other'])[0];
 
