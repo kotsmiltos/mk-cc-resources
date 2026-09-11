@@ -51,6 +51,7 @@ const SOURCES = [
   require('./acted-on'),
   require('./note-uptake'),
   require('./digest-uptake'),
+  require('./asset-value'),
   require('./lens'),
   require('./checks'),
   require('./spawns'),

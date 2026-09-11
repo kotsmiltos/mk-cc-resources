@@ -5,6 +5,18 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-09-12
+
+### Fixed
+- **"Was this note used?" credited shared boilerplate as use.** A note's distinctive words were counted equally, so the four-instruction preamble every `.steward/` file carries — *quality, context, working, ownership* — scored as evidence against notes an answer never touched, and did so most for the largest files. Terms are now weighted by how rare they are across the whole note corpus: a word in every note counts for nothing, a word in one note of thirteen counts most. Measured effect on this repo: steward-model uptake 79% → 64%, with two "used" verdicts revealed as boilerplate-only hits. Scoring without a corpus is unchanged, so the original audit figure still reproduces.
+
+### Added
+- **`asset-value`, a 16th metric source** — which stored knowledge actually earns its place, ranked **per source** (which kb source produced the entry) and **per asset** (the entry itself): surfaced, used, unknown, used %. It also names the assets surfaced repeatedly and never once carried into an answer — the keep/cut shortlist — and reports how many rows are still below the readable floor, because a ranking over two surfacings is noise.
+- A drift test that the two copies of the scorer (this plugin's and turn-end's) share identical constants AND score identically. Both file headers had claimed this test existed since 2026-09-11; it did not.
+
+### Notes
+- `asset.origin_recorded` is `false` and says why: `.claude/kb/` is gitignored, so an entry has no commit, author or history — only a filename date and a directory. Answering "where did this knowledge come from?" needs a field written at capture time; no reader can recover it.
+
 ## [1.15.0] - 2026-09-12
 
 ### Added

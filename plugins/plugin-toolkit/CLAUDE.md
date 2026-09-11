@@ -122,7 +122,7 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
                         #   definition, every event TIMESTAMPED + windowed — a whole-span model
                         #   cannot reproduce a mid-span snapshot); stats.js (the audit's
-                        #   nearest-rank percentile). 15 sources: hook-bytes,
+                        #   nearest-rank percentile). 16 sources: hook-bytes,
                         #   hint-followed, turn-end-fires, stop-durations, judge (agreement
                         #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
                         #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
@@ -133,7 +133,14 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   prompt + whether a PAST digest is used later; `digest.live_used_pct` is
                         #   null BY DESIGN and says so every run, because the digest is written FROM
                         #   the answers it would be scored against - the circular metric is the one
-                        #   that would have shipped if the question had been answered naively). A source may declare
+                        #   that would have shipped if the question had been answered naively),
+                        #   asset-value (1.16.0 - WHICH knowledge earns its place, ranked per kb
+                        #   source and per asset, plus the surfaced-but-never-used keep/cut list;
+                        #   `asset.origin_recorded` is false because .claude/kb/ is gitignored, so
+                        #   no reader can recover where an entry CAME from). 1.16.0 also fixed the
+                        #   scorer both uptake sources sit on: term weights are now idf over the
+                        #   note corpus, because the propagated preamble in every .steward/ file
+                        #   was scoring as evidence of use (79% -> 64% on this repo). A source may declare
                         #   `writer: '<plugin>'` and return `vintage: true`; the runner then names the
                         #   install date, because a zero from a writer that was not yet installed is
                         #   not a finding (it happened 3x in one audit)

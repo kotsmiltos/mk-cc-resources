@@ -82,7 +82,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [turn-end](plugins/turn-end/README.md) | | 0.10.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
+| [turn-end](plugins/turn-end/README.md) | | 0.11.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
 | [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.7.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
 | [thorough-mode](plugins/thorough-mode/README.md) | | 1.11.3 | Keyword modifiers — `++`, `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build` |
 | [reuse-gate](plugins/reuse-gate/README.md) | | 0.1.0 | One reuse-first reminder per message, at the moment code is first written |
@@ -108,7 +108,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.15.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
+| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.16.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
 
 Bundle: **mk-cc-all 2.28.0**.
 

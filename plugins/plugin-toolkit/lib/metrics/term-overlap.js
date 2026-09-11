@@ -57,24 +57,75 @@ function distinctiveTerms(body) {
   return out;
 }
 
+/*
+ * DOCUMENT-FREQUENCY WEIGHTING (2026-09-12). Measured on this repo's own note corpus: 13 notes,
+ * 325 candidate terms, 73% of them appearing in exactly ONE note — but a dozen appear in more
+ * than half (plugin 8/13, essense-flow 8/13, installed 8/13, quality 7/13, claude 6/13, context
+ * 6/13). Those are the project's ambient vocabulary, and every `.steward/` file additionally
+ * carries the propagated four-instruction preamble, so its words ("quality", "context",
+ * "working", "ownership") are in every model file by construction. Counting each term equally
+ * lets an answer score hits on words that identify NO note in particular — and it does so most
+ * for the largest files, which reach the MAX_TERMS cap and therefore carry the most ambient
+ * vocabulary. That is the ranking a "which asset is worth keeping?" question would read.
+ *
+ * The fix is the classic one: weight a term by how RARE it is in the corpus. `idf = ln(N/df)`,
+ * so a term in every note weighs exactly 0 and a term in one note of thirteen weighs 2.56 —
+ * a 5x separation on this corpus, and it strengthens as the corpus grows. No blacklist to
+ * maintain, and it generalises to boilerplate this repo has not invented yet.
+ *
+ * Backward compatible BY DESIGN: `score(body, text)` with no corpus behaves exactly as before
+ * (every weight 1), so the 68% audit figure still reproduces from an unweighted call.
+ */
+
+/** Document frequency of every candidate term across a corpus of note bodies. */
+function buildIdf(bodies) {
+  const list = Array.isArray(bodies) ? bodies : Object.values(bodies || {});
+  const docs = list.filter((b) => typeof b === 'string' && b.trim());
+  const df = new Map();
+  for (const body of docs) {
+    for (const term of new Set(distinctiveTerms(body))) df.set(term, (df.get(term) || 0) + 1);
+  }
+  return { n: docs.length, df };
+}
+
+/** A term's weight: rare = heavy, in-every-note = 0. Unknown terms are treated as rare. */
+function weightOf(term, idf) {
+  if (!idf || !idf.n) return 1;
+  const df = idf.df.get(term) || 1;
+  return Math.max(0, Math.log(idf.n / df));
+}
+
 /**
  * How much of a note showed up in an answer.
- * @returns {{hits:number,total:number,pct:number,used:boolean,scorable:boolean}}
+ * @param {string} body  the note
+ * @param {string} text  the answer text of the same span
+ * @param {{n:number,df:Map}} [idf] corpus statistics from buildIdf; omit for unweighted scoring
+ * @returns {{hits:number,total:number,pct:number,used:boolean,scorable:boolean,weighted:boolean}}
  *   `scorable: false` means the note yielded no distinctive terms — the caller MUST carry that as
- *   unknown, never as a zero.
+ *   unknown, never as a zero. With an idf it ALSO means every term the note has is ubiquitous in
+ *   the corpus, i.e. the note has no vocabulary of its own to recognise; still unknown, never 0.
  */
-function score(body, text) {
+function score(body, text, idf) {
   const terms = distinctiveTerms(body);
-  if (!terms.length) return { hits: 0, total: 0, pct: 0, used: false, scorable: false };
+  if (!terms.length) return { hits: 0, total: 0, pct: 0, used: false, scorable: false, weighted: false };
   const haystack = String(text || '').toLowerCase();
-  let hits = 0;
-  for (const term of terms) if (haystack.includes(term)) hits++;
-  const pct = Math.round((hits / terms.length) * 100);
-  return { hits, total: terms.length, pct, used: pct >= USED_THRESHOLD_PCT, scorable: true };
+  const weighted = Boolean(idf && idf.n);
+  let hits = 0; let hitWeight = 0; let totalWeight = 0;
+  for (const term of terms) {
+    const w = weighted ? weightOf(term, idf) : 1;
+    totalWeight += w;
+    if (haystack.includes(term)) { hits++; hitWeight += w; }
+  }
+  // Every term ubiquitous => no distinguishing vocabulary => unknown, not a zero.
+  if (totalWeight === 0) return { hits, total: terms.length, pct: 0, used: false, scorable: false, weighted };
+  const pct = Math.round((hitWeight / totalWeight) * 100);
+  return { hits, total: terms.length, pct, used: pct >= USED_THRESHOLD_PCT, scorable: true, weighted };
 }
 
 module.exports = {
   distinctiveTerms,
+  buildIdf,
+  weightOf,
   score,
   STOP_WORDS,
   MIN_TERM_LENGTH,

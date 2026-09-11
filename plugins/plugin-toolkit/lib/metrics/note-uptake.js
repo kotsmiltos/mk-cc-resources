@@ -108,6 +108,9 @@ module.exports = {
 
     const answers = answersByPrompt(ctx.transcripts);
     const bodies = (ctx.notes && typeof ctx.notes === 'object') ? ctx.notes : {};
+    // Rarity is measured across the whole note corpus, so ambient project vocabulary — and the
+    // four-instruction preamble every .steward/ file carries — stops scoring as evidence of use.
+    const idf = termOverlap.buildIdf(bodies);
 
     let fires = 0; let empty = 0; let checked = 0; let used = 0; let unknown = 0;
     const overlaps = [];
@@ -142,7 +145,7 @@ module.exports = {
           checked += 1; unknown += 1; bump(fam, 'checked'); bump(fam, 'unknown');
           continue;
         }
-        const s = termOverlap.score(body, answer);
+        const s = termOverlap.score(body, answer, idf);
         checked += 1; bump(fam, 'checked');
         if (!s.scorable) { unknown += 1; bump(fam, 'unknown'); continue; }
         overlaps.push(s.pct);
@@ -166,6 +169,7 @@ module.exports = {
     else if (!checked) notes.push(`${fires} recall fire(s), none surfaced a note (${empty} chose nothing)`);
     if (unknown) notes.push(`${unknown} note(s) unscorable (body absent, or no answer text for the span) — reported as unknown, not as unused`);
     if (scored) notes.push('term overlap is a proxy: shared topic implies shared vocabulary, so this is evidence of use, not proof of causation');
+    if (scored && idf.n) notes.push(`scored against ${idf.n} note(s) of corpus vocabulary — a term common to many notes carries little weight, so boilerplate cannot count as use`);
     return { metrics, notes };
   },
 };

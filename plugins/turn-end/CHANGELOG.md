@@ -4,6 +4,11 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-09-12
+
+### Fixed
+- **The "did the answer use this note?" verdict credited shared boilerplate.** Each of a note's distinctive words counted equally, so the four-instruction preamble every `.steward/` file carries scored as evidence of use against notes the answer never touched. Words are now weighted by how rare they are among the notes that span had in hand — a word common to many notes counts for little. Measured on this repo: two of eleven "used" verdicts were boilerplate-only hits.
+
 ## [0.10.0] - 2026-09-11
 
 ### Fixed

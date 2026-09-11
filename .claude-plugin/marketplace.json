@@ -155,7 +155,7 @@
       "source": "./plugins/plugin-toolkit",
       "displayName": "Plugin Toolkit",
       "description": "Build and maintain Claude Code plugins: skill-heal, plugin-scaffold, version-bump, docs-audit, code-glossary, dry-refactor, plus repo-guard, test-all, registry-check and harness-stats gates.",
-      "version": "1.15.0",
+      "version": "1.16.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "author": {
         "name": "kotsmiltos"
       },

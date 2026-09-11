@@ -112,13 +112,18 @@ const SCORERS = {
    * ANSWER carried them. Needs the note bodies; without them the unit is unknown, not unused. */
   [SUPPLY](units, ev) {
     let used = 0; let unknown = 0; const overlaps = [];
+    // Weight each term by how RARE it is across the notes this span had in hand: a word common
+    // to many notes identifies none of them, and every .steward/ file carries the same
+    // propagated preamble, so unweighted scoring credited boilerplate as use (measured
+    // 2026-09-12: two of eleven "used" verdicts on this repo were boilerplate-only hits).
+    const idf = termOverlap.buildIdf(ev.noteBodies || {});
     for (const unit of units) {
       const body = ev.noteBodies && ev.noteBodies[unit];
       if (typeof body !== 'string' || !body.trim() || typeof ev.answerText !== 'string' || !ev.answerText.trim()) {
         unknown++;
         continue;
       }
-      const s = termOverlap.score(body, ev.answerText);
+      const s = termOverlap.score(body, ev.answerText, idf);
       if (!s.scorable) { unknown++; continue; }
       overlaps.push(s.pct);
       if (s.used) used++;

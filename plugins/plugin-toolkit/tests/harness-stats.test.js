@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------- registry contract
-check('registry loads 15 sources, every one valid, no duplicate ids or keys', registry.all().length === 15 && registry.all().every((s) => registry.validate(s).length === 0));
+check('registry loads 16 sources, every one valid, no duplicate ids or keys', registry.all().length === 16 && registry.all().every((s) => registry.validate(s).length === 0));
 check('key registry maps every declared key to exactly one source', Object.keys(registry.keyRegistry()).length === registry.all().reduce((n, s) => n + s.keys.length, 0));
 check('validate rejects a bad surface', registry.validate({ id: 'x', title: 't', surface: 'moon', keys: ['k'], run() {} }).length === 1);
 check('validate rejects empty keys (a source without keys measures nothing)', registry.validate({ id: 'x', title: 't', surface: 'traces', keys: [], run() {} }).length === 1);
@@ -297,6 +297,74 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
     'session-digest-past' in fams.metrics['uptake.by_family'] && 'session-digest-live' in fams.metrics['uptake.by_family'] && !('other' in fams.metrics['uptake.by_family']));
 }
 
+// ---------------------------------------------------------------- term weighting + the cross-plugin copy
+{
+  const ov = require('../lib/metrics/term-overlap');
+  // The defect: every .steward/ file carries the same propagated four-instruction preamble, so an
+  // answer using its words scored as "used" against notes it never touched. Weighting by rarity
+  // must make a boilerplate-only hit score ZERO while a real hit still scores.
+  const note = 'quorumx quorumx validator validator boilerplate boilerplate';
+  const corpus = ['boilerplate boilerplate aaaaaa aaaaaa', 'boilerplate boilerplate bbbbbb bbbbbb', 'boilerplate boilerplate cccccc cccccc', note];
+  const idf = ov.buildIdf(corpus);
+  check('term-overlap: a term in EVERY note weighs 0; a term in one note of four weighs most', ov.weightOf('boilerplate', idf) === 0 && ov.weightOf('quorumx', idf) > 1);
+  check('NEGATIVE CONTROL: a boilerplate-only match counts as USED unweighted and NOT used weighted', ov.score(note, 'boilerplate everywhere').used === true && ov.score(note, 'boilerplate everywhere', idf).used === false);
+  check('term-overlap: a real-term match still scores, and says it was weighted', ov.score(note, 'the quorumx validator ran', idf).used === true && ov.score(note, 'the quorumx validator ran', idf).weighted === true);
+  check('term-overlap: a note whose every term is ubiquitous is UNSCORABLE, never a zero', ov.score('boilerplate boilerplate', 'boilerplate', ov.buildIdf(['boilerplate boilerplate aaaaaa aaaaaa'])).scorable === false);
+  check('term-overlap: no corpus => unweighted, byte-for-byte the pre-2026-09-12 behaviour the 68% audit reproduces from', ov.score(note, 'boilerplate everywhere').weighted === false && ov.score(note, 'boilerplate everywhere').pct === 33);
+  check('buildIdf accepts a map of bodies as well as a list, and ignores empties', ov.buildIdf({ a: corpus[0], b: corpus[1], c: '' }).n === 2);
+
+  // The header of both copies CLAIMS this test exists. Until 2026-09-12 it did not — the claim
+  // was the only thing holding two independently-installed copies of a scorer in step.
+  const sibling = path.join(__dirname, '..', '..', 'turn-end', 'lib', 'term-overlap.js');
+  if (fs.existsSync(sibling)) {
+    const other = require(sibling);
+    check('DRIFT: turn-end\'s copy of term-overlap has identical scoring constants', other.MIN_TERM_LENGTH === ov.MIN_TERM_LENGTH && other.MIN_TERM_FREQUENCY === ov.MIN_TERM_FREQUENCY && other.MAX_TERMS === ov.MAX_TERMS && other.USED_THRESHOLD_PCT === ov.USED_THRESHOLD_PCT && other.STOP_WORDS.size === ov.STOP_WORDS.size);
+    check('DRIFT: turn-end\'s copy scores identically, weighted and unweighted', eq(other.score(note, 'the quorumx validator ran', other.buildIdf(corpus)), ov.score(note, 'the quorumx validator ran', idf)) && eq(other.score(note, 'boilerplate everywhere'), ov.score(note, 'boilerplate everywhere')));
+  }
+}
+
+// ---------------------------------------------------------------- asset-value: which knowledge earns its place
+{
+  const av = require('../lib/metrics/asset-value');
+  const capture = '.claude/kb/captures/quorum.md';
+  const ledger = '.steward/log.md';
+  const bodies = {
+    [capture]: 'quorumx quorumx validator validator boilerplate boilerplate',
+    [ledger]: 'boilerplate boilerplate ledgerx ledgerx',
+    '.claude/kb/captures/other.md': 'boilerplate boilerplate zzzzzz zzzzzz',
+  };
+  const t = (o) => ({ t: '2026-09-06T09:10:00.000Z', ...o });
+  const ctxA = {
+    ...emptyCtx,
+    notes: bodies,
+    traces: {
+      'turn-end': { lines: [t({ plugin: 'turn-end', duty: 'context-recall', prompt_id: 'p1', surfaced: [capture] })] },
+      kb: { lines: [
+        t({ plugin: 'kb', hook: 'kb-pull', prompt_id: 'p1', hints: [`kb-captures::${capture}`, `steward-log::${ledger}`] }),
+        t({ plugin: 'kb', hook: 'kb-pull', prompt_id: 'p2', hints: [`steward-log::${ledger}`] }),
+      ] },
+    },
+    transcripts: { sessions: [{ prompts: [
+      { promptId: 'p1', answerText: 'the quorumx validator settled it' },
+      { promptId: 'p2', answerText: 'boilerplate everywhere, nothing else' },
+    ] }] },
+  };
+  const r = stats(ctxA);
+  const v = (k) => r.metrics[k].value;
+  check('asset-value: recall supplies and kb-pull hints are both surfacings, counted per asset',
+    v('asset.surfacings') === 4 && v('asset.assets') === 2 && v('asset.used') === 2);
+  check('asset-value: the source that produced the hint is named (kb source id; recall is its own producer)',
+    v('asset.by_source')['kb-captures'].used === 1 && v('asset.by_source')['context-recall'].used === 1 && v('asset.by_source')['steward-log'].used === 0);
+  check('asset-value: a ledger surfaced twice whose only match is boilerplate ranks 0 and lands on the keep/cut list',
+    v('asset.unused_assets').some((x) => x.startsWith(ledger)) && !v('asset.unused_assets').some((x) => x.startsWith(capture)));
+  check('asset-value: every row here is under the readable floor, and the run says how many', v('asset.rows_below_floor') === 2 && r.notes.some((n) => n.source === 'asset-value' && /not yet a reading/.test(n.note)));
+  check('asset-value: origin is NOT recoverable by a reader and says so', v('asset.origin_recorded') === false && r.notes.some((n) => n.source === 'asset-value' && /gitignored/.test(n.note)));
+  const noAns = stats({ ...ctxA, transcripts: { sessions: [] } });
+  check('asset-value: no answer text => unknown, never counted as unused', noAns.metrics['asset.unknown'].value === 4 && noAns.metrics['asset.used_pct'].value === null);
+  const bare = stats({ ...emptyCtx });
+  check('asset-value: no traces at all => 0 surfacings and a note, not a crash', bare.metrics['asset.surfacings'].value === 0 && bare.notes.some((n) => n.source === 'asset-value' && /nothing has been surfaced/.test(n.note)));
+}
+
 // ---------------------------------------------------------------- CLI end to end (temp root, fake projects dir + home)
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-stats-'));
@@ -342,7 +410,7 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   const v = (k) => out.metrics[k].value;
   check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 2 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 1);
   check('CLI: traces gathered by shape per plugin dir; malformed lines counted, not fatal', out.traces['turn-end'].legacy === 1 && out.traces['turn-end'].v1 === 1 && out.traces['turn-end'].malformed === 1 && out.traces.kb.v1 === 1);
-  check('CLI: every source ran, no key missing', out.ran.length === 15 && out.missingKeys.length === 0 && out.errored.length === 0);
+  check('CLI: every source ran, no key missing', out.ran.length === 16 && out.missingKeys.length === 0 && out.errored.length === 0);
   check('CLI: hints followed strict from the fake transcript', v('hints.followed_strict') === 1 && v('hints.prompts_with_hints') === 1);
   check('CLI: registered hooks = home settings + ENABLED plugins only (disabled plugin skipped)', v('spawns.registered.UserPromptSubmit') === 3 && v('spawns.registered.Stop') === 1);
   check('CLI: installed versions read from the ledger; checkout null outside a marketplace repo', v('running.installed').on === '1.0.0' && eq(v('running.installed_vs_checkout'), {}));

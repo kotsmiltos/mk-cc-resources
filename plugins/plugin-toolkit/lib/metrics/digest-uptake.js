@@ -106,6 +106,7 @@ module.exports = {
 
     const bodies = (ctx.notes && typeof ctx.notes === 'object') ? ctx.notes : {};
     const answers = answersByPrompt(ctx.transcripts);
+    const idf = termOverlap.buildIdf(bodies);
 
     let fires = 0; let withText = 0; let cut = 0;
     const modes = {};
@@ -130,7 +131,7 @@ module.exports = {
         const body = bodies[rel];
         const answer = answers.get(line.prompt_id);
         if (typeof body !== 'string' || !body.trim() || !answer) { pastUnknown += 1; continue; }
-        const s = termOverlap.score(body, answer);
+        const s = termOverlap.score(body, answer, idf);
         if (!s.scorable) { pastUnknown += 1; continue; }
         if (s.used) pastUsed += 1;
       }
