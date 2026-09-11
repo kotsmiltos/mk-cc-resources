@@ -1341,3 +1341,91 @@ pass). The item's own `git merge-base --is-ancestor` result is carried as the se
 measurement, corroborated here by the install ledger rather than re-run (no shell in this pass).
 Stamps approximate (the agent has no clock): this pass `20260911-1300`.
 
+## 2026-09-11 · SHIP integrated at 019e007 — six plugins pushed and installed NOWHERE; #1's ship leg closed and its INSTALL leg is now the gate; the version-pin law; Tracks 4/5 → #39/#40
+
+Input: ONE inbox item (`20260911-1330-shipped-019e007-six-plugins-live-not-yet-installed`),
+superseding the position the 13:00 pass recorded three hours earlier. Snapshot: `.git/HEAD` →
+`refs/heads/main`, and **`refs/heads/main` == `refs/remotes/origin/main` == `019e007`** → 0
+unpushed. The tree did not move mid-pass.
+**Premise REPLACED (not appended beside):** *"a NEW UNCOMMITTED phase sits on disk … 62
+uncommitted files / 0 commits"* → committed and pushed as `7e2bcd5..019e007` (6 commits / 64
+files / +2146/-378, the session's count). Every "uncommitted" header in state.md, parts.md and
+tasks.md is gone; the plugin headers now read PUSHED + NOT INSTALLED.
+**The fact the whole pass exists for: PUSHED ≠ INSTALLED.** `installed_plugins.json` still
+carries the 2026-09-10T11:03:50Z generation unchanged, so `running.installed_vs_checkout` names
+five behind-install plugins (turn-end 0.9.0→0.10.0 · lens 0.6.0→0.7.0 · steward 0.5.2→0.6.0 ·
+essense-flow 0.26.2→0.26.3 · autopilot 0.4.1→0.4.2) plus plugin-toolkit, which has no entry to
+update at all. Nothing in the ship is field-validated; all of it is checkout evidence.
+**Correction the ship exposed in the model's own instruments:** the 13:00 pass wrote that
+`[instr] running` would be "NON-empty by construction" — backwards. Both running-version
+instruments compare the EXECUTING script's manifest against the ledger, and the executing script
+IS the installed copy, so a pushed-but-uninstalled checkout is SILENT everywhere at runtime. The
+drift is visible only to `harness-stats`, which is itself checkout-only (Q24). Hence: **"pushed
+but not installed" is a fact no hook can compute — the briefing must author it**, and that is
+now written into parts.md beside the restart law and into #8's rationale.
+**New LAW (parts.md cross-reference discipline): a plugin is pinned to its version STRING — a
+fix without a bump deploys nothing.** Measured cost: a staged plan to push the js-yaml ESM fix
+alone was invalidated mid-flight because essense-flow and essense-autopilot carried no bump. The
+reach chain is now four links: bump → push → install → restart.
+**Ship contents recorded at SUBJECT level only** (six commit subjects, marked unverified, no
+source file re-read): js-yaml ESM vendoring (essense-flow 0.26.3 / autopilot 0.4.2) · a
+vendored-entrypoint registry claim (registry-check now runs 7 claim sources) · note-uptake +
+VINTAGE so the scorecard stops reporting absences as measured zeros — which retroactively makes
+every pre-1.13.0 zero in this model (`tail 0/121`, `lens 6 dispatches / 0 lines`) UNKNOWN rather
+than measured · namespaced agent id + `aborted` verdict + closure reissues (turn-end 0.10.0 with
+lens 0.7.0, one cross-plugin commit) · steward integrate-whenever-unintegrated, briefing cap →
+flood guard, born-on-contract.
+**Gates at ship** (session's records): repo-guard 0 (4 detectors) · registry-check 0 (7 sources)
+· test-all **33/35 / 1,325 checks** (pre-work baseline 27/35). The 2 reds are named and
+pre-existing — essense-flow's CJS suite resolving fixtures outside the repo (#7's debt from the
+test side) and code-glossary's pytest deps absent — so #9 now holds THREE distinct suspects and
+is told not to merge them. The #31 sweep's 35/35 / 2,023 is replaced, not kept beside it.
+**Tasks recomputed.** #1's leg B loses its commit+push half and becomes the INSTALL leg (update
+moves five, plugin-toolkit needs an install → Q24); its done-check now demands a fresh
+`"version":"0.10.0"` trace line, because the trace — never the install cache — proves a restart
+took. **NEW #39** (Track 4: silence essense-flow's false alarms in non-pipeline repos, promote
+`/elicit` into a standalone brainstorm/vision mode, bench decision → Q17) and **NEW #40** (Track
+5: the user-facing README / marketplace metadata / CHANGELOG + tags pass, gates first), placed
+directly after #1 as the owner's planned next sitting; #2's README leg was handed to #40 rather
+than duplicated. Q17's essense-flow option moved from FREEZE to **freeze-and-extract**; Q24
+gained the sharpening that `plugin update` is a no-op for an absent entry.
+**Also verified against the ship, not assumed:** root `CLAUDE.md:196` still says "three
+repo-level gates" AFTER the doc-sync commit (#6 stands), and `.pipeline/` is untracked and NOT
+gitignored (`.gitignore` grep = 0 matches) — the DEGRADED banner persists until `state-reconcile`
+runs locally, which this ship's own js-yaml fix makes possible for the first time (#39 leg 1).
+**Checks this pass:** `.git/HEAD` + both ref files read · all 16 `plugins/*/.claude-plugin/
+plugin.json` versions grep-read · `.claude-plugin/marketplace.json` metadata `2.50.0` read ·
+`installed_plugins.json` grepped for version/sha/lastUpdated (no 1.13.0, no plugin-toolkit key)
+· `.gitignore` grep · root `CLAUDE.md` grep · `.claude/prompts/prompt-20260911T151144Z.md`
+globbed present. No code touched, no suites run (model-only pass). Stamps approximate: this pass
+`20260911-1530`.
+**Mid-pass reconcile (the entry BELOW, appended by the session while this pass ran):** its
+outcomes are integrated here rather than deferred — #1 **leg A CLOSED** (28 v1 trace lines / 9
+recall lines, all carrying `judge_chosen` + `ranker_top`; `harness-stats --root .` exit 0 with
+`acted_on.spans` 6, `judge.agreement_n` 3 / 66.7%, `running.installed_vs_checkout` non-empty for
+exactly the five behind-install plugins — the instrument confirming this entry's ship position),
+dogfood leg (g) closed in state.md, and **Q20 got its first real numbers**: the judge returned an
+EMPTY pick in 6 of 9 recall sittings and never matched the ranker's top-1 in the other 3. The
+two entries are chronologically interleaved (the session's is later in time, lower in the file);
+the numbers above are its, not re-run here.
+
+## 2026-09-11 (evening) · #1 leg A CLOSED from disk; leg B was already DONE at 019e007 (model correction → inbox)
+
+- **Leg A(1) — judge fields present.** `node -e` over `.claude/turn-end/trace.jsonl`: 28 v1 lines,
+  9 with `duty:"context-recall"`, and **every one carries both `judge_chosen` and `ranker_top`**
+  (Q20's missing input now exists). Q20 datum read off the same 9: the judge returned an EMPTY
+  pick in 6/9 sittings where the ranker had candidates, and in the 3 sittings it did pick, its
+  top choice was never the ranker's top choice (0/3 on top-1).
+- **Leg A(2) — one scorecard run.** `node plugins/plugin-toolkit/bin/harness-stats.js --root .`
+  (checkout command — plugin-toolkit is uninstalled, Q24) exit 0, 14 sources ran:
+  `trace.lines_per_dispatch` 1 · `acted_on.spans` 6 · `judge.agreement_n` 3 /
+  `judge.agreement_pct` 66.7 · `running.installed_vs_checkout` NON-EMPTY for five plugins
+  (essense-flow 0.26.2→0.26.3 · essense-autopilot 0.4.1→0.4.2 · verifiability-lens 0.6.0→0.7.0 ·
+  steward 0.5.2→0.6.0 · turn-end 0.9.0→0.10.0). Also: `uptake.used_pct` 100 (6 of 10 scorable
+  notes used), `tail.under_bound_pct` 100, `running.stale_trace_lines` 0,
+  `briefing.contradictions` honestly `n/a` (waits on #8).
+- **Leg B correction.** `git log --oneline -1` = `019e007` and `git status --short` shows only
+  `M .steward/state.md` + untracked `.pipeline/` — the phase the model calls UNCOMMITTED was
+  committed and pushed. The remaining drift is an INSTALL gap, not a commit gap: the ledger
+  (`installed_plugins.json`) still reports the 09-10 generation, so the owner's
+  `claude plugin update` is the outstanding half of leg B.

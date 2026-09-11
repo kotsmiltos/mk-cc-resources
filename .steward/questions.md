@@ -25,6 +25,14 @@ disabled); how it changed is NOT recoverable from disk, since an uninstall leave
 trace. Nothing here is a bug in the gates: they pass (35/35 suites / 2,023 checks at the last
 sweep) — this is reach, not quality.
 
+**UNCHANGED by the 2026-09-11 `019e007` ship, and sharper for it:** that ship pushed six
+plugins, so a `claude plugin update` now moves FIVE of them — and is a NO-OP for plugin-toolkit,
+because there is no entry to update. Closing Q24 takes an INSTALL (options a/b) or option (c)'s
+explicit declaration; nothing the owner does at update time will close it by accident. Note the
+loop it creates: the only instrument that can see checkout-ahead-of-install drift
+(`running.installed_vs_checkout`) ships inside the uninstalled plugin — the gate that measures
+reach is itself unreachable.
+
 **Options.** (a) install plugin-toolkit standalone again, leave the bundle as is — restores
 reach in one command, re-introduces the six double-listed skills the 07-31 session objected to;
 (b) install standalone AND drop the six toolkit skills from the bundle — one layout, no
@@ -258,16 +266,28 @@ the ★ option below, sharpened by the owner's two-axes wish.
 **Options per surface (Claude's defaults marked ★):** reuse-gate — ★fold into
 pattern-gate (one pre-write nudge, one guard) / keep as is · session-lifecycle — ★archive
 to benched (drop kb's `handoffs` source config with it) / keep for public users / keep
-only retro+meta-review as future steward verbs · essense-flow — ★FREEZE (no new
-investment; Phase E retires; Q5 doc repositioning may move earlier) / keep investing /
-archive now · code-glossary — ★make it a GATE inside `@ship` (drift + duplicate-registry +
-design-score check, deterministic — #37) rather than a skill to remember / keep skill-only
-/ archive.
+only retro+meta-review as future steward verbs · essense-flow — ★**FREEZE-AND-EXTRACT** (new
+2026-09-11, see below) / plain FREEZE (no new investment; Phase E retires; Q5 doc repositioning
+may move earlier) / keep investing / archive now · code-glossary — ★make it a GATE inside
+`@ship` (drift + duplicate-registry + design-score check, deterministic — #37) rather than a
+skill to remember / keep skill-only / archive.
 
-**Recommended default (Claude's): the four ★ marks** — each is a fold or a freeze, none
-deletes a capability the owner uses; all reversible from the archive branch.
+**The essense-flow option MOVED 2026-09-11 — the owner's own session plan (Track 4) already
+walks toward it:** silence the pipeline's false-alarm hooks, and PROMOTE `/elicit` out of the
+pipeline into a standalone brainstorm/vision mode, then take the bench decision here. That makes
+the honest default **freeze-and-extract**: keep the one phase the owner actually wants ambiently
+(idea → shaped vision, which is what `/elicit` does and what the steward loop has no verb for
+until Phase B's `/discuss`), silence the rest so a non-pipeline repo pays nothing, and bench the
+remaining skills. What is still the OWNER's to rule: whether the benched remainder goes to
+`archive/benched-plugins` now or waits for Phase E (#19), and whether the promoted `/elicit`
+lands as its own plugin or as a steward verb — the second choice decides who owns the vision
+text (`/discuss` in #16 is the same seam). #39 builds Track 4; this question ratifies what it
+means for the other ten skills.
 
-**Blocks:** Q5's timing; #17's fold scope; nothing else.
+**Recommended default (Claude's): the four ★ marks** — each is a fold, a freeze or an
+extraction, none deletes a capability the owner uses; all reversible from the archive branch.
+
+**Blocks:** Q5's timing; #17's fold scope; #39's bench leg (the build legs proceed without it).
 
 ---
 
@@ -300,9 +320,19 @@ and #30 writes the agreement inputs; then run the one check with (3) against (1)
 stays near chance — a coin-flip judge is a dead mechanism, and a dead mechanism is a quality
 failure by the owner's own law.
 
-**Blocks:** nothing — and the wait is OVER: turn-end 0.9.0 is installed and its recall duty
-lines are on disk (4 read 09-11), plugin-toolkit 1.12.0 reads `judge.agreement_pct` /
-`judge.agreement_n`, so the one check is a single `harness-stats` run from the checkout (Q24).
+**FIRST REAL NUMBERS, 2026-09-11 evening (the check RAN — session log entry, `node -e` over the
+trace + `harness-stats --root .`):** 9 recall lines, every one carrying `judge_chosen` +
+`ranker_top`; **the judge returned an EMPTY pick in 6 of 9** sittings where the ranker had
+candidates, and in the 3 where it did pick, its top choice was NEVER the ranker's top
+(`agreement_pct` 66.7 on `agreement_n` 3 counts overlap, not top-1 — read them as different
+questions). n=3 retires nothing (invariant 11: no mechanism dies on a promise or a thin sample),
+but the shape of the failure is now known and it is not the one the options were ranked for:
+the dominant mode is the judge declining to choose at all, which option (3) — ranker
+pre-selects top-K, judge rules on a small set — addresses head-on, while (2) and (4) do not.
+**Trigger to bring this back:** 10 more recall lines, or any sitting where an empty pick loses
+material the session then had to re-derive.
+
+**Blocks:** nothing — the wait is over and the first reading is in.
 
 ---
 

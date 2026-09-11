@@ -1,4 +1,4 @@
-# State — current truth (2026-09-11 · Phase 1 PUSHED + INSTALLED 09-10 and its writers OBSERVED live · a NEW UNCOMMITTED phase on disk: turn-end 0.10.0 · lens 0.7.0 · toolkit 1.13.0 · steward 0.6.0 · HEAD 7e2bcd5 == origin/main at pass start)
+# State — current truth (2026-09-11 · the six-plugin phase is COMMITTED + PUSHED at HEAD 019e007 == origin/main — and NOT INSTALLED: what runs is still the 09-10 generation (turn-end 0.9.0 · kb 0.14.0 · lens 0.6.0 · steward 0.5.2); plugin-toolkit has no install entry at all → Q24)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,51 +8,80 @@
 
 ## Ship position
 
-**HEAD `7e2bcd5` == origin/main `7e2bcd5`** (both ref files read this pass) — **0 unpushed
-commits.** Phase 1 (`8e0dba4` #30, `fde02fe` #31) WAS pushed and IS in origin/main: the session
-measured it with `git merge-base --is-ancestor` on both shas, and the install ledger corroborates
-it here — turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 each carry `gitCommitSha` 7e2bcd5, lastUpdated
-2026-09-10T11:03:50Z. The 09-09 model's *"NOT pushed, NOT installed"* is SUPERSEDED, everywhere
-it appeared.
-**UNCOMMITTED on disk at pass start** (all 16 plugin.json grep-read): turn-end 0.10.0 ·
-verifiability-lens 0.7.0 · plugin-toolkit 1.13.0 · steward 0.6.0 · marketplace metadata 2.49.0 —
-this session's work (62 uncommitted files / 0 commits, the session's count). NONE of it is
-committed, pushed or installed; the install table moves once more at commit + update, and
-`running.installed_vs_checkout` cannot be empty until then. **What those four bumps CONTAIN is
-not in the model** — log.md's newest heading is still 2026-09-09 (grep), so today's landings
-are the next pass's input, not a claim this one may make.
-**THIS IS A SECOND CHECKOUT of the project** (reflog: `pull --ff-only` fast-forward
+**HEAD `019e007` == origin/main `019e007`** (both ref files read this pass) — **0 unpushed
+commits;** the only untracked path is `.pipeline/`, deliberately left uncommitted (below). The
+13:00 pass's *"a NEW UNCOMMITTED phase sits on disk"* is SUPERSEDED everywhere it appeared: the
+commit + push happened after that pass ran — `7e2bcd5..019e007`, **6 commits / 64 files /
++2146/-378** (the session's count, carried; corroborated here by the two ref files and by all 16
+plugin.json versions grep-read).
+**NOTHING of this ship is INSTALLED.** `installed_plugins.json` (grep-read this pass) still
+carries the 2026-09-10T11:03:50Z generation — turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 at
+`7e2bcd5`, steward 0.5.2 at `68ce999`, essense-flow 0.26.2 / essense-autopilot 0.4.1 / mk-cc-all
+2.27.0 at `bc39fe0`. So the hook code running in any session is the 09-10 build, and
+`running.installed_vs_checkout` names FIVE behind-install plugins (turn-end 0.9.0→0.10.0 · lens
+0.6.0→0.7.0 · steward 0.5.2→0.6.0 · essense-flow 0.26.2→0.26.3 · autopilot 0.4.1→0.4.2) plus
+plugin-toolkit, which has no entry to update at all (Q24 — an INSTALL, not an update).
+**Every claim about this ship is CHECKOUT evidence; none of it is field-validated.**
+**THIS IS A SECOND CHECKOUT of the project** (reflog read at 13:00: `pull --ff-only`
 `6becb73` → `7e2bcd5` this session, 85 commits) — so every `.claude/` fact below is
 per-CHECKOUT, and the 09-09 evidence lives in a working copy this pass cannot read.
-Gates at the #31 build (log entry, not re-run): test-all `--root` 35/35 suites / 2,023 checks ·
-registry-check 0 · repo-guard 0 after ONE real finding fixed in source. The #30 sweep before it:
-33/34 — `essense-flow test/run-all.cjs` red under the sweep, green direct (#9). The tree did not
-move mid-pass.
+**Gates at THIS ship** (each run on the committed tree — the session's records, not re-run
+here): repo-guard exit 0 (4 detectors) · registry-check exit 0 (7 claim sources) · **test-all
+33/35 suites / 1,325 checks**, with the session's own pre-work baseline at 27/35. The 2 reds are
+pre-existing and untouched by the work: essense-flow's CJS suite resolves fixtures outside the
+repo, and code-glossary's pytest deps are absent (→ #9, which now has NAMED causes instead of
+one intermittent). The #31 sweep's 35/35 · 2,023 checks is REPLACED, not kept beside this — a
+check total only means something with the suite set that produced it. The tree did not move
+mid-pass.
 
 ## Versions on disk (all 16 plugin.json grep-read this pass) vs installed (`installed_plugins.json` grep-read this pass)
 
-**UNCOMMITTED today:** turn-end **0.10.0** · verifiability-lens **0.7.0** · plugin-toolkit
-**1.13.0** · steward **0.6.0** (+ marketplace metadata **2.49.0**, read). **Committed,
-unchanged:** kb 0.14.0 · thorough-mode 1.11.2 · patterns 0.1.1 · essense-flow 0.26.2 ·
-essense-autopilot 0.4.1 · prism 0.1.0 · statusline 0.2.0 · session-lifecycle 1.3.1 ·
-schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0.
-**Installed (user scope — all 13 ledger keys from this marketplace grep-read):** turn-end 0.9.0 ·
+**PUSHED today at `019e007`, none installed:** turn-end **0.10.0** · verifiability-lens
+**0.7.0** · plugin-toolkit **1.13.0** · steward **0.6.0** · essense-flow **0.26.3** ·
+essense-autopilot **0.4.2** (+ marketplace metadata **2.50.0**, read). **Unchanged by this
+ship:** kb 0.14.0 · thorough-mode 1.11.2 · patterns 0.1.1 · prism 0.1.0 · statusline 0.2.0 ·
+session-lifecycle 1.3.1 · schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 ·
+reuse-gate 0.1.0.
+**Installed (user scope — the ledger's marketplace keys grep-read):** turn-end 0.9.0 ·
 kb 0.14.0 · verifiability-lens 0.6.0 (all three `gitCommitSha` 7e2bcd5, 2026-09-10T11:03:50Z) ·
 steward 0.5.2 (68ce999, 2026-09-09T09:57Z) · mk-cc-all bundle 2.27.0 · essense-flow 0.26.2 ·
 essense-autopilot 0.4.1 · thorough-mode 1.11.2 · patterns 0.1.1 (those five at bc39fe0) ·
 session-lifecycle 1.3.1 (8d5cab6) · reuse-gate 0.1.0 (6becb73) · statusline 0.2.0 (e6528e0) ·
-alert-sounds 1.1.1.
+alert-sounds 1.1.1. **kb is the one plugin this ship did not touch that is already current.**
 **ABSENT from the ledger:** plugin-toolkit · prism · schema-scout · project-note-tracker. The
 last three are bundle-carried SKILLS, so their absence is expected (the bundle IS installed).
-**`plugin-toolkit` is the finding — NEW 2026-09-11:** its skills ride the bundle, but `bin/` and
-`lib/` never do (registry-check's own `capability-reach` claim), so the four repo gates
-(repo-guard · test-all · registry-check · harness-stats) reach a CHECKOUT only. This CONTRADICTS
-the 07-31 "standalone at user scope" record in parts.md → **Q24** (owner decision) + #2. Today's
-four uncommitted bumps are the only ahead-of-install deltas otherwise.
+**`plugin-toolkit` is the finding (unchanged by this ship):** its skills ride the bundle, but
+`bin/` and `lib/` never do (registry-check's own `capability-reach` claim), so the four repo
+gates (repo-guard · test-all · registry-check · harness-stats) reach a CHECKOUT only — and
+`claude plugin update` will NOT close it, because there is no entry to update. This CONTRADICTS
+the 07-31 "standalone at user scope" record in parts.md → **Q24** (owner decision) + #2.
+**VERSION-PIN LAW, learned at this ship:** a plugin is pinned to its version STRING — a fix
+without a bump deploys NOTHING. A staged "push just the js-yaml fix" plan was invalidated
+mid-flight because essense-flow and essense-autopilot carried no bump, so that push would have
+deployed zero. Any future "ship just this fix" decision reads the version of the plugin the fix
+lives in first. (Law recorded in parts.md's cross-reference discipline.)
 
-## THIS PROCESS — turn-end 0.9.0 RUNS and its Stop hook WRITES (measured this pass, in THIS checkout)
+## What `019e007` CONTAINS (commit subjects — recorded at subject level; no file was re-read this pass, and nothing here has fired in the field)
 
-`.claude/turn-end/trace.jsonl` = **13 lines, every one stamped 2026-09-11 and
+1. `9739dda` fix(essense-flow, essense-autopilot): vendor js-yaml's ESM entry point.
+2. `e39edf6` feat(plugin-toolkit): vendored-entrypoint claim (+ negative controls) — the 7th
+   registry-check claim source (the gate run above counted 7).
+3. `2ec159a` feat(plugin-toolkit): note-uptake + VINTAGE — the scorecard stops reporting false
+   zeros (a metric absent because nothing wrote it yet no longer reads as a measured 0).
+4. `c2c44a0` fix(turn-end, verifiability-lens): namespaced agent id, `aborted` verdict, closure
+   reissues.
+5. `8cd3763` feat(steward): integrate whenever unintegrated; briefing cap → flood guard;
+   born-on-contract.
+6. `019e007` chore(release): six bumps + doc sync + this model's own reconcile.
+
+What each mechanism DOES beyond its subject is deliberately not claimed — the pass that reads
+the code or watches a live fire records it. The doc sync did NOT close the counts-class defect:
+root `CLAUDE.md:196` still says "three repo-level gates" (grep this pass) → #6 stands.
+
+## THIS PROCESS — turn-end 0.9.0 RUNS and its Stop hook WRITES (measured 09-11 13:00 in THIS checkout; 0.9.0 is STILL what runs after this ship, until update + restart)
+
+(Grown to **28 v1 lines by the evening** — see leg (g) below; the 13-line reading is the midday
+snapshot.) `.claude/turn-end/trace.jsonl` = **13 lines, every one stamped 2026-09-11 and
 `"version":"0.9.0"`** (grep, explicit file path — a directory grep silently skips the
 gitignored `.claude/` tree, which is how a false "0 matches" is manufactured): among them 4
 `"duty":"context-recall"` supply lines and 2 `"duty":"acted-on"` lines, and all 13 match the
@@ -166,9 +195,23 @@ every recall fire writes judge_chosen + ranker_top → `judge.agreement_pct` / `
 - (f) Phase 0 live legs: no longer failed — the Stop hook WRITES (above); recorder fixtures
   REAL + kb-pull inline/`cut` (arrival entry) stand. STILL OPEN here: a self-check nudge naming
   a real un-checked mutation, a silent allow on a named check, `digest: pointer` + the
-  `kb_query` cue, and `[instr] running` — which is NON-empty by construction right now
-  (steward 0.6.0 uncommitted on disk vs 0.5.2 installed).
-- (g) Phase 1 live legs — **mostly CLOSED by observation 2026-09-11** (this checkout): first
+  `kb_query` cue, and `[instr] running`. **CORRECTED 2026-09-11 (the 13:00 pass had this
+  backwards):** `instrRunning` compares the manifest beside the EXECUTING script against the
+  ledger, and the executing script IS the installed copy — so with steward 0.6.0 pushed but
+  uninstalled the line is SILENT, not non-empty. It can only fire in a process that started
+  BEFORE an update landed (the G1 class: update without restart). The checkout-vs-install drift
+  this ship created is visible only to `running.installed_vs_checkout` (harness-stats, checkout
+  only — Q24), which is why the briefing must AUTHOR "not installed": no instrument prints it.
+- (g) **CLOSED 2026-09-11 evening** (session log entry, its own commands — a `node -e` over the
+  trace and one `harness-stats --root .`, exit 0, 14 sources): the trace has grown to **28 v1
+  lines, 9 of them `duty:"context-recall"`, and EVERY one carries `judge_chosen` + `ranker_top`**
+  — Q20's missing input exists. Scorecard: `trace.lines_per_dispatch` 1 · `acted_on.spans` 6 ·
+  `judge.agreement_n` 3 / `agreement_pct` 66.7 · `uptake.used_pct` 100 (6 of 10 scorable notes)
+  · `tail.under_bound_pct` 100 · `running.stale_trace_lines` 0 · `briefing.contradictions` `n/a`
+  (waits on #8) · **`running.installed_vs_checkout` NON-EMPTY for exactly the five plugins named
+  above** — the ship position in this file, measured by the instrument rather than argued.
+  Nothing here required an install; it is all checkout evidence, per Q24.
+- (g, prior reading) Phase 1 live legs — mostly closed by observation 2026-09-11 midday: first
   Stop line `"version":"0.9.0"` ✓ (13 lines) · `duty:<id>` per recall fire ✓ (4) ·
   `duty: acted-on` ✓ (2) · kb lines on the kb-pull / kb-session-start keys ✓ (2; the two
   spellings not separated this pass) · one `agent: verifiability-lens` line after a dispatch ✓
@@ -240,7 +283,7 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
   never runs — that is why the pairing rule (platform invariant 6) is the mechanism.
 - **Evaluators unmeasured (G4): CLOSED at 0.9.0 / 0.14.0 / 0.6.0 and LIVE since the 09-10
   install** — turn-end 13 lines / kb 2 / lens 1 read this pass; residual legs → #1(g).
-- **No scorecard (G5): CLOSED at 1.12.0 (1.13.0 uncommitted on disk)** — but plugin-toolkit is
+- **No scorecard (G5): CLOSED at 1.12.0 (1.13.0 PUSHED 09-11, still uninstalled)** — but plugin-toolkit is
   UNINSTALLED, so the gate runs from a checkout only → Q24; the standing `[instr]` pick pending
   → Q23; the "second run after #32 shows the deltas" leg → #32's done-check.
 - **Verification ground truth (G2): CLOSED at 0.8.0;** fixtures real (arrival). Residual:
@@ -252,17 +295,18 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
 - **kb (0.14.0 on disk AND installed):** cap / dedupe / pointer / malformed-config / floor-leak CLOSED at
   0.13.0. RESIDUAL (audit): `source` facet unfilterable; stamp-titled archived digests → noise;
   8-digit runs in h2 titles read as timestamps; a BOM defeats frontmatter → #38.
-- **turn-end (0.10.0 on disk, uncommitted · 0.9.0 installed and running):** `DUTIES` hard-coded (`lib/duties/index.js:59`); whole transcript
+- **turn-end (0.10.0 PUSHED + uninstalled · 0.9.0 installed and running):** `DUTIES` hard-coded (`lib/duties/index.js:59`); whole transcript
   re-read every Stop (`context.js:122-123`, 170 MB → 1.4 s — and now a silent-hook suspect) →
   #17; no per-duty supply budget → #17; no compaction guard → #33; sub-agents observed only by
   transcript scan → #35 (the SubagentStop payload is measured; lens 0.6.0 is the first
   consumer); cost recorded, never told → #34.
-- **steward (0.6.0 on disk, uncommitted · 0.5.2 installed):** `agents/steward.md:59-60` still instructs a done/-move → #8; protocol
+- **steward (0.6.0 PUSHED + uninstalled · 0.5.2 installed and running):** `agents/steward.md:59-60` still instructs a done/-move → #8; protocol
   text not anchored to `<git root>/…` everywhere (`SKILL.md:55-56,79`, `commands/next.md:8`,
   `agents/steward.md:24`, `session-digest.js:76,78`) → #8; wrong-root drops in aithseis from
   twin-game's MODEL text → #12.
 - **Docs (counts-class):** root `CLAUDE.md:196` still says "three repo-level gates" while
-  `:33` and a gate-table row already name harness-stats (grep this pass) → #6.
+  `:33` and a gate-table row already name harness-stats — **re-grepped AFTER this ship's doc
+  sync commit: still there** → #6.
 - **harness / hooks:** `++` injected TWO ways (both hooks; CLAUDE.md restatement dropped
   09-09); five design-open surfaces kept BY RULING (Q15); `@prompt`'s steward check uses cwd;
   modifier propagation to sub-agents is prose only → #35.
@@ -276,10 +320,18 @@ guard) and #35 (every agent traced; SubagentStart's `agent_id` is the join key).
   `with_signature_hash` 0/128 on plugins/kb) → #15 (precondition for #37's signals).
 - **Test sweep datum:** essense-flow `test/run-all.cjs` red under test-all in 3 of 7 sweeps on
   09-09 (2/5 in the evening, the #30 sweep, not the #31 sweep) while green run direct →
-  INTERMITTENT under the parallel sweep, untouched by any of the work → #9.
+  INTERMITTENT under the parallel sweep, untouched by any of the work → #9. **09-11 adds NAMED
+  causes** for the ship's 2 reds (33/35): essense-flow's CJS suite resolves fixtures outside the
+  repo (the leaked-path debt of #7, seen from the test side) and code-glossary's pytest deps are
+  absent in this checkout — neither is the 09-09 intermittent, so #9 now carries three distinct
+  suspects and must not merge them.
 - **Git hygiene across ships:** unchanged (aithseis uncommitted 43 days; volatile
   `.claude/turn-end/` committed in Endure + twin; lens state committed in psience + aithseis;
-  11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5.
+  11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5. **NEW here 09-11:**
+  `.pipeline/` is untracked AND not gitignored (grep of `.gitignore` = 0 matches) — a corrupt
+  local state cache, deliberately NOT committed at this ship, so essense-flow's DEGRADED banner
+  persists until `state-reconcile` is run locally; that is possible for the first time, because
+  this ship's commit 1 fixed the CLI the banner recommends.
 - Standing, unchanged: invariant-9 hole (#3) · Q12 CI · Q13 sonnet · absolute-path debt (#7) ·
   counts-in-prose (#6) · crowd deep-seed (#5) · Diploma banner (#10) · #21 patterns
   interactive legs · kb MCP version-proof (#4 — 0.14.0 is now the INSTALLED version, so the
@@ -291,3 +343,6 @@ Five ships: mk-cc-resources, twin-game, crowd-game, aithseis, Endure. Status con
 in 1/5 (this one) → #12. Marketplace: github source, `autoUpdate: true`; a push is required
 before any install sees a change, a RESTART before the running process does — and a hook that
 runs then says which of the two it is in; a hook that does not run says nothing (invariant 6).
+**This ship sits exactly on that boundary:** pushed, so an install CAN see it; not installed, so
+no process anywhere runs it — and the version-pin law above is the third condition (a bump is
+what makes a fix deployable at all).

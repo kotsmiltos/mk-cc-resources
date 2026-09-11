@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260911-1300",
+  "updated": "20260911-1530",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -443,14 +443,24 @@
       "groups": ["dogfood", "harness"],
       "log": "2026-09-11 · Ship-position + install correction integrated at 7e2bcd5 — Phase 1 is pushed, INSTALLED and LIVE; plugin-toolkit uninstalled → Q24; #1 re-cut and its diagnosis leg deleted as unrunnable",
       "check": "both git ref files read (HEAD == origin/main 7e2bcd5, 0 unpushed; reflog shows this checkout ff-pulled 6becb73 → 7e2bcd5) · installed_plugins.json grep-read: 13 marketplace keys + versions (turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 all gitCommitSha 7e2bcd5 @ 2026-09-10T11:03:50Z; steward 0.5.2 @ 68ce999; mk-cc-all 2.27.0; NO plugin-toolkit entry) · all 16 plugin.json versions grep-read (turn-end 0.10.0 / lens 0.7.0 / toolkit 1.13.0 / steward 0.6.0 uncommitted) · marketplace metadata 2.49.0 read · .claude/turn-end/trace.jsonl = 13 lines all \"version\":\"0.9.0\" incl. 4 duty:context-recall + 2 duty:acted-on, kb trace 2 lines, lens trace 1 agent line — all greps on EXPLICIT file paths, because a directory grep silently skips the gitignored .claude/ tree (a false-negative this pass caught and re-ran)"
+    },
+    {
+      "id": "20260911-1330-shipped-019e007-six-plugins-live-not-yet-installed",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260911-1530",
+      "by": "steward-agent",
+      "groups": ["dogfood", "harness", "release"],
+      "log": "2026-09-11 · SHIP integrated at 019e007 — six plugins pushed and installed NOWHERE; #1's ship leg closed and its INSTALL leg is now the gate; the version-pin law; Tracks 4/5 → #39/#40",
+      "check": "both git ref files read: .git/refs/heads/main == .git/refs/remotes/origin/main == 019e007 → 0 unpushed (the item's 7e2bcd5..019e007 / 6 commits / 64 files / +2146-378 carried as the session's count, no shell in this pass) · all 16 plugin.json versions grep-read — the six bumps CONFIRMED on disk (turn-end 0.10.0 · lens 0.7.0 · toolkit 1.13.0 · steward 0.6.0 · essense-flow 0.26.3 · autopilot 0.4.2) · marketplace.json metadata 2.50.0 read · installed_plugins.json grep-read (version/sha/lastUpdated fields): the 2026-09-10T11:03:50Z generation INTACT and unmoved (turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0 @ 7e2bcd5; steward 0.5.2 @ 68ce999; essense-flow 0.26.2 / autopilot 0.4.1 / mk-cc-all 2.27.0 @ bc39fe0) with NO 1.13.0 and no plugin-toolkit key anywhere → pushed-but-not-installed VERIFIED, five behind-install plus one absent · .gitignore grep 'pipeline' = 0 matches (the untracked-and-not-ignored .pipeline/ claim) · root CLAUDE.md grep — ':196 three repo-level gates' STILL present after the ship's doc-sync commit, so #6's instance is not closed · .claude/prompts/prompt-20260911T151144Z.md globbed present (the kickoff prompt #39/#40 point at) · commit-subject contents recorded at SUBJECT level only, marked unverified, because no source file was re-read this pass · MID-PASS RECONCILE: the session appended its evening outcomes to log.md while this pass ran (#1 leg A numbers from ITS commands — node -e over trace.jsonl, harness-stats --root . exit 0); integrated, not deferred, and carried as the session's measurement rather than re-run"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260911-1230-state-md-ship-position-and-installs-are-stale"
+      "derived_through": "20260911-1330-shipped-019e007-six-plugins-live-not-yet-installed"
     },
     "model": {
-      "derived_through": "20260911-1230-state-md-ship-position-and-installs-are-stale"
+      "derived_through": "20260911-1330-shipped-019e007-six-plugins-live-not-yet-installed"
     }
   }
 }

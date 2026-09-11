@@ -15,7 +15,7 @@ registries' CLAIMS are machine-checked (`bin/registry-check.js`: versions row-vs
 plugin list both directions, doc-table versions, bundle paths, CI-referenced files,
 capability reach) — it CHECKS, never generates.
 
-## turn-end (0.10.0 on disk, UNCOMMITTED · 0.9.0 INSTALLED at `7e2bcd5` since 2026-09-10 and demonstrably RUNNING — 13 v1 trace lines read 09-11) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
+## turn-end (0.10.0 PUSHED at `019e007` 2026-09-11, NOT INSTALLED · 0.9.0 INSTALLED at `7e2bcd5` and demonstrably RUNNING — 13 v1 trace lines read 09-11) — THE single blocking Stop hook + the exec-result recorder + a trace-schema-v1 writer
 
 - **Exposes:** one `Stop` registration for the whole toolkit — plus, since 0.8.0, an
   INFORMATIONAL PostToolUse + PostToolUseFailure pair on `Bash|PowerShell`
@@ -174,6 +174,12 @@ capability reach) — it CHECKS, never generates.
   (1.12.0 registry). **LIVE, OBSERVED 2026-09-11** (this checkout's trace, grep): 13 Stop lines
   all `"version":"0.9.0"` · 4 `duty:"context-recall"` · 2 `duty:"acted-on"`. Residual #1(g): the
   `judge_chosen` / `ranker_top` fields read off a recall line, and one `harness-stats` run.
+- **PUSHED 0.10.0 (2026-09-11 `c2c44a0`, NOT INSTALLED — SUBJECT LEVEL only, no file re-read
+  this pass):** namespaced agent id · an `aborted` verdict · closure reissues — one commit
+  shared with lens 0.7.0, i.e. the agent-id namespacing is a CROSS-PLUGIN change (turn-end's
+  deferral/acted-on side and the lens recorder's `agent_type` side must agree). What the
+  mechanisms do beyond these subjects is unclaimed, and none of it runs anywhere until an
+  install + restart — the 0.9.0 lines above remain the only live turn-end evidence.
 - **GAP MAP — audit 2, reconciled at 0.8.0 (2026-09-09; ✓ = file:line re-read by a steward
   pass, otherwise the audit's or the harness doc's citation).** CLOSED at 0.7.0 / the
   09-06 ship: tail order + size (`runner.js:98` ✓ material-first → demands-first under a
@@ -258,7 +264,7 @@ capability reach) — it CHECKS, never generates.
   Exec ledger (0.8.0): `.claude/turn-end/checks.jsonl` + `samples/` (real fixtures since
   09-09).
 
-## steward (0.6.0 on disk, UNCOMMITTED · 0.5.2 INSTALLED at `68ce999`) — the active thrust
+## steward (0.6.0 PUSHED at `019e007` 2026-09-11, NOT INSTALLED · 0.5.2 INSTALLED at `68ce999` and running) — the active thrust
 
 - **Exposes:** per-project `.steward/` living model; ambient loop (auto-brief on open,
   capture on talk, integrate at wrap-up/next-open); `/steward:seed|brief|sync|next`;
@@ -293,7 +299,17 @@ capability reach) — it CHECKS, never generates.
   ONE `[instr] running steward 0.5.2 ≠ installed 0.5.1 (installed 2026-09-06) — restart
   Claude Code to load it` line, silent when equal; probed live against the real ledger at
   build. The agent text's install-instrument claim (`agents/steward.md:62-66`) is now TRUE
-  by construction. Hook suite 50/50 (+5), status 13/13.
+  by construction. Hook suite 50/50 (+5), status 13/13. **SCOPE LIMIT, corrected 2026-09-11:**
+  "running" is the manifest beside the EXECUTING script — the installed copy — so this
+  instrument is blind to a pushed-but-uninstalled checkout (silent, not warning). Only
+  `running.installed_vs_checkout` (harness-stats, checkout-only) sees that drift; the briefing
+  must AUTHOR it.
+- **PUSHED 0.6.0 (2026-09-11 `8cd3763`, NOT INSTALLED — SUBJECT LEVEL only, no file re-read
+  this pass):** integrate whenever unintegrated · briefing cap → flood guard ·
+  born-on-contract. Read against the model's own open items, those three subjects touch the
+  dispatch trigger, the #8 briefing-budget residual above and the status-contract adoption path
+  (#12's backfill) — whether they CLOSE any of them is unverified and deliberately unclaimed;
+  a pass that reads the code or watches a live fire records it.
 - **BUDGETED 0.3.0 · LIGHTER 0.3.1 (owner, twice in two days: "fires too often and for
   too long" → "can we make the steward lighter? it is unbearable right now"):** at most
   ONE background integration pass per sitting — captures and task landings ACCUMULATE
@@ -484,7 +500,7 @@ capability reach) — it CHECKS, never generates.
     push tax rose. The hints-ignored cause is REPETITION + SIZE, not vocabulary — rung 2
     (#11) stays parked behind #27.
 
-## verifiability-lens (0.7.0 on disk, UNCOMMITTED · 0.6.0 INSTALLED since 2026-09-10) — no Stop hook; since 0.6.0 ONE informational SubagentStop recorder, now live
+## verifiability-lens (0.7.0 PUSHED at `019e007` 2026-09-11, NOT INSTALLED · 0.6.0 INSTALLED since 2026-09-10 and running) — no Stop hook; since 0.6.0 ONE informational SubagentStop recorder, now live
 
 - **Exposes:** A/B/U classification + completeness + quality-bar checks; surfacing triage
   via recipient profile; per-project override (`.claude/verifiability-lens/profile.yaml`) +
@@ -522,6 +538,9 @@ capability reach) — it CHECKS, never generates.
   the recorder being uninstalled then). **LIVE: 1 `"agent":"verifiability-lens"` line in this
   checkout's `.claude/verifiability-lens/trace.jsonl` (grep 09-11)** — the leg closes; the
   ratio itself is a `harness-stats` read (#1(g)).
+- **PUSHED 0.7.0 (2026-09-11 `c2c44a0`, NOT INSTALLED — SUBJECT LEVEL only):** namespaced agent
+  id · `aborted` verdict · closure reissues, the same commit as turn-end 0.10.0. The installed
+  recorder is still 0.6.0, so the one live `agent:` line above was written by 0.6.0 code.
 - **Files:** `plugins/verifiability-lens/{agents/, hooks/{hooks.json, scripts/lens-record.js},
   lib/trace-line.js, tests/}` · design: `design/verifiability-awareness.md` · **Tests:**
   `node plugins/verifiability-lens/tests/verifiability-lens.test.js` (58 per the 0.6.0
@@ -539,7 +558,7 @@ capability reach) — it CHECKS, never generates.
   until `acted_on.lens.pct` (0.9.0 trace + 1.12.0 key) shows escalations get acted on.
 - **v3 role:** kept, re-economized at Phase C.
 
-## plugin-toolkit (1.13.0 on disk, UNCOMMITTED · **NOT INSTALLED AT ALL** — its four gates reach a CHECKOUT only, measured 2026-09-11 → Q24) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
+## plugin-toolkit (1.13.0 PUSHED at `019e007` 2026-09-11 · **NOT INSTALLED AT ALL, and `plugin update` cannot fix that — there is no entry to update** — its four gates reach a CHECKOUT only → Q24) — dev/maintenance + measurement + FOUR gates (one more planned in the same shape: #36 `harness-replay`)
 
 - **Exposes:** /skill-heal, /plugin-scaffold, /version-bump, /docs-audit, /code-glossary
   (deterministic `code_glossary/` Python engine: glossary, MAP.md,
@@ -608,6 +627,14 @@ capability reach) — it CHECKS, never generates.
     (74/74) discovers every sibling writer BY SHAPE and validates every example, plus the
     negative (a line minus `decision` fails) — the machine-guard-drift precedent: sameness
     checked mechanically. Writers today: turn-end 0.9.0, kb 0.14.0, verifiability-lens 0.6.0.
+- **PUSHED 1.13.0 (2026-09-11 `e39edf6` + `2ec159a`, NOT INSTALLED — SUBJECT LEVEL only, no
+  file re-read this pass):** a **vendored-entrypoint** registry claim source with negative
+  controls (the gate run at ship counted SEVEN claim sources, up from six — that count is the
+  check, not prose), born of the same sitting's js-yaml ESM fix; and **note-uptake + VINTAGE**
+  in the scorecard, whose stated purpose is that a key absent because nothing has written it yet
+  stops reading as a measured ZERO. That failure mode is exactly what made the #31 run's `tail
+  0/121` and `lens 6 dispatches / 0 lines` ambiguous, so the fix matters to every number this
+  model quotes from `harness-stats` — re-read the keys from a RUN before trusting either figure.
 - **`runner coupling` SCOPE LIMIT (measured 2026-07-28, first run over `plugins/`):**
   assumes one codebase; across independently-installed plugins it fabricates edges
   (5-module cycle, `alert-sounds → kb`) and clustering flags cross-plugin duplicates
@@ -627,7 +654,9 @@ capability reach) — it CHECKS, never generates.
   exists — reverted in `3633ff7`, see Q12; **NEW 09-09:** root `CLAUDE.md:196` still says
   "three repo-level gates" while `:33` and a gate-table row already name harness-stats
   (grep this pass) → #6.
-- **DISTRIBUTION — REVERSED SINCE THE 07-31 RECORD, measured 2026-09-11:** the install ledger
+- **DISTRIBUTION — REVERSED SINCE THE 07-31 RECORD, measured 2026-09-11 and UNCHANGED by the
+  `019e007` ship (so `claude plugin update` has nothing to update here — Q24 needs an INSTALL):**
+  the install ledger
   has **no `plugin-toolkit` entry at all**, while **mk-cc-all 2.27.0 IS installed** (@ bc39fe0) —
   the exact inverse of the 07-31 /doctor state (standalone toolkit installed, bundle disabled).
   How or when it went away is unknown from disk (a plugin uninstall leaves no ledger trace);
@@ -647,7 +676,7 @@ capability reach) — it CHECKS, never generates.
   skill to remember is Q17.
 - **v3 role:** gates finally get WIRED into executor steps (Phase A).
 
-## essense-flow (0.26.2) — classic pipeline (dissolves per v3 §2; hooks stand down without `.pipeline/` since 0.26.2)
+## essense-flow (0.26.3 PUSHED 2026-09-11, NOT INSTALLED · 0.26.2 installed) — classic pipeline (dissolves per v3 §2; hooks stand down without `.pipeline/` since 0.26.2)
 
 - **Exposes:** 11 phase skills + 14 commands; `.pipeline/` artifacts; state machine
   (artifacts-authoritative, `state-reconcile`); librarian unknowns[] protocol; generativity
@@ -655,7 +684,10 @@ capability reach) — it CHECKS, never generates.
   0.26.1 (never-initialized repos silent, parse-corrupt loud). **0.26.2 (2026-09-06,
   lens-restored Tier-1 item 1b):** context-inject + next-step test `.pipeline/` BEFORE
   importing `lib/state.js` + js-yaml — 154 → 105 ms / 129 → 104 ms in a non-pipeline repo
-  (~430 fires per ship for nothing before); hooks suite 11/11.
+  (~430 fires per ship for nothing before); hooks suite 11/11. **0.26.3 (PUSHED 2026-09-11
+  `9739dda`, NOT INSTALLED — subject level):** vendors js-yaml's ESM entry point, shared with
+  autopilot 0.4.2. It also makes `state-reconcile` runnable locally again, which is what the
+  `.pipeline/` DEGRADED banner on this repo has been recommending (state.md).
 - **Known red:** `tests/ledger-compaction.test.js` — calendar drift (>30d unarchived
   governance entries dated 2026-05-14..17), fails on a clean tree. NOTE the two test dirs:
   `test/` (54 `.cjs`, driven by `test/run-all.cjs`) and `tests/` (`.js` suites incl.
@@ -669,13 +701,15 @@ capability reach) — it CHECKS, never generates.
   session since 08-10 (owner 08-26: "rarely used"). Largest surface in the marketplace,
   no live customers — freeze-vs-invest is Q17; Phase E (#19) already plans its retirement.
 
-## essense-autopilot (0.4.1) — the last competing blocking hook (stands down cheaply since 0.4.1, still REGISTERED)
+## essense-autopilot (0.4.2 PUSHED 2026-09-11, NOT INSTALLED · 0.4.1 installed) — the last competing blocking hook (stands down cheaply since 0.4.1, still REGISTERED)
 
 - **Exposes:** Stop-hook auto-advance of essense-flow phases; halt conditions + stderr
   diagnostics. **0.4.1 (2026-09-06):** js-yaml lazy after the pipeline walk; `hooks.json`
   calls node directly (bash wrapper gone) — 125 (+197 wrapper) → 99 ms; suite 44/44, the
-  `.pipeline` fixture still halts correctly. **Consumes:** `.pipeline/state.yaml` + config
-  opt-in.
+  `.pipeline` fixture still halts correctly. **0.4.2 (PUSHED 2026-09-11 `9739dda`, NOT
+  INSTALLED — subject level):** the same vendored js-yaml ESM entry point; the bump exists
+  BECAUSE a fix without one deploys nothing (the version-pin law below). **Consumes:**
+  `.pipeline/state.yaml` + config opt-in.
 - **Files:** `plugins/essense-autopilot/hooks/scripts/autopilot.js` — decision logic is
   welded into `main()`; only `countInFlightAgents` is exported (`:421`). Extracting a pure
   `decide()` is the precondition for making it a turn-end duty (owner: "autopilot should
@@ -856,3 +890,20 @@ carrying it — a post-ship verdict pairs the Stop trace with a sibling ledger
 UNREPRODUCIBLE by the next pass — the process ended and `.claude/` state is per-CHECKOUT, so a
 second working copy of the same project cannot answer for the first. A hook-liveness finding
 deferred to "next session" is a finding discarded.
+
+**A PLUGIN IS PINNED TO ITS VERSION STRING — a fix without a bump deploys NOTHING (learned
+2026-09-11, at the `019e007` ship).** The install cache updates per plugin per version, so
+editing a plugin's code without raising its `plugin.json` version ships a commit that changes
+nothing for any installed user, including the owner. Measured consequence: a staged plan to push
+the js-yaml ESM fix ALONE was invalidated mid-flight — essense-flow and essense-autopilot had no
+bump, so that push would have deployed zero — and the fix had to travel with its own bumps
+(0.26.3 / 0.4.2). This is the third condition in the reach chain, in order: **bump → push →
+install → restart.** Any "ship just this fix" decision reads the version of the plugin the fix
+lives in first; `/version-bump` exists precisely so the cascade is not remembered by hand.
+
+**And "pushed" is not visible to any running instrument (2026-09-11).** Both running-version
+instruments compare the EXECUTING script's manifest against the install ledger, so a checkout
+ahead of its install is SILENT everywhere at runtime — the drift is measurable only by
+`running.installed_vs_checkout` (harness-stats, from a checkout — Q24). Until that is a standing
+line (Q23), "pushed but not installed" is a fact the briefing must AUTHOR, and it is the one
+class of position claim no hook can compute for the owner.

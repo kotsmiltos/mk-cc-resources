@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-09-11 · Phase 1 PUSHED + INSTALLED and LIVE · one UNCOMMITTED phase on disk · plugin-toolkit uninstalled → Q24 · numbers are stable ids, file order is the order; next free id 39)
+# Tasks — ordered, executor-ready (recomputed 2026-09-11 post-ship · the six-plugin phase is PUSHED at `019e007` and NOT INSTALLED · plugin-toolkit needs an INSTALL, not an update → Q24 · numbers are stable ids, file order is the order; next free id 41)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,50 +6,76 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale (2026-09-11 recompute — a CORRECTION pass).** Phase 1 (#30 trace schema v1
-→ turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0; #31 `harness-stats` → plugin-toolkit 1.12.0) is not
-merely built: it was PUSHED 09-10, three of its four plugins are INSTALLED, and its writers are
-OBSERVED live (state.md — 13 turn-end lines / 2 kb / 1 lens). **#1 therefore SHRINKS:** its
-diagnosis leg is DELETED as unrunnable (the 09-09 silence cannot be reproduced — the process is
-gone and `.claude/` state is per-checkout), and what remains is two disk reads, one ship, and a
-standing watch; it stays at the top only because #12 and the Phase 2 proofs hang off it. **#32
-loses its blocker** — a duty inside a Stop hook that never runs nudges nobody, and the hook now
-runs. **NEW: `plugin-toolkit` is not installed**, so every gate named in a done-check below is a
-CHECKOUT command → Q24, which #2 now waits on. Phase 2 (#32 #8) follows, UNBLOCKED by the 09-09
-rulings; #32 also inherits #31's "second run shows the deltas" leg; #8 unblocks a
-registered-but-null key (`briefing.contradictions`). Phase 3 (#17 prism run — the baseline
-numbers now exist; #33; #35 — its SubagentStop substrate is measured AND installed). Phase 4
-(#34 #36). Phase 4b (#37 #38): preconditions #28 + #30 + #31 are all built; either may be pulled
-forward by an owner pick. Under invariant 12 every task below that ships a mechanism names its
-METRIC KEY in its done-check, and since 1.12.0 the key must be REGISTERED in
-`plugins/plugin-toolkit/lib/metrics/index.js` (a key absent from a run is named) — no key, not
-done. The rest keeps its relative order. #13 stays deleted; ids 1–38 stable, never reused.
+**Ordering rationale (2026-09-11 POST-SHIP recompute).** The six-plugin phase (turn-end 0.10.0 ·
+lens 0.7.0 · toolkit 1.13.0 · steward 0.6.0 · essense-flow 0.26.3 · autopilot 0.4.2) is
+COMMITTED and PUSHED at `019e007` — so **#1's ship leg is done and its INSTALL leg is now the
+only thing standing between a checkout of work and a running one.** Nothing in that ship is
+field-validated; every claim it makes is checkout evidence, which is why #1 stays at the top:
+one command (`claude plugin update` + restart) converts six plugins' worth of built work into
+observable behaviour, and #12 plus every Phase-2 proof hang off it. **NEW, and the reason the
+order changed below:** the owner's session plan of record has two remaining tracks, so they
+enter as #39 (Track 4 — silence essense-flow's false alarms, promote `/elicit` to a standalone
+brainstorm/vision mode, route the bench decision into Q17) and #40 (Track 5 — the user-facing
+README / marketplace-metadata / CHANGELOG + tags pass). They sit directly after #1 because they
+are what the next sitting was planned to do, and because #40 is the first task in months that
+serves the PUBLIC half of the vision ("shipped includes reachability") rather than the harness.
+Phase 2 (#32 #8) keeps its relative order behind them, still UNBLOCKED by the 09-09 rulings; #32
+also inherits #31's "second run shows the deltas" leg; #8 unblocks a registered-but-null key
+(`briefing.contradictions`) — and its case got stronger this ship: **no running instrument can
+see pushed-but-uninstalled drift** (state.md), so the briefing must author it, which is exactly
+the line #8 has to keep true. Phase 3 (#17 prism run; #33; #35 — its SubagentStop substrate is
+measured, and 0.10.0/0.7.0's namespaced agent id lands in the same seam). Phase 4 (#34 #36).
+Phase 4b (#37 #38): preconditions all built; either may be pulled forward by an owner pick.
+Every gate named in a done-check below is still a CHECKOUT command until Q24 lands an install.
+Under invariant 12 every task that ships a mechanism names its METRIC KEY in its done-check, and
+the key must be REGISTERED in `plugins/plugin-toolkit/lib/metrics/index.js` — no key, not done.
+#13 stays deleted; ids 1–40 stable, never reused.
+
+**Plan of record for #39/#40 (2026-09-11):** the owner's session plan `eager-prancing-bubble.md`
+(home-side Claude plans dir — local, never in this repo) defined five tracks; tracks 1–3 shipped
+as `019e007`, tracks 4 and 5 became the two tasks above. A kickoff prompt for them is already
+written at `.claude/prompts/prompt-20260911T151144Z.md` (local, gitignored) — start there rather
+than re-planning, and treat the tasks above as the authority where the two disagree.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives. Under invariant 13, a task's done-check is what the
 executor RUNS; the owner reads the outcome in the session, never this file.
 
-## 1. Dogfood — Phase 1 is LIVE: read the last legs off disk, ship today's phase, keep the hook-liveness WATCH (standing; gates Phase 2, #12)
+## 1. Dogfood — INSTALL the pushed phase (leg A is CLOSED), keep the hook-liveness WATCH (standing; gates Phase 2, #12)
 
-- **Where it stands (measured 2026-09-11):** Phase 1 was pushed 09-10 and turn-end 0.9.0 /
-  kb 0.14.0 / lens 0.6.0 are INSTALLED (ledger, `gitCommitSha` 7e2bcd5); in this checkout the
-  Stop hook WRITES — 13 trace lines, all `"version":"0.9.0"`, incl. 4 `duty:"context-recall"`
-  and 2 `duty:"acted-on"` — plus 2 kb lines and 1 lens `agent:` line. Legs (b) (f) (g) moved
-  from "impossible" to mostly closed. The 09-09 Stop-hook SILENCE was never explained and can
-  no longer be diagnosed (that process ended; `.claude/` state is per-checkout), so the old
-  leg 0 is DELETED as unrunnable and replaced by leg C.
-- **Leg A — finish (g) from disk, two reads:** (1) read one `duty:"context-recall"` line and
+- **Where it stands (measured 2026-09-11, post-ship):** Phase 1 (turn-end 0.9.0 / kb 0.14.0 /
+  lens 0.6.0) is installed and LIVE — 13 v1 trace lines in this checkout, 4
+  `duty:"context-recall"`, 2 `duty:"acted-on"`, 2 kb lines, 1 lens `agent:` line. On top of it a
+  SECOND phase is now pushed at `019e007` and installed NOWHERE (six plugins; state.md). So the
+  dogfood question has split cleanly: Phase 1's residual legs are disk reads, and the new ship's
+  every claim is checkout evidence until one install + restart. The 09-09 Stop-hook SILENCE
+  stays unexplained and undiagnosable (that process ended; `.claude/` state is per-checkout) —
+  leg 0 was DELETED as unrunnable and lives on as leg C.
+- **Leg A — CLOSED 2026-09-11 evening** (numbers in log.md with the commands that printed them:
+  28 v1 trace lines / 9 recall lines, all carrying `judge_chosen` + `ranker_top`;
+  `harness-stats --root .` exit 0 — `lines_per_dispatch` 1, `acted_on.spans` 6,
+  `judge.agreement_n` 3 / `agreement_pct` 66.7, `running.installed_vs_checkout` non-empty for
+  the five behind-install plugins). Re-run it AFTER leg B: that run is the proof the install
+  took, and it is the only place the drift shows. Original wording kept for the method: (1) read
+  one `duty:"context-recall"` line and
   confirm `judge_chosen` + `ranker_top` are actually present (Q20's input; this pass confirmed
   the lines, not the fields); (2) `node plugins/plugin-toolkit/bin/harness-stats.js --root .`
   from the checkout (the plugin is uninstalled — Q24) and record `trace.lines_per_dispatch`,
   `acted_on.spans`, `judge.agreement_n` / `agreement_pct`, `running.installed_vs_checkout`
-  (non-empty by construction while today's four bumps are uncommitted).
-- **Leg B — ship today's phase:** commit + push the uncommitted work (turn-end 0.10.0 · lens
-  0.7.0 · toolkit 1.13.0 · steward 0.6.0 · marketplace metadata 2.49.0 — the session counted 62
-  files), then `claude plugin update` + RESTART; the briefing's `[instr] running` line and
-  `running.installed_vs_checkout` say whether both happened. Push needs the owner's word
-  (invariant 1).
+  (non-empty by construction until leg B runs: five plugins behind + plugin-toolkit absent).
+  Run this BEFORE leg B as well as after — the before-run is the only record of what the drift
+  looked like, and 1.13.0's note-uptake/VINTAGE fix means zeros from an earlier run may have
+  been absences, not measurements (parts.md), so treat any pre-1.13.0 zero as unknown.
+- **Leg B — INSTALL it (the commit + push half LANDED at `019e007`, 6 commits / 64 files):**
+  `claude plugin update`, then RESTART Claude Code (update alone leaves the process on the old
+  code — platform invariant 4). That moves FIVE plugins (turn-end 0.10.0 · lens 0.7.0 · steward
+  0.6.0 · essense-flow 0.26.3 · autopilot 0.4.2) and is a NO-OP for plugin-toolkit, which has no
+  ledger entry to update — that one needs an INSTALL, which is Q24's ruling, not this leg's.
+  **Do not expect `[instr] running` to have warned about any of this:** it compares the
+  executing script against the ledger, so a pushed-but-uninstalled checkout is invisible to it
+  (state.md correction). The only instrument that sees the drift is
+  `running.installed_vs_checkout` in leg A.
 - **Leg C — the hook-liveness WATCH (replaces leg 0):** trigger = a sitting where `trace.jsonl`
   gains NO Stop line while `checks.jsonl` grows. If it fires, capture IN THAT SITTING (it is
   unreproducible afterwards): the transcript's per-turn hook summaries (status + duration) and
@@ -61,10 +87,67 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   a real un-checked mutation, a silent allow on a named check, `digest: pointer` + the
   `kb_query` cue. (b) readable now · (c) CLOSED (#24) · (d) correct.
 - **Done-check:** leg A's numbers recorded in log.md with the command that printed them; after
-  leg B, `[instr] running` empty and `running.installed_vs_checkout` empty; each remaining leg
-  observed at least once with zero UNEXPLAINED instrument lies; then #12 unblocks. **Metric
-  keys:** `running.*` · `acted_on.spans` · `judge.agreement_n`; the watch reads
-  `spawns.stop_hooks_per_fire` (transcript) against `turn_end.prompts` (trace).
+  leg B, `running.installed_vs_checkout` names NOTHING but plugin-toolkit (that one residue is
+  Q24, not a failure here) and a fresh trace line reports `"version":"0.10.0"` — the trace, not
+  the install cache, is what proves the restart took; each remaining leg observed at least once
+  with zero UNEXPLAINED instrument lies; then #12 unblocks. **Metric keys:** `running.*` ·
+  `acted_on.spans` · `judge.agreement_n`; the watch reads `spawns.stop_hooks_per_fire`
+  (transcript) against `turn_end.prompts` (trace).
+
+## 39. Track 4 of the 09-11 plan — silence essense-flow's false alarms in non-pipeline repos, promote `/elicit` into a standalone brainstorm/vision mode, route the bench decision into Q17 (owner-planned next; M)
+
+- **Why:** essense-flow is measured at ZERO real use since 08-10, yet it still injects into
+  every session of every repo, and on THIS repo it injects a DEGRADED banner off an untracked,
+  corrupt `.pipeline/` cache nobody uses — an injection the owner reads and cannot act on, which
+  is precisely the per-session tax invariant 5 prices and the "mechanism that silently delivers
+  nothing" invariant 11 calls a quality failure. The 0.26.1 economics (never-initialized repos
+  silent, parse-corrupt LOUD) are correct as designed; the defect is the trigger, not the rule.
+  Second half: `/elicit` is the one pipeline phase whose job — idea → shaped spec/vision — the
+  steward loop has NO verb for (Phase B's `/discuss` is unbuilt, #16), and the owner's plan asks
+  it be promoted out of the pipeline so the capability survives the bench.
+- **What:** (1) make the loud path require an actual pipeline project (a `.pipeline/` a phase
+  actually initialized, not any parse failure) AND clear this repo's cache at the source — run
+  `state-reconcile` locally, which this ship's js-yaml fix (essense-flow 0.26.3) made possible
+  again, then decide gitignore-or-delete for `.pipeline/`; preserve 0.26.1's rule for real
+  pipeline projects — a corrupt state in a project that HAS a pipeline must stay loud.
+  (2) Promote `/elicit`: it must be invocable with no `.pipeline/` present, and its output must
+  land where the steward loop reads it (a `.steward/inbox/` capture or a vision draft), never in
+  `.pipeline/elicitation/`. Whether it lands as its own plugin or as a steward verb is the open
+  seam — the same seam as `/discuss` in #16; pick one and say why. (3) The bench decision for
+  the remaining ten skills is NOT this task's to take: it routes into **Q17**, whose
+  essense-flow option moved to freeze-and-extract for exactly this reason.
+- **Done-check:** open a session in this repo → the injected context carries NO essense-flow
+  banner or phase line (read the hook output, not the source); a fixture project that HAS an
+  initialized `.pipeline/` with a corrupt state still gets the banner (the negative control —
+  without it this task just deletes a warning); `/elicit` run in a repo with no `.pipeline/`
+  produces its artifact where the steward loop reads it; essense-flow hooks suite + turn-end
+  suite green. **Metric key:** `hook_bytes.p50` / `hook_bytes.p95` on this repo (registered,
+  1.12.0 — the same keys #17 reads as `push.bytes_per_prompt`) measured before and after.
+
+## 40. Track 5 of the 09-11 plan — the user-facing pass: README + marketplace metadata + CHANGELOG + release tags (owner-planned next; the PUBLIC half of the vision; M)
+
+- **Why:** the vision's second audience (public marketplace users) has had no pass in months
+  while six plugins shipped in one day at `019e007` with no user-facing notes; parts.md's own
+  cross-reference law says a version bump takes a RELEASE-NOTES entry, and #6 already records
+  one older violation (toolkit 1.10.0). No release tags exist, so "which commit is turn-end
+  0.10.0" is answerable only by reading history. Reachability is part of "shipped" — docs that
+  imply a layout the installs do not have are the same class of defect as a stale briefing.
+- **What:** (1) run the GATES FIRST and let them name the drift — `registry-check` (versions,
+  listings, bundle paths, doc tables) and `/docs-audit all` — then fix what they name; never
+  re-derive the drift list by hand. (2) A RELEASE-NOTES entry for each plugin bumped at
+  `019e007` (turn-end 0.10.0 · lens 0.7.0 · toolkit 1.13.0 · steward 0.6.0 · essense-flow
+  0.26.3 · autopilot 0.4.2) plus the #6 backlog entry, written from the commits, not from
+  memory. (3) Tags: decide the convention (per-plugin `<plugin>-v<version>` vs one repo-level
+  tag per marketplace metadata version — metadata 2.50.0 is the natural repo-level anchor),
+  apply it to this ship, and record the convention so the next ship does not re-decide it;
+  pushing tags needs the owner's word (invariant 1). (4) The bundle-vs-standalone prose WAITS on
+  Q24 (#2's leg 1) — write the layout-independent parts now, and where the layout matters say
+  the decision is open rather than implying reach. (5) No hand-written counts anywhere: print
+  the command instead (#6's rule).
+- **Done-check:** `node plugins/plugin-toolkit/bin/registry-check.js` exits 0 (read the exit
+  code direct, root cwd) and `/docs-audit all` reports no drift; every plugin bumped at
+  `019e007` has a RELEASE-NOTES entry; the tag convention is applied or explicitly declined in
+  log.md with its reason; README names no install layout Q24 has not decided.
 
 ## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19
 
@@ -303,8 +386,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   exactly what an unclosed decision does. What a PUBLIC marketplace user should install
   (README/marketplace prose still centers the bundle) was never decided either.
 - **What:** (1) the owner's one-keystroke pick is **Q24** (reinstall standalone / standalone +
-  slim the bundle / declare it checkout-only / wrapper) — then reposition README + marketplace
-  prose to the chosen layout; (2) prove the reach: run ONE gate
+  slim the bundle / declare it checkout-only / wrapper) — the README + marketplace repositioning
+  that follows it EXECUTES inside #40, which is already doing that file family; this task owns
+  the DECISION and its record, not a second docs pass; (2) prove the reach: run ONE gate
   (repo-guard or test-all `--root`) from a DIFFERENT project via the installed toolkit —
   possible only under Q24 (a)/(b); under (c) the leg becomes "run it from a checkout and say
   so in the docs"; (3) the bundle is installed at 2.27.0 (`bc39fe0`, ledger-read 09-11) — any
@@ -372,7 +456,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   lines subsume the VOLATILE half; #8 takes the briefing's narrative lines; this sweep
   keeps the STATIC prose half. Open instances, each read from the file that claims it:
   test-all totals (re-run `node plugins/plugin-toolkit/bin/test-all.js --root <repo>` and
-  let ITS output be the number — last gate 35/35 suites / 2,023 at the #31 build) · plugin-toolkit
+  let ITS output be the number — **33/35 suites / 1,325 checks at the 09-11 ship**, against
+  35/35 / 2,023 at the #31 build: the same repo, different suite set, which is the whole
+  argument for never writing the number down) · plugin-toolkit
   1.10.0 RELEASE-NOTES entry (last verified missing 08-01) · RELEASE-NOTES 1.9.0
   checks.yml claim (wording per Q12's answer) · 613 Python glossary-engine checks in no
   documented total · moved-content references from the 07-31 restructure · marketplace
@@ -380,7 +466,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   line (50 + 13 since 0.5.2 — re-read the CLAUDE.md side) · the hook-event table in root
   CLAUDE.md now that turn-end registers PostToolUse and lens 0.6.0 SubagentStop · **root
   `CLAUDE.md:196` "three repo-level gates" while `:33` and a gate-table row already name
-  harness-stats — four (grep 09-09).** Prefer printing the command over the number wherever
+  harness-stats — four (grep 09-09; **re-grepped 09-11 AFTER the ship's doc-sync commit — still
+  there**, so the sync did not cover it and #40's gate-first pass must not assume it did).**
+  Prefer printing the command over the number wherever
   the number earns nothing; `harness-stats` now prints the VOLATILE numbers, so any of them
   hand-written in prose is a defect by construction.
 - **Done-check:** a check (registry-check claim source or peer) fails on today's
@@ -401,7 +489,12 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 
 ## 9. Adjudicate the essense-flow reds: ledger-compaction (calendar) AND the run-all intermittent under the sweep
 
-- **What:** two suspects now. (1) The model holds
+- **What:** THREE suspects now, and they must not be merged. **(0) NEW 09-11, the ship's 2 reds
+  (33/35):** `essense-flow test/run-all.cjs` resolves fixture paths OUTSIDE the repo (the #7
+  leaked-path debt seen from the test side — fix there, not here) and code-glossary's pytest
+  deps are absent in this checkout (an environment fact: either the sweep declares the suite
+  SKIPPED-for-deps, which 1.10.0's skip discipline says it must, or the deps get installed —
+  a red that means "not runnable here" is a reporting defect). (1) The model holds
   `plugins/essense-flow/tests/ledger-compaction.test.js` red on a clean tree (calendar
   drift, governance entries past the 30-day archive threshold), yet repo-wide `test-all
   --root` runs report all-green (33/33 at the 09-09 ship; 35/35 at the #31 build). (2) NEW
@@ -514,9 +607,12 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 
 ## 19. Phase E — retire ceremony officially [Q4, Q5, Q17 land here; harness G12 + the "stale harness" rule]
 
-- **What:** docs + marketplace reposition; classic pipeline preserved (frozen per Q17's
-  default); essense-autopilot retires (Q4 — #3 may make this a deletion rather than a
-  migration); session-lifecycle + reuse-gate per Q17. Standing rule, now LAW via invariant
+- **What:** docs + marketplace reposition (the mechanical half now lands earlier, in #40);
+  classic pipeline preserved — but Q17's essense-flow default MOVED 2026-09-11 to
+  freeze-and-EXTRACT, and #39 performs the extraction (`/elicit` promoted out, false alarms
+  silenced), so by the time this phase runs the pipeline should already be quiet and its one
+  wanted phase already standalone; essense-autopilot retires (Q4 — #3 may make this a deletion
+  rather than a migration); session-lifecycle + reuse-gate per Q17. Standing rule, now LAW via invariant
   12: on every model release re-run `harness-stats` (1.12.0) and remove any mechanism whose
   metric is flat. Absorption fodder: handoff/resume redundant in steward projects
   (measured: 0 uses ever); retro/meta-review → steward verbs; truth split memory=owner /
