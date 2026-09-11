@@ -67,10 +67,38 @@ const WORK_TOOLS = new Set([
   'WebSearch', 'WebFetch',
 ]);
 
-const AGENT_TARGET = 'agent:verifiability-lens';
+/*
+ * THE ID THAT RESOLVES, and it is the namespaced one. A plugin agent is always addressed
+ * `<plugin>:<agent>`; the bare name is not an alias.
+ *
+ * MEASURED 2026-09-11 across 196 sessions: the bare form was tried 3 times and failed 3 times
+ * — `Agent type 'verifiability-lens' not found` — while the namespaced form was used 11 times
+ * and worked 11 times. The 3 bare attempts came from THIS FILE: the ask below used to say
+ * `subagent_type: verifiability-lens`, so the duty was instructing a dispatch that cannot
+ * resolve, and the quality gate simply did not run on those turns. (Same failure shape as
+ * steward-sync, whose ask told the model to let the inbox accumulate: a duty's ask is not
+ * documentation, it is the executable half of the mechanism, and a wrong string in it is a
+ * production bug.)
+ */
+const AGENT_TYPE = 'verifiability-lens:verifiability-lens';
+
+/*
+ * Matching is SEPARATE from addressing, and deliberately looser. `ctx.turn.toolTargets` records
+ * `agent:<subagent_type>` verbatim, so a dispatch appears as either spelling depending on what
+ * the session typed — and an exact-equality check against one of them silently misses the other.
+ * That is not hypothetical: this duty compared against the bare string, so the 11 namespaced
+ * dispatches that DID run never satisfied it, and fixing only the ask would have left the duty
+ * nagging after every successful dispatch. steward-sync already carries this shape; it never
+ * reached here.
+ */
+const AGENT_RX = /^agent:(?:[a-z0-9_.-]+:)?verifiability-lens$/i;
+
+/** True when this turn dispatched the lens, under either spelling. */
+const dispatchedLens = (ctx) =>
+  (((ctx && ctx.turn) || {}).toolTargets || []).some((t) => typeof t === 'string' && AGENT_RX.test(t));
 
 const ASK =
-  'Dispatch the `verifiability-lens` agent (Agent tool, subagent_type: verifiability-lens) over ' +
+  `Dispatch the \`verifiability-lens\` agent (Agent tool, subagent_type: ${AGENT_TYPE}) over ` +
   'the work you just produced. Pass unit_type, the content, context_refs, executor_capabilities, ' +
   'the recipient_profile (project override .claude/verifiability-lens/profile.yaml if present, ' +
   'else the plugin default; read ONCE per dispatch, never per item) AND intended_scope = what the ' +
@@ -78,7 +106,22 @@ const ASK =
   '(2) completeness — was everything meant to be done actually done, (3) quality bar. Surface ' +
   'ONLY its triaged rollup: headline + escalations (each with why-it-matters, a recommended ' +
   'default, bundled context) + one line on what was auto-resolved and how many were suppressed. ' +
-  'Do NOT dump raw classes.';
+  'Do NOT dump raw classes. '
+  /*
+   * REQUIRE THE MACHINE-READABLE BLOCK, because the recorder can only count what the agent
+   * actually emits. The agent definition already specifies the `rollup:` YAML block and says it
+   * is machine-read — but a dispatch prompt that does not restate it gets prose instead.
+   * Measured 2026-09-11 across the only three real post-install dispatches on this machine: the
+   * two whose prompts did not demand the block recorded `decision: unparsed` with every count
+   * null (9,194 and 9,598 bytes of genuine verdict, entirely uncountable), while the one that
+   * demanded it recorded `parsed` with a=13 b=0 u=1, verified=13, refuted=1, escalations=2.
+   * `lens.verified` / `lens.refuted` being `n/a` everywhere was never a data-volume problem; it
+   * was this sentence missing from the ask.
+   */
+  + 'END with the machine-readable `rollup:` YAML block exactly as agents/verifiability-lens.md '
+  + 'specifies (counts, verification, completeness_verdict, escalations, auto_resolved, '
+  + 'suppressed_count) — the SubagentStop recorder parses that block and nothing else, so a '
+  + 'verdict without it is unmeasurable.';
 
 /** Is this text a lens ROLLUP (not merely text that mentions the lens)? */
 function isLensSurfacing(text) {
@@ -149,7 +192,7 @@ module.exports = {
    *     "once per user request" and it survives any number of correction turns).
    */
   satisfied(ctx) {
-    if ((ctx.turn.toolTargets || []).includes(AGENT_TARGET)) return true;
+    if (dispatchedLens(ctx)) return true;
     // Session bucket first: it is the one that survives the agent-completion wake-up.
     if ((ctx.ledger.sessionAsked || []).includes('quality-lens')) return true;
     return (ctx.ledger.asked || []).includes('quality-lens');
@@ -163,4 +206,9 @@ module.exports = {
 module.exports.lensEnabled = lensEnabled;
 module.exports.isLensSurfacing = isLensSurfacing;
 module.exports.CONFIG_REL = CONFIG_REL;
-module.exports.AGENT_TARGET = AGENT_TARGET;
+module.exports.AGENT_TYPE = AGENT_TYPE;
+// Exported so the suite can pin the ID INSIDE the ask: the ask string was the bug, so a test
+// that cannot read it does not guard the regression.
+module.exports.ASK = ASK;
+module.exports.AGENT_RX = AGENT_RX;
+module.exports.dispatchedLens = dispatchedLens;

@@ -47,7 +47,7 @@
 
 const path = require('path');
 const os = require('os');
-const { AGENT_TARGET } = require('./quality-lens');
+const { dispatchedLens } = require('./quality-lens');
 const fileTouch = require('../file-touch');
 
 /*
@@ -318,7 +318,10 @@ const EVIDENCE = [
     // The deep tier was invoked — its rollup supersedes anything this tier could scan for.
     id: 'lens-dispatched',
     detect(ctx) {
-      return ((ctx.turn && ctx.turn.toolTargets) || []).includes(AGENT_TARGET);
+      // Either spelling counts. This arm compared the BARE id, so the 11 namespaced
+      // dispatches that actually ran never satisfied a default-ON severity:block duty —
+      // a turn that did the right thing was blocked for doing it.
+      return dispatchedLens(ctx);
     },
   },
   {

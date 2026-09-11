@@ -271,11 +271,25 @@ function extractTurn(transcriptPath) {
     if (prevIdx >= 0) {
       const prevCalls = [];
       const promptIds = new Set();
+      /* The span's ANSWER text, not just its calls. acted-on scores a SUPPLY surfacing by
+       * whether the answer carried the note's words — recall injects the body, so a file open
+       * can never be the evidence (measured 2026-09-11: that assumption reported 0% uptake
+       * where content scoring found 68%). Collected here because this loop is the only place
+       * the previous span's boundaries are known. */
+      let prevText = '';
       for (let i = prevIdx; i < start - 1; i++) {
         if (msgs[i].promptId) promptIds.add(msgs[i].promptId);
-        if (msgs[i].role === 'assistant') prevCalls.push(...msgs[i].calls);
+        if (msgs[i].role !== 'assistant') continue;
+        prevCalls.push(...msgs[i].calls);
+        if (msgs[i].text) prevText += `${msgs[i].text}\n`;
       }
-      previous = { requestAt: msgs[prevIdx].at, endAt: msgs[start - 1].at, promptIds: Array.from(promptIds), toolCalls: prevCalls };
+      previous = {
+        requestAt: msgs[prevIdx].at,
+        endAt: msgs[start - 1].at,
+        promptIds: Array.from(promptIds),
+        toolCalls: prevCalls,
+        answerText: prevText.trim(),
+      };
     }
   }
 

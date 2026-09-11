@@ -134,7 +134,14 @@ function examples() {
     actedOnLine({
       now, version: EXAMPLE_VERSION, sessionId: 'sess-1', promptId: 'prompt-2', ms: 4,
       span: { from: new Date('2026-09-08T23:00:00.000Z'), to: now },
-      sources: { 'turn-end:context-recall': { surfaced: 3, touched: 1 }, 'kb:kb-pull': { surfaced: 3, touched: 0 } },
+      /* Per-kind verdicts: a SUPPLY source is scored on content use (with the median overlap
+       * that produced it), a POINTER source on the follow-up, and an unregistered kind is
+       * `unknown` rather than a zero. See lib/acted-on.js for why the kinds cannot share one
+       * scorer. */
+      sources: {
+        'turn-end:context-recall': { kind: 'supply', surfaced: 3, used: 2, unknown: 0, overlap_pct: 47 },
+        'kb:kb-pull': { kind: 'pointer', surfaced: 3, used: 0, unknown: 0 },
+      },
     }),
   ];
 }

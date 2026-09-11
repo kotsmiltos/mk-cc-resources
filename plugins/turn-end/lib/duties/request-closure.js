@@ -50,6 +50,53 @@ function agentTargets(ctx) {
   return (ctx.turn.toolTargets || []).filter((t) => typeof t === 'string' && t.startsWith('agent:'));
 }
 
+/*
+ * WHAT THE LENS FOUND IN THIS SPAN — read from its own trace, read-only, path duplicated rather
+ * than imported (plugins install standalone; lib/acted-on.js sets the precedent).
+ *
+ * WHY closure needs it (owner ruling 2026-09-11, verbatim): async dispatch is right — "async is
+ * good because it checks what happened and figure out if the result is up to par" — but "we need
+ * to make sure that what it finds is good and is used and at the end the correct version is
+ * presented in full and nicely". Async means the verdict lands AFTER the answer it judges, on a
+ * wake turn. A summary of the correction is not the corrected work: if the lens refuted a claim,
+ * the owner must receive the ANSWER AGAIN, whole and right, not a note saying it was wrong.
+ *
+ * Measured 2026-09-11, why this is not theoretical: roughly half of 13 dispatches refuted or
+ * corrected something real — *"claim 7 is refuted: the 'one config.ts edit' does not restore the
+ * suite"*, *"the CODE-MAP carries one false statement"*, *"4 corrections needed, 2 of them in
+ * durable artifacts"*. Every one of those landed on a wake turn with nothing requiring the
+ * answer be reissued.
+ *
+ * The other verdict that matters here is `aborted` — a dispatch that never did the work (one of
+ * the 13 returned 61 characters of rate-limit text). A gate that vanished must be SAID, not
+ * silently treated as a pass.
+ */
+const LENS_TRACE_REL = '.claude/verifiability-lens/trace.jsonl';
+
+function lensVerdicts(ctx) {
+  const out = { refuted: 0, escalations: 0, aborted: 0, lines: 0 };
+  const raw = ctx.disk && typeof ctx.disk.read === 'function' ? ctx.disk.read(LENS_TRACE_REL) : null;
+  if (!raw) return out;
+  // The span, not the prompt: a wake is a new prompt_id inside the SAME span, and the lens line
+  // was written under the prompt that dispatched it. userRequestAt is the span's own start.
+  const from = typeof ctx.turn.userRequestAt === 'number' ? ctx.turn.userRequestAt : null;
+  for (const l of String(raw).split('\n')) {
+    if (!l.trim()) continue;
+    let e;
+    try { e = JSON.parse(l); } catch (_e) { continue; }
+    if (!e || e.plugin !== 'verifiability-lens') continue;
+    if (from !== null) {
+      const at = Date.parse(e.t);
+      if (Number.isFinite(at) && at < from) continue;
+    }
+    out.lines += 1;
+    if (Number.isInteger(e.refuted)) out.refuted += e.refuted;
+    if (Number.isInteger(e.escalations)) out.escalations += e.escalations;
+    if (e.decision === 'aborted' || e.decision === 'crashed') out.aborted += 1;
+  }
+  return out;
+}
+
 module.exports = {
   id: 'request-closure',
   title: 'Answer the original request, then who-did-what',
@@ -86,15 +133,36 @@ module.exports = {
       agents.length ? `${agents.length} agent dispatch(es): ${agents.join(', ')}` : '',
       wakes ? `${wakes} background completion(s) woke this span` : '',
     ].filter(Boolean).join('; ');
+    const lens = lensVerdicts(ctx);
+    /*
+     * A CORRECTION IS NOT A NOTE. When the lens refuted or escalated something in this span, the
+     * owner's ask is the corrected work itself — restated whole — because the answer they already
+     * read is now known to be wrong in a named place. Summarising the correction leaves them
+     * holding the wrong version plus a footnote.
+     */
+    const corrected = (lens.refuted > 0 || lens.escalations > 0)
+      ? ` The verifiability lens REFUTED or escalated ${lens.refuted + lens.escalations} item(s) in this span, `
+        + 'so a summary of the correction is not enough: RESTATE THE ANSWER IN FULL, already '
+        + 'corrected, and mark what changed and why. The owner must end up holding the right '
+        + 'version, not the old one plus a footnote.'
+      : '';
+    /* A lost gate is said out loud. Silence here is indistinguishable from a clean pass, which
+     * is the failure mode the `aborted` verdict exists to end. */
+    const lostGate = lens.aborted > 0
+      ? ` WARNING: ${lens.aborted} lens dispatch(es) in this span produced no verdict (aborted or `
+        + 'crashed) — that work is UNCHECKED. Say so plainly; do not present it as reviewed.'
+      : '';
     return (
       `This span involved ${activity || 'delegated work'} — the final message must close the ` +
       `USER'S request, not report the last agent. The user originally asked: ` +
       `«${clip(ctx.turn.userRequest, MAX_REQUEST_EXCERPT)}». ` +
       'Lead with the outcome that answers THAT; then one who-did-what line per agent ' +
       '(which agent, what it contributed); machinery/duty notes last and brief. ' +
-      'Never lead with what the most recent agent returned.'
+      `Never lead with what the most recent agent returned.${corrected}${lostGate}`
     );
   },
 };
 
 module.exports.MAX_REQUEST_EXCERPT = MAX_REQUEST_EXCERPT;
+module.exports.lensVerdicts = lensVerdicts;
+module.exports.LENS_TRACE_REL = LENS_TRACE_REL;

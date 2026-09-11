@@ -254,7 +254,14 @@ function actedOnFor(cwd, ctx, ledger, live, sessionId, promptId) {
       try { traces[plugin] = fs.readFileSync(path.join(cwd, rel), 'utf8'); } catch (_e) { traces[plugin] = ''; }
     }
     const span = { from: prev.requestAt, to: prev.endAt, promptIds: prev.promptIds, toolCalls: prev.toolCalls };
-    const { sources } = actedOn.derive(traces, span, cwd);
+    /* derive() stays pure, so the fs work happens here: it names the SUPPLY paths, we read them,
+     * it scores content use against the span's answer. A body we cannot read is handed over as
+     * absent, which scores the unit `unknown` — never as a confident zero. */
+    const noteBodies = {};
+    for (const rel of actedOn.surfacedNotePaths(traces, span)) {
+      try { noteBodies[rel] = fs.readFileSync(path.join(cwd, rel), 'utf8'); } catch (_e) { /* absent => unknown */ }
+    }
+    const { sources } = actedOn.derive(traces, span, cwd, { answerText: prev.answerText, noteBodies });
     const line = traceLine.actedOnLine({
       now: new Date(), version: live.running, sessionId, promptId, ms: Date.now() - startedMs,
       span: { from: prev.requestAt, to: prev.endAt }, sources,

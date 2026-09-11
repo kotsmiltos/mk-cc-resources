@@ -83,16 +83,53 @@ function pendingItems(ctx) {
     .filter((name) => !known.has(name.slice(0, -ITEM_EXT.length)));
 }
 
+/*
+ * Is the briefing behind the ledger? Read straight off the status contract's own cursor —
+ * `views.briefing.derived_through` against the highest recorded item id — so no stat call and
+ * no clock is involved (ids are the inbox's logical clock, lexicographic by construction).
+ *
+ * Why the duty needs this at all (measured 2026-09-11): with an EMPTY inbox and a briefing 5
+ * days behind its own log, nothing fired. `applies` gated on staged items only, so the one
+ * state the owner actually complained about — a model that lies about where the ship is — was
+ * the one state no duty watched. A pre-contract project (no status.json) returns false here and
+ * keeps the item-count behaviour; the brief hook still warns on mtimes.
+ */
+function briefingBehind(ctx) {
+  const raw = ctx.disk.read(STATUS_REL);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    const items = Array.isArray(data && data.items) ? data.items : [];
+    const ids = items.filter((i) => i && typeof i.id === 'string').map((i) => i.id);
+    if (!ids.length) return false;
+    const cursor = data.views && data.views.briefing && data.views.briefing.derived_through;
+    if (typeof cursor !== 'string' || !cursor) return true; // recorded items, no briefing cursor
+    return ids.some((id) => id > cursor);
+  } catch (_e) {
+    return false; // a corrupt ledger is the brief hook's finding, not a reason to nag
+  }
+}
+
 function ask(ctx) {
   const items = pendingItems(ctx);
   const named = items.length ? ` — ${items.join(', ')}` : '';
-  // Terse by owner directive (2026-08-03, "make the steward lighter"): the ask names the
-  // items and the action; the recompute discipline lives in the steward agent's own mandate,
-  // not re-prosed here on every fire.
+  const behind = briefingBehind(ctx);
+  /*
+   * DISPATCH, unconditionally. Owner ruling 2026-09-11 ("I CARE ABOUT Quality", cost explicitly
+   * not a goal) retires the one-pass-per-sitting cap this ask used to enforce in its own words:
+   * it ended "otherwise let them accumulate for the next batch point", which is an instruction
+   * to SKIP. Measured consequence — the duty fired 30 times across the audit window and
+   * agents-card-process-automation still carried 9 unintegrated items with a briefing 5 days
+   * behind its log. The backlog was not a satisfaction-logic bug; the ask told the model to
+   * leave it. Still terse, still background, so the owner never waits.
+   */
+  const subject = items.length
+    ? `${items.length} unintegrated steward item(s)${named}`
+    : 'the briefing is behind the ledger (no staged items, but its cursor trails the recorded ones)';
+  const staleNote = items.length && behind ? ' The briefing is behind the ledger too.' : '';
   return (
-    `${items.length} unintegrated steward item(s)${named}. If this sitting's ONE background ` +
-    'integration pass has not run yet, dispatch it (Agent tool, subagent_type: steward, job: ' +
-    'integrate) and show the diff on return; otherwise let them accumulate for the next batch point.'
+    `${subject}. Dispatch the integration pass now (Agent tool, subagent_type: steward:steward, job: `
+    + `integrate) in the background and show the diff on return — it regenerates the briefing.${staleNote}`
   );
 }
 
@@ -105,9 +142,13 @@ module.exports = {
   priority: 25,
   span: 'session',
 
-  /** Silence is structural: no `.steward/inbox`, or nothing staged in it, and this never fires. */
+  /*
+   * Silence is structural: no `.steward/` model, nothing staged AND a briefing level with the
+   * ledger, and this never fires. Two triggers, because a model goes stale two ways — an item
+   * nobody integrated, or a briefing nobody regenerated after one was.
+   */
   applies(ctx) {
-    return pendingItems(ctx).length > 0;
+    return pendingItems(ctx).length > 0 || briefingBehind(ctx);
   },
 
   satisfied(ctx) {
@@ -115,7 +156,7 @@ module.exports = {
     // empty because the steward archived each item. Unreachable through the runner while
     // `applies` gates on the same count — kept because a duty has to be answerable on its own
     // terms, and this is the arm that survives if `applies` ever widens.
-    if (pendingItems(ctx).length === 0) return true;
+    if (pendingItems(ctx).length === 0 && !briefingBehind(ctx)) return true;
     // Dispatched during this turn; the steward has not written `done/` yet.
     if ((ctx.turn.toolTargets || []).some((t) => STEWARD_AGENT_RX.test(t))) return true;
     // Session bucket first — the one that survives the agent-completion wake-up.
@@ -127,6 +168,7 @@ module.exports = {
 };
 
 module.exports.pendingItems = pendingItems;
+module.exports.briefingBehind = briefingBehind;
 module.exports.recordedIds = recordedIds;
 module.exports.INBOX_REL = INBOX_REL;
 module.exports.STATUS_REL = STATUS_REL;

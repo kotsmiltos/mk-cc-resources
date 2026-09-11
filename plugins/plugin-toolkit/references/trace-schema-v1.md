@@ -81,7 +81,14 @@ there is covered the day it lands.
   fire leaves no line — silence has no bytes to account for).
 - kb-session-start: `rotated` \| `kept`.
 - kb MCP tool: `hits:<n>` \| `read` \| `overview` \| `error`.
-- lens agent: `parsed` \| `unparsed` \| `crashed` — plus the rollup counts.
+- lens agent: `parsed` \| `unparsed` \| `aborted` \| `crashed` — plus the rollup counts.
+  `parsed` a rollup was read; `unparsed` the lens answered and the parser could not read it (a
+  PARSER problem); `aborted` the lens never did the work (a LOST GATE); `crashed` no final
+  message at all. `aborted` is separate because conflating it with `unparsed` made a vanished
+  quality gate indistinguishable from a clean one — measured 2026-09-11, 1 of 13 dispatches
+  returned 61 characters of rate-limit text and that turn went unchecked. It is decided on
+  substrate (no rollup AND too little work to have produced one: text under 400 chars with
+  under 50 assistant output tokens), never on a list of platform error strings.
 
 ## Lens rollup (agent lines)
 
@@ -93,7 +100,11 @@ counts are `null`, never 0 — a zero is a claim.
 ## `acted_on` — derived at the NEXT owner prompt
 
 A surfacing (a kb hint, a recalled note, a lens escalation) is only worth its bytes if the
-session ACTS on it, and that is unknowable at write time. turn-end derives it once the span is
+session ACTS on it, and that is unknowable at write time. Each source reports its `kind` —
+`supply` (the body was injected, so ACTING means the answer carried it) or `pointer` (ids only,
+so acting means the follow-up read) — with `{ surfaced, used, unknown }`; an unregistered kind
+scores `unknown`, never 0. One scorer for both kinds is what made this read 0% in every project
+while real uptake was 68% (measured 2026-09-11). turn-end derives it once the span is
 closed: at the first Stop of the next genuine owner prompt (a wake is not one — turn-end
 already classifies wakes), it reads the previous span's tool calls through the 0.8.0
 file-touch extractor and writes ONE `duty: acted-on` line for that span:

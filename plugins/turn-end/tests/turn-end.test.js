@@ -30,6 +30,7 @@ const { buildContext, extractTurn, makeDisk } = require('../lib/context');
 const sessionDigest = require('../lib/duties/session-digest');
 const qualityLens = require('../lib/duties/quality-lens');
 const stewardSync = require('../lib/duties/steward-sync');
+const requestClosure = require('../lib/duties/request-closure');
 const contextRecall = require('../lib/duties/context-recall');
 const selfCheck = require('../lib/duties/self-check');
 const claudeP = require('../lib/judges/claude-p');
@@ -706,9 +707,36 @@ check('quality-lens: malformed config does not throw and stays off', () => {
   assert.strictEqual(qualityLens.lensEnabled(fakeCtx({ disk: lensDisk('{oops') })), false);
 });
 
-check('quality-lens: satisfied when the turn dispatched the agent', () => {
-  const ctx = fakeCtx({ turn: { toolNames: ['Agent'], toolTargets: [qualityLens.AGENT_TARGET], text: 'x' } });
-  assert.strictEqual(qualityLens.satisfied(ctx), true);
+check('quality-lens: satisfied by a dispatch under EITHER spelling; the namespaced id is the one it asks for', () => {
+  // MEASURED 2026-09-11: the bare id was tried 3 times and failed 3 times ("Agent type
+  // 'verifiability-lens' not found"); the namespaced id was used 11 times and worked 11 times.
+  // Those 3 bare attempts came from this duty's own ask. Two bugs, and the second only bites
+  // once the first is fixed: satisfaction compared the BARE string, so the 11 dispatches that
+  // really ran never satisfied the duty.
+  assert.strictEqual(qualityLens.AGENT_TYPE, 'verifiability-lens:verifiability-lens');
+  assert.match(qualityLens.ASK, /subagent_type: verifiability-lens:verifiability-lens/, 'the ask must name the id that resolves');
+  assert.ok(!/subagent_type: verifiability-lens\b(?!:)/.test(qualityLens.ASK), 'the ask must not name the bare id that never resolves');
+  // The recorder parses the `rollup:` block and nothing else. Measured 2026-09-11: the two real
+  // dispatches whose prompt did not demand it recorded `unparsed` with every count null (9,194
+  // and 9,598 bytes of real verdict, uncountable); the one that demanded it recorded verified=13
+  // refuted=1. `lens.verified` reading n/a was this sentence missing, not a data shortage.
+  assert.match(qualityLens.ASK, /machine-readable `rollup:` YAML block/, 'the ask must demand the block the recorder reads');
+  assert.match(qualityLens.ASK, /completeness_verdict/, 'and name the fields it must carry');
+
+  const dispatched = (target) => qualityLens.satisfied(fakeCtx({ turn: { toolNames: ['Agent'], toolTargets: [target], text: 'x' } }));
+  assert.strictEqual(dispatched('agent:verifiability-lens:verifiability-lens'), true, 'the form that actually resolves must satisfy');
+  assert.strictEqual(dispatched('agent:verifiability-lens'), true, 'the bare form still counts when a session types it');
+  assert.strictEqual(dispatched('agent:verifiability-lens-sibling'), false, 'a different agent must not satisfy');
+  assert.strictEqual(dispatched('agent:steward:steward'), false, 'another plugin\'s agent must not satisfy');
+});
+
+check('self-check: a lens dispatch under the NAMESPACED id counts as the check (it is default-ON and blocking)', () => {
+  // The same bare-string compare lived in self-check, imported from quality-lens. Consequence:
+  // a turn that changed files AND correctly dispatched the lens was still blocked — punished
+  // for doing the right thing. severity:block makes this the costliest copy of the defect.
+  assert.strictEqual(qualityLens.dispatchedLens(fakeCtx({ turn: { toolTargets: ['agent:verifiability-lens:verifiability-lens'] } })), true);
+  assert.strictEqual(qualityLens.dispatchedLens(fakeCtx({ turn: { toolTargets: [] } })), false);
+  assert.strictEqual(qualityLens.dispatchedLens(fakeCtx({ turn: {} })), false, 'no targets recorded is not a dispatch');
 });
 
 check('quality-lens: satisfied once already asked this request', () => {
@@ -750,6 +778,72 @@ check('quality-lens: a bracketed tool marker alone IS surfacing', () => {
   assert.strictEqual(qualityLens.isLensSurfacing('[turn-end] before yielding, 1 duty unmet'), true);
 });
 
+check('request-closure: a lens REFUTATION in the span demands the corrected answer IN FULL', () => {
+  // Owner ruling 2026-09-11: async dispatch is right, but "at the end the correct version is
+  // presented in full and nicely". The verdict lands on a WAKE turn, after the answer it judges,
+  // so without this the owner keeps the wrong version plus a footnote. Measured: ~half of 13
+  // dispatches refuted or corrected something real.
+  const dir = tmpdir('closure-lens-refuted');
+  const lensDir = path.join(dir, '.claude', 'verifiability-lens');
+  fs.mkdirSync(lensDir, { recursive: true });
+  const at = Date.now();
+  const line = (o) => `${JSON.stringify({ t: new Date(at + 1000).toISOString(), plugin: 'verifiability-lens', agent: 'verifiability-lens', decision: 'parsed', ...o })}\n`;
+  fs.writeFileSync(path.join(lensDir, 'trace.jsonl'), line({ refuted: 1, escalations: 2 }));
+
+  const ctx = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
+    turn: { toolTargets: ['agent:verifiability-lens:verifiability-lens'], userRequest: 'fix the parity bug', userRequestAt: at, wakeCount: 1 },
+  });
+  assert.strictEqual(requestClosure.applies(ctx), true);
+  const text = requestClosure.ask(ctx);
+  assert.match(text, /RESTATE THE ANSWER IN FULL/);
+  assert.match(text, /3 item\(s\)/, 'refuted + escalations are counted together');
+  assert.match(text, /«fix the parity bug»/, 'the verbatim request still leads');
+});
+
+check('request-closure: an ABORTED lens dispatch is called out as UNCHECKED, never silently passed', () => {
+  // 1 of 13 dispatches returned 61 chars of "You've hit your session limit" — the gate vanished
+  // and nothing said so. Silence is indistinguishable from a clean pass.
+  const dir = tmpdir('closure-lens-aborted');
+  const lensDir = path.join(dir, '.claude', 'verifiability-lens');
+  fs.mkdirSync(lensDir, { recursive: true });
+  const at = Date.now();
+  fs.writeFileSync(path.join(lensDir, 'trace.jsonl'),
+    `${JSON.stringify({ t: new Date(at + 500).toISOString(), plugin: 'verifiability-lens', decision: 'aborted', refuted: null, escalations: null })}\n`);
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolTargets: ['agent:verifiability-lens:verifiability-lens'], userRequest: 'ship it', userRequestAt: at } });
+  const text = requestClosure.ask(ctx);
+  assert.match(text, /UNCHECKED/);
+  assert.ok(!/RESTATE THE ANSWER IN FULL/.test(text), 'an abort found nothing to correct');
+});
+
+check('request-closure: a clean lens pass, or a span with no lens at all, adds nothing', () => {
+  const at = Date.now();
+  // Clean pass: parsed, nothing refuted or escalated.
+  const clean = tmpdir('closure-lens-clean');
+  fs.mkdirSync(path.join(clean, '.claude', 'verifiability-lens'), { recursive: true });
+  fs.writeFileSync(path.join(clean, '.claude', 'verifiability-lens', 'trace.jsonl'),
+    `${JSON.stringify({ t: new Date(at + 500).toISOString(), plugin: 'verifiability-lens', decision: 'parsed', refuted: 0, escalations: 0 })}\n`);
+  let text = requestClosure.ask(fakeCtx({ cwd: clean, disk: makeDisk(clean), turn: { toolTargets: ['agent:verifiability-lens:verifiability-lens'], userRequest: 'q', userRequestAt: at } }));
+  assert.ok(!/RESTATE THE ANSWER IN FULL|UNCHECKED/.test(text), 'a clean pass must not manufacture a correction');
+
+  // No trace at all — the ask keeps its original shape.
+  const bare = tmpdir('closure-no-lens');
+  text = requestClosure.ask(fakeCtx({ cwd: bare, disk: makeDisk(bare), turn: { toolTargets: ['agent:steward:steward'], userRequest: 'q', userRequestAt: at } }));
+  assert.ok(!/RESTATE THE ANSWER IN FULL|UNCHECKED/.test(text));
+  assert.match(text, /who-did-what/);
+});
+
+check('request-closure: a lens line from BEFORE this span is not attributed to it', () => {
+  const dir = tmpdir('closure-lens-old');
+  fs.mkdirSync(path.join(dir, '.claude', 'verifiability-lens'), { recursive: true });
+  const at = Date.now();
+  fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens', 'trace.jsonl'),
+    `${JSON.stringify({ t: new Date(at - 600000).toISOString(), plugin: 'verifiability-lens', decision: 'parsed', refuted: 9, escalations: 9 })}\n`);
+  const v = requestClosure.lensVerdicts(fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest: 'q', userRequestAt: at } }));
+  assert.deepStrictEqual(v, { refuted: 0, escalations: 0, aborted: 0, lines: 0 }, 'a stale verdict must not demand a rewrite');
+});
+
 // ---------- duty: steward-sync ----------
 
 /** A context whose disk is the real memoized view over a synthetic project root. */
@@ -785,6 +879,61 @@ check('steward-sync: applies once an item is staged', () => {
   const dir = seedInbox('steward-one-item', ['20260727-0700-a-thought.md']);
   assert.strictEqual(stewardSync.applies(stewardCtx(dir)), true);
   assert.strictEqual(stewardSync.satisfied(stewardCtx(dir)), false);
+});
+
+check('steward-sync: a briefing BEHIND the ledger fires the duty even with an empty inbox', () => {
+  // Measured 2026-09-11: agents-card-process-automation ran 88 sessions with briefing.md 5 days
+  // behind its own log.md. `applies` gated on staged items only, so the one state the owner
+  // complains about — a model that lies about where the ship is — was the state nothing watched.
+  const dir = seedInbox('steward-briefing-behind', [], { withGitkeep: true });
+  const status = (cursor) => JSON.stringify({
+    schema: 1,
+    items: [{ id: '20260901-1000-a', status: 'integrated' }, { id: '20260907-1200-b', status: 'integrated' }],
+    views: { briefing: { derived_through: cursor }, model: { derived_through: '20260907-1200-b' } },
+  });
+  const write = (cursor) => fs.writeFileSync(path.join(dir, '.steward', 'status.json'), status(cursor));
+
+  write('20260901-1000-a'); // briefing knows the first item, not the second
+  let ctx = stewardCtx(dir);
+  assert.strictEqual(stewardSync.briefingBehind(ctx), true);
+  assert.strictEqual(stewardSync.applies(ctx), true, 'behind the ledger must fire');
+  assert.strictEqual(stewardSync.satisfied(ctx), false);
+  assert.match(stewardSync.ask(ctx), /briefing is behind the ledger/);
+
+  write('20260907-1200-b'); // caught up
+  ctx = stewardCtx(dir);
+  assert.strictEqual(stewardSync.briefingBehind(ctx), false);
+  assert.strictEqual(stewardSync.applies(ctx), false, 'level with the ledger is silence');
+});
+
+check('steward-sync: briefingBehind degrades quietly — no ledger, no items, or corrupt json never nags', () => {
+  const bare = seedInbox('steward-behind-noledger', [], { withGitkeep: true });
+  assert.strictEqual(stewardSync.briefingBehind(stewardCtx(bare)), false, 'pre-contract project: item count rules, not this');
+
+  const empty = seedInbox('steward-behind-noitems', [], { withGitkeep: true });
+  fs.writeFileSync(path.join(empty, '.steward', 'status.json'), JSON.stringify({ schema: 1, items: [], views: {} }));
+  assert.strictEqual(stewardSync.briefingBehind(stewardCtx(empty)), false, 'nothing recorded, nothing to be behind');
+
+  const corrupt = seedInbox('steward-behind-corrupt', [], { withGitkeep: true });
+  fs.writeFileSync(path.join(corrupt, '.steward', 'status.json'), '{not json');
+  assert.strictEqual(stewardSync.briefingBehind(stewardCtx(corrupt)), false, 'a corrupt ledger is the brief hook\'s finding');
+
+  // Recorded items but NO briefing cursor: the view has never been derived, so it is behind.
+  const nocursor = seedInbox('steward-behind-nocursor', [], { withGitkeep: true });
+  fs.writeFileSync(path.join(nocursor, '.steward', 'status.json'), JSON.stringify({ schema: 1, items: [{ id: '20260901-1000-a', status: 'integrated' }], views: {} }));
+  assert.strictEqual(stewardSync.briefingBehind(stewardCtx(nocursor)), true);
+});
+
+check('steward-sync: the ask DISPATCHES and no longer tells the model to let items accumulate', () => {
+  // The 2026-09-11 root cause: the duty fired 30 times in the audit window and the backlog
+  // survived, because the ask itself ended "otherwise let them accumulate for the next batch
+  // point" — an instruction to skip. A nudge that offers an out is not a nudge.
+  const dir = seedInbox('steward-ask-dispatches', ['20260909-0900-thought.md']);
+  const text = stewardSync.ask(stewardCtx(dir));
+  assert.match(text, /Dispatch the integration pass now/);
+  assert.match(text, /subagent_type: steward/);
+  assert.ok(!/accumulate/i.test(text), `ask still offers the skip: ${text}`);
+  assert.ok(!/ONE background/.test(text), 'the one-pass-per-sitting cap is retired');
 });
 
 check('steward-sync: an item RECORDED in status.json is not staged, though its file never moved (contract 0.5.0)', () => {
@@ -1532,7 +1681,6 @@ check('E2E: config off-switch silences the runner', () => {
 
 // ---------- duty: request-closure ----------
 
-const requestClosure = require('../lib/duties/request-closure');
 
 // The real wake shape: a user-ROLE entry, machine-authored, wrapping a task-notification.
 const WAKE_ENTRY = JSON.stringify({ type: 'user', message: { role: 'user', content:
@@ -2260,14 +2408,74 @@ check('acted-on: derive scores recall / kb-pull / lens per closed span, by promp
     ],
   };
   const { sources } = actedOn30.derive(traces, span, cwd);
-  assert.deepStrictEqual(sources['turn-end:context-recall'], { surfaced: 2, touched: 1 }, 'a.md opened via Bash head; b.md not');
-  assert.deepStrictEqual(sources['kb:kb-pull'], { surfaced: 4, touched: 2 }, 'c.md by Read, tasks.md by kb_read; x::y + legacy untouched');
-  assert.deepStrictEqual(sources['verifiability-lens'], { surfaced: 1, touched: 1 }, 'the escalating dispatch was followed by an Edit');
+  // recall is a SUPPLY source: with no bodies and no answer text handed in there is NO evidence
+  // either way, so both units are `unknown`. The old scorer called this `touched: 1` off a Bash
+  // `head` — a file open, which is not what supply means and is what reported 0% uptake.
+  assert.deepStrictEqual(sources['turn-end:context-recall'], { kind: 'supply', surfaced: 2, used: 0, unknown: 2 }, 'no bodies/answer => unknown, never a confident zero');
+  assert.deepStrictEqual(sources['kb:kb-pull'], { kind: 'pointer', surfaced: 4, used: 2, unknown: 0 }, 'c.md by Read, tasks.md by kb_read; x::y + legacy not followed');
+  assert.deepStrictEqual(sources['verifiability-lens'], { kind: 'pointer', surfaced: 1, used: 1, unknown: 0 }, 'the escalating dispatch was followed by an Edit');
   // Time-window fallback when the trace lines carry no prompt_id.
   const noIds = { kb: line({ t: '2026-09-09T10:00:01.000Z', hook: 'kb-pull', hints: ['kb-captures::.claude/kb/captures/c.md'] }) };
-  assert.deepStrictEqual(actedOn30.derive(noIds, span, cwd).sources['kb:kb-pull'], { surfaced: 1, touched: 1 });
+  assert.deepStrictEqual(actedOn30.derive(noIds, span, cwd).sources['kb:kb-pull'], { kind: 'pointer', surfaced: 1, used: 1, unknown: 0 });
   assert.deepStrictEqual(actedOn30.derive(noIds, { ...span, from: Date.parse('2026-09-09T11:00:00.000Z'), to: null }, cwd).sources, {}, 'outside the window: nothing');
   assert.deepStrictEqual(actedOn30.derive({}, span, cwd).sources, {}, 'absent files: absent sources, no throw');
+});
+
+check('acted-on: a SUPPLY surfacing is scored on CONTENT USE — the answer carrying the note words, not the file being opened', () => {
+  const cwd = process.platform === 'win32' ? 'C:\\proj' : '/proj';
+  const line = (o) => JSON.stringify(o);
+  const span = {
+    from: Date.parse('2026-09-09T10:00:00.000Z'), to: Date.parse('2026-09-09T10:05:00.000Z'),
+    promptIds: ['p1'], toolCalls: [], // NOTHING opened: supply needs no file access to count
+  };
+  // Two notes surfaced. The answer discusses the first and never mentions the second.
+  const used = 'The govgr wallet exchange is a confirmation-code exchange; the wallet confirmation code\n'
+    + 'is exchanged by the wallet endpoint, so govgr never returns a token. Wallet exchange again.';
+  const unused = 'Kafka observability crashes the host: the observability sidecar crashes when kafka\n'
+    + 'retention rolls, so observability must be pinned. Kafka observability retention.';
+  const traces = {
+    'turn-end': line({
+      t: '2026-09-09T10:00:30.000Z', plugin: 'turn-end', duty: 'context-recall', prompt_id: 'p1',
+      surfaced: ['.claude/kb/captures/govgr.md', '.claude/kb/captures/kafka.md'],
+    }),
+  };
+  const extra = {
+    answerText: 'Answering the question: the govgr wallet exchange is a confirmation-code exchange, '
+      + 'so the wallet endpoint returns a confirmation code and govgr issues no token.',
+    noteBodies: { '.claude/kb/captures/govgr.md': used, '.claude/kb/captures/kafka.md': unused },
+  };
+  const s = actedOn30.derive(traces, span, cwd, extra).sources['turn-end:context-recall'];
+  assert.strictEqual(s.kind, 'supply');
+  assert.strictEqual(s.surfaced, 2);
+  assert.strictEqual(s.used, 1, 'the note the answer carried counts; the unrelated one does not');
+  assert.strictEqual(s.unknown, 0, 'both bodies were readable, so nothing is unknown');
+  assert.ok(Number.isInteger(s.overlap_pct), 'the raw overlap travels with the verdict for re-judging');
+
+  // A body we could not read is UNKNOWN, not unused — the false-zero guard.
+  const partial = actedOn30.derive(traces, span, cwd, { answerText: extra.answerText, noteBodies: {} });
+  assert.deepStrictEqual(partial.sources['turn-end:context-recall'], { kind: 'supply', surfaced: 2, used: 0, unknown: 2 });
+
+  // The pre-v1 `supplied[]` shape is the SAME supply source. 268 of 270 recall fires on disk
+  // carry it, so a v1-only reader would score almost nothing and look dead all over again.
+  const legacy = { 'turn-end': line({ t: '2026-09-09T10:00:30.000Z', hook: 'turn-end', prompt_id: 'p1', supplied: [{ id: 'context-recall', chosen: ['.claude/kb/captures/govgr.md'] }] }) };
+  assert.deepStrictEqual(actedOn30.surfacedNotePaths(legacy, span), ['.claude/kb/captures/govgr.md'], 'legacy shape names its paths too');
+  const leg = actedOn30.derive(legacy, span, cwd, extra).sources['turn-end:context-recall'];
+  assert.deepStrictEqual({ kind: leg.kind, surfaced: leg.surfaced, used: leg.used, unknown: leg.unknown }, { kind: 'supply', surfaced: 1, used: 1, unknown: 0 });
+});
+
+check('acted-on: an UNREGISTERED surfacing kind scores unknown, never zero-used', () => {
+  const cwd = process.platform === 'win32' ? 'C:\\proj' : '/proj';
+  // Reach past the trace shapes straight at the registry: an unknown kind must not silently
+  // become "surfaced N, used 0", which reads as a finding and argues for deleting what works.
+  assert.strictEqual(actedOn30.SCORERS['not-a-kind'], undefined, 'the kind really is unregistered');
+  assert.ok(actedOn30.SCORERS[actedOn30.SUPPLY] && actedOn30.SCORERS[actedOn30.POINTER], 'both shipped kinds are registered');
+  // A recall line whose paths cannot be read + no answer text: the supply scorer's own
+  // no-evidence path, which is the same guarantee.
+  const traces = { 'turn-end': JSON.stringify({ t: '2026-09-09T10:00:30.000Z', duty: 'context-recall', prompt_id: 'p1', surfaced: ['gone.md'] }) };
+  const span = { from: Date.parse('2026-09-09T10:00:00.000Z'), to: null, promptIds: ['p1'], toolCalls: [] };
+  const s = actedOn30.derive(traces, span, cwd).sources['turn-end:context-recall'];
+  assert.deepStrictEqual(s, { kind: 'supply', surfaced: 1, used: 0, unknown: 1 });
+  assert.ok(!('overlap_pct' in s), 'no samples => no overlap number invented');
 });
 
 check('ledger: actedOnUpTo is SESSION span — survives a prompt rollover, resets on a new sitting, kept by advance', () => {
@@ -2342,7 +2550,7 @@ check('E2E: v1 hook line (plugin/version/session_id/ms/decision/bytes) + ONE act
   assert.strictEqual(acted[0].plugin, 'turn-end');
   assert.strictEqual(acted[0].session_id, 'sess-e2e');
   assert.strictEqual(acted[0].prompt_id, 'p2');
-  assert.deepStrictEqual(acted[0].acted_on.sources['kb:kb-pull'], { surfaced: 2, touched: 1 });
+  assert.deepStrictEqual(acted[0].acted_on.sources['kb:kb-pull'], { kind: 'pointer', surfaced: 2, used: 1, unknown: 0 });
   assert.strictEqual(acted[0].acted_on.span.from, '2026-09-09T10:00:00.000Z');
   const hooks = trace.filter((l) => l.hook === 'turn-end');
   assert.ok(hooks.length >= 1, 'a hook line was written (self-check demanded on the unchecked edit)');

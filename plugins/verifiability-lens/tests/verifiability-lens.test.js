@@ -74,8 +74,41 @@ const sample = JSON.parse(read(path.join('tests', 'fixtures', 'SubagentStop.samp
     line.a === 7 && line.escalations === 1 && line.verified === 7 && line.engine === 'claude-x' && line.tokens.out === 2 &&
     line.payload_keys.includes('agent_transcript_path') && line.agent_type === sample.agent_type);
   check('lineFor: no final message = crashed (never a silent all-clear)', traceLine.lineFor({ ...sample, last_assistant_message: '' }).decision === 'crashed');
-  check('lineFor: prose without a rollup = unparsed, counts null', (() => { const l = traceLine.lineFor({ ...sample, last_assistant_message: 'just prose' }); return l.decision === 'unparsed' && l.a === null; })());
-  check('examples() cover parsed / unparsed / crashed', traceLine.examples().map((e) => e.decision).join(',') === 'parsed,unparsed,crashed');
+  // A verdict the PARSER could not read is `unparsed` — the lens worked, the rollup block was
+  // missing or malformed. It needs real substance to be told apart from a lost gate, which is
+  // exactly the distinction 0.6.1 added, so the fixture carries both length and output tokens.
+  check('lineFor: a real prose verdict without a rollup = unparsed, counts null', (() => {
+    const l = traceLine.lineFor(
+      { ...sample, last_assistant_message: `Verdict in prose, no rollup block. ${'detail '.repeat(200)}` },
+      { stats: { startedAt: Date.now() - 60000, tokens: { in: 10, out: 4000, cache_read: 0, cache_write: 0 } } },
+    );
+    return l.decision === 'unparsed' && l.a === null;
+  })());
+
+  // THE LOST GATE. Verbatim from the 2026-09-11 audit: 1 of 13 dispatches returned this and
+  // nothing was checked that turn. It used to read as `unparsed`, i.e. indistinguishable from
+  // the case above — a gate that vanished looked like a gate that ran.
+  check('lineFor: a dispatch that never did the work = aborted, NOT unparsed', (() => {
+    const l = traceLine.lineFor(
+      { ...sample, last_assistant_message: "You've hit your session limit · resets 4:40pm (Europe/Athens)" },
+      { stats: { startedAt: Date.now() - 1200, tokens: { in: 12, out: 0, cache_read: 0, cache_write: 0 } } },
+    );
+    return l.decision === 'aborted' && l.a === null;
+  })());
+
+  // The guard against over-reaching in the other direction: a SHORT answer backed by real work
+  // is a parser problem, never a lost gate. Mislabelling it would hide a genuine finding.
+  check('lineFor: short text but thousands of output tokens stays unparsed (a finding must not be hidden)',
+    traceLine.lineFor({ ...sample, last_assistant_message: 'All clear.' },
+      { stats: { startedAt: Date.now() - 60000, tokens: { in: 10, out: 3000, cache_read: 0, cache_write: 0 } } }).decision === 'unparsed');
+
+  check('looksAborted is decided on substrate, not on platform error strings',
+    traceLine.looksAborted('short', { tokens: { out: 0 } }) === true
+    && traceLine.looksAborted('short', { tokens: { out: 5000 } }) === false
+    && traceLine.looksAborted('x'.repeat(traceLine.ABORTED_TEXT_FLOOR), { tokens: { out: 0 } }) === false
+    && traceLine.looksAborted('short', {}) === true);
+
+  check('examples() cover parsed / unparsed / crashed / aborted', traceLine.examples().map((e) => e.decision).join(',') === 'parsed,unparsed,crashed,aborted');
   check('recorder: only lens payloads (matcher belt)', recorder.isLensPayload(sample) && !recorder.isLensPayload({ ...sample, agent_type: 'Explore' }) && !recorder.isLensPayload({}));
   check('recorder: runningVersion reads the manifest beside the code', recorder.runningVersion() === JSON.parse(read('.claude-plugin/plugin.json')).version);
 }
