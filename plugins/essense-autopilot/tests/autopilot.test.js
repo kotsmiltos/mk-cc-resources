@@ -71,13 +71,17 @@ const ENABLED = "autopilot:\n  enabled: true\n";
 const DISABLED = "autopilot:\n  enabled: false\n";
 
 // ── Halt paths: each must emit stderr diagnostic + exit 0 ──────────────────
+// …with ONE exception, asserted immediately below: "no .pipeline/" is the expected state of
+// nearly every repo (305 measured fires over 196 sessions, 2026-09-11), so it halts SILENTLY.
+// Every other reason stays loud — a silent halt nobody can explain is the failure mode the
+// stderr diagnostics exist for.
 
-test("halt: no .pipeline directory", () => {
+test("halt: no .pipeline directory is SILENT — not a condition anyone diagnoses", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ap-no-pipe-"));
   const r = runHook(root);
   assert.equal(r.status, 0);
   assert.equal(r.stdout, "");
-  assert.match(r.stderr, /no \.pipeline\/ directory/);
+  assert.equal(r.stderr, "", "this halt means 'no job here', and said so 305 times");
 });
 
 test("halt: autopilot disabled", () => {

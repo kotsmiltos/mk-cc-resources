@@ -21,6 +21,13 @@
  *
  * Fail-open: any error path falls through to "allow stop" — never blocks
  * stoppage on its own bug.
+ *
+ * HALT DIAGNOSTICS (measured 2026-09-11, audit over 196 sessions): every halt reason is
+ * written to stderr so a silent halt can be diagnosed — except ONE. The
+ * `no .pipeline/ directory` halt fired 305 times in repos that have no pipeline and never
+ * will: it is not a halt the owner can act on, it is this hook correctly recognising it has
+ * no job here, and its diagnostic drowned the halts that DO mean something. That one reason
+ * is now silent (allowStop() with no reason). Every other halt stays loud.
  */
 
 const fs = require("fs");
@@ -223,6 +230,8 @@ function countInFlightAgents(transcriptPath, opts) {
 function allowStop(reason) {
   // Default action — exit cleanly, Claude proceeds with stop. When `reason`
   // is provided, log it to stderr so the user can diagnose silent halts.
+  // Called with NO reason for the one halt that means "no job here" (see
+  // HALT DIAGNOSTICS at the top of this file).
   if (reason) {
     process.stderr.write(`[essense-autopilot] halt: ${reason}\n`);
   }
@@ -242,7 +251,9 @@ async function main() {
 
   const pipelineDir = findPipelineDir(cwd);
   if (!pipelineDir) {
-    return allowStop(`no .pipeline/ directory found from cwd ${cwd}`);
+    // SILENT by design (see HALT DIAGNOSTICS above) — "this is not a pipeline project" is
+    // the expected state of nearly every repo, not a condition anyone diagnoses.
+    return allowStop();
   }
   // Only a pipeline project pays for the yaml library — and one without it is told so.
   if (!loadYaml()) {

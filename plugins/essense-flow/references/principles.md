@@ -17,7 +17,7 @@ prior frustration eventually reduced to a violation of it.
 - **Quality ownership** — This work matters. Take ownership.
 - **Propagation requirement** — Every descendant artifact must carry these same four instructions (carried as a one-line citation to this section rather than verbatim duplication; the rule survives, only the duplication mechanism changed).
 
-This block is the canonical source. Skills cite this section by reference rather than duplicating the bullets verbatim. The propagation-requirement bullet itself remains the rule: every artifact a skill produces — task specs, briefs, governance entries, completion records, RELEASE-NOTES sections, commit messages — must carry the citation forward so future-Claude reading any descendant finds the way back here.
+This block is the canonical source. Skills cite this section by reference rather than duplicating the bullets verbatim. The propagation-requirement bullet itself remains the rule: every artifact a skill produces — task specs, briefs, governance entries, completion records, CHANGELOG entries, commit messages — must carry the citation forward so future-Claude reading any descendant finds the way back here.
 
 Consolidation rationale: SKILL.md files once duplicated the 4-bullet block verbatim, inconsistently (3 of 9 had it; 6 did not). Anthropic's canonical context-engineering guidance (smallest high-signal token set; tight informative context; SKILL.md body ideally under 500 lines) flags verbatim duplication as an anti-pattern. The owner's verdict: consolidate to one canonical source + cite.
 

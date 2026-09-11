@@ -13,7 +13,7 @@ plugins/essense-flow/
 ├── README.md                # operator-facing entry point
 ├── SECURITY.md              # threat model + reporting + mitigations + known limitations
 ├── TRUST.md                 # trust boundaries + handoff contract + Claude assumptions
-├── RELEASE-NOTES.md         # version-by-version changes, top-down
+├── CHANGELOG.md             # version-by-version changes, user-facing, newest first
 ├── docs/
 │   └── architecture.md      # this file
 ├── references/

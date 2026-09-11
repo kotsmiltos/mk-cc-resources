@@ -9,14 +9,46 @@
 // Per Fail-Soft: this hook NEVER blocks tool calls. There is no decision
 // path that exits non-zero. Every code path that could throw is wrapped
 // in try/catch with stderr-warning + exit 0.
+//
+// INJECTION ECONOMICS (measured 2026-09-11, audit over 196 sessions): the DEGRADED banner
+// fired 535 times — the same eight lines re-injected on every prompt of every sitting in a
+// repo carrying one dead .pipeline/ — while the pipeline's own skills were invoked 0 times.
+// A degraded state is a SESSION-LEVEL fact: the owner needs it once, at the top. So the
+// degraded banner is emitted on SessionStart ONLY, enforced by WHICH EVENT FIRED
+// (payload.hook_event_name) — not by a counter, which would need state and could drift.
+// The healthy phase block still injects on both events: it is small, and it changes as the
+// pipeline advances, which is exactly what a per-prompt reminder is for.
 
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { existsSync } from "node:fs";
+import { resolveProjectRoot } from "../../lib/project-root.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(__dirname, "../..");
 const STATE_LIB_URL = pathToFileURL(join(PLUGIN_ROOT, "lib/state.js")).href;
+
+// The one event allowed to print a degraded banner (see INJECTION ECONOMICS above).
+const SESSION_START_EVENT = "SessionStart";
+
+/**
+ * The platform's hook payload, or {} when there is none (hand-run, TTY, unparseable).
+ * Never throws and never hangs: a TTY stdin resolves immediately, since a hook that waits
+ * for input a terminal will not send would freeze the session it is supposed to inform.
+ */
+function readPayload() {
+  return new Promise((resolve_) => {
+    if (process.stdin.isTTY) return resolve_({});
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("error", () => resolve_({}));
+    process.stdin.on("end", () => {
+      if (!data.trim()) return resolve_({});
+      try { resolve_(JSON.parse(data)); } catch (_e) { resolve_({}); }
+    });
+  });
+}
 
 main().catch((err) => {
   // Top-level catch — last line of defense. Per Fail-Soft, exit 0 always.
@@ -25,7 +57,12 @@ main().catch((err) => {
 });
 
 async function main() {
-  const projectRoot = process.cwd();
+  const payload = await readPayload();
+  const event = String(payload.hook_event_name || "");
+  // Nearest .git ancestor, not the shell's position: a subdirectory shell used to read (and
+  // banner about) a DIFFERENT project's .pipeline/. payload.cwd is the platform's own answer
+  // for where the session is; process.cwd() is the fallback for a hand-run.
+  const projectRoot = resolveProjectRoot(payload.cwd || process.cwd());
 
   // FAST stand-down before any library loads: a repo with no .pipeline/ is not a pipeline
   // project, and this hook fires on EVERY prompt and session start in EVERY repo. Measured
@@ -69,6 +106,14 @@ async function main() {
   // the pipeline — say NOTHING. Bannering every prompt in non-pipeline repos
   // is the injection-economics inversion this probe closes.
   if (state.degraded === "missing" && state.pipeline_present === false) {
+    process.exit(0);
+  }
+
+  // A degraded state is a session-level fact — say it once, at the top of the sitting, on the
+  // event that happens once. On any other event (UserPromptSubmit) the banner is dropped
+  // ENTIRELY: repeating it does not add information, and an unknown event is treated as "not
+  // SessionStart" so a fire that cannot prove it is the once-per-session one stays quiet.
+  if (state.degraded && event !== SESSION_START_EVENT) {
     process.exit(0);
   }
 

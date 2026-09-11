@@ -1,0 +1,19 @@
+{
+  "name": "elicit",
+  "version": "0.1.0",
+  "description": "Brainstorm a vision to completion — you talk, it questions the gaps you leave and guides you through the parts you do not fully understand yet. Orients from the project knowledge base and the .steward/ model before the first question so it never re-asks what is settled, recurses on every deeper gap an answer opens, panels genuine forks with prism, and lands conclusions as steward inbox captures — never a direct model edit. One skill, zero code, no preconditions.",
+  "author": {
+    "name": "kotsmiltos"
+  },
+  "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+  "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+  "license": "MIT",
+  "keywords": [
+    "elicit",
+    "brainstorm",
+    "vision",
+    "gap-analysis",
+    "requirements",
+    "steward"
+  ]
+}

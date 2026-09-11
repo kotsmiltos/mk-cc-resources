@@ -43,8 +43,13 @@ return, masters surface them at phase gates via AskUserQuestion (`register-add -
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths, degradation warnings (points at state-reconcile first). Silent in repos that never ran the pipeline (no `.pipeline/`) — and since 0.26.2 exits BEFORE importing lib/state.js + js-yaml there (~150 → ~100 ms per fire; these fire in every repo); parse-corrupt state.yaml renders a VISIBLE degraded banner |
-| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml; same pre-import stand-down since 0.26.2 |
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths on both events. The DEGRADED banner is **SessionStart-only since 0.27.0** — gated on `payload.hook_event_name`, no counter; an unknown event stays quiet (measured: 535 identical banners over 196 sessions). Silent in repos that never ran the pipeline (no `.pipeline/`) — and since 0.26.2 exits BEFORE importing lib/state.js + js-yaml there (~150 → ~100 ms per fire) |
+| next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml; same pre-import stand-down since 0.26.2. **Silent on a degraded state since 0.27.0** — it used to push `/heal` at every turn's end at a pipeline nobody was running |
+
+Both hooks anchor to the nearest `.git` ancestor via `lib/project-root.js` (0.27.0) — essense-flow's
+OWN copy of the walk turn-end / kb / patterns each carry; duplicated across plugins on purpose
+(standalone installs must not couple), and distinct from `lib/project-dir.cjs`, which is the CLI's
+hard-failing surface and must never be used by a hook.
 
 ## references/ (the load-bearing docs)
 

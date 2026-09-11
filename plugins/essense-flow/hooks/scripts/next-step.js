@@ -5,16 +5,42 @@
 // next slash command + one-line description + inputs. Suggestion only.
 //
 // Per Fail-Soft: NEVER blocks. Every error path exits 0.
+//
+// INJECTION ECONOMICS (measured 2026-09-11, audit over 196 sessions): a degraded state made
+// this hook print `state: degraded / recommendation: /heal` at the END OF EVERY TURN, forever,
+// in a repo whose pipeline skills were invoked 0 times. The suggestion is worthless there:
+// nothing is mid-flight, and /heal on a dead .pipeline/ would assert a false phase. So a
+// degraded state now exits 0 SILENTLY — SessionStart's one context-inject banner is the single
+// place the degradation is announced. Every NON-degraded path keeps its suggestion.
 
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { resolveProjectRoot } from "../../lib/project-root.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(__dirname, "../..");
 const MAP_PATH = join(PLUGIN_ROOT, "references/phase-command-map.yaml");
 const STATE_LIB_URL = pathToFileURL(join(PLUGIN_ROOT, "lib/state.js")).href;
+
+/**
+ * The platform's hook payload, or {} when there is none (hand-run, TTY, unparseable).
+ * Never throws and never hangs — a TTY stdin resolves immediately.
+ */
+function readPayload() {
+  return new Promise((resolve_) => {
+    if (process.stdin.isTTY) return resolve_({});
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("error", () => resolve_({}));
+    process.stdin.on("end", () => {
+      if (!data.trim()) return resolve_({});
+      try { resolve_(JSON.parse(data)); } catch (_e) { resolve_({}); }
+    });
+  });
+}
 
 main().catch((err) => {
   process.stderr.write(`[essense-flow next-step] unexpected error: ${err && err.message}\n`);
@@ -22,7 +48,10 @@ main().catch((err) => {
 });
 
 async function main() {
-  const projectRoot = process.cwd();
+  const payload = await readPayload();
+  // Nearest .git ancestor, not the shell's position — a subdirectory shell used to read
+  // another project's .pipeline/ and suggest its next command here.
+  const projectRoot = resolveProjectRoot(payload.cwd || process.cwd());
 
   // FAST stand-down before any library loads — this Stop hook fires in EVERY repo (measured
   // ~430 fires, ~130 ms each, in projects that never ran the pipeline). Same predicate
@@ -34,9 +63,9 @@ async function main() {
     const { readState } = await import(STATE_LIB_URL);
     state = await readState(projectRoot);
   } catch (err) {
-    // Parse-corrupt state.yaml throws ShapeValidationError; surface it as a
-    // visible degraded recommendation (same fate as shape-corrupt) instead of
-    // stderr-only silence. Other errors = lib unavailable, stay quiet.
+    // Parse-corrupt state.yaml throws ShapeValidationError; normalise it to the same
+    // degraded marker shape readState returns for shape-corrupt, so both variants take the
+    // one silent exit below. Other errors = lib unavailable, stay quiet.
     if (err && err.name === "ShapeValidationError") {
       state = { phase: "idle", degraded: "corrupt", reason: err.message };
     } else {
@@ -52,18 +81,15 @@ async function main() {
   }
 
   if (state.degraded) {
-    // Don't suggest a phase command from a degraded state — surface and exit.
+    // Don't suggest a phase command from a degraded state — and don't say so either.
     // Degraded marker family:
     //   - 'missing' — state.yaml absent
     //   - 'corrupt' — post-parse shape-validation failure; readState returns
     //     {degraded:'corrupt', shape_error, ...} marker directly (no throw).
-    //     Truthy check below catches both variants uniformly.
-    process.stdout.write(
-      `<essense-flow-next>\n` +
-        `state: degraded (${state.degraded})\n` +
-        `recommendation: /heal\n` +
-        `</essense-flow-next>\n`,
-    );
+    //     The truthy check catches both variants uniformly.
+    // SILENT since 0.27.0 (see INJECTION ECONOMICS above): the degradation is announced once
+    // per session by context-inject on SessionStart; repeating it at every turn's end taught
+    // the model nothing and pushed /heal at a pipeline nobody is running.
     process.exit(0);
   }
 
