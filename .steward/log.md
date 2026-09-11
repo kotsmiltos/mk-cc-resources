@@ -1429,3 +1429,52 @@ the numbers above are its, not re-run here.
   committed and pushed. The remaining drift is an INSTALL gap, not a commit gap: the ledger
   (`installed_plugins.json`) still reports the 09-10 generation, so the owner's
   `claude plugin update` is the outstanding half of leg B.
+
+## 2026-09-11 (night) · Tracks 4 + 5 shipped in 4 commits; leg C's watch fired and is a false positive
+
+- **Track 4 — the false alarms are gone (essense-flow 0.27.0 · essense-autopilot 0.5.0).**
+  Degraded banner → SessionStart only (gated on `payload.hook_event_name`, no counter);
+  next-step → silent on a degraded state; autopilot's `no .pipeline/` halt → silent, every
+  other halt still loud; both essense-flow hooks root-anchored through a new
+  `lib/project-root.js` (NOT the hard-failing `project-dir.cjs`). Verified live against this
+  repo's own dead `.pipeline/`: SessionStart prints the banner, UserPromptSubmit prints
+  NOTHING, next-step prints NOTHING, autopilot writes 0 stderr bytes outside a pipeline, and a
+  subdirectory shell resolves back to the repo root. Suites: essense-flow hooks 16/16 (was 11),
+  autopilot 44/44.
+- **Track 4 — `/elicit` promoted to `plugins/elicit/` 0.1.0** (one SKILL.md, zero code, no
+  preconditions, bundle-safe): the gap-recursion engine retargeted at `.steward/vision.md` +
+  `questions.md`, orienting from kb + the model first, writing ONE inbox capture and never the
+  model itself. Benching routed to Q17 with two facts and no self-answer (inbox
+  `20260911-2342-…`).
+- **Track 5 — the user-facing pass.** README 382 lines/41 KB → 149/7.6 KB (hero → install → one
+  quickstart → grouped catalog → links out), install commands corrected to
+  `<name>@mk-cc-resources`, five previously-unlisted plugins added; all 18 marketplace rows cut
+  to ≤200 chars (longest 191, was 9,879) and given the 7 recommended metadata fields (was 0/17);
+  the 5 missing plugin READMEs written (17/17); all 16 `RELEASE-NOTES.md` → `CHANGELOG.md` (Keep
+  a Changelog, recent 5 rewritten user-facing, older verbatim into `design/notes/<plugin>-history.md`);
+  the convention moved with it (`/version-bump`, `/plugin-scaffold`, `/docs-audit`, `@ship` —
+  thorough-mode 1.11.3 for the injected-text change).
+- **Track 5 — the guard, so it cannot regress (plugin-toolkit 1.14.0).** New `plugin-docs` claim
+  (README present · CHANGELOG's newest entry == shipped version · description ≤200); `doc-version`
+  broadened to link-form rows and any version cell, sweeping `plugins/*/README.md` + `CHANGELOG.md`.
+  **And a defect in the gate itself:** `test-all` matched node:test's old `# pass N` marker, so on
+  node 24 every node-file suite counted ZERO — reported 1,325 against a real 1,443, and the number
+  could not move when 16 tests were added or removed (both measured). Fixed; the same blind spot
+  hid `essense-flow:tests/ledger-compaction.test.js` **running and checking NOTHING** since the
+  gate began.
+- **Gates at the four commits** (`2135b28` · `4f45fa5` · `750f0f6` · `94df2d5`), run from the repo
+  root, exit codes read directly: `repo-guard` **clean, exit 0** (4 detectors) · `registry-check`
+  **exit 0** (8 claim sources) · `test-all --root <repo>` **32/35, 1452 checks, 1 skipped, exit 1**
+  on three named non-green — two pre-existing (`essense-flow:test/run-all.cjs` fixtures gone;
+  code-glossary pytest deps absent) and the ledger-compaction skip, newly VISIBLE, not newly broken.
+- **18 `<plugin>@<version>` tags created LOCALLY, none pushed** (`git push --dry-run --tags`
+  confirms all 18 would be new). The convention had stalled at `mk-cc-all@1.13.0`.
+- **#1 leg C — the watch FIRED, and it is a false positive** (inbox `20260912-0013-…`): 142
+  `checks.jsonl` lines this session against 0 Stop trace lines, because the sitting had not
+  yielded once (one `promptId` across 760 transcript lines). A timed hand-run of the INSTALLED
+  0.9.0 over this transcript: **exit 0, 38,436 ms, 2,334-byte tail, +2 trace lines** — the hook
+  works. The predicate needs a yield guard; that is the model's call, not a session's patch.
+- **NOT done, and outstanding:** `claude plugin update` is still the owner's to run (the ledger
+  still reads the 09-10 generation: turn-end 0.9.0 · lens 0.6.0 · steward 0.5.2 · essense-flow
+  0.26.2 · autopilot 0.4.1) — and it will only carry TODAY's work once these four commits are
+  pushed. Nothing was pushed; the push and the tag push both wait on the owner's word.
