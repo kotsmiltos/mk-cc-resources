@@ -56,9 +56,23 @@ Given the inbox (and/or a fresh owner statement passed in the brief):
    `views.model.derived_through` and `views.briefing.derived_through` to the highest
    integrated id. **Files NEVER move, rename, or get tombstone stubs** — an id recorded in
    `items[]` stops counting as new, which is the whole mechanism; leave the inbox file
-   exactly where the owner's words landed. (Pre-contract ships — no `status.json` — keep
-   the old ritual: move to `inbox/done/`, keep raw text; a session adopts the contract by
-   running `bin/steward-backfill.js`, never by you hand-creating the file.)
+   exactly where the owner's words landed.
+   **Where `status.json` does NOT exist yet, split on WHY** — the "never hand-create it" rule
+   exists to stop you fabricating a history you did not witness, so it binds only where a
+   history exists:
+   - **No `status.json` and no prior history** (no `inbox/done/`, no INTEGRATED tombstones):
+     CREATE it, recording the items this pass integrated and nothing else. There is no past to
+     invent, and a model born off-contract is a model that needs a file moved to stay honest —
+     which you cannot do, so it never happens and the inbox silts up. Measured 2026-09-11: in
+     three live ships no `status.json` existed at all, every pass therefore took the
+     move-to-`done/` path, and your own returns said *"I have no move/delete tool, so the seven
+     captures…"* and *"moving the five inbox files needs a shell I do not have, so it goes to
+     you"*. The owner never did it: 9 items pending, briefing 5 days behind its own log.
+   - **No `status.json` but a prior history exists**: do NOT create it — that history is what
+     you would be inventing. Say so in the diff and tell the owner to run
+     `bin/steward-backfill.js` once; it adopts the contract from the real `done/` record in a
+     single run, and one of those runs recorded 42 items in a ship that had none.
+   Either way you still never move, rename, or tombstone a file.
 5. Regenerate `briefing.md` — ALWAYS the pass's LAST write, so the freshness hook (0.4.0)
    never counts your own same-pass writes as events newer than it. Never write volatile
    position facts the hook now computes (`[instr]`: git position, install versions, item

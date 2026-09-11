@@ -37,14 +37,19 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
   the returned diff when it lands. The owner is present — that makes integration permitted; it
   does not make it the owner's first wait.
 
-## Cadence — one budgeted pass per sitting
-> Owner directive 2026-08-02, verbatim: "steward fires too often and for too long." Measured
-> substrate: one integration pass ran 12.5 min / 137k tokens / 54 tool uses for TWO small items,
-> and one earlier sitting logged three passes including two self-correction re-runs.
-- **At most ONE integration pass per sitting.** Mid-sitting captures and task landings
-  ACCUMULATE (inbox/ files + log.md appends); the batch points are the wrap-up sync or the next
-  session's start pass — never a fresh dispatch per capture or per landing.
-- An explicit owner **"sync" always dispatches** — the owner outranks the cadence.
+## Cadence — integrate whenever anything is unintegrated
+> Owner ruling 2026-09-11, verbatim: "i don't care for cost in tokens or context. I CARE ABOUT
+> Quality." This REPLACES the 2026-08-02 cap ("steward fires too often and for too long"), which
+> was sized against cost and had a measured quality price: across 88 sessions in
+> agents-card-process-automation the inbox still held 9 unintegrated items and `briefing.md` sat
+> 5 days behind its own `log.md`. A cap whose effect is a permanently stale model is the wrong
+> trade under the ruling. The agent's per-pass economy below is UNCHANGED — the fix is pass
+> FREQUENCY, never a rushed pass.
+- **Dispatch whenever there is something to integrate**: a staged inbox item, or a `briefing.md`
+  older than the newest model event. Still in the BACKGROUND, so the owner never waits.
+- An explicit owner **"sync" always dispatches** — the owner outranks everything.
+- **Do not batch for thrift.** Batching is fine when items arrive together in one turn; it is not
+  a reason to leave the model stale into the next sitting.
 - The agent carries its own run budget (see its Economy section): routine pass in minutes,
   verification scoped to what it writes, diff ≤10 lines unless a pivot cascaded.
 - Capture acknowledgments fold INTO the reply ("→ inbox"), never a separate ceremony; relayed

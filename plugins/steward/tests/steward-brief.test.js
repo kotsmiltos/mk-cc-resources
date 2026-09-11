@@ -89,22 +89,26 @@ fs.mkdirSync(path.join(proj2, '.steward'), { recursive: true });
 const out3 = JSON.parse(runHook(proj2));
 check('missing briefing handled', out3.hookSpecificOutput.additionalContext.includes('briefing.md missing'));
 
-// 5. Oversized briefing → capped, and the owner is told HOW MUCH went missing.
+// 5. A PATHOLOGICAL briefing hits the flood guard, and the owner is told HOW MUCH went missing.
 // "truncated" alone left nobody able to tell whether one line or half the file was lost,
 // and gave the steward agent no number to regenerate against.
-fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), 'x'.repeat(5000));
+// 0.6.0: the guard moved 900 -> 4500 chars / 8 -> 30 lines. It was a COST cap and it was cutting
+// real briefings — measured 2026-09-11 in a live ship, "dropped 1 line(s) / 138 chars", and the
+// tail of a briefing is NEXT/WAITING, the asks the owner opens the session to read. It is now a
+// runaway-file guard only, so the fixture has to be genuinely pathological to trip it.
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), 'x'.repeat(9000));
 const out4 = JSON.parse(runHook(proj2));
 const ctx4 = out4.hookSpecificOutput.additionalContext;
-check('oversized briefing capped', ctx4.includes('briefing over budget'));
+check('pathological briefing hits the flood guard', ctx4.includes('FLOOD GUARD'));
 check('cap names the dropped char count', /dropped \d+ line\(s\) \/ \d+ chars/.test(ctx4));
 check('cap names a real, non-zero overage', Number(/\/ (\d+) chars/.exec(ctx4)[1]) > 0);
-check('cap tells the steward what to do', /regenerate it shorter/.test(ctx4));
-check('capped briefing is actually shorter than the input', ctx4.length < 5000);
+check('the guard says the file is pathological, not merely long, and names the spec', /pathological/.test(ctx4) && /spec is ≤6 lines/.test(ctx4) && /Steward: rewrite it/.test(ctx4));
+check('capped briefing is actually shorter than the input', ctx4.length < 9000);
 
 // A single monster line must still be cut, and a merely-long briefing must not be mangled.
-fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), `${'y'.repeat(4000)}\ntail`);
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), `${'y'.repeat(9000)}\ntail`);
 const oneLine = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
-check('a single over-cap line is still trimmed', oneLine.includes('briefing over budget'));
+check('a single over-guard line is still trimmed', oneLine.includes('FLOOD GUARD'));
 
 const okBriefing = Array.from({ length: 5 }, (_, i) => `line ${i}`).join('\n');
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), okBriefing);
@@ -128,8 +132,16 @@ check('CRLF briefing within budget is untouched', crlfOut.includes('alpha\r\nbet
 const many = Array.from({ length: 40 }, (_, i) => `line ${i} of the briefing`).join('\n');
 fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), many);
 const capped = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
-check('line-count overage is reported', /dropped 3[0-9] line\(s\)/.test(capped));
-check('the cut lands on a line boundary', capped.includes('line 7 of the briefing'));
+check('line-count overage is reported', /dropped 1[0-9] line\(s\)/.test(capped));
+check('the cut lands on a line boundary', capped.includes('line 29 of the briefing') && !capped.includes('line 30 of the briefing'));
+
+// 0.6.0 REGRESSION GUARD: a briefing over the ≤6-line spec but under the flood guard is served
+// WHOLE. This is the behaviour the old 900-char cap broke, and the reason the cap moved: cutting
+// an owner's NEXT/WAITING lines to save 138 characters is the wrong trade.
+const overSpec = Array.from({ length: 12 }, (_, i) => `substantive briefing line ${i} with real content about where the ship is`).join('\n');
+fs.writeFileSync(path.join(proj2, '.steward', 'briefing.md'), overSpec);
+const served = JSON.parse(runHook(proj2)).hookSpecificOutput.additionalContext;
+check('over-SPEC but under-guard briefing is served whole, never cut', served.includes(overSpec) && !served.includes('FLOOD GUARD'));
 
 // 6. Garbage stdin → fail-open (falls back to process.cwd(); from this test dir there is no .steward/, so silence)
 const garbage = execFileSync(process.execPath, [SCRIPT], { input: 'not json', encoding: 'utf8', cwd: bare });

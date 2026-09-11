@@ -113,7 +113,19 @@ function stalenessLine(projectRoot, stewardRoot) {
   if (!newer.length) return '';
   const shown = newer.slice(0, STALENESS_NAME_CAP).join(', ') +
     (newer.length > STALENESS_NAME_CAP ? ` +${newer.length - STALENESS_NAME_CAP} more` : '');
-  return `⚠ ${newer.length} event(s) newer than this briefing (${shown}) — position claims may be stale; a sync refreshes it.`;
+  /*
+   * A DIRECTIVE, not a disclaimer. Owner ruling 2026-09-11: a stale briefing should be
+   * REGENERATED rather than served with a warning. The hook cannot regenerate it — the steward
+   * agent is the model's only writer — so the strongest correct move here is to stop offering
+   * the refresh as optional. Measured the same day, the passive wording had been shipping for
+   * weeks against a briefing 5 DAYS behind its own log with 9 unintegrated items in
+   * agents-card-process-automation: "a sync refreshes it" was read, and nobody synced.
+   * The enforcement half is turn-end's `steward-sync` duty, which now treats a stale briefing
+   * as unsatisfied so the pass is actually dispatched.
+   */
+  return `⚠ ${newer.length} event(s) newer than this briefing (${shown}) — the position claims below are STALE. `
+    + 'Do not answer "where are we" from them: dispatch the steward pass first (it regenerates the briefing), '
+    + 'or read .steward/log.md + inbox/ directly for anything newer.';
 }
 
 /*
@@ -210,8 +222,23 @@ function instrumentLine(projectRoot) {
   return parts.length ? `[instr] ${parts.join(' | ')}` : '';
 }
 
-const BRIEFING_MAX_CHARS = 900; // hard cap: briefing.md is spec'd ≤6 lines (owner 2026-08-03: "make the steward lighter" — injected text is a per-session tax); cap guards a rotten file from flooding context
-const BRIEFING_MAX_LINES = 8;   // the spec is ≤6; two lines of slack before the cut, so a
+/*
+ * The cap is a RUNAWAY GUARD, not a diet. Owner ruling 2026-09-11, verbatim: "i don't care for
+ * cost in tokens or context. I CARE ABOUT Quality." The previous 900 chars / 8 lines was sized
+ * as a context tax (owner 2026-08-03 "make the steward lighter") and was actively DESTROYING the
+ * product it guards — measured the same day in agents-card-process-automation, the live briefing
+ * was truncated with "dropped 1 line(s) / 138 chars", and the dropped line is the tail of the
+ * briefing, i.e. NEXT / WAITING: the asks the owner opens the session to read.
+ *
+ * Truncating the middle of an owner's briefing to save 138 characters is the wrong trade under
+ * the ruling. The cap therefore keeps only its original stated job — "guards a rotten file from
+ * flooding context" — and is set where a pathological file is still caught while a real briefing
+ * never is: roughly 5x the ≤6-line spec. A briefing legitimately over the SPEC is the steward
+ * agent's problem to write shorter, and the marker still says so; it is no longer the hook's
+ * problem to solve by deleting the owner's asks.
+ */
+const BRIEFING_MAX_CHARS = 4500; // runaway guard only (was 900 — a cost cap that cut NEXT/WAITING)
+const BRIEFING_MAX_LINES = 30;   // the spec is still ≤6; this is the flood guard, not the spec
                                  // briefing that is merely a little long is not mangled
 
 /**
@@ -246,8 +273,13 @@ function capBriefing(text) {
   if (keptText.length > BRIEFING_MAX_CHARS) keptText = keptText.slice(0, BRIEFING_MAX_CHARS);
   const droppedLines = lines.length - kept.length;
   const droppedChars = text.length - keptText.length;
-  return `${keptText}\n… (briefing over budget — dropped ${droppedLines} line(s) / ${droppedChars} chars; ` +
-    `spec is ≤6 lines and ${BRIEFING_MAX_CHARS} chars. Steward: regenerate it shorter.)`;
+  // Says FLOOD GUARD, not "spec": a briefing between the ≤6-line spec and this cap is now
+  // served whole. Reaching here means the file is pathological, which is a different message
+  // from "you are a little over" — the old wording quoted the cap as the spec and read as
+  // routine while it was deleting the owner's NEXT/WAITING lines.
+  return `${keptText}\n… (briefing hit the FLOOD GUARD — dropped ${droppedLines} line(s) / ${droppedChars} chars ` +
+    `past ${BRIEFING_MAX_LINES} lines / ${BRIEFING_MAX_CHARS} chars. This file is pathological, not merely long; ` +
+    `the spec is ≤6 lines. Steward: rewrite it.)`;
 }
 /*
  * FOUR dense lines, not nine bullets. Measured 2026-08-03: this block alone injected ~1.7k
@@ -258,7 +290,7 @@ function capBriefing(text) {
 const PROTOCOL = [
   '<steward-protocol>',
   'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to <PROJECT GIT ROOT>/.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md (always the repo root — never resolve against a subdir cwd), ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
-  'Integration is BATCHED: at most ONE steward-agent pass per sitting, dispatched in the BACKGROUND (never make the owner wait); captures/landings accumulate until wrap-up or next open; an explicit owner "sync" always dispatches.',
+  'Integration runs WHENEVER anything is unintegrated (owner ruling 2026-09-11: quality over cost — the one-pass-per-sitting cap let a backlog survive 88 sessions and a briefing go 5 days stale). Dispatch in the BACKGROUND (never make the owner wait); a stale briefing or a staged inbox item is reason enough; an explicit owner "sync" always dispatches.',
   'The steward agent is the only writer of the model files; the session writes only inbox/ + log.md. No work absent the owner.',
   '</steward-protocol>'
 ].join('\n');
