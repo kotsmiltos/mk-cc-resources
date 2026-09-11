@@ -1,51 +1,10 @@
-# Release notes — thorough-mode
+# thorough-mode — release history (pre-CHANGELOG entries, verbatim)
 
-## 1.11.2 — 2026-09-06 — canonical machine-text guard
-
-`<local-command-caveat>` → the `<local-command` PREFIX; the six-marker list is shared
-verbatim with pattern-menu, kb-pull, turn-end and the home hooks, drift-tested by repo-guard.
-
-## 1.11.1 — the repo-guard line now probes before it points
-
-As shipped, that checklist item told every project to run `node plugins/plugin-toolkit/bin/repo-guard.js` — a path that resolves only inside a checkout of this repo, because the bundle ships plugin-toolkit's `skills` and never its `bin/`. A review caught the irony: the sentence directly after it advertises that the guard "blocks on machine-specific absolute paths." It now probes for the file first and says "not present — skipping" when absent, instead of naming a path that is not there.
-
-## 1.11.0 — `@ship` gains the one pre-push check that is not a memory exercise
-
-`@ship`'s checklist covered README, RELEASE-NOTES, versions, CLAUDE.md and cross-doc drift —
-every item something a person verifies by reading. It now also names
-`node plugins/plugin-toolkit/bin/repo-guard.js` (plugin-toolkit 1.8.0+), which blocks on
-machine-specific absolute paths and on injected shell whose failure is indistinguishable from
-empty success, and warns on fix-the-fix commit chains. Exit 1 means do not push.
-
-The reason it belongs here rather than in a doc: plugin-toolkit 1.8.0 shipped that guard with
-no trigger at all — no hook, no command, no CI step — so its substrate was "remember to type
-it," which is the same substrate that let one path-leak class ship three times in a row. `@ship`
-is the only pre-push moment that fires deterministically, so that is where the gate goes.
-
-## 1.10.0 — Machine-text guard (misfire class fixed) + steward-aware `@prompt`
-
-- **Machine-text guard, all 8 modifiers + hints.** Trigger keywords quoted inside
-  machine-generated user-role content (task notifications, Stop-hook feedback, local-command
-  transcripts, system reminders) no longer fire anything — observed misfire: `@prompt` inside a
-  background-task notification injected the full prompt-mode protocol twice on 2026-07-21.
-  Guard matches known markers at the START of the prompt only; a genuine user message that
-  *mentions* a marker mid-text still fires normally.
-- **Steward-aware `@prompt`.** In a project carrying a `.steward/` living model, `@prompt` now
-  injects a RENDER → SPOT-CHECK → SAVE → SHOW protocol that renders the kickoff FROM the model
-  (the maintained truth) instead of re-deriving state via the full DRAFT→VERIFY ritual. Same
-  append-only `.claude/prompts/` save discipline. Non-steward projects unchanged.
-- **Test suite added** (`tests/thorough-mode.test.js`, no framework): 21 checks — all 8 keywords
-  fire on user text, 6 machine-marker fixtures stay silent, hints suppressed on machine text,
-  mid-text mention still fires, steward/classic `@prompt` variant selection. 21/21 pass.
-
-## 1.9.1 — `@prompt` completes the shape it claimed; INDEX format line escaping fixed
-
-Verifiability-lens caught 1.9.0's docs overstating the code: the convention section claimed all three rewritten modifiers carry the full shape, but `@prompt` shipped without ANTI-SIGNALS or a named failure. Fixed code-up, not claim-down:
-
-- **`@prompt` now names its failure** (stale/unchecked citations — the cold session inherits them as ground truth) **and carries ANTI-SIGNALS**: about to include a path/command/branch not checked this turn; showing without saving; narrating this session inside the block; restating a durable artifact instead of pointing to it.
-- **INDEX.md format line escaping fixed**: the injected save-step described the ledger line with `\\\`` (emitting a literal backslash+backtick the model could copy into INDEX.md); now a quoted plain-backtick shape matching the rest of the injection.
-
-Verified: `node --check` clean; piped `@prompt` payload fires both "failure this guards" and "ANTI-SIGNALS" (grep 2) and emits the format line with plain backticks.
+These are the entries older than the five most recent, moved VERBATIM out of
+`plugins/thorough-mode/RELEASE-NOTES.md` when it became
+`plugins/thorough-mode/CHANGELOG.md` (2026-09-11). Nothing was edited or summarised — the
+engineering detail lives here so the changelog can speak to the people who INSTALL the
+plugin. Newest first, same order as before.
 
 ## 1.9.0 — Protocol-shaped injections: `@thorough`, `@fresh`, `@prompt` fire where the work happens
 

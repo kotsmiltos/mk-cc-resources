@@ -1,381 +1,148 @@
 # mk-cc-resources
 
-Custom Claude Code plugins centered on **essense-flow** — a multi-phase AI development pipeline (Elicit → Research → Triage → Architecture → [Organize] → Build → [Glossary] → Review → Verify) — plus supporting tools for data exploration, prompt modifiers, project question tracking, and cross-platform alerts.
+A Claude Code plugin marketplace built around one idea: **the session should not depend on you
+remembering things.** The plugins here keep the project's direction, its decisions, and its
+quality bar outside your head — and put them back in front of Claude at the moment they matter.
 
-## Active plugins
+Seventeen plugins. Node and Python only, no services, nothing phones home.
 
-| Plugin | Version | What it does |
-|---|---|---|
-| **essense-flow** | 0.26.3 | Multi-phase AI development pipeline. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /glossary renders a functionality map (MAP.md) + per-sprint drift; /architect consults the map before deciding; /build dispatches carry existing-helper + neighbor context; /dry-refactor previews surfaced. `references/code-conventions.md` leads with one rule — **build decoupled** (agents write blind, so units bind only to declared contracts). Reuse-first is enforced wherever code is prepared or written (check codebase/glossary + packages before building new — code-conventions.md gate, propagated to architect/sub-architect/task-agent briefs). Decoupling + extensibility are enforced at every stage: design forks run the **generativity protocol** (`references/generativity-protocol.md` — FORK → BOTH → ABSTRACT → GENERALIZE → DECOUPLE → IMPLEMENT; open model + extension surface, never A-or-B; default-closed on stable axes) referenced at architect's decide step, elicit's declared-growth-axes list, and build's mid-flight fork routing; the architect-alignment lens gates `exposes`/`consumes` contract integrity (criterion 8) and open-for-extension along declared growth axes (criterion 9) at design time; the review `coupling` lens blocks reach-ins at code time; /verify audits the built code honors its declared contracts; and plugin-toolkit's `runner coupling` computes coupling (cycles + reach-ins) on built code. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Every agent self-report re-validated against disk. |
-| **essense-autopilot** | 0.4.2 | Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without manual re-invocation. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, iteration cap, context threshold. Diagnostic stderr on every halt. Opt-in per project. |
-| **session-lifecycle** | 1.3.1 | Session lifecycle tools — handoff (capture session state), resume (restore context), claude-md-sync (update CLAUDE.md), retro (metrics-driven retrospective), meta-review (diagnose session friction). Handoffs are an append-only history: each /handoff writes a permanent timestamped file + `INDEX.md` ledger under `.claude/handoffs/` (never overwritten), with `.claude/handoff.md` kept as the latest-alias /resume reads. Critical Context carries a quality gate: a handoff must name ≥1 rejected approach/gotcha/constraint with its why (or a reasoned "none") before it counts as done. |
-| **plugin-toolkit** | 1.13.0 | Plugin/skill dev + maintenance — skill-heal (audit skills against best practices), plugin-scaffold (bootstrap new plugin), version-bump (cascade version updates), docs-audit (cross-doc drift check), code-glossary v2 (deterministic engine + in-session sub-agents; functionality glossary + DRY audit + drift diff + functionality map for Python/TS/JS/C# and beyond; `runner coupling` enforces decoupling — cross-module cycles + reach-ins as binary facts, `--fail-on-violation` gate; `runner extensibility` enforces open-for-extension — counts add-one-instance edit-sites per axis (switch/if-ladder/dict over an enum or declared growth axis), declared-open axes gate, intrinsic enums advisory), dry-refactor MVP (preflight + dry-run refactor plans, zero source writes), repo-guard (`bin/repo-guard.js` — a runner over drop-in detectors that catch repo pathologies in aggregate: machine-specific absolute paths, injected shell whose failure looks like empty success, and fix-the-fix commit chains; pure runner, one context snapshot, crashed detector becomes a blocking finding, config merges by detector id). Composable with @ship. Three one-command gates, each a pure runner over a drop-in registry: `bin/repo-guard.js` (repo pathologies), `bin/test-all.js` (every suite in every plugin — discovery by shape, a unit shipping no suite is named, a suite exiting 0 while printing failures is flagged rather than counted green), and `bin/registry-check.js` (the claims the marketplace, bundle manifest and doc tables make about the repo, verified against disk in both directions). 1.11.0: repo-guard gains `machine-guard-drift` — every hook copy of the machine-text marker list must be identical, or the push fails. 1.12.0: the FOURTH gate, `bin/harness-stats.js` — the scorecard over every trace, ledger and transcript a project left behind (13 drop-in metric sources, 93 keys: hook bytes per prompt, hints followed, nudges/blocks, judge cost + agreement, tail bytes, acted-on, lens lines per dispatch, checks, spawns, running≠installed); reproduces audit 2 to the digit at its cutoff; `--line` prints the five-key `[instr]` form (shipped default pick, per-project override). Plus trace schema v1 (validator + contract + drift suite over every sibling writer). |
-| **schema-scout** | 1.2.1 | CLI tool for exploring schema and values of any data file (XLSX, CSV, JSON). Auto-detects embedded JSON, repairs double-encoded UTF-8, prunes empty columns. |
-| **thorough-mode** | 1.11.2 | Prompt modifiers — `++`, `@thorough`, `@ship`, `@present`, `@debug`, `@verify`, `@fresh`, `@prompt` (next-session kickoff prompt — SAVES each generated prompt to an append-only `.claude/prompts/` history + `INDEX.md`), `@build` (plan → review → build). Inject behavioral rules; smart hints suggest a modifier when you describe the intent without the keyword. `@thorough`, `@fresh`, `@prompt` are protocol-shaped (failure named → ordered steps → anti-signals → exit check) so they fire at the moment of work: `@thorough` enumerates the request as a checklist, `@fresh` re-reads from disk and states the drift found, `@prompt` runs DRAFT → VERIFY (every cited path/command disk-checked) → COLD-READ → SAVE. `@build` REVIEW carries a reuse-first gate. `@ship` integrates with plugin-toolkit (`/version-bump` + `/docs-audit`) when in mk-cc-resources plugin repo. Machine-text guard: triggers never fire on machine-generated content (notifications, hook feedback) — only on text you typed. In steward projects, `@prompt` renders the kickoff from the `.steward/` living model instead of re-deriving. |
-| **project-note-tracker** | 1.8.0 | Track questions per handler/department. Auto-detects handler, researches in background, logs to Excel, generates meeting agendas. |
-| **alert-sounds** | 1.1.1 | Cross-platform alerts for Claude Code events — sound, desktop notifications, status line colors, taskbar flash. |
-| **verifiability-lens** | 0.7.0 | Work-quality guardian — classifies claims/results as verifiable (A) / guess (B) / can't-tell (U), checks completeness (arbitrary stops) and the quality bar, actively verifying (reads code, web, docs). Surfaces only important + actionable + fully-contextualized escalations via a recipient profile — per-project overrides (`.claude/verifiability-lens/profile.yaml`) with a `focus:` list define what "best achievable" means for THIS project; copyable presets shipped (game / plugin-repo / research-data); profile read once per dispatch. 0.5.0: **carries no hook any more** — automatic firing moved to turn-end's `quality-lens` duty (still opt-in OFF, now at most one ask per user request). Its own Stop hook fired 8 times over ONE request: the "fire-once" guard bounded *consecutive* blocks, not total fires, and identity was a hash of the turn's text so every correction looked new. Manual trigger `/verifiability` unchanged. 0.5.1: the retired hook scripts and their 39-check suite are DELETED; contract tests over the shipped files replace them; docs no longer describe a Stop hook. 0.6.0: MEASURED — a SubagentStop recorder (informational, never blocks) writes one trace-schema-v1 line per dispatch (a/b/u, escalations, verified/refuted, completeness, duration, tokens); audit 2 had counted 27 dispatches and zero telemetry. Carries that one hook — install separately. |
-| **reuse-gate** | 0.1.0 | Reuse-first reminder at the moment code is written — PreToolUse hook injects a once-per-message checklist (check codebase/functionality glossary + existing packages before writing new source). Never blocks, opt-in OFF by default, fail-open. Carries a hook — install separately. |
-| **steward** | 0.6.0 | The project's living-model keeper — "the guy behind the inbox." Keeps a per-project `.steward/` model (vision, state, parts, questions, tasks) + an inbox your stray thoughts land in; on every input it RECOMPUTES the whole plan (add/edit/delete, cascades pivots) and shows the diff. Ambient: opening the project auto-briefs you (silent without a model), talking captures ideas, "do it"/"sync" in plain words drive work. `/steward:seed` builds the model from an existing project. No work in your absence, ever. 0.3.0: the loop is budgeted — at most ONE integration pass per sitting, dispatched in the background (captures/landings accumulate for the wrap-up sync or next open; explicit "sync" always fires), and the agent verifies only what it writes, never chases a moving tree — minutes, not quarter-hours. 0.3.1: the standing injection halved — protocol block 4 dense lines, briefing ≤6 lines / 900-char cap, one-line inbox note, diffs ≤10 lines; injected text is a per-session tax. 0.4.0: the briefing stops lying about its age — freshness computed at injection (one ⚠ line names events newer than briefing.md: pending inbox, newer log, moved git HEAD; fs-only) and every read anchors to the repo root (nearest .git ancestor), so a subdir session briefs from — and captures to — the REAL model. 0.5.0: the STATUS CONTRACT — .steward/status.json is the lifecycle ledger (agent = only writer; "new" is derived, files never move, tombstones retired), briefing gains computed [instr] lines + cursor staleness, bin/steward-backfill.js adopts a pre-contract ship in one run. Carries a hook — install separately. 0.5.1: every inbox counter (brief line, [instr], fleet table) derives from status.json — one item model, three readers — with the backlog age of the oldest new item; fleet dedupe case-insensitive. |
-| **statusline** | 0.2.0 | Segment-based statusline — model │ current task │ directory │ steward anchor (⚓ + inbox count) │ context counter (normalized used-% bar, 100% = usable-window limit; green→yellow→orange→💀). Fail-soft segments, extend by dropping a function in. 0.2.0: segSteward v2 — ⚓N✱ ▲M from the status contract (new / stale / behind-cursor), root-anchored, degrades to plain ⚓N without a ledger. Wiring = one settings.json `statusLine` line (see plugin README). |
-| **kb** | 0.14.0 | The project's queryable knowledge base — the **pull** side of the long-lens tools (steward and the lens push a fixed briefing at session open; kb lets a session ask for what it needs, when it needs it). Files knowledge on two orthogonal axes: **kind** (which catalog — `episodic` what-happened │ `semantic` settled-facts │ `procedural` how-we-work; the CoALA taxonomy) × **caste** (which scope tier, narrow→wide — `session` │ `thread` │ `project` │ `fleet` │ `owner`). Indexes the markdown a project already keeps (steward model/log/inbox, handoffs, kickoff prompts, CLAUDE.md) with zero config; ledgers split per `##` section so a hit points at the answer, not the file. Every result says what it held back and which facet separates the rest — the session itself is the retrieval loop. 0.2.0: **always-loaded MCP tools** (`kb_query`/`kb_read`/`kb_overview`) — Claude self-serves knowledge mid-work, ReAct-style. 0.3.0: **create + maintain** — `/kb-seed` extracts an existing project's knowledge (owner-confirmed, cited) into `.claude/kb/extracted/`; `/kb-capture` files one memory at a time into `.claude/kb/captures/`; per-file frontmatter = mixed-kind stores. Engine stays read-only; steward-model changes still route to the steward inbox. 0.4.0: **retrieval rung 1** — light stemming, edit-distance-1 typo tolerance (discounted), owner-declared alias groups in config, and thin-preamble skip (boilerplate-only preamble entries dropped from h2 ledgers). 0.5.0: **the awareness surface** — kb-pull hook injects score-floored one-line hints (what the KB holds about THIS prompt, kb_read to pull) + a rolling session digest injected every prompt (short-term memory living next to now) + per-call JSONL traces + a pattern split mode for bullet/timestamp ledgers + seed depth-and-autonomy. 0.6.0: **the enforced write side** — a kb-scribe Stop hook makes a producing turn distill itself into the digest before yielding, and graduate durable decisions to .claude/kb/captures/ or steward-model changes to .steward/inbox/ (one pass, both memory lengths); IMPORTANT is stated (dies-first classes) and sharpened per project via scribe.focus. 0.7.0: **self-running** — re-run /kb-seed any time (kb coverage shows what is already mined, so it tops up), upkeep switches itself on once a project keeps memory, and each session starts with a fresh digest (the previous one archived and still queryable). 0.9.0: **the kb-scribe Stop hook is retired** — its enforcement now ships as turn-end's `session-digest` duty, because two plugins each owning a blocking Stop hook re-armed each other (scribe counted the lens's mandated `Agent` dispatch as fresh work). 0.10.2: **spawned sessions can no longer steal the live digest** — the sitting marker records on every rotating fire, a minutes-fresh digest is the live sitting's heartbeat and never rotates, and turn-end's judge children stand down (measured: three mid-sitting rotations in one evening before the fix). 0.10.3: **both hooks anchor to the project root** (nearest .git ancestor, payload cwd preferred) — a subdir shell previously read/rotated a DIFFERENT project's kb state. 0.11.0: status-join — the steward ledger's status/groups ride as searchable themes (status:staged, group:q11-thread) with zero engine change. Carries TWO hooks — install kb itself; bundle ships skills only. Node only, no deps. 0.12.0: kb-pull stands down inside turn-end judge children and carries the canonical six-marker machine-text guard; kb-scribe-stop.js deleted; the session suite pins a fake HOME. 0.14.0: every kb fire (kb-pull, kb-session-start, each MCP call) writes the cross-plugin TRACE SCHEMA v1 line through one pure writer (`lib/trace-line.js`, validated by plugin-toolkit's drift suite). |
-| **turn-end** | 0.10.0 | **The single blocking Stop hook, so nothing else needs one — and the thing that plugs missing context back in.** `context-recall` asks a `claude -p` judge on every turn end whether the answer needed notes it never opened; sources emit an index (titles + ids, *never* bodies), the judge picks ids, and the runner fetches those files deterministically — **the judge chooses, it never summarises**, so you get the note's own text. Proven live: fed an answer falsely claiming prompt hooks bill to API credits, it pulled exactly the capture that disproves it. Measured 46s per fire. Two duty kinds — *demand* (`ask()`) and *supply* (`supply()`); sources are a second extension surface (markdown-dir over kb captures/extracted + steward model). Plugins ship turn-end *duties* instead of their own hooks; one runner checks each against real state and emits **one** consolidated message per user request — two duties become one tail with two items, never two tails. Exists because two blocking Stop hooks re-armed each other: each one's mandated response was fresh work for the other (measured — scribe blocked 6 + lens fired 3 in one sitting, over a single request). Stop hooks run in parallel with no ordering and blocking is fail-closed, so runtime negotiation between them is racy; one runner has no race to lose. **Termination is structural** — a duty ends the loop by becoming satisfied against real state, never by a counter; the fire budget is only the backstop for a wrong satisfaction check, and it names what it abandoned. Scoped to `prompt_id` (the user-request span). Escalates `additionalContext` → `block`. Ships `context-recall` (the recall half), `session-digest` (from kb), `quality-lens` (from the lens), `steward-sync` (from steward), `self-check` and `request-closure`. 0.3.1: the hook budget (90s) now exceeds the judge's own 60s budget — the old 30s let the platform kill the whole runner mid-fire, losing every duty's output on 39 of 52 measured fires. 0.4.0: `self-check`, the first default-ON `severity:block` duty — work returned must be work CHECKED: a turn that changed real files may not yield until a check-shaped command ran AFTER the last change, the turn executed AND looked at what it wrote (a run nobody observed is half a check; run → LOOK → compare vs asked → try to break it), the lens was dispatched, or the final message names the check + its observed result (the escape hatch that makes block safe; planning prose rejected). Also: machine-prefixed transcript entries ("Stop hook feedback:") no longer reset the turn boundary — the post-block fire used to see an empty turn and silently release. 0.4.1: all state anchors to the project root (nearest `.git`, never HOME or above) instead of the shell-following cwd — kills stray subdir ledgers and the split-ledger duplicate asks; steward-sync's ask trimmed to items + action with the one-pass-per-sitting rule stated. 0.5.0: `request-closure` — a span woken by a background agent (or that dispatched agents) must END by answering the user's VERBATIM original request first, then one who-did-what line per agent, machinery last; an agent completion arrives as a NEW prompt, so the model otherwise answers the task-notification instead of the user. Prompt span deliberately (every wake-yield is a user-visible resting state and gets its own nudge; the ask spawns nothing, so it can never re-arm itself), asked-once-per-prompt from the ledger, `advise` by default, zero tokens. Zero tokens; detectors are an open registry; bookkeeping trees never count as work; demote per project via `.claude/turn-end.json`. 0.6.0: context-recall fail-open ranker fallback — the judge stays default (owner: quality over speed); a judge death now yields lexically-matched notes with the ENGINE NAMED instead of losing the payload (three live ETIMEDOUTs measured in one sitting). Silent where there is nothing to maintain, fail-open everywhere. Carries a hook — install separately. 0.7.0: the judge child is spawned LEAN (no hooks/plugins/MCP/skill listing; fail-open retry; OAuth intact), duties may DEFER by name (agents in flight, plan mode), the give-up note goes out once, the tail leads with demands and stays under the platform's ~10 KB inline bound (pointer form when the full text would not fit), a note handed over this sitting never rides twice, and the trace carries engine / ms / cost / lean / deferred / satisfied_by / payload_keys. 0.9.0: TRACE SCHEMA v1 — the Stop fire, every supply duty (engine / ms / cost / judge-vs-ranker picks for Q20) and a per-span `acted-on` derivation (did the session open what recall / kb-pull / the lens surfaced? — read through the 0.8.0 file-touch extractor at the next owner prompt) each leave their own line in the cross-plugin contract. |
-| **patterns** | 0.1.1 | The named-pattern menu at the design moment + a pre-code pattern check — Head First Design Patterns' trigger→shape device, mechanized for every session. 41-pattern catalog (GoF, Fowler, POSA, Microsoft Learn MVVM+DI, Nystrom's Game Programming Patterns, HFDP, SOLID) with per-entry trigger, seam, **drop-in test** ("new variant = 1 file, 0 base edits"), 2-3 examples across C#/Python/TS, paradigm annotations, and honest caution entries (Singleton → inject the one instance; premature abstraction → default-closed). Two hooks: UserPromptSubmit injects the tier-1 menu on design-shaped prompts; PreToolUse asks once per message at the first source write — "axis named? seam picked, or consciously closed?" Advisory only, never blocks. Default ON (opt out per project/env); state home-side, never in your repo; fail-open. `/patterns [id]` browses the catalog. Carries hooks — install separately. |
-| **prism** | 0.1.0 | Multi-perspective panel — split a question across sole-focus agents, one lens each (simple / decoupled / performant / extendable / sustainable, or any lens you name — naming it IS the extension surface), parallel on the session model, then compile the best points into ONE plan: per-point lens credit, explicit conflict rulings, a delta line naming what a solo answer would have missed. Stateless, ambient, zero code, zero hooks; conversation is the delivery surface. Designed by its own method (five-lens panel on the skill's own design). Skill-only — ships in the bundle too. |
-| **mk-cc-all** | 2.27.0 | Bundle install — essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, prism, kb. essense-autopilot, thorough-mode, alert-sounds, turn-end, reuse-gate, steward, patterns, and kb carry hooks and must be installed separately (the bundle ships kb's skills only — its two hooks and MCP server need the standalone install; patterns' catalog travels only in its own install). verifiability-lens no longer carries a hook — turn-end's `quality-lens` duty fires it. |
+## Install
+
+In a Claude Code session:
+
+```
+/plugin marketplace add kotsmiltos/mk-cc-resources
+/plugin install mk-cc-all@mk-cc-resources
+```
+
+`mk-cc-all` is the skills-only bundle. Plugins that carry **hooks** must be installed by name —
+the bundle ships declared skill paths and nothing else:
+
+```
+/plugin install steward@mk-cc-resources
+/plugin install turn-end@mk-cc-resources
+/plugin install kb@mk-cc-resources          # the bundle has kb's skills; this adds its hooks + MCP server
+/plugin install thorough-mode@mk-cc-resources
+/plugin install patterns@mk-cc-resources
+```
+
+The `@mk-cc-resources` suffix is required — it names the marketplace the plugin comes from.
+From a shell, the same thing is `claude plugin install <name>@mk-cc-resources`.
+
+After installing or updating, **restart Claude Code**. `/clear` does not reload plugins.
+
+## Quickstart — ten minutes to a project that remembers itself
+
+```
+/plugin install steward@mk-cc-resources
+/plugin install kb@mk-cc-resources
+/plugin install turn-end@mk-cc-resources
+```
+
+Restart, then in your project:
+
+```
+/steward:seed        # reads the repo, drafts a model of it, asks you 3-7 questions
+/elicit:elicit       # brainstorms the vision to completion — it questions the gaps you leave
+/kb:kb "why did we choose X?"    # ask the project instead of re-deriving
+```
+
+What you get from then on, without typing anything:
+
+- **Opening the project briefs you** — where the ship is, what is next, what decisions are
+  waiting on you. It tells you when it is stale rather than quietly lying about its age.
+- **Talking captures ideas.** A stray thought goes to `.steward/inbox/`; the steward agent folds
+  it into the model and shows you the diff of what your thought changed.
+- **Ending a turn checks the work.** One consolidated message, once per request: was a check run
+  after the last change, was the original question actually answered, is anything unintegrated.
+
+Prefer the full pipeline instead? Start at [essense-flow](plugins/essense-flow/README.md).
+
+## The catalog
+
+Every plugin has its own README (what it does, how to drive it) and CHANGELOG (what changed, in
+user terms). **B** marks what the `mk-cc-all` bundle carries; everything else installs by name.
+
+### Think and decide
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [elicit](plugins/elicit/README.md) | B | 0.1.0 | Brainstorm a vision to completion — it questions the gaps you leave and teaches the processes you have not worked with |
+| [prism](plugins/prism/README.md) | B | 0.1.0 | Panel a question across sole-focus agents, one lens each, then get one compiled plan with the conflicts ruled |
+| [patterns](plugins/patterns/README.md) | | 0.1.1 | The named-pattern menu at the design moment — 41 patterns with the trigger that should make you reach for each |
+
+### Build
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [essense-flow](plugins/essense-flow/README.md) | B | 0.27.0 | A multi-phase pipeline from pitch to shipped code: elicit → research → triage → architect → build → review → verify, with every agent claim re-checked against disk |
+| [essense-autopilot](plugins/essense-autopilot/README.md) | | 0.5.0 | Advances that pipeline between phases without you typing, and halts loudly at the human gates |
+
+### Keep the work honest
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [turn-end](plugins/turn-end/README.md) | | 0.10.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
+| [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.7.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
+| [thorough-mode](plugins/thorough-mode/README.md) | | 1.11.3 | Keyword modifiers — `++`, `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build` |
+| [reuse-gate](plugins/reuse-gate/README.md) | | 0.1.0 | One reuse-first reminder per message, at the moment code is first written |
+
+### Remember across sessions
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [steward](plugins/steward/README.md) | | 0.6.0 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
+| [kb](plugins/kb/README.md) | B | 0.14.0 | The project's queryable knowledge base: decisions and their why, dead ends, conventions. Ask before re-deriving |
+| [session-lifecycle](plugins/session-lifecycle/README.md) | B | 1.3.1 | `/handoff`, `/resume`, `/claude-md-sync`, `/retro`, `/meta-review` — an append-only handoff history |
+
+### Everyday
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [statusline](plugins/statusline/README.md) | | 0.2.0 | Model · task · directory · steward anchor · a normalized context-usage bar |
+| [alert-sounds](plugins/alert-sounds/README.md) | | 1.1.1 | Sound, notification, taskbar flash when Claude finishes or needs permission |
+| [schema-scout](plugins/schema-scout/README.md) | B | 1.2.1 | Explore any XLSX / CSV / JSON file's real schema from the CLI |
+| [project-note-tracker](plugins/project-note-tracker/README.md) | B | 1.8.0 | Track questions per handler in an Excel tracker; generate the meeting agenda |
+
+### Work on plugins
+
+| Plugin | | Version | What it is for |
+|---|---|---|---|
+| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.14.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
+
+Bundle: **mk-cc-all 2.28.0**.
 
 ## Benched plugins
 
-The following plugins were active in earlier marketplace versions and are now preserved on the **`archive/benched-plugins`** branch — not shipped in `main` but recoverable any time:
-
-`miltiaze` · `ladder-build` · `architect` · `safe-commit` · `project-structure` · `repo-audit` · `mk-flow`
-
-To inspect or restore one:
+`miltiaze` · `ladder-build` · `architect` · `safe-commit` · `project-structure` · `repo-audit` ·
+`mk-flow` were active in earlier marketplace versions and are preserved on the
+**`archive/benched-plugins`** branch — not shipped, recoverable any time:
 
 ```bash
 git fetch origin archive/benched-plugins
 git checkout archive/benched-plugins -- plugins/<name>
 ```
 
-Or browse the branch directly on GitHub.
-
-## Quick Start
+## Contributing to this repo
 
 ```bash
-# Add the marketplace (one time)
-claude plugin marketplace add https://github.com/kotsmiltos/mk-cc-resources
-
-# Bundle install — essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit
-claude plugin install mk-cc-all
-
-# Install hook-based plugins separately
-claude plugin install essense-autopilot
-claude plugin install thorough-mode
-claude plugin install alert-sounds
-claude plugin install reuse-gate
-claude plugin install steward
-
-# Or install session-lifecycle standalone
-claude plugin install session-lifecycle
+node plugins/plugin-toolkit/bin/repo-guard.js               # exit 1 = do not push
+node plugins/plugin-toolkit/bin/test-all.js --root .        # every suite in every plugin
+node plugins/plugin-toolkit/bin/registry-check.js --root .  # do the docs match disk?
 ```
 
-### Install plugins individually
-
-```bash
-claude plugin install essense-flow
-claude plugin install essense-autopilot
-claude plugin install schema-scout
-claude plugin install thorough-mode
-claude plugin install project-note-tracker
-claude plugin install alert-sounds
-```
-
-## essense-flow — Multi-Phase Development Pipeline
-
-The headline plugin. State machine + per-phase skills + verification discipline.
-
-```bash
-claude plugin install essense-flow
-```
-
-Then in any project:
-
-```
-/essense-flow:init
-```
-
-### Pipeline phases
-
-| Phase | Command | What happens |
-|---|---|---|
-| Elicit | `/elicit` | Collaborative ideation — produces SPEC.md from a project pitch |
-| Research | `/research` | Multi-perspective research — produces REQ.md with testable acceptance criteria |
-| Triage | `/triage` | Categorizes findings, routes to the correct phase |
-| Architecture | `/architect` | Decide → decompose → package. Closes every design decision before build starts. Produces ARCH.md + decisions index + closed task specs + sprint manifest. Every task spec is unambiguous — no "TBD," no "agent decides X." |
-| Organize *(optional)* | `/organize` | Spec-level DRY pass. Clusters the sprint's task specs across sub-architects, proposes consolidations of overlapping functionality before any code is written. Propose-with-confirm; originals archived. Powered by the code-glossary engine (spec mode). |
-| Build | `/build` | Executes task specs in dependency-ordered waves. **No concurrency cap.** Re-validates every agent's completion record against disk via `lib/verify-disk.js`; drift surfaces loudly. |
-| Glossary *(optional)* | `/glossary` | Code-level DRY audit. Indexes every function the sprint produced, clusters duplicate implementations, scores extraction candidates. Propose-only — writes `.pipeline/glossary/GLOSSARY.{yaml,md}`, never touches source. Renders `MAP.md` — the functionality map /architect consults at DECIDE and /build slices into task dispatches. Re-runs snapshot the prior glossary and emit a `DIFF.md` drift report (`grown` = duplication this sprint added); exit cue surfaces `/dry-refactor` for zero-write extraction previews. Powered by the code-glossary engine (code mode). |
-| Review | `/review` | Adversarial QA. Findings carry verbatim path evidence; quotes re-validated against disk. Deterministic gate: `confirmed_unacknowledged_criticals == 0` advances; non-zero blocks. False-positive ledger remembers prior rejections. |
-| Verify | `/verify` | Top-down spec compliance audit. Every spec decision verified against implementation by reading code at the locator hint. `confirmed_gaps == 0` advances to complete. |
-| Heal | `/heal` | Pipeline self-heal. Picks up from any prior state — fresh project, mid-flight, prior tool's artifacts, code-without-spec. Walks artifacts, infers phase, proposes walk-forward via legal transitions on user confirm. |
-
-### Hooks
-
-Two advisory hooks. Both fail-soft — never block tool calls.
-
-- **UserPromptSubmit + SessionStart — context-inject** — surfaces phase, sprint, canonical artifact paths, any degradation warning. Continues on missing/corrupt state with a visible warning.
-- **Stop — next-step** — suggests the recommended next slash command for the current phase. Suggestion only; user is the gatekeeper.
-
-### Commands
-
-`/init`, `/elicit`, `/research`, `/triage`, `/architect`, `/organize`, `/build`, `/glossary`, `/review`, `/verify`, `/heal`, `/status`, `/next`, `/help`
-
-## essense-autopilot — Stop-Hook Autopilot
-
-Drives essense-flow pipelines forward without manual re-invocation between phases. Reads `.pipeline/state.yaml` against a phase → command map. If the pipeline is mid-flight in an autonomous phase, the Stop hook returns `{decision: "block", reason: "...invoke /cmd..."}` and Claude continues.
-
-**Opt-in per project.** In `.pipeline/config.yaml`:
-
-```yaml
-autopilot:
-  enabled: true
-```
-
-Halts on:
-
-| Condition | Why |
-|---|---|
-| `.pipeline/` not found | nothing to drive |
-| `autopilot.enabled: false` | not opted in (default) |
-| `state.blocked_on` set | real blocker — needs human |
-| phase ∈ human_gates (idle, eliciting, organizing, glossarying, verifying) | needs dialogue |
-| phase ∈ terminal (complete) | done |
-| no flow mapping for phase | unknown phase — fail-safe halt |
-| iteration cap (default 30) | infinite-loop safety |
-| context threshold (default 60%) | preserve context for human work |
-| `/build` against un-decomposed sprint | tasks empty — needs `/architect` first |
-
-Every halt path emits a one-line stderr diagnostic. No more silent failures.
-
-## Schema Scout
-
-CLI tool for exploring the schema and values of any data file.
-
-- Analyzes structure and builds a schema tree with types, value distributions, null analysis
-- Auto-detects and expands JSON embedded in string columns
-- Repairs double-encoded UTF-8 (common from Excel/ODBC pipelines)
-- Prunes empty columns and XLSX overflow artifacts
-- Saves reusable index files for instant re-exploration
-
-```bash
-scout index data.xlsx        # Analyze and save index
-scout schema data.xlsx       # Show full schema tree
-scout query data.xlsx -p "field.path"  # Drill into a field
-scout list-paths data.xlsx   # List all field paths
-```
-
-If `scout` is not on PATH, install from the bundled tool:
-
-```bash
-uv tool install <plugin-path>/plugins/schema-scout/skills/schema-scout/tool/ --force
-```
-
-## Thorough Mode — Prompt Modifiers
-
-Keyword triggers that inject behavioral rules into any prompt.
-
-```bash
-claude plugin install thorough-mode
-```
-
-### Modifiers
-
-| Keyword | What it does |
-|---|---|
-| `++` or `@thorough` | Be careful and unhurried; read fully before acting; don't skip or take shortcuts; include rather than exclude |
-| `@ship` | Pre-push checklist — verify README, CHANGELOG, version bumps, CLAUDE.md, docs |
-| `@present` | Force all choices through `AskUserQuestion` with arrow-key navigation |
-| `@debug` | Root cause investigation — read code first, trace to origin, check patterns, propose fix with rationale before implementing |
-| `@verify` | Paranoid verification — prove every claim, run tests after each change, state verifiable check not "done" |
-| `@fresh` | Context refresh — re-read key files, don't trust compressed reads, verify each constraint against current disk |
-
-Add the keyword anywhere in your message. Modifiers stack — `++ @verify` fires both. If you describe the intent without the keyword ("root cause", "prove it", "re-read the file"), you get a one-line hint reminding you of the shorthand.
-
-## Project Note Tracker
-
-Track questions per handler/department across projects. Claude auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Requires `uv` on PATH.
-
-- `/note init` — set up `project-notes/` with handlers and tracker.xlsx (auto-gitignored)
-- `/note <question>` — auto-detect handler, research, append to Excel
-- `/note <handler> <question>` — explicitly assign handler
-- `/note quick <question>` — log without research (Pending, review later)
-- `/note add <handler>` — add a new handler/department
-- `/note agenda [handler]` — generate a meeting agenda
-- `/note meeting` — interactive meeting capture with auto-linking
-- `/note resolve <handler> "<question>" <answer>` — mark completed
-- `/note decide <handler> "<question>" <decision>` — mark decided with rationale
-- `/note dump` — remove all project-notes
-- `/note review [row]` — re-review with fresh context
-- `/note doctor` — upgrade tracker.xlsx formatting
-- `/note help` — show commands
-
-**Excel columns:** Handler | Question | Internal Review | Handler Answer | Status (color-coded dropdown)
-
-**Status values:**
-- **Answered Internally** — relevant context found in codebase (still open)
-- **Pending** — little or no context found, needs discussion
-- **Completed** — confirmed by the handler
-- **Decided** — decision made with rationale
-
-Each handler has a `research.md` file defining what files to search, what terminology matters, and what the handler cares about. Better research.md = better auto-detection and research quality. See the [plugin README](plugins/project-note-tracker/README.md) for a full walkthrough.
-
-## Alert Sounds
-
-Audio and visual alerts for Claude Code events. Hook-based — install separately.
-
-```bash
-claude plugin install alert-sounds
-```
-
-Hooks register automatically on install. No extra configuration needed.
-
-### Platform support
-
-- **Windows**: `[Console]::Beep` tones, balloon notifications with terminal focus, taskbar flash
-- **WSL2**: routes audio/notifications through `powershell.exe` on the Windows host
-- **macOS**: System sounds via `afplay`, Notification Center via `osascript`, dock icon bounce
-- **Linux**: `paplay` / `ffplay` / `aplay` fallback, `notify-send` desktop notifications
-- All platforms fall back to terminal bell (`\a`)
-
-### Events
-
-| Event | When | Sound |
-|---|---|---|
-| `stop` | Task finished | Rising three-tone chime |
-| `permission` | Tool needs approval | Double-tap + high tone |
-| `idle` | Waiting for input | Low double-pulse + rise |
-
-### Configuration
-
-Edit `config.json` in the plugin directory to toggle features per event:
-
-```json
-{
-  "stop":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
-  "permission": { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true },
-  "idle":       { "beep": true, "sound": null, "notify": true, "flash": true, "statusline": true }
-}
-```
-
-Set `"sound"` to a file path (mp3/wav/ogg/aiff) for a custom sound. `"beep": false` disables sounds for an event.
-
-## Session Lifecycle — Cross-Session Continuity
-
-Five skills for maintaining context across sessions and improving your workflow over time.
-
-```bash
-claude plugin install session-lifecycle
-```
-
-### Skills
-
-| Skill | Command | What it does |
-|---|---|---|
-| **handoff** | `/handoff` | Capture session state at end of work — what was done, what remains, critical context, blockers. Triggers `/claude-md-sync` if CLAUDE.md is stale. Saves a permanent timestamped handoff to `.claude/handoffs/` + an `INDEX.md` ledger (append-only history), with `.claude/handoff.md` as the latest-alias. |
-| **resume** | `/resume` | Restore context from the `.claude/handoff.md` alias. Validates branch/pipeline state match, reports discrepancies, suggests first action. Marks consumed but **preserves** the `.claude/handoffs/` history (migrates a pre-1.2.0 single-file handoff into it). |
-| **claude-md-sync** | `/claude-md-sync` | Scan git diff, identify stale CLAUDE.md sections (impact map, modules, file locations), propose specific edits. Approve each change individually. Callable by handoff or standalone. |
-| **retro** | `/retro` | Metrics-driven retrospective from git + pipeline + QA data. Gaps before strengths. Accepts `sprint-N`, `session`, or `all` scope. |
-| **meta-review** | `/meta-review` | Analyze session patterns to find automation opportunities. Proposes improvements to existing skills or specs for new ones, ranked by value/effort. |
-
-### Workflow
-
-```
-Session end:    /handoff → saves a timestamped handoff to .claude/handoffs/ + handoff.md alias (optionally triggers /claude-md-sync)
-Session start:  /resume  → restores context, validates state, suggests first action
-After sprint:   /retro   → metrics-driven retrospective with concrete recommendations
-Periodically:   /meta-review → find workflow patterns worth automating into skills
-```
-
-## Plugin Toolkit — Skill Dev + Maintenance
-
-Six composable skills for working ON plugins (and the codebases they ship in).
-
-```bash
-claude plugin install plugin-toolkit
-```
-
-### Skills
-
-| Skill | Command | What it does |
-|---|---|---|
-| **skill-heal** | `/skill-heal <plugin>` | Audit a plugin's skill set against best practices. Dispatches parallel review agents, scores against rubric (Anthropic guides + token efficiency + architecture coherence), produces per-skill scorecard + ranked fixes. Diagnostic only. |
-| **plugin-scaffold** | `/plugin-scaffold <name> <skills>` | Bootstrap a new plugin: directory tree + plugin.json + SKILL.md skeletons + marketplace.json + bundle + README + CLAUDE.md + RELEASE-NOTES. 9-step chain in one invocation. |
-| **version-bump** | `/version-bump <plugin> <patch\|minor\|major>` | Cascade version updates across plugin.json + marketplace.json entry + mk-cc-all bundle + metadata + RELEASE-NOTES. Validates semver consistency. |
-| **docs-audit** | `/docs-audit [plugin\|all]` | Cross-check CLAUDE.md + README + marketplace.json against disk. Find version mismatches, stale references, missing entries. Propose fixes per file. |
-| **code-glossary** | `/code-glossary [path]` | Build a functionality glossary + DRY audit for any codebase (v2). Deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review clusters (Pass B), substrate-verify instances (Pass C). Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md; `runner diff` tracks duplication drift between runs; `runner coupling` measures coupling (cross-module cycles + reach-ins); `runner extensibility` measures the add-one-instance edit-sites per axis (open-for-extension). Also powers essense-flow's /organize + /glossary phases. Glossary-only — does not execute refactors. |
-| **dry-refactor** | `/dry-refactor <glossary.yaml> <gloss-id>` | Turn an extractable glossary cluster into a reviewable refactor plan (v3 MVP). 7 pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) + dry-run output: synthesized helper + per-site edit list. Zero source writes; live execution ships later behind its own gate. |
-
-### Composition
-
-- `@ship` (thorough-mode modifier) → references `/version-bump` and `/docs-audit` in its pre-push checklist
-- `/skill-heal` → hints at `/docs-audit` when descriptions are weak across skills
-- `/plugin-scaffold` → creates v1.0.0 directly (doesn't call `/version-bump`)
-- Standalone use is the most common pattern
-
-## Steward — the Living-Model Keeper
-
-Per project, a `.steward/` model (vision · current state · parts+contracts · open questions ·
-next tasks · outcome log · briefing · inbox) maintained by a steward agent that RECOMPUTES the
-whole plan on every input — adds, edits, deletes, cascades pivots — and shows you the diff.
-Interface is ambient: zero commands to memorize.
-
-```bash
-claude plugin install steward     # carries a hook — separate install
-```
-
-Then once per project:
-
-```
-/steward:seed    # builds the model FOR you from docs/code/history + 3-7 quick questions
-```
-
-From then on: open the project → auto-briefing (where the ship is, next 3 tasks, decisions
-waiting) · talk normally → ideas captured to the inbox · "do it" → next task built while you
-watch (tests + named checks) · "sync" / "wrap up" → inbox integrated, diff shown. Leftovers
-integrate at next open, always owner-present — the steward never moves code or the model in your
-absence. `/steward:brief|sync|next` exist as optional aliases. The hook is completely silent in
-projects without a `.steward/` model. Design source: `design/continuous-transformation.md`.
-
-## Prism — the Multi-Perspective Panel
-
-One question, several sole-focus agents in parallel — each holds ONE lens (simple,
-decoupled, performant, extendable, sustainable, or any lens you name at invocation),
-digs deep on the session model, and must also report where the *other* lenses will
-overreach. The session then compiles one plan: agreements anchored, every conflict ruled
-with its tradeoff named, each adopted point credited to its lens, and a delta line —
-what surfaced that a solo answer would have missed.
-
-```bash
-claude plugin install prism    # or via mk-cc-all — skill-only, bundle-safe
-```
-
-| Skill | Command | What it does |
-|---|---|---|
-| prism | `/prism <question>` | Panel with lenses picked for genuine tension (3-5; 2 for narrow asks) |
-| prism | `/prism security, performance: <question>` | Panel with exactly the lenses you name |
-
-Stateless by design: no setup, no state files, no output artifacts — the plan lands in
-the conversation, ready for "do it". The skill was designed by its own method: a
-five-lens panel ran on the skill's own design and the synthesis became the spec.
-
-## Patterns — the Named-Seam Menu
-
-Head First Design Patterns' teaching device — recognize the situation, pick the named
-shape — mechanized so it fires in every session. A 41-pattern catalog (`catalog/patterns.json`,
-sourced from GoF, Fowler, POSA, Microsoft Learn, Nystrom, HFDP, SOLID) carries per entry a
-trigger, the seam (the contract a variant binds to), a verifiable drop-in test, examples in
-C#/Python/TS, paradigm annotations, and cautions — Singleton is in there honestly: keep the
-one instance, refuse the global access, inject it.
-
-```bash
-claude plugin install patterns     # carries hooks — separate install
-```
-
-Two moments, one catalog: a design-shaped prompt ("add a notifier") injects the tier-1
-trigger→pattern menu at the moment the design gets decided; the first source-code write of
-each message gets one advisory line — "axis named? seam picked from the menu, or consciously
-closed?" Never blocks, fail-open, default ON everywhere (`.claude/patterns.json`
-`{"enabled": false}` per project, or `PATTERNS_ENABLED=0`). Runtime state lives home-side —
-nothing is ever written into your repo.
-
-| Skill | Command | What it does |
-|---|---|---|
-| patterns | `/patterns` | List the menu: tier-1 cues, tier-2 ids by family, cautions |
-| patterns | `/patterns <id>` | Full entry: trigger, seam, drop-in test, examples, cautions, sources |
+Run all three from the repository root before a push, and read each exit code directly rather
+than after a pipe. A plugin is pinned to its version string: **a fix without a version bump
+reaches no install** — use `/version-bump` so `plugin.json`, the marketplace entry, the bundle,
+the marketplace metadata and the plugin's `CHANGELOG.md` move together.
+
+Per-plugin engineering notes live in `plugins/<name>/CLAUDE.md`; release history older than the
+last five versions is kept verbatim in `design/notes/<plugin>-history.md`.
 
 ## Credits
 
-Schema Scout inspired by [ckifonidis](https://github.com/ckifonidis). Plugin architecture inspired by [taches-cc-resources](https://github.com/glittercowboy/taches-cc-resources).
+Schema Scout inspired by [ckifonidis](https://github.com/ckifonidis). Plugin architecture
+inspired by [taches-cc-resources](https://github.com/glittercowboy/taches-cc-resources).
 
 ## License
 

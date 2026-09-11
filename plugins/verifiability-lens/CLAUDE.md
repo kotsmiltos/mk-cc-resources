@@ -49,7 +49,7 @@ tests/verifiability-lens.test.js # contract tests over the shipped files (agent/
                                  #   the REAL 2026-08-23 rollup shape, E2E over the REAL payload
                                  #   shape captured live 2026-09-09) — replaces the retired hook's 39
 tests/fixtures/SubagentStop.sample.json  # the real SubagentStop payload, paths sanitized
-README.md / RELEASE-NOTES.md
+README.md / CHANGELOG.md
 ```
 
 Tests: `node tests/verifiability-lens.test.js` (no framework). Enable auto-mode (default OFF),

@@ -19,8 +19,8 @@ Guards against satisficing — stopping at "looks addressed" instead of "each it
 ### `@ship` — Pre-Push Checklist
 Enforces documentation and versioning hygiene before pushing:
 - README.md reflects new features and changed behavior
-- CHANGELOG / RELEASE-NOTES have entries for the changes
-- Version numbers are bumped (package.json, plugin.json, marketplace.json). In mk-cc-resources plugin repo, invoke `/version-bump` (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES in one go.
+- CHANGELOG.md has an entry for the changes (user-facing, Keep a Changelog headings)
+- Version numbers are bumped (package.json, plugin.json, marketplace.json). In mk-cc-resources plugin repo, invoke `/version-bump` (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + CHANGELOG.md in one go.
 - CLAUDE.md reflects new patterns or conventions
 - Cross-doc consistency: in mk-cc-resources plugin repo, consider `/docs-audit` (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state
 - Repo pathologies: PROBE for `plugins/plugin-toolkit/bin/repo-guard.js` first, and run it only if present — repo-guard lives in the plugin-toolkit source tree, never in an install (the bundle ships `skills` only), so naming its path unconditionally would point every other project at a file that is not there. Exit 1 means do not push
@@ -61,7 +61,7 @@ Assumes the mental model has drifted; rebuilds it from disk, not memory:
 
 ### `@prompt` — Next-Session Kickoff Prompt
 Produces a copy-paste prompt to start the NEXT session from a cold context. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
-- DRAFT as ONE fenced code block, verbatim-copyable — objective first; minimal cold-start context (repo/branch, key paths, current state, done/remaining); concrete first action + the verifiable check that proves it done; open decisions/blockers; references to durable artifacts (handoff.md, RELEASE-NOTES, task specs) instead of restating them; working-style carried forward (e.g. `++`, `@verify`)
+- DRAFT as ONE fenced code block, verbatim-copyable — objective first; minimal cold-start context (repo/branch, key paths, current state, done/remaining); concrete first action + the verifiable check that proves it done; open decisions/blockers; references to durable artifacts (handoff.md, CHANGELOG.md, task specs) instead of restating them; working-style carried forward (e.g. `++`, `@verify`)
 - VERIFY every citation against the substrate: each file path, command, branch, and artifact the prompt cites is checked against current disk/git before it goes in — the cold session inherits citations as ground truth; one stale path poisons its first minutes
 - COLD-READ the draft as its zero-memory reader: can it act from this alone? A question surfacing on re-read means the prompt isn't done
 - SAVES the generated prompt to an append-only `.claude/prompts/` history + `INDEX.md` ledger (not just shown once), so prompts accumulate for review — same history pattern session-lifecycle gives handoffs

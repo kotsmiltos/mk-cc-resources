@@ -66,8 +66,8 @@ EXIT CHECK: for every enumerated item you can name what was done + the evidence.
     ],
     injection: `[pre-ship checklist] Before pushing, verify ALL of the following:
 - README.md — does it mention new features, changed behavior, or new commands/skills? Update if not.
-- CHANGELOG / RELEASE-NOTES — are the changes being pushed documented? Add entries if not.
-- Version numbers — are package.json, plugin.json, marketplace.json bumped appropriately? (patch for fixes, minor for features). If this is an mk-cc-resources plugin and a version bump is warranted, invoke /version-bump (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES in one go.
+- CHANGELOG.md — are the changes being pushed documented, in user-facing terms? Add an entry if not.
+- Version numbers — are package.json, plugin.json, marketplace.json bumped appropriately? (patch for fixes, minor for features). If this is an mk-cc-resources plugin and a version bump is warranted, invoke /version-bump (plugin-toolkit) to cascade correctly across plugin.json + marketplace.json + bundle + metadata + CHANGELOG.md in one go.
 - CLAUDE.md — does it reflect new patterns, structure, or conventions introduced?
 - Cross-doc consistency — if this is an mk-cc-resources plugin repo, consider invoking /docs-audit (plugin-toolkit) to detect drift between CLAUDE.md + README + marketplace.json + disk state.
 - New skills/commands/hooks — are they listed and described in the appropriate docs?
@@ -145,7 +145,7 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
    - Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
    - Name the concrete first action AND the verifiable check that proves it done.
    - List open decisions / blockers the next session must resolve (or that need the user).
-   - Point to durable artifacts instead of restating them (handoff.md, RELEASE-NOTES, task specs) — reference, don't paste.
+   - Point to durable artifacts instead of restating them (handoff.md, CHANGELOG.md, task specs) — reference, don't paste.
    - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
    - Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
 2. VERIFY the draft against the substrate NOW (substrate-verify before prescribing): every file path, command, branch name, and artifact the prompt cites must be checked against current disk/git state — the cold session inherits your citations as ground truth, so one stale path poisons its first minutes. Fix or drop anything that fails the check; a citation you didn't check doesn't go in the prompt.

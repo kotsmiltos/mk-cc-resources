@@ -1,93 +1,10 @@
-# steward — Release Notes
+# steward — release history (pre-CHANGELOG entries, verbatim)
 
-## 0.6.0 - 2026-09-11 - integrate whenever anything is unintegrated; the briefing stops being truncated
-
-Owner ruling 2026-09-11, verbatim: "i don't care for cost in tokens or context. I CARE ABOUT
-Quality." Two caps sized against cost were measurably costing quality.
-
-**The one-pass-per-sitting cadence is retired.** Across 88 sessions in one ship the inbox still
-held 9 unintegrated items with `briefing.md` 5 days behind its own `log.md`. Root cause was not
-the satisfaction logic - turn-end's `steward-sync` ask literally ended "otherwise let them
-accumulate for the next batch point", an instruction to skip. Integration now dispatches whenever
-there is something to integrate: a staged item, or a briefing whose cursor trails the ledger.
-Still BACKGROUND, so the owner never waits, and the agent's per-pass Economy is UNCHANGED - the
-fix is pass FREQUENCY, never a rushed pass.
-
-**The briefing's 900-char hard cap was deleting the owner's asks.** Measured live: "dropped 1
-line(s) / 138 chars" - and the tail of a briefing is `NEXT:` / `WAITING:`, the decisions blocked
-on the owner. The 6-line SPEC stands; the hook's cap is now a runaway-file guard (30 lines /
-4,500 chars) that says FLOOD GUARD when it fires, because reaching it means the file is
-pathological rather than merely long.
-
-**A model with no prior history is BORN on the contract.** Every live ship had no `status.json` at
-all, so every pass took the pre-contract move-to-`done/` path - which the agent cannot do. Its own
-returns said so: "I have no move/delete tool, so the seven captures...", "moving the five inbox
-files needs a shell I do not have, so it goes to you". The owner never did it, and the inbox
-silted up. The agent now creates `status.json` when there is no past to fabricate; a ship WITH
-real `done/` history still adopts via `bin/steward-backfill.js`, never by hand.
-
-**A stale briefing is a directive, not a disclaimer**: "the position claims below are STALE. Do
-not answer 'where are we' from them." Suite 64 checks.
-
-## 0.5.2 — 2026-09-09 — running ≠ installed instrument (harness G1, task #29)
-
-`[instr]` gains a third instrument: the hook reports ITS OWN version (the plugin.json beside
-the executing code) against `~/.claude/plugins/installed_plugins.json` and prints
-`running steward X ≠ installed Y (installed <date>) — restart Claude Code to load it` only when
-they differ; silent when equal, when the ledger is absent or unreadable, or when this plugin has
-no entry. Own copy of the reader turn-end 0.7.1 carries — duplication across independently
-installed plugins is deliberate. Why: a session that outlives an install keeps the old code with
-no symptom (measured 2026-09-08, two days of stale turn-end traces); one stale plugin proves the
-class for the whole process. Suite 50 checks (+5), isolated fake home, no framework.
-
-## 0.5.1 — 2026-09-06 — one item model, every reader (audit 2, task #24)
-
-The brief hook's `inbox:` line, the `[instr] items` line and the fleet table all derive
-from status.json now (`lib/status.derive`): an integrated item whose file still sits in
-inbox/ is not "unintegrated", a dotfile is never an item (the Endure phantom). Measured before:
-"8 UNINTEGRATED" beside "items: 4 new" in ONE injection. `[instr]` adds the backlog age of
-the oldest new item (`3 new (oldest 10d)`). Fleet dedupe is case-insensitive on Windows (a
-lowercase cwd registered a ship twice). Suite 45 + 13 checks, isolated fake home.
-
-## 0.5.0 — Phase 1: the status contract — a ledger instead of rituals
-
-Owner 'go' on design/stack-a-blueprint.md §6b Phase 1; contract page: design/status-contract.md.
-.steward/status.json records every item's lifecycle (staged/integrated/superseded/closed +
-free-form groups); the AGENT is its only writer, and 'new' is DERIVED (inbox file present,
-id unrecorded) — so integrated files never move, rename, or grow tombstone stubs again, and
-the write race with the background pass is impossible by construction. The briefing gains
-computed [instr] lines (git position, item counts — the volatile classes the 2026-08-23
-audit caught rotting are now computed at injection, never authored) and CURSOR-based
-staleness (views.briefing.derived_through; the 0.4.0 mtime compare survives as the
-pre-contract fallback, corruption named out loud). bin/steward-backfill.js seeds a
-pre-contract ship in one idempotent absent-only run (29 items seeded on the pilot).
-lib/status.js is the tolerant reader every consumer shares. 40/40 hook + 13/13 status tests.
-
-## 0.4.0 — The briefing stops lying about its age; everything anchors to the repo root
-
-Strike 1 of design/stack-a-blueprint.md (owner "go", 2026-08-23). The four-project audit
-measured the same defect on every live ship: the briefing — the ONE surface injected at every
-session open — was stale in all four projects, silently (this repo: a false install claim the
-same morning; twin-game: 8 commits behind at session close; aithseis: wrong at every open for
-12 days). And a session whose shell sat in a subdirectory captured to a SECOND `.steward/`
-the real model never saw (measured: aithseis `build-and-sell/.steward`, 2026-08-13).
-
-Two mechanisms, both deterministic, both prototype-proven against the four real ships before
-being built:
-
-- **Freshness at injection.** The hook stats the briefing against pending inbox items,
-  `log.md`, and the git HEAD ref (fs-only — no child process) and, when anything is newer,
-  prefixes ONE line: `⚠ N event(s) newer than this briefing (…named…) — position claims may
-  be stale; a sync refreshes it.` A briefing may be old; it may not lie about it. The agent
-  regenerates `briefing.md` LAST in a pass, so same-pass writes never false-flag.
-- **Root anchoring.** `resolveProjectRoot` (this plugin's own copy of the walk turn-end
-  0.4.1 proved; duplication across plugins is deliberate) anchors the briefing read, the
-  inbox count, and fleet registration to the nearest `.git` ancestor — HOME-guarded,
-  case-insensitive on Windows. The injected protocol line now names
-  `<PROJECT GIT ROOT>/.steward/inbox/` as the only capture path.
-
-34/34 hook tests (7 new: stale/fresh/log/git-HEAD flagging, subdir anchoring, non-repo
-fallback silence).
+These are the entries older than the five most recent, moved VERBATIM out of
+`plugins/steward/RELEASE-NOTES.md` when it became
+`plugins/steward/CHANGELOG.md` (2026-09-11). Nothing was edited or summarised — the
+engineering detail lives here so the changelog can speak to the people who INSTALL the
+plugin. Newest first, same order as before.
 
 ## 0.3.1 — Lighter: the standing injection halved
 

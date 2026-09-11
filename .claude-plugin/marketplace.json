@@ -4,111 +4,375 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins \u2014 multi-phase AI development pipeline (essense-flow + autopilot), living-model steward loop, queryable project knowledge base (kb), data exploration, prompt modifiers, project question tracking, cross-platform alerts, and verifiability-aware work classification.",
-    "version": "2.50.0"
+    "description": "Custom Claude Code plugins \u2014 multi-phase AI development pipeline (essense-flow + autopilot), a living-model steward loop, /elicit for brainstorming a vision to completion, a queryable project knowledge base (kb), one blocking turn-end hook the others hang duties on, design-pattern and reuse gates, data exploration, prompt modifiers, question tracking, and cross-platform alerts.",
+    "version": "2.51.0"
   },
   "plugins": [
     {
       "name": "essense-flow",
       "source": "./plugins/essense-flow",
-      "description": "Multi-phase AI development pipeline. Closed contracts, evidence-bound review, fail-soft hooks, no resource caps. Eleven skills (elicit, research, triage, architect, organize, build, glossary, review, verify, context, heal) drive a state machine from project pitch to shipped code. /organize (post-architect) and /glossary (post-build) are optional DRY phases powered by the plugin-toolkit code-glossary engine; /glossary renders a functionality map (MAP.md) plus per-sprint duplication drift, /architect consults the map before deciding (reuse ledger in ARCH.md), /build dispatches carry existing-helper + neighbor context, and /review gains a glossary-fed dry-violation lens. Every phase-producing skill writes artifact + transitions state atomically. State is artifacts-authoritative: .pipeline/state.yaml is a derived cache that self-reconciles from disk (state-reconcile op; missing cache auto-rebuilds inside ops). Every agent self-report is re-validated against disk \u2014 drift is auditable, not silent. Producer agents follow the librarian protocol: what they cannot verify they research, what research cannot answer becomes a structured unknowns[] entry surfaced to the user at phase gates \u2014 never assumed. Hooks are advisory: context-inject surfaces phase + canonical paths on every prompt, next-step suggests the recommended slash command on Stop. Both fail-soft on degraded state \u2014 never block tool calls. v0.7.0 archived on archive/essense-flow-v0.7.",
-      "version": "0.26.3"
+      "displayName": "Essense Flow",
+      "description": "Multi-phase development pipeline: elicit, research, triage, architect, build, review, verify. Closed task specs, evidence-bound review, and every agent self-report re-checked against disk.",
+      "version": "0.27.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "pipeline",
+        "workflow",
+        "architecture",
+        "code-review",
+        "verification"
+      ]
     },
     {
       "name": "essense-autopilot",
       "source": "./plugins/essense-autopilot",
-      "description": "Stop-hook autopilot for essense-flow pipelines. Drives the pipeline forward across phases without you typing between steps. Halts at human gates (eliciting, organizing, glossarying, verifying), real blockers, in-flight background Agent calls (transcript-scan), forward-detect for sprint-complete + QA-REPORT, and no-progress (same phase + sprint + wave as last fire \u00e2\u2020\u2019 suggests /heal). Opt-in per project via .pipeline/config.yaml. Diagnostic stderr on every halt path.",
-      "version": "0.4.2"
+      "displayName": "Essense Autopilot",
+      "description": "Stop-hook autopilot for essense-flow: advances the pipeline between phases without you typing, and halts loudly at human gates, real blockers, and in-flight agents.",
+      "version": "0.5.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "pipeline",
+        "automation",
+        "hooks",
+        "essense-flow"
+      ]
     },
     {
       "name": "schema-scout",
       "source": "./plugins/schema-scout",
-      "description": "CLI tool for exploring the schema and values of any data file (XLSX, CSV, JSON). Auto-detects JSON in cells, repairs double-encoded UTF-8, prunes overflow artifacts.",
-      "version": "1.2.1"
+      "displayName": "Schema Scout",
+      "description": "Explore the schema and values of any XLSX, CSV or JSON file from the CLI. Detects JSON inside cells, repairs double-encoded UTF-8, prunes overflow and null columns.",
+      "version": "1.2.1",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "data",
+      "keywords": [
+        "data",
+        "schema",
+        "xlsx",
+        "csv",
+        "json"
+      ]
     },
     {
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
-      "description": "Prompt modifiers \u2014 keyword triggers (++, @thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build) that inject behavioral rules for thoroughness, documentation checks, interactive questions, root-cause investigation, paranoid verification, context refresh, next-session kickoff-prompt generation, and plan-review-build change workflows. Smart hints suggest modifiers when you describe the intent without the keyword. @thorough, @fresh, and @prompt injections are protocol-shaped (failure named -> ordered steps -> anti-signals -> exit check); @prompt DRAFT->VERIFY->COLD-READ->SAVE disk-verifies every citation and SAVES each prompt to an append-only .claude/prompts/ history + INDEX.md ledger. @build REVIEW carries a reuse-first gate (already built here, or served by a package? reuse/extend, do not reinvent). @ship integrates with plugin-toolkit (/version-bump + /docs-audit) when used in mk-cc-resources plugin repo.",
-      "version": "1.11.2"
+      "displayName": "Thorough Mode",
+      "description": "Prompt modifiers that inject behavioral rules on a keyword: ++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build. Hooks only \u2014 no skill to remember.",
+      "version": "1.11.3",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "prompt-modifiers",
+        "hooks",
+        "thoroughness",
+        "verification"
+      ]
     },
     {
       "name": "project-note-tracker",
       "source": "./plugins/project-note-tracker",
-      "description": "Track questions per handler/department. Auto-detects which handler should answer, researches from project context in the background, logs to an Excel tracker, generates meeting agendas. Auto-gitignores itself.",
-      "version": "1.8.0"
+      "displayName": "Project Note Tracker",
+      "description": "Track questions and bugs per handler in an Excel tracker: auto-routes each question to the right department, researches from project context, generates meeting agendas.",
+      "version": "1.8.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "tracker",
+        "questions",
+        "excel",
+        "meetings"
+      ]
     },
     {
       "name": "alert-sounds",
       "source": "./plugins/alert-sounds",
-      "description": "Cross-platform alerts for Claude Code events \u2014 sound, desktop notifications, status line colors, volume control, and mute/unmute. Fully configurable per event.",
-      "version": "1.1.1"
+      "displayName": "Alert Sounds",
+      "description": "Cross-platform alerts for Claude Code events \u2014 sound, desktop notification, statusline color, volume and mute, each configurable per event.",
+      "version": "1.1.1",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "notifications",
+      "keywords": [
+        "notifications",
+        "sound",
+        "alerts",
+        "hooks"
+      ]
     },
     {
       "name": "session-lifecycle",
       "source": "./plugins/session-lifecycle",
-      "description": "Session lifecycle tools \u2014 handoff (capture session state), resume (restore context from handoff), claude-md-sync (propose CLAUDE.md updates after changes), retro (metrics-driven retrospective), meta-review (diagnose session: multi-step chains, skill friction, plugin coverage gaps). Designed as cohesive set: handoff triggers claude-md-sync when stale, resume reads handoff output, meta-review diagnoses what's worth automating from observed patterns. Handoffs are an append-only history \u2014 each /handoff writes a permanent timestamped file + INDEX.md ledger under .claude/handoffs/ (latest mirrored to .claude/handoff.md for /resume); /resume preserves the history instead of truncating it.",
-      "version": "1.3.1"
+      "displayName": "Session Lifecycle",
+      "description": "Session continuity: /handoff writes an append-only history, /resume restores it, /claude-md-sync proposes doc updates, /retro and /meta-review look back at how it went.",
+      "version": "1.3.1",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "handoff",
+        "resume",
+        "retrospective",
+        "session"
+      ]
     },
     {
       "name": "plugin-toolkit",
       "source": "./plugins/plugin-toolkit",
-      "description": "Plugin/skill development + maintenance toolkit. /skill-heal audits a plugin's skill set against current best practices (parallel review agents, scorecard, diagnostic only). /plugin-scaffold bootstraps a new plugin with full directory + cross-references (9-step chain in one invocation). /version-bump cascades version updates across plugin.json + marketplace.json + bundle + metadata + RELEASE-NOTES with semver validation. /docs-audit cross-checks CLAUDE.md + README + marketplace.json against disk state and proposes targeted fixes. /code-glossary (v2) audits any codebase for DRY violations \u2014 a deterministic Python engine (Python/TS/JS/C# via stdlib AST + tree-sitter) indexes every function, fingerprints 5 signals, and clusters duplicates; in-session sub-agents label against a 147-verb controlled vocabulary, review each cluster (Pass B), substrate-verify instances (Pass C), and judge near-miss candidates generated deterministically. Optional block scanner (--scan-blocks) surfaces duplicated sub-function guard patterns. Writes GLOSSARY.yaml (frozen schema, /dry-refactor input) + GLOSSARY.md; `runner diff` tracks duplication drift between runs by {(file, function)} identity; `runner map` renders MAP.md \u2014 a functionality map (mermaid module graph + lossless machine index) consulted before designing or building; `runner coupling` enforces DECOUPLED by measuring coupling on a scope-aware call graph from records \u2014 threshold-free binary violations (cross-module dependency cycles + reach-ins into a module's internal surface), `--fail-on-violation` CI gate, COUPLING.yaml names each violation file:function for substrate-verification. /dry-refactor (v3 MVP) turns extractable clusters into reviewable refactor plans: 7 Appendix-A pre-flight gates (baseline tests, git-clean, target module, verification, confidence, substrate-verify, gitignore) + dry-run helper/edit-plan output, zero source writes. Also powers essense-flow's /organize + /glossary phases. Composable \u2014 @ship references /version-bump + /docs-audit; /skill-heal hints at /docs-audit when description quality is weak. 1.9.0 adds two more pure-runner-over-a-registry gates beside repo-guard, both usable as one command: bin/test-all.js sweeps EVERY suite in every plugin (discovery by SHAPE, never a filename list \u2014 a documented command that named its files stopped covering a whole suite the day one was added; exit code is the verdict because the three harness styles here print wildly different text; a unit shipping NO suite is NAMED, and a suite exiting 0 while printing failures is SUSPECT rather than green, because this repo's second recurring defect class is tests that lie, always in the flattering direction). bin/registry-check.js verifies the CLAIMS four hand-maintained files make about the repo \u2014 marketplace row vs plugin manifest, plugin list vs disk in both directions, versions quoted in doc tables, bundle paths that resolve, and files a CI step invokes (that last one measured: the only workflow here ran a script deleted in 508e2a7, on a pull_request trigger in a repo with zero pull requests). It CHECKS rather than generates, because only the facts in those files are derivable and the prose around them is written for a human. Every claim source carries a negative control in the suite: a checker only ever run on a consistent repo has proved nothing about itself.",
-      "version": "1.13.0"
+      "displayName": "Plugin Toolkit",
+      "description": "Build and maintain Claude Code plugins: skill-heal, plugin-scaffold, version-bump, docs-audit, code-glossary, dry-refactor, plus repo-guard, test-all, registry-check and harness-stats gates.",
+      "version": "1.14.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "plugin-development",
+        "scaffold",
+        "audit",
+        "testing",
+        "maintenance"
+      ]
     },
     {
       "name": "verifiability-lens",
       "source": "./plugins/verifiability-lens",
-      "description": "A strict, opinionated work-quality guardian that fires automatically on your work and pushes it to the best achievable. Runs THREE checks and ACTIVELY verifies (web + docs + read tools \u2014 confirms/refutes, not just flags): (1) Verifiability \u2014 A (verified/checkable) / B (genuine guess) / U (can't tell; never let a U pass as A); (2) Completeness \u2014 was everything meant to be done actually done, or did we stop arbitrarily (presses to continue + finish, tested); (3) Quality bar \u2014 tested, requirements met, robust, not half-assed. A surfacing triage (auto-resolve | escalate | suppress) tuned by a recipient profile hands you ONLY the important, actionable, fully-contextualized pushes \u2014 strict judgment, disciplined surfacing; never a context-less decision; auto-resolutions logged. Fires on substantive-work turns (code/files, reads, web, subagents, MCP), reading the WHOLE turn; pure questions + its own output never trigger it. Also a /verifiability manual trigger. Read/research-only \u2014 verifies and pushes, does not write code or run the build. 0.5.0: its own Stop hook is RETIRED \u2014 the trigger now ships as the `quality-lens` duty in the turn-end plugin (install that to get the automatic firing), because the old fire-once guard bounded consecutive blocks rather than total fires and fired 8 times over ONE user request. This plugin no longer carries any hook.",
-      "version": "0.7.0"
+      "displayName": "Verifiability Lens",
+      "description": "A strict work-quality guardian: sorts every claim into verified, unverifiable or cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue.",
+      "version": "0.7.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "quality",
+      "keywords": [
+        "quality",
+        "verification",
+        "review",
+        "claims"
+      ]
     },
     {
       "name": "reuse-gate",
       "source": "./plugins/reuse-gate",
-      "description": "Reuse-first reminder at the moment code is written. A PreToolUse hook fires ONCE per user message on the first source-code write (Write/Edit/MultiEdit/NotebookEdit) and surfaces the reuse-first checklist \u2014 is this already implemented here (search the codebase / functionality glossary MAP.md) or served by an existing package/library? reuse or extend before writing new; what you do write, build modular + decoupled. A deterministic nudge at the exact point of writing, so the rule can't drift out of context the way an instruction can. Mechanism: hookSpecificOutput.additionalContext fires once per user message (dedupe keyed on prompt_id) on the first source write of the turn \u2014 injected before the tool runs so the write proceeds normally (no block, no permissionDecision, so your normal write-permission prompt is untouched). Source-only \u2014 docs/config/data files never trigger. Opt-in OFF by default (env REUSE_GATE_ENABLED=1 / project or global .claude/reuse-gate.json {\"enabled\": true}, project overrides global); fail-open on any error. Companion to the reuse-first instructions in essense-flow code-conventions.md, global CLAUDE.md, and thorough-mode @build. Carries a hook \u2014 install separately from the mk-cc-all bundle.",
-      "version": "0.1.0"
+      "displayName": "Reuse Gate",
+      "description": "Reuse-first reminder at the moment code is written: one nudge per message on the first source write \u2014 is this already implemented here, or served by a library you already have?",
+      "version": "0.1.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "quality",
+      "keywords": [
+        "reuse",
+        "dry",
+        "hooks",
+        "code-quality"
+      ]
     },
     {
       "name": "steward",
       "source": "./plugins/steward",
-      "description": "The project's living-model keeper \u2014 'the guy behind the inbox.' Per project it maintains a rich model (.steward/: vision, state, parts+contracts, open questions, next tasks) and an inbox your stray thoughts land in; on every input it RECOMPUTES the whole model (adds/edits/deletes, cascades pivots) and shows the diff, so you always know where the ship is and why. Ambient interface, zero commands to remember: opening the project auto-briefs you (SessionStart hook, totally silent in projects without a model), talking normally captures ideas, plain words drive work ('what's next', 'do it'), session leftovers integrate at next open \u2014 owner present. /steward:seed builds the model FOR you from an existing project's docs/code/history plus 3-7 quick questions; /steward:brief|sync|next are optional aliases. The steward agent is the only writer of .steward/ and never touches product code; no work happens in your absence (inbox staging only, permanently). Design source: design/continuous-transformation.md v3. 0.3.0 puts the loop on a budget (owner directive: 'fires too often and for too long' \u2014 measured: one pass 12.5 min / 137k tokens for two small items, plus correction re-runs off a moving tree): at most ONE integration pass per sitting, dispatched in the BACKGROUND (captures and task landings accumulate in inbox/ + log.md for the wrap-up sync or next open; an explicit 'sync' always dispatches), and the agent carries an Economy section \u2014 verify only what it writes (one targeted read per claim, never a repo re-audit), snapshot HEAD once and never chase a moving tree, routine diff \u226415 lines, minutes not quarter-hours. The recompute discipline itself is untouched \u2014 cuts come from verification scope and prose, never from skipping reconciliation. 0.3.1 halves the standing injection (owner, the night 0.3.0 went live: 'make the steward lighter \u2014 unbearable'): protocol block 9 bullets \u2192 4 dense lines, briefing spec \u22646 lines / 900-char cap, one-line inbox note, diff \u226410 lines, acks fold into the reply \u2014 injected text is a per-session tax and every line earns its place. Carries a hook \u2014 install standalone, not part of the mk-cc-all bundle. 0.4.0: the briefing stops lying about its age \u2014 freshness is computed at injection (a one-line \u26a0 names events newer than briefing.md: pending inbox items, a newer log, a moved git HEAD; fs-only, no child process), and every read anchors to the nearest .git ancestor so a subdir session briefs from \u2014 and the protocol captures to \u2014 the REAL model at the repo root (the class that spawned aithseis's stray build-and-sell/.steward, invisible to its model); fleet registration records the root, never the shell's position. 0.5.0 (Phase 1, status contract): .steward/status.json is the lifecycle ledger \u2014 the agent is its ONLY writer (files never move/rename again; \"new\" is DERIVED: inbox file present, id unrecorded \u2014 race-free by construction, tombstones retired); the briefing gains computed [instr] lines (git position, item counts \u2014 volatile facts are computed at injection, never authored) and cursor-based staleness; bin/steward-backfill.js seeds the ledger from a pre-contract ship in one idempotent run. 0.5.2: [instr] gains a running\u2260installed instrument \u2014 the hook reports ITS OWN version (the manifest beside the executing code) against the install ledger and names the remedy (restart); silent when equal, absent or unreadable. Same 2026-09-08 finding as turn-end 0.7.1: `/clear` does not reload plugins, so a session that outlives an install keeps the old code with no symptom.",
-      "version": "0.6.0"
+      "displayName": "Steward",
+      "description": "A living model per project (.steward/: vision, state, parts, questions, tasks). Stray thoughts land in an inbox; the steward agent recomputes the whole model and shows you the diff.",
+      "version": "0.6.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "project-model",
+        "planning",
+        "continuity",
+        "briefing"
+      ]
     },
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Segment-based statusline: model | current task | directory | steward anchor (\u2693 + inbox count in .steward projects) | context counter (normalized used-% bar \u2014 100% = usable-window limit accounting for the ~16.5% autocompact buffer; green/yellow/orange/skull). Each segment is an independent fail-soft function \u2014 extend by dropping a function into SEGMENTS. Statusline is a settings-level surface: wiring is one settings.json statusLine line pointing at bin/mk-statusline.js (see README). No hooks, no skills \u2014 install is just the wiring. 0.2.0: segSteward v2 \u2014 \u2693N\u2731 \u25b2M (N derived-new items, \u2731 charts stale, \u25b2M recorded items past the briefing cursor) read from the status contract, root-anchored to the nearest .git ancestor; degrades to the old \u2693N wherever status.json is absent.",
-      "version": "0.2.0"
+      "displayName": "Statusline",
+      "description": "Segment-based statusline: model, current task, directory, steward anchor, and a normalized context-usage bar. Each segment fails soft; extend it by adding one function.",
+      "version": "0.2.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "ui",
+      "keywords": [
+        "statusline",
+        "ui",
+        "context",
+        "segments"
+      ]
     },
     {
       "name": "kb",
       "source": "./plugins/kb",
-      "description": "The project's queryable knowledge base \u2014 the pull surface the long-lens tools (steward, verifiability-lens) have been missing; they push a fixed briefing at session open, kb lets a session ask for what it needs when it needs it. Files knowledge on two orthogonal axes: KIND (which catalog \u2014 episodic what-happened, semantic settled-facts, procedural how-we-work; the CoALA taxonomy Letta/Mem0/LangChain share) x CASTE (which scope tier, ordered narrow to wide \u2014 session, thread, project, fleet, owner). Indexes the markdown stores a project already keeps (steward model/log/inbox, handoffs, kickoff prompts, CLAUDE.md) with zero config; an append-only ledger splits per ## section so a hit points at the answer, not the file. Every result reports what it held back and which facet separates the remainder \u2014 Claude Code has no MCP sampling, so the session itself is the retrieval loop rather than a second agent. Four reach-surfaces over one facade: always-loaded MCP tools (kb_query/kb_read/kb_overview \u2014 Claude self-serves knowledge mid-work, ReAct-style, narrowing hints riding inside each tool result; hand-rolled stdio JSON-RPC, ships via plugin .mcp.json), the `kb` skill (ask before re-deriving), the /kb command (you ask), and the CLI (hooks, scripts, cli-agent). 0.3.0 adds create + maintain: /kb-seed extracts an existing project's knowledge (docs, git history, code; depth-mandated sweep, seeder judges then reports, Extracted-from citations) into .claude/kb/extracted/, /kb-capture files one decision/dead-end/finding at a time into .claude/kb/captures/ \u2014 per-file frontmatter carries kind/caste/themes so one dir holds mixed kinds; the engine stays read-only, and steward-model changes still route to .steward/inbox/ for recompute. 0.4.0: retrieval rung 1 \u2014 light stemming, edit-distance-1 typo tolerance, config alias groups, thin-preamble skip. 0.5.0: the awareness surface \u2014 a kb-pull UserPromptSubmit hook (deterministic ranker over the prompt, score-floored one-line hints naming what the KB holds, kb_read to pull; machine-text guarded, config off-switch) + a rolling session digest (.claude/kb/session-digest.md, working-kind session-caste, injected every prompt, capped-loud) + per-call JSONL traces + a config-regex pattern split mode for ledgers whose entries are not headings. 0.6.0: the ENFORCED write side \u2014 a kb-scribe Stop hook blocks a producing turn's yield until the session distills it into the digest AND graduates durable knowledge (settled decision/dead-end/finding \u2192 .claude/kb/captures/; steward-model change \u2192 .steward/inbox/), so one pass feeds both the session-length and project-length memory; it states what IMPORTANT means (the dies-first classes: decision-with-why, rejected approach and what refuted it, verified outcome with its check, constraint, direction change) plus an explicit NOT-important list, sharpened per project by a `scribe.focus` config list; loop-safe via the verifiability-lens contract (fire-exactly-once, hash-skip, own-marker guard, fail-open) and switchable off. No scribe agent by design \u2014 the session already holds the turn; only a judge needs independence. Config merging is generic (object knobs patch per key, so a new knob is config, not code). Node only, no dependencies, 256+37+42+56+38+33 tests. 0.7.0: SELF-RUNNING \u2014 kb coverage prints the top-up map (which substrate existing entries already cite, where coverage stops) so /kb-seed can be re-run in any project and mines only what is missing; upkeep self-activates on PRESENCE (a project with no curated memory is never blocked \u2014 seeding one is the on-switch); a SessionStart hook archives the previous sitting digest to .claude/kb/digests/ (still queryable) so now never inherits yesterday, and cues an unseeded project once. 0.9.0: the kb-scribe Stop hook is RETIRED \u2014 its enforcement now ships as the `session-digest` duty in the turn-end plugin, because two plugins each owning a blocking Stop hook re-armed each other (scribe counted the lens's mandated `Agent` dispatch as fresh work, and the resulting fix turn re-armed scribe). kb now carries TWO hooks (kb-pull, kb-session-start) + an MCP server \u2014 install kb itself; the bundle ships only its skills. 0.10.2 stops spawned sessions from stealing the live digest: turn-end's claude -p judge and background Agent dispatches fire SessionStart with genuinely NEW session_ids (measured \u2014 three mid-sitting rotations in one evening), and the sitting marker could never self-repair because its write was gated on a digest the rotation had just deleted. Now the marker records on every rotating fire (gated on .claude/kb/ presence, footprint intact), a minutes-fresh digest is the live sitting's heartbeat and never rotates, and a judge child carrying MK_TURN_END_DEPTH stands down entirely. 0.10.3 anchors both hooks to the nearest .git ancestor (payload cwd preferred, HOME-guarded, case-insensitive on Windows) \u2014 a session whose shell sat in a subdirectory previously read and wrote a DIFFERENT project's kb state; lib/project-root.js is kb's own copy of the walk turn-end 0.4.1 proved (cross-plugin duplication deliberate: shared modules couple independently-installed plugins). 0.11.0: status-join \u2014 .steward/status.json (the steward lifecycle ledger) is joined at collect time, injecting status:<s> and group:<g> themes onto the entries it records, so \"open questions\" or one thread is a normal query/filter with zero engine change; tolerant read, a corrupt ledger files a visible per-source error. 0.13.0: kb-pull under the platform's inline bound and no longer repetitive (audit 2, task #27) \u2014 the whole injection stays within 8 KiB (measured: Claude Code stubs hook output past ~10 KB to an unread 2 KB preview; 51 kb-pull fires were stubbed, 110-line digests among them), a digest unchanged since its last injection this session becomes ONE pointer line, an id already hinted this session is never repeated and a '+N more above the floor \u2014 kb_query \u2026' cue names what stayed back, a malformed kb.json costs the hints but never the digest, the ranker's body-repeat bonus no longer leaks into the scan-mode subject floor, and the trace carries session_id / prompt_id / scores / digest mode / bytes. State is home-side, session-scoped and presence-gated (~/.claude/kb/pull-state/<root-hash>.json); kb-session-start clears the digest hash on every fire so the first prompt after a compaction gets the full text again. Measured on this repo's own 11.3 KB digest: 8.1 KB read on the first prompt (was stubbed), 324 B on every unchanged prompt after.",
-      "version": "0.14.0"
+      "displayName": "Knowledge Base",
+      "description": "The project's queryable knowledge base \u2014 decisions and their why, dead ends, conventions \u2014 indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
+      "version": "0.14.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "knowledge",
+      "keywords": [
+        "knowledge-base",
+        "memory",
+        "retrieval",
+        "decisions",
+        "mcp"
+      ]
     },
     {
       "name": "turn-end",
       "source": "./plugins/turn-end",
-      "description": "The single blocking Stop hook, so nothing else needs one. Plugins ship turn-end DUTIES instead of their own hooks; one runner checks every applicable duty against real state and emits ONE consolidated message per user request \u2014 two duties become one tail with two items, never two tails. Exists because two plugins each owning a blocking Stop hook re-armed each other: each one's mandated response was fresh work for the other, so the allow-gap never landed on an idle turn (measured at 6 blocks + 3 fires in one sitting over ONE request, and 8 passes in another). All Stop hooks run in parallel with no ordering and blocking is fail-closed, so runtime negotiation between hooks is racy by construction; one runner has no race to lose. TERMINATION IS STRUCTURAL \u2014 a duty ends the loop by becoming satisfied against real state (the digest file exists, the agent was dispatched), never by a counter; the fire budget is only the backstop for a satisfaction check that is wrong, and it says so out loud when it gives up. Scoped to `prompt_id`, the user-request span, which is what turns an 8-pass session into 1. Escalation ladder: a first unmet duty gets hookSpecificOutput.additionalContext (continues the turn, labelled Stop hook feedback, no hook error); only a duty marked severity:block, still unmet after that nudge, hardens to decision:block. Ships two duties \u2014 session-digest (from kb) and quality-lens (from verifiability-lens) \u2014 plus a judge adapter (`claude -p`, plan-billed, with the recursion guard the platform does not provide) for duties whose satisfaction is genuinely a matter of judgment; no shipped duty uses it, because every check answerable from disk stays on disk. Silent in a project with nothing to maintain, fail-open on every path, config off-switch. Add a duty = one require, no runner change. Carries a hook \u2014 install separately from the mk-cc-all bundle. 0.1.1: the quality-lens meta-loop guard now discriminates on the ROLLUP'S SHAPE (a bracketed tool marker, or two co-occurring structural tokens) rather than on the plugin's NAME \u2014 the inherited pattern matched the bare words \"verifiability-lens\", so the first live fire silently skipped the duty on a turn that merely discussed the lens. 0.2.0 adds the RECALL half \u2014 a second duty KIND that SUPPLIES material instead of demanding work. `context-recall` fires a `claude -p` judge on every turn end: it sees what was asked, what was answered, and an INDEX of the project's own notes (titles + ids, never bodies), returns which ones the answer should have been built on, and the runner then fetches those files deterministically and injects their own text. The judge chooses; it never summarises \u2014 so a session that re-derives a settled decision, repeats a rejected approach, or contradicts a recorded constraint gets the actual note back before it yields. Sources are the new extension surface (markdown-dir over kb captures/extracted and the steward model; a new instance is config, a new type is a drop-in). `supply` is the only impure step, so the pure runner just reports it is due and the adapter executes it \u2014 plan, execute, compose. Prompt-injection posture: the transcript is framed to the judge as data, not instructions. 0.3.0 adds a third duty, `steward-sync`: a living model is only worth what its last recompute was worth, and captures are cheap while the recompute is the expensive half nothing forced \u2014 a pilot model went a full session stale with every capture present and correct. It applies when `.steward/inbox/` holds a staged note and clears when the inbox is empty, the steward agent was dispatched, or it already asked this SITTING. Session span is load-bearing: its ask spawns a background agent, and an agent's completion wakes the session as a new prompt_id, so a prompt-span record would reset exactly when the dispatch paid off. What counts as an item is modelled rather than enumerated \u2014 a top-level non-dot `.md` file \u2014 so the `done/` archive and the permanent `.gitkeep` placeholder stay out of a count that would otherwise read 4 against a real inbox of 3 and never reach zero. New generic disk primitive `list(rel)` (typed, sorted, memoized with every other read); `hasFilesIn` now derives from it so the two cannot disagree about a tree. 0.3.1 fixes the budget inversion that killed the runner mid-fire: the Stop hook's `timeout: 30` sat under the judge's own 60s execFile budget while a real recall fire measures ~40-46s, so the platform killed the WHOLE runner \u2014 every duty's output, not just the verdict \u2014 on 39 of 52 in-window fires (crowd-game: 0 completions). Now 90: the governing budget is the judge's, which degrades to a NAMED no-verdict instead of a silent kill. 0.4.0 adds `self-check`, the first default-ON severity:block duty (owner directive: work returned must be work CHECKED \u2014 no more arbitrary DONE): a turn that changed real files may not yield until ONE evidence detector passes \u2014 a check-shaped command ran AFTER the last change, the turn executed what it wrote AND looked at the output (a Read after the run; vcs/file-plumbing commands never count as runs \u2014 owner's second pass: a run nobody observed is half a check, and the ask teaches run \u2192 LOOK \u2192 compare vs ASKED \u2192 try to BREAK it), the verifiability lens was dispatched, or the final message NAMES the check with its observed result (the universal escape hatch that makes block safe; result tense only, planning prose rejected). Zero tokens, pure scans; the EVIDENCE registry is the extension surface (a new modality is a new detector); mandated bookkeeping trees (.claude/.steward/.pipeline + tmp) never count as fresh work; needs the new ORDERED `toolCalls` turn snapshot \u2014 absent means silent, never a demand. Also fixes the post-block boundary reset the lens proved on a real transcript: a decision:block reason arrives as a USER-role 'Stop hook feedback:' entry and previously erased the judged turn, silently dissolving the ladder's hard rung \u2014 machine-prefixed entries are no longer turn boundaries. Demotable per project via `.claude/turn-end.json`. 0.4.1 anchors ALL state (config, ledger, trace) to the nearest ancestor holding .git instead of the shell-following payload.cwd \u2014 measured: subdir test runs littered stray plugins/<name>/.claude/ ledgers and SPLIT the session-span ledger so an already-asked duty re-asked from the fresh bucket; the walk never adopts HOME or above, and no .git means the raw cwd stands. steward-sync's ask trimmed to items + action and now states the one-pass-per-sitting batching rule. 0.5.0 adds `request-closure` (owner symptom, verbatim: 'if agents fire and things happen then at the end i should get a neat message answering my first thing, not what the last agent did'): a background agent finishing wakes the session as a NEW prompt, the model perceives the task-notification as the request, and the final message reports the last agent instead of answering the user \u2014 the extraction already saw through this (wake entries are non-boundaries, `userRequest` still holds the genuine ask) but nothing handed that fact back at yield time. The duty applies when the span was woken by an agent or dispatched one, and its ask embeds the user's VERBATIM request plus the span's agent activity: lead with the answer to THAT, then one who-did-what line per agent, machinery notes last. PROMPT span deliberately \u2014 each wake is a new prompt_id, so the duty re-nudges at EVERY wake-yield (each is a user-visible resting state); safe because this ask spawns nothing and can never manufacture the prompt that re-arms it. Satisfaction is asked-once-per-prompt from the ledger (zero tokens, no judge); `advise` by default, promotable per project. New turn fact `wakeCount` (machine-classified `<task-notification>` entries in the span; a user pasting one mid-message never counts) is the generic wake surface \u2014 scheduled wake-ups would be new markers, not new code. 0.6.0: context-recall gains a fail-open deterministic ranker FALLBACK (owner ruling: quality over speed \u2014 the judge STAYS default; a judge death, measured three times live in one sitting, used to lose the recall material entirely): when and only when the judge cannot deliver, a term-overlap ranker picks and the injected material NAMES the engine; zero lexical matches still reports could-NOT-run naming both engines. 0.7.1: every trace line carries the RUNNING version (read from the manifest beside the executing script, never the ledger) plus a `stale` flag, and a stale process says so at the TOP of the tail it already emits \u2014 measured 2026-09-08: this repo ran 0.6.0 for two days after 0.7.0 was installed, because `/clear` does not reload plugins and nothing on screen or disk could show it. 0.8.0 (task #28, owner ruling Q19: done = a check RAN after the last change and was observed): verification gets GROUND TRUTH \u2014 lib/file-touch.js reads Bash/PowerShell argv so a `sed -i`, a `> file`, a `tee` or a heredoc target counts as a change and a `cat`/`head -c`/`sed -n`/`grep` counts as having opened a file; self-check and context-recall both consume it (recall no longer re-serves a note the turn read through Bash, and its judge is told which files the turn opened). The named-check hatch has a FLOOR: the claim must be anchored to the turn \u2014 a pass/fail ratio, a touched basename, or a command the turn ran \u2014 so \"Check: none\", \"verified by inspection\" and a free-floating \"exit 0\" satisfy nothing. The ask is modality-aware (prose \u2192 re-read vs what; scene \u2192 open it and say what is on screen; code \u2192 run it). New informational hook pair: PostToolUse + PostToolUseFailure on Bash|PowerShell (hooks/scripts/tool-record.js) append every exec result to .claude/turn-end/checks.jsonl and save one real payload per event as a fixture \u2014 `duties.self-check.requireGreen` then makes the last recorded check have to be exit 0 (the per-project strictness surface Q19 named; default off).",
-      "version": "0.10.0"
+      "displayName": "Turn End",
+      "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
+      "version": "0.10.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "quality",
+      "keywords": [
+        "hooks",
+        "stop-hook",
+        "duties",
+        "quality"
+      ]
     },
     {
       "name": "patterns",
       "source": "./plugins/patterns",
-      "description": "The named-pattern menu at the design moment, plus a pre-code pattern check \u2014 Head First Design Patterns' trigger->shape teaching device, mechanized for every session. A catalog of 41 patterns (GoF, Fowler/PoEAA, POSA, Microsoft Learn MVVM+DI, Nystrom's Game Programming Patterns, HFDP, SOLID; Refactoring.Guru cross-reference only) with per-entry trigger, seam, drop-in test, 2-3 examples across C#/Python/TS, paradigm annotations, and honest caution entries (Singleton -> inject the one instance; premature abstraction -> default-closed). Two hooks: (1) UserPromptSubmit injects the tier-1 trigger->pattern menu (~1KB, rendered at runtime from the catalog) on design-shaped prompts ('add a notifier', 'build an exporter'); (2) PreToolUse fires ONCE per user message on the first source-code write \u2014 'axis named? seam picked, or consciously closed?' \u2014 additionalContext only, no block, no permissionDecision. /patterns browses the catalog, /patterns <id> prints a full entry. Default ON everywhere (env PATTERNS_ENABLED=0 / project or global .claude/patterns.json {\"enabled\": false} to opt out; project overrides global); state lives home-side (~/.claude/patterns/state/), never in your repo; fail-open on any error. Carries hooks \u2014 install separately from the mk-cc-all bundle (which could not carry the catalog anyway: bundle installs ship skills only).",
-      "version": "0.1.1"
+      "displayName": "Patterns",
+      "description": "The named-pattern menu at the design moment, plus a pre-code check: 41 patterns from GoF, Fowler, POSA, Nystrom and Head First, each with its trigger, seam and drop-in test.",
+      "version": "0.1.1",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "design-patterns",
+        "architecture",
+        "catalog",
+        "hooks"
+      ]
     },
     {
       "name": "prism",
       "source": "./plugins/prism",
-      "description": "Multi-perspective panel: split a question across sole-focus agents \u2014 one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name), parallel on the session model, deep digs \u2014 then compile the best points of each into ONE plan with per-point lens credit, explicit conflict rulings, and a delta line naming what a solo answer would have missed. Stateless and ambient: no hooks, no state files, no preconditions, no output artifacts \u2014 the conversation is the delivery surface. The lens set is open at the language level: naming a new lens at invocation IS the extension surface (zero edits). One skill, zero code. Designed BY its own method: a five-lens panel on the skill's design produced the spec (2026-09-04). Skill-only \u2014 also ships in the mk-cc-all bundle.",
-      "version": "0.1.0"
+      "displayName": "Prism",
+      "description": "Panel a question across sole-focus agents \u2014 one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name) \u2014 then compile the best points into one plan.",
+      "version": "0.1.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "multi-perspective",
+        "panel",
+        "design",
+        "tradeoffs"
+      ]
+    },
+    {
+      "name": "elicit",
+      "source": "./plugins/elicit",
+      "displayName": "Elicit",
+      "description": "Brainstorm a vision to completion: it questions the gaps you leave, teaches the processes you have not worked with, panels genuine forks, and lands the conclusions in your project model.",
+      "version": "0.1.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "brainstorm",
+        "vision",
+        "gap-analysis",
+        "requirements",
+        "steward"
+      ]
     },
     {
       "name": "mk-cc-all",
       "source": "./",
-      "description": "All currently-active mk-cc-resources skills in one install: essense-flow, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit, prism, kb skills. essense-autopilot, thorough-mode, alert-sounds, turn-end, reuse-gate, steward, patterns, and kb carry hooks and must be installed separately for their hook/MCP surfaces (the bundle ships kb's skills only). verifiability-lens no longer carries a hook \u2014 its automatic firing now comes from turn-end's quality-lens duty. statusline is neither (settings-level wiring \u2014 see its README). Benched plugins (miltiaze, ladder-build, architect, safe-commit, project-structure, repo-audit, mk-flow) are preserved on the archive/benched-plugins branch.",
-      "version": "2.27.0"
+      "displayName": "mk-cc-resources (bundle)",
+      "description": "Every skills-only plugin here in one install: essense-flow, elicit, prism, kb, schema-scout, project-note-tracker, session-lifecycle, plugin-toolkit. Hook-carrying plugins install separately.",
+      "version": "2.28.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "workflow",
+      "keywords": [
+        "bundle",
+        "skills",
+        "pipeline",
+        "knowledge-base",
+        "elicit"
+      ]
     }
   ]
 }
