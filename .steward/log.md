@@ -1478,3 +1478,24 @@ the numbers above are its, not re-run here.
   still reads the 09-10 generation: turn-end 0.9.0 · lens 0.6.0 · steward 0.5.2 · essense-flow
   0.26.2 · autopilot 0.4.1) — and it will only carry TODAY's work once these four commits are
   pushed. Nothing was pushed; the push and the tag push both wait on the owner's word.
+
+## 2026-09-12 (00:2x) · PUSHED — `acb736b..7cc3d3d` live, 29 tags on origin; the tag push raced the rebase and was corrected
+
+- Owner ruled "push commits + tags". The branch push was **REJECTED** — `origin/main` had moved
+  to `acb736b` (another session's 28-line log append). Rebased onto it; the only conflict was
+  `.steward/log.md`, resolved by keeping BOTH entries (verified: the remote's `## 2026-09-10 ·
+  Phase 1 SHIPPED + INSTALLED` heading survives at :1265 alongside this session's three).
+  Gates re-run AFTER the rebase: repo-guard exit 0 · registry-check exit 0 · test-all 32/35,
+  1452 checks. Then `acb736b..7cc3d3d` pushed.
+- **Recorded because it nearly shipped wrong:** the 18 tags were pushed BEFORE the rebase, so six
+  of them (`essense-flow@0.27.0` · `essense-autopilot@0.5.0` · `elicit@0.1.0` ·
+  `plugin-toolkit@1.14.0` · `thorough-mode@1.11.3` · `mk-cc-all@2.28.0`) pointed at commits the
+  rebase orphaned — tags on origin naming shas unreachable from main. Caught by walking every tag
+  with `git merge-base --is-ancestor <tag> main`, re-pointed at the rebased commits and
+  force-pushed; `git ls-remote --tags` now matches local EXACTLY for all 29. **Order rule for next
+  time: push the branch first, tags only after it lands** — a tag pushed before a rebase is a
+  published ref pointing into nothing.
+- Still the owner's to run: `claude plugin update turn-end verifiability-lens steward
+  essense-flow essense-autopilot` + restart. It NOW carries today's work (essense-flow 0.27.0 ·
+  autopilot 0.5.0 · thorough-mode 1.11.3 · toolkit 1.14.0 · the new elicit 0.1.0 needs
+  `/plugin install elicit@mk-cc-resources`, and plugin-toolkit still has no ledger entry — Q24).
