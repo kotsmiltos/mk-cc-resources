@@ -17,6 +17,9 @@ module.exports = {
   id: 'checks',
   title: 'exec-result ledger: checks per sitting, failures, mutations',
   surface: 'checks',
+  // The plugin whose code writes the substrate below. Lets the runner say "installed <date>"
+  // instead of letting a vintage zero read as a dead mechanism (see lib/harness-stats.js).
+  writer: 'turn-end',
   keys: ['checks.lines', 'checks.sessions', 'checks.checks', 'checks.failed', 'checks.mutations', 'checks.checks_per_session', 'checks.kind_mix'],
   run(ctx) {
     const lines = ctx.checks.filter((l) => inWindow(l, ctx));

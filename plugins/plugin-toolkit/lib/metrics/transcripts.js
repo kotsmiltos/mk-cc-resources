@@ -94,6 +94,11 @@ const NON_HUMAN_PREFIXES = [
 ];
 const INJECTION_EVENTS = new Set(['UserPromptSubmit', 'Stop', 'PreToolUse']);
 const PROMPT_TEXT_KEEP = 200;
+/* How much ASSISTANT text to keep per prompt. note-uptake scores a supplied note by whether the
+ * answer carried the note's distinctive words, so it needs the answer itself — the tool_use
+ * blocks alone cannot show it. Generous because a long answer is exactly where a recalled note
+ * gets used, and bounded because a span can hold hundreds of KB of assistant output. */
+const ANSWER_TEXT_KEEP = 200000;
 const NUDGE_FAMILY = 'turn-end-nudge';
 const BLOCK_FAMILY = 'turn-end-block';
 const GIVEUP_FAMILY = 'turn-end-giveup';
@@ -138,6 +143,7 @@ function newPrompt(rec, text, line) {
     line,
     promptId: typeof rec.promptId === 'string' ? rec.promptId : null,
     text: text.slice(0, PROMPT_TEXT_KEEP),
+    answerText: '',     // assistant text of this span, accumulated below (note-uptake reads it)
     inject: [],          // { ts, family, seen, produced, event, stubbed, duties, giveupAfter }
     kbHintIds: new Set(),
     kbCalls: [],         // { ts, name, id? }
@@ -188,7 +194,12 @@ function scanRecords(records) {
       const content = (rec.message || {}).content;
       if (!Array.isArray(content) || !cur) return;
       for (const b of content) {
-        if (!b || typeof b !== 'object' || b.type !== 'tool_use') continue;
+        if (!b || typeof b !== 'object') continue;
+        // The answer's own words, for content-use scoring (see ANSWER_TEXT_KEEP).
+        if (b.type === 'text' && typeof b.text === 'string' && cur.answerText.length < ANSWER_TEXT_KEEP) {
+          cur.answerText += `${b.text}\n`;
+        }
+        if (b.type !== 'tool_use') continue;
         const name = String(b.name || '');
         const input = b.input && typeof b.input === 'object' ? b.input : {};
         bump(cur.tools, name);

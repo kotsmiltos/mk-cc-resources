@@ -13,7 +13,15 @@
  *   {
  *     id:      string                 // stable slug, used in config + the report
  *     title:   string                 // one line, shown in output
- *     surface: 'traces'|'checks'|'transcripts'|'steward'|'installs'   // which half of the context it reads
+ *     surface: 'traces'|'checks'|'transcripts'|'steward'|'installs'|'notes' // which half of the context it reads
+ *     writer?: string                // OPTIONAL: the plugin whose code writes this substrate.
+ *                                    // When the source comes back with nothing countable and
+ *                                    // that plugin was installed recently, the runner says so
+ *                                    // with the date. A zero from a writer that was not yet
+ *                                    // installed is not a finding — measured twice in one
+ *                                    // audit (lens.lines=0 over 13 dispatches that all
+ *                                    // predated the recorder's install), and both times the
+ *                                    // bare number argued for deleting something that works.
  *     keys:    string[]               // EVERY metric key it promises — the key registry (invariant 12)
  *     run(ctx, options) -> { metrics: { [key]: number|string|object|null }, notes: string[] }
  *   }
@@ -41,6 +49,7 @@ const SOURCES = [
   require('./tail-bytes'),
   require('./kb-pull'),
   require('./acted-on'),
+  require('./note-uptake'),
   require('./lens'),
   require('./checks'),
   require('./spawns'),
@@ -48,7 +57,10 @@ const SOURCES = [
   require('./briefing-vs-log'),
 ];
 
-const VALID_SURFACES = ['traces', 'checks', 'transcripts', 'steward', 'installs'];
+/* `notes` = the note BODIES the runner gathered (.claude/kb/captures, .claude/kb/extracted,
+ * .steward). A source scoring whether a SUPPLIED note was used needs the note's own words;
+ * its existence on disk is exactly the wrong signal. See lib/metrics/note-uptake.js. */
+const VALID_SURFACES = ['traces', 'checks', 'transcripts', 'steward', 'installs', 'notes'];
 
 /** Throws on a malformed source — a registry that silently drops one is a false clean. */
 function validate(source) {

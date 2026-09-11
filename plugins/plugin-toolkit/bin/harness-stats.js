@@ -149,6 +149,43 @@ function gatherSteward(root) {
   return { hasModel: fs.existsSync(path.join(dir, 'status.json')) || fs.existsSync(path.join(dir, 'state.md')) };
 }
 
+/* The note families a surfacing draws from — the only directories whose BODIES a metric source
+ * may need. Kept here, in the impure half, because a source never reads disk (invariant: the
+ * runner gathers once so no source can see a tree that moved under a sibling). */
+const NOTE_DIRS = [
+  path.join('.claude', 'kb', 'captures'),
+  path.join('.claude', 'kb', 'extracted'),
+  '.steward',
+];
+/* A single note body is prose; anything far larger is a ledger or a paste and would dominate a
+ * term profile without saying more about it. */
+const NOTE_BYTES_MAX = 400000;
+
+/**
+ * Note bodies keyed by project-relative path, forward-slashed to match what the traces record.
+ * note-uptake scores a SUPPLIED note by whether the answer carried its words, so it needs the
+ * words — file existence is exactly the wrong signal (measured 2026-09-11: touch-scoring
+ * reported 0% uptake where content scoring found 68%).
+ */
+function gatherNotes(root) {
+  const out = {};
+  for (const rel of NOTE_DIRS) {
+    let entries;
+    try { entries = fs.readdirSync(path.join(root, rel), { withFileTypes: true }); } catch (_e) { continue; }
+    for (const e of entries) {
+      if (!e.isFile() || !e.name.endsWith('.md')) continue;
+      const abs = path.join(root, rel, e.name);
+      let st;
+      try { st = fs.statSync(abs); } catch (_e) { continue; }
+      if (st.size > NOTE_BYTES_MAX) continue;
+      const text = readText(abs);
+      if (text === null) continue;
+      out[`${rel.split(path.sep).join('/')}/${e.name}`] = text;
+    }
+  }
+  return out;
+}
+
 /** Hook registrations by event: home settings + every ENABLED installed plugin's hooks.json. */
 function countHooks(hooksJson, into) {
   const hooks = hooksJson && hooksJson.hooks && typeof hooksJson.hooks === 'object' ? hooksJson.hooks : {};
@@ -165,6 +202,14 @@ function gatherInstalls(root, home) {
   const settings = readJson(path.join(home, SETTINGS_REL)) || {};
   const enabled = settings.enabledPlugins && typeof settings.enabledPlugins === 'object' ? settings.enabledPlugins : null;
   const installed = {};
+  /* WHEN each plugin was installed. The ledger has always carried `lastUpdated` and this
+   * function has always read it — to SORT by, and then discard. Keeping it closes a defect
+   * class that cost two false conclusions in one audit (2026-09-11): a metric reading zero
+   * because its WRITER was not installed for the window looks exactly like a mechanism that
+   * does nothing. `lens.lines = 0` over 13 dispatches was the lens recorder shipping
+   * 2026-09-09 and installing 2026-09-10T11:03Z — every dispatch predated it. Reported as a
+   * bare 0, that argues for deleting a mechanism that half the time refutes something real. */
+  const installedAt = {};
   const registeredHooks = {};
   countHooks(settings, registeredHooks);
   const plugins = ledger && ledger.plugins && typeof ledger.plugins === 'object' ? ledger.plugins : {};
@@ -175,6 +220,7 @@ function gatherInstalls(root, home) {
     if (!entry) continue;
     const name = key.split('@')[0];
     installed[name] = entry.version || null;
+    if (typeof entry.lastUpdated === 'string' && entry.lastUpdated) installedAt[name] = entry.lastUpdated;
     if (enabled && enabled[key] === false) continue;
     if (entry.installPath) countHooks(readJson(path.join(entry.installPath, 'hooks', 'hooks.json')), registeredHooks);
   }
@@ -186,7 +232,7 @@ function gatherInstalls(root, home) {
       if (m && typeof m.name === 'string' && typeof m.version === 'string') checkout[m.name] = m.version;
     }
   } catch (_e) { /* not a marketplace checkout */ }
-  return { installed, checkout: Object.keys(checkout).length ? checkout : null, registeredHooks, ledgerFound: Boolean(ledger) };
+  return { installed, installedAt, checkout: Object.keys(checkout).length ? checkout : null, registeredHooks, ledgerFound: Boolean(ledger) };
 }
 
 /**
@@ -243,6 +289,7 @@ function main() {
     transcripts: args.transcripts ? gatherTranscripts(root, args.projectsDir) : null,
     steward: gatherSteward(root),
     installs: gatherInstalls(root, args.home),
+    notes: gatherNotes(root),
   });
 
   const result = stats(ctx, config);

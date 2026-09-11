@@ -76,10 +76,42 @@ function stats(ctx, config = DEFAULT_CONFIG) {
       if (!source.keys.includes(k)) findings.push({ source: source.id, severity: 'warn', evidence: k, why: 'an undeclared key — register it in lib/metrics/index.js or drop it' });
     }
     for (const n of Array.isArray(produced.notes) ? produced.notes : []) notes.push({ source: source.id, note: String(n) });
+    const vintage = vintageNote(source, produced, ctx);
+    if (vintage) notes.push({ source: source.id, note: vintage });
   }
 
   return { metrics, findings, notes, ran, skipped, errored, missingKeys };
 }
+
+/*
+ * A ZERO FROM A WRITER THAT WAS NOT THERE IS NOT A FINDING.
+ *
+ * Measured 2026-09-11, twice in one audit, and both times the bare number argued for deleting
+ * something that works:
+ *   - `lens.lines = 0` across 13 dispatches — the recorder shipped 2026-09-09 and installed
+ *     2026-09-10T11:03Z; the latest dispatch was 10:48Z. Every one predated it.
+ *   - `judge.engine_mix.unknown = 41` — the field did not exist before 0.9.0.
+ * A human caught both by hand. Nothing in the scorecard said so, and the next reader would have
+ * had to catch them again.
+ *
+ * THE SPLIT OF RESPONSIBILITY, and it is why this is four lines instead of a heuristic: only the
+ * SOURCE can tell a suspicious empty from a legitimate one — "6 dispatches, 0 trace lines" is
+ * vintage-shaped, "0 dispatches, 0 lines" is just a quiet project, and no rule over the values
+ * alone separates them (the first attempt here required every value to be empty and therefore
+ * never fired on the very case it was built for, because `lens.dispatches` was 6). So the source
+ * raises `vintage: true`, and the runner — which alone holds the install ledger — supplies the
+ * date. Never suppresses a number, never invents one; adds the sentence a reader would otherwise
+ * have to go and discover.
+ */
+function vintageNote(source, produced, ctx) {
+  if (!source.writer || !produced || produced.vintage !== true) return null;
+  const at = ctx.installs && ctx.installs.installedAt && ctx.installs.installedAt[source.writer];
+  if (typeof at !== 'string' || !at) return null;
+  return `VINTAGE: ${source.writer} was installed ${at} — an empty count here means nothing was `
+    + 'written before that, not that the mechanism did nothing. Re-read with --since to window it '
+    + 'to the writer\'s own data.';
+}
+
 
 const fmtVal = (v) => {
   if (v === null || v === undefined) return 'n/a';

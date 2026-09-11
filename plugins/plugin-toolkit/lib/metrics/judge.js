@@ -39,6 +39,9 @@ module.exports = {
   id: 'judge',
   title: 'context-recall judge: engine, wall-clock, cost, empty picks, judge-vs-ranker agreement',
   surface: 'traces',
+  // The plugin whose code writes the substrate below. Lets the runner say "installed <date>"
+  // instead of letting a vintage zero read as a dead mechanism (see lib/harness-stats.js).
+  writer: 'turn-end',
   keys: ['judge.fires', 'judge.ms.p50', 'judge.ms.p95', 'judge.engine_mix', 'judge.lean_mix', 'judge.cost_usd_total', 'judge.chosen_empty_pct', 'judge.agreement_pct', 'judge.agreement_n'],
   run(ctx) {
     const te = ctx.traces['turn-end'];
@@ -50,6 +53,12 @@ module.exports = {
     if (!agree.length) notes.push('agreement needs v1 duty lines (judge_chosen + ranker_top) — none in the window yet');
     const msValues = f.map((x) => x.ms).filter((v) => typeof v === 'number');
     if (f.length && !msValues.length) notes.push('fires carry no ms (pre-0.7.0 lines)');
+    /* `engine: unknown` is a LINE VINTAGE, not a broken writer — turn-end ≥ 0.9.0 stamps the
+     * engine on every recall return, so an unknown can only be a pre-0.9.0 hook line that
+     * predates the field. Said here because the bare count reads like a live defect and sent
+     * one audit hunting a bug that did not exist (2026-09-11). */
+    const unknownEngines = f.filter((x) => x.engine === 'unknown').length;
+    if (unknownEngines) notes.push(`${unknownEngines} of ${f.length} fire(s) predate the engine field (pre-0.9.0 lines) — not a writer fault; the share falls as new lines land`);
     return {
       metrics: {
         'judge.fires': f.length,

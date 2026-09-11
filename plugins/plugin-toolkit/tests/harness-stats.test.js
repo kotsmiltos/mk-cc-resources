@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------- registry contract
-check('registry loads 13 sources, every one valid, no duplicate ids or keys', registry.all().length === 13 && registry.all().every((s) => registry.validate(s).length === 0));
+check('registry loads 14 sources, every one valid, no duplicate ids or keys', registry.all().length === 14 && registry.all().every((s) => registry.validate(s).length === 0));
 check('key registry maps every declared key to exactly one source', Object.keys(registry.keyRegistry()).length === registry.all().reduce((n, s) => n + s.keys.length, 0));
 check('validate rejects a bad surface', registry.validate({ id: 'x', title: 't', surface: 'moon', keys: ['k'], run() {} }).length === 1);
 check('validate rejects empty keys (a source without keys measures nothing)', registry.validate({ id: 'x', title: 't', surface: 'traces', keys: [], run() {} }).length === 1);
@@ -76,6 +76,37 @@ const emptyCtx = { traces: {}, checks: [], transcripts: { sessions: [] }, stewar
     registry.all = all;
   }
 }
+{
+  // VINTAGE: a zero from a writer that was not installed for the window is not a finding.
+  // Measured 2026-09-11: lens.lines read 0 across 13 dispatches because the recorder shipped
+  // 09-09 and installed 09-10T11:03Z, hours AFTER the last dispatch. A human caught it by hand;
+  // nothing in the scorecard said so. Only the source can tell a suspicious empty from a quiet
+  // project, so it raises `vintage` and the runner supplies the date from the install ledger.
+  const all = registry.all;
+  const src = (vintage) => ({ id: 'vint', title: 't', surface: 'traces', writer: 'some-plugin', keys: ['vint.k'], run() { return { metrics: { 'vint.k': 0 }, notes: [], vintage }; } });
+  const ctxWith = (installedAt) => ({ ...emptyCtx, installs: { installed: {}, installedAt } });
+  try {
+    registry.all = () => [src(true)];
+    let r = stats(ctxWith({ 'some-plugin': '2026-09-10T11:03:50.172Z' }));
+    check('runner: a source-declared vintage empty is annotated with the install date',
+      r.notes.some((n) => n.source === 'vint' && /VINTAGE: some-plugin was installed 2026-09-10T11:03:50/.test(n.note)));
+    check('runner: the vintage note never suppresses the number itself', r.metrics['vint.k'].value === 0);
+
+    r = stats(ctxWith({}));
+    check('runner: no install date, no vintage claim (never guess a date)', !r.notes.some((n) => /VINTAGE/.test(n.note)));
+
+    registry.all = () => [src(false)];
+    r = stats(ctxWith({ 'some-plugin': '2026-09-10T11:03:50.172Z' }));
+    check('runner: a source that did NOT raise vintage is not annotated', !r.notes.some((n) => /VINTAGE/.test(n.note)));
+
+    registry.all = () => [{ ...src(true), writer: undefined }];
+    r = stats(ctxWith({ 'some-plugin': '2026-09-10T11:03:50.172Z' }));
+    check('runner: a source with no declared writer is never annotated', !r.notes.some((n) => /VINTAGE/.test(n.note)));
+  } finally {
+    registry.all = all;
+  }
+}
+
 check('drift is a signed percentage, null when not comparable', drift(110, 100) === 10 && drift(90, 100) === -10 && drift(null, 1) === null && drift(0, 0) === 0);
 {
   const r = stats(emptyCtx);
@@ -164,7 +195,9 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
         t({ plugin: 'turn-end', duty: 'context-recall', version: '0.9.0', ms: 20000, decision: 'chosen:2', bytes: 900, engine: 'judge', cost_usd: 0.02, lean: 'applied', surfaced: ['a.md', 'b.md'], judge_chosen: ['kb::a', 'kb::b'], ranker_top: ['kb::a', 'kb::z'] }),
         t({ plugin: 'turn-end', duty: 'context-recall', version: '0.9.0', ms: 3, decision: 'none', bytes: 0, engine: 'fallback-ranker', surfaced: [], judge_chosen: null, ranker_top: ['kb::q'] }),
         t({ plugin: 'turn-end', duty: 'acted-on', version: '0.9.0', ms: 4, decision: 'derived', bytes: 0, acted_on: { span: {}, sources: { 'turn-end:context-recall': { surfaced: 2, touched: 1 }, 'kb:kb-pull': { surfaced: 3, touched: 0 } } } }),
-        t({ plugin: 'turn-end', duty: 'acted-on', version: '0.9.0', ms: 4, decision: 'derived', bytes: 0, acted_on: { span: {}, sources: { 'kb:kb-pull': { surfaced: 1, touched: 1 }, 'verifiability-lens': { surfaced: 1, touched: 1 } } } }),
+        // Per-kind shape (0.10.0): a source reports `used` + `unknown` + its `kind`, because
+        // one scorer for supply and pointer is what made this key read 0 while uptake was 68%.
+        t({ plugin: 'turn-end', duty: 'acted-on', version: '0.10.0', ms: 4, decision: 'derived', bytes: 0, acted_on: { span: {}, sources: { 'kb:kb-pull': { kind: 'pointer', surfaced: 1, used: 1, unknown: 0 }, 'verifiability-lens': { kind: 'pointer', surfaced: 1, used: 1, unknown: 0 } } } }),
       ],
     },
     kb: { lines: [
@@ -191,7 +224,18 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   check('judge: agreement = |judge ∩ ranker| / |judge| over v1 lines with both (1 of 2 = 50%)', v('judge.agreement_pct') === 50 && v('judge.agreement_n') === 1);
   check('tail-bytes: emitting fires, bytes from emitted_chars or bytes, share under the 9.9 KB bound, action mix', v('tail.fires') === 3 && v('tail.fires_emitting') === 2 && v('tail.bytes.max') === 12000 && v('tail.under_bound_pct') === 50 && v('tail.action_mix').advise === 1 && v('tail.action_mix').allow === 1);
   check('kb-pull: both line shapes count as fires; bytes only from lines that carry them; digest mix; digest on disk', v('kb_pull.fires') === 3 && v('kb_pull.bytes.max') === 8100 && v('kb_pull.over_budget_pct') === 0 && v('kb_pull.digest_mix').cut === 1 && v('kb_pull.digest_mix').true === 1 && v('kb_pull.digest_bytes_on_disk') === 2772);
-  check('acted-on: sums per source over spans', v('acted_on.spans') === 2 && v('acted_on.recall.pct') === 50 && v('acted_on.kb_pull.surfaced') === 4 && v('acted_on.kb_pull.touched') === 1 && v('acted_on.kb_pull.pct') === 25 && v('acted_on.lens.pct') === 100);
+  // Span 1 is a pre-0.10 line carrying only `touched`; span 2 carries the per-kind verdict.
+  // The legacy entries become UNKNOWN, never zero-used — publishing their false zero is the
+  // exact defect (recall showed 0% in every project while real uptake was 68%).
+  check('acted-on: per-kind verdicts summed; a pre-0.10 "touched" entry is unknown, not zero-used',
+    v('acted_on.spans') === 2
+    && v('acted_on.recall.surfaced') === 2 && v('acted_on.recall.used') === 0 && v('acted_on.recall.unknown') === 2
+    && v('acted_on.recall.pct') === null                       // nothing scorable => null, NOT 0%
+    && v('acted_on.kb_pull.surfaced') === 4 && v('acted_on.kb_pull.used') === 1 && v('acted_on.kb_pull.unknown') === 3
+    && v('acted_on.kb_pull.pct') === 100                       // 1 of the 1 unit that could be judged
+    && v('acted_on.lens.pct') === 100
+    && v('acted_on.kinds')['kb_pull'] === 'pointer'
+    && r.notes.some((n) => n.source === 'acted-on' && /pre-0\.10/.test(n.note)));
   check('lens: lines, parsed share, verified/refuted/escalations sums, ms p50; dispatches need transcripts', v('lens.lines') === 2 && v('lens.parsed_pct') === 50 && v('lens.verified') === 7 && v('lens.escalations') === 1 && v('lens.dispatches') === 0 && v('trace.lines_per_dispatch') === null);
   check('checks: lines, sessions, checks, failed, mutations, per session', v('checks.lines') === 4 && v('checks.sessions') === 2 && v('checks.checks') === 2 && v('checks.failed') === 1 && v('checks.mutations') === 1 && v('checks.checks_per_session') === 1);
   check('running-vs-installed: stale lines counted among versioned lines; installed vs checkout drift named', v('running.stale_trace_lines') === 1 && v('running.versioned_trace_lines') === 5 && v('running.installed_vs_checkout').kb.checkout === '0.14.0' && !('turn-end' in v('running.installed_vs_checkout')));
@@ -245,7 +289,7 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   const v = (k) => out.metrics[k].value;
   check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 2 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 1);
   check('CLI: traces gathered by shape per plugin dir; malformed lines counted, not fatal', out.traces['turn-end'].legacy === 1 && out.traces['turn-end'].v1 === 1 && out.traces['turn-end'].malformed === 1 && out.traces.kb.v1 === 1);
-  check('CLI: every source ran, no key missing', out.ran.length === 13 && out.missingKeys.length === 0 && out.errored.length === 0);
+  check('CLI: every source ran, no key missing', out.ran.length === 14 && out.missingKeys.length === 0 && out.errored.length === 0);
   check('CLI: hints followed strict from the fake transcript', v('hints.followed_strict') === 1 && v('hints.prompts_with_hints') === 1);
   check('CLI: registered hooks = home settings + ENABLED plugins only (disabled plugin skipped)', v('spawns.registered.UserPromptSubmit') === 3 && v('spawns.registered.Stop') === 1);
   check('CLI: installed versions read from the ledger; checkout null outside a marketplace repo', v('running.installed').on === '1.0.0' && eq(v('running.installed_vs_checkout'), {}));
@@ -255,22 +299,26 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   {
     // The shipped default pick (owner delegated it, 2026-09-10): five keys, in this order, from defaults/harness-stats.json.
     const shipped = JSON.parse(fs.readFileSync(cli.DEFAULT_CONFIG_FILE, 'utf8'));
-    check('shipped defaults carry the five delegated line keys, every one registered', eq(shipped.line.keys, ['hook_bytes.per_prompt.p50', 'hook_bytes.per_prompt.p95', 'hints.strict_pct', 'judge.ms.p95', 'turn_end.blocks_per_prompt']) && shipped.line.keys.every((k) => k in registry.keyRegistry()));
+    // Revised 2026-09-11: the pick leads with QUALITY, and carries no byte count. The two keys
+    // it dropped (hook_bytes p50/p95, hints.strict_pct) headlined cost and a false negative —
+    // strict_pct asks whether a file was opened of a mechanism that injects the file's body.
+    check('shipped defaults carry the five delegated line keys, every one registered', eq(shipped.line.keys, ['uptake.used_pct', 'uptake.empty_fires', 'lens.refuted', 'turn_end.blocks_per_prompt', 'judge.ms.p95']) && shipped.line.keys.every((k) => k in registry.keyRegistry()));
+    check('the shipped line pick headlines no byte count', shipped.line.keys.every((k) => !/bytes|_kb$/.test(k)));
     const l = run(['--line']).trim();
-    check('CLI: --line prints the shipped default keys when the project has no config', l.startsWith('[instr] harness: hook_bytes.per_prompt.p50=') && /hints\.strict_pct=100/.test(l) && /turn_end\.blocks_per_prompt=0/.test(l));
+    check('CLI: --line prints the shipped default keys when the project has no config', l.startsWith('[instr] harness: uptake.used_pct=') && /turn_end\.blocks_per_prompt=0/.test(l));
   }
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ line: { keys: ['hook_bytes.prompts', 'hints.strict_pct'] } }));
   check('CLI: a project config replaces the line keys wholesale', /^\[instr\] harness: hook_bytes\.prompts=1 · hints\.strict_pct=100$/.test(run(['--line']).trim()));
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), '{not json');
-  check('CLI: a malformed project config is reported and the shipped defaults stand', run(['--line']).trim().startsWith('[instr] harness: hook_bytes.per_prompt.p50='));
+  check('CLI: a malformed project config is reported and the shipped defaults stand', run(['--line']).trim().startsWith('[instr] harness: uptake.used_pct='));
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ sources: { lens: { enabled: false } } }));
-  check('CLI: project sources merge by id over the shipped defaults; line keys stay shipped when unstated', (() => { const j = JSON.parse(run(['--json'])); return j.skipped.includes('lens') && run(['--line']).trim().startsWith('[instr] harness: hook_bytes.per_prompt.p50='); })());
+  check('CLI: project sources merge by id over the shipped defaults; line keys stay shipped when unstated', (() => { const j = JSON.parse(run(['--json'])); return j.skipped.includes('lens') && run(['--line']).trim().startsWith('[instr] harness: uptake.used_pct='); })());
   check('CLI: --no-transcripts skips the transcript sources and names their keys', (() => { const j = JSON.parse(run(['--json', '--no-transcripts'])); return j.skipped.includes('hook-bytes') && j.missingKeys.some((m) => m.key === 'hints.strict_pct'); })());
   check('CLI: --since / --until window the numbers', JSON.parse(run(['--json', '--since', '2026-09-07'])).metrics['hook_bytes.prompts'].value === 0);
   let bad = 0;
   try { execFileSync(process.execPath, [script, '--nope'], { encoding: 'utf8', stdio: 'pipe' }); } catch (err) { bad = err.status; }
   check('CLI: an unknown argument exits 2', bad === 2);
-  check('projectSlug replaces every non-alphanumeric character with a dash (the platform naming)', cli.projectSlug('C:\\Users\\x\\my-repo').startsWith('C--Users-x-my-repo'));
+  check('projectSlug replaces every non-alphanumeric character with a dash (the platform naming)', cli.projectSlug('C:\\Users\\x\\my-repo').includes('C--Users-x-my-repo'));
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

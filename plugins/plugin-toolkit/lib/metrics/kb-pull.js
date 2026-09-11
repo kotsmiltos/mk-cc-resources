@@ -19,6 +19,9 @@ module.exports = {
   id: 'kb-pull',
   title: 'kb-pull injection size, digest mode, hints per fire',
   surface: 'traces',
+  // The plugin whose code writes the substrate below. Lets the runner say "installed <date>"
+  // instead of letting a vintage zero read as a dead mechanism (see lib/harness-stats.js).
+  writer: 'kb',
   keys: ['kb_pull.fires', 'kb_pull.bytes.p50', 'kb_pull.bytes.p95', 'kb_pull.bytes.max', 'kb_pull.over_budget_pct', 'kb_pull.digest_mix', 'kb_pull.hints_per_fire', 'kb_pull.digest_bytes_on_disk'],
   run(ctx) {
     const kb = ctx.traces.kb;

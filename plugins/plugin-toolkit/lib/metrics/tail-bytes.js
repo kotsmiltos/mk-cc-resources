@@ -19,6 +19,9 @@ module.exports = {
   id: 'tail-bytes',
   title: 'turn-end tail size per fire vs the measured ~9.9 KB inline bound',
   surface: 'traces',
+  // The plugin whose code writes the substrate below. Lets the runner say "installed <date>"
+  // instead of letting a vintage zero read as a dead mechanism (see lib/harness-stats.js).
+  writer: 'turn-end',
   keys: ['tail.fires', 'tail.fires_emitting', 'tail.bytes.p50', 'tail.bytes.p95', 'tail.bytes.max', 'tail.under_bound_pct', 'tail.action_mix'],
   run(ctx) {
     const te = ctx.traces['turn-end'];

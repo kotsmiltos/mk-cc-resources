@@ -18,6 +18,9 @@ module.exports = {
   id: 'turn-end-fires',
   title: 'turn-end nudges / blocks / give-ups per owner prompt',
   surface: 'transcripts',
+  // The plugin whose code writes the substrate below. Lets the runner say "installed <date>"
+  // instead of letting a vintage zero read as a dead mechanism (see lib/harness-stats.js).
+  writer: 'turn-end',
   keys: [
     'turn_end.prompts', 'turn_end.nudges', 'turn_end.blocks', 'turn_end.giveups', 'turn_end.prompts_with_block',
     'turn_end.prompts_with_3plus_blocks', 'turn_end.nudges_per_prompt', 'turn_end.blocks_per_prompt',
