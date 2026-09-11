@@ -51,7 +51,8 @@ const SOURCES = [
   require('./doc-version'),
   require('./bundle-paths'),
   require('./referenced-path'),
-  require('./capability-reach')
+  require('./capability-reach'),
+  require('./vendored-entrypoint')
 ];
 
 /** Throws on a malformed source — a registry that silently drops one reports a false clean. */

@@ -101,9 +101,41 @@ function buildContext(root) {
     bundlePath: BUNDLE_REL,
     plugins,
     docs,
+    vendored: gatherVendored(root, plugins),
     workflows: readTextFiles(path.join(root, WORKFLOWS_REL), (n) => /\.ya?ml$/i.test(n)),
     exists: (rel) => fs.existsSync(path.join(root, rel))
   });
+}
+
+/*
+ * Every dependency a plugin VENDORS, with the entry points its package.json promises.
+ *
+ * Why this is gathered at all (found 2026-09-11): an installed plugin cannot run `npm install`,
+ * so a plugin that needs a library commits it. essense-flow vendored js-yaml 4.1.1 — but its
+ * own .gitignore ignores `node_modules/`, so the 40 force-added files went in WITHOUT `dist/`,
+ * and js-yaml 4's exports map resolves `import "js-yaml"` to `./dist/js-yaml.mjs`. Result:
+ * `lib/state.js` threw ERR_MODULE_NOT_FOUND in EVERY installed copy, which killed
+ * `essense-flow-tools` — the single gateway for every state op — in every install, silently
+ * (the hook's own handler writes that class of failure to stderr and exits 0). Nothing in the
+ * repo noticed, because the checkout that the tests run against had the file locally.
+ */
+const NODE_MODULES = 'node_modules';
+
+function gatherVendored(root, plugins) {
+  const out = [];
+  for (const plugin of plugins) {
+    const nmRel = path.posix.join(plugin.dir, NODE_MODULES);
+    let entries;
+    try { entries = fs.readdirSync(path.join(root, nmRel), { withFileTypes: true }); } catch (_e) { continue; }
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name.startsWith('.')) continue;
+      const pkgRel = path.posix.join(nmRel, e.name, 'package.json');
+      let manifest = null;
+      try { manifest = JSON.parse(fs.readFileSync(path.join(root, pkgRel), 'utf8')); } catch (_e) { /* unreadable = the claim's finding */ }
+      out.push({ plugin: plugin.name, pkg: e.name, dirRel: path.posix.join(nmRel, e.name), manifestPath: pkgRel, manifest });
+    }
+  }
+  return out;
 }
 
 function main(argv) {

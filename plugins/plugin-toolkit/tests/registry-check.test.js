@@ -216,6 +216,57 @@ check('capability-reach stays silent when everything lives in a declared surface
   assert.ok(!found.includes('capability-reach'), found.join(','));
 });
 
+// ---------- vendored-entrypoint ----------
+
+check('NEGATIVE CONTROL vendored-entrypoint: the exact js-yaml defect is caught and FAILS the run', () => {
+  // MEASURED 2026-09-11, reproduced verbatim: essense-flow vendors js-yaml 4.1.1 because an
+  // installed plugin cannot npm install. Its .gitignore ignores node_modules/, so the
+  // force-added files went in WITHOUT dist/ — and the import condition names exactly that file.
+  // Every installed copy threw ERR_MODULE_NOT_FOUND, killing essense-flow-tools (the single
+  // gateway for every state op) in every install, silently.
+  const vendored = [{
+    plugin: 'alpha',
+    pkg: 'js-yaml',
+    dirRel: 'plugins/alpha/node_modules/js-yaml',
+    manifestPath: 'plugins/alpha/node_modules/js-yaml/package.json',
+    manifest: { exports: { '.': { import: './dist/js-yaml.mjs', require: './index.js' } } },
+  }];
+  // index.js committed, dist/js-yaml.mjs NOT — the tree that shipped.
+  const c = ctx({ vendored, exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin/go.js', 'plugins/alpha/node_modules/js-yaml/index.js'].includes(rel) });
+  const r = checker.check(c);
+  const f = r.mismatches.find((m) => m.source === 'vendored-entrypoint');
+  assert.ok(f, `mismatches: ${r.mismatches.map((x) => x.source).join(',')}`);
+  assert.match(f.where, /\(exports\["\."\]\.import\)/);
+  assert.strictEqual(f.claimed, './dist/js-yaml.mjs');
+  assert.match(f.why, /cannot npm install/);
+  // A wrong FACT, not a decision: an install that cannot load its library is broken, so it fails.
+  assert.strictEqual(r.clean, false);
+});
+
+check('vendored-entrypoint: a require-only consumer of the same half-vendored package is NOT a finding', () => {
+  // essense-autopilot loads the identical tree through require("js-yaml") -> index.js, which is
+  // present, and is genuinely fine. The check is per CONDITION; flagging the package would cry
+  // wolf on a plugin that works.
+  const vendored = [{
+    plugin: 'alpha', pkg: 'argparse', dirRel: 'plugins/alpha/node_modules/argparse',
+    manifestPath: 'plugins/alpha/node_modules/argparse/package.json',
+    manifest: { main: './index.js' }, // no exports map at all
+  }];
+  const c = ctx({ vendored, exists: (rel) => ['plugins/alpha/skills', 'plugins/alpha/bin/go.js', 'plugins/alpha/node_modules/argparse/index.js'].includes(rel) });
+  assert.ok(!ids(checker.check(c)).includes('vendored-entrypoint'));
+});
+
+check('vendored-entrypoint: an unreadable vendored manifest is itself the finding', () => {
+  const vendored = [{ plugin: 'alpha', pkg: 'broken', dirRel: 'plugins/alpha/node_modules/broken', manifestPath: 'plugins/alpha/node_modules/broken/package.json', manifest: null }];
+  const f = checker.check(ctx({ vendored })).mismatches.find((m) => m.source === 'vendored-entrypoint');
+  assert.ok(f);
+  assert.match(f.actual, /missing or unreadable/);
+});
+
+check('vendored-entrypoint stays silent with no vendored dependencies', () => {
+  assert.ok(!ids(checker.check(ctx())).includes('vendored-entrypoint'));
+});
+
 // ---------- failure handling ----------
 
 check('a crashed claim source is REPORTED and fails the run', () => {
