@@ -58,14 +58,35 @@ function resolveProjectRoot(start, home) {
  * regenerates briefing.md LAST in an integration pass, so same-pass log/model writes land
  * BEFORE it and never count as "newer".
  */
+/*
+ * In a git WORKTREE, `.git` is a FILE holding `gitdir: <path>`, not a directory. Both readers
+ * below used to join `.git/HEAD` blindly, so in a worktree they threw ENOTDIR into their own
+ * catch and returned nothing — the `git:` instrument and the HEAD-staleness input vanished with
+ * no error and no clue. The root walk at the top of this file already probes `.git` with
+ * existsSync for exactly that reason; these two paths had not been taught the same lesson.
+ */
+function gitDir(root) {
+  const dot = path.join(root, '.git');
+  try {
+    const st = fs.statSync(dot);
+    if (st.isDirectory()) return dot;
+    const head = fs.readFileSync(dot, 'utf8').trim();
+    const m = /^gitdir:\s*(.+)$/m.exec(head);
+    if (!m) return dot;
+    const target = m[1].trim();
+    return path.isAbsolute(target) ? target : path.resolve(root, target);
+  } catch (_e) { return dot; }
+}
+
 function gitHeadMtime(root) {
   try {
-    const headFile = path.join(root, '.git', 'HEAD');
+    const gd = gitDir(root);
+    const headFile = path.join(gd, 'HEAD');
     const head = fs.readFileSync(headFile, 'utf8').trim();
     if (head.startsWith('ref: ')) {
-      const refPath = path.join(root, '.git', ...head.slice(5).trim().split('/'));
+      const refPath = path.join(gd, ...head.slice(5).trim().split('/'));
       if (fs.existsSync(refPath)) return fs.statSync(refPath).mtimeMs;
-      const packed = path.join(root, '.git', 'packed-refs');
+      const packed = path.join(gd, 'packed-refs');
       if (fs.existsSync(packed)) return fs.statSync(packed).mtimeMs;
     }
     return fs.statSync(headFile).mtimeMs;
@@ -137,13 +158,14 @@ function stalenessLine(projectRoot, stewardRoot) {
  */
 function instrGit(projectRoot) {
   try {
-    const head = fs.readFileSync(path.join(projectRoot, '.git', 'HEAD'), 'utf8').trim();
+    const gd = gitDir(projectRoot);
+    const head = fs.readFileSync(path.join(gd, 'HEAD'), 'utf8').trim();
     if (!head.startsWith('ref: ')) return `git: detached ${head.slice(0, 7)}`;
     const refRel = head.slice(5).trim();
     const branch = refRel.split('/').pop();
     let sha = '';
     try {
-      sha = fs.readFileSync(path.join(projectRoot, '.git', ...refRel.split('/')), 'utf8').trim().slice(0, 7);
+      sha = fs.readFileSync(path.join(gd, ...refRel.split('/')), 'utf8').trim().slice(0, 7);
     } catch (_e) { /* packed refs — branch alone still informs */ }
     return `git: ${branch}${sha ? ` @ ${sha}` : ''}`;
   } catch (_e) { return ''; }

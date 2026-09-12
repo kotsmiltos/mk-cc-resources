@@ -4,6 +4,11 @@ All notable changes to **steward** are recorded here, newest first, in the terms
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-09-12
+
+### Fixed
+- The briefing goes blind in a git worktree no longer. In a worktree `.git` is a FILE holding `gitdir: <path>`, not a directory; `instrGit` and `gitHeadMtime` both joined `.git/HEAD` blindly, threw ENOTDIR into their own catch, and returned nothing — so the `git:` instrument and the HEAD-staleness input vanished with no error and no clue. A `gitDir()` resolver follows the indirection. The root walk at the top of the same file had always probed `.git` with `existsSync` for exactly this reason; these two readers had not been taught the lesson. Flagged by the 2026-09-06 audit, uncaught by any test until now.
+
 ## [0.6.0] - 2026-09-11
 
 ### Fixed

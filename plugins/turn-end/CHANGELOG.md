@@ -4,6 +4,12 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-09-12
+
+### Fixed
+- The exec ledger no longer truncates silently. `tool-record.js` cut `cmd` at 300 chars and file lists at 10 with no marker, while its own `truncateSample` had always marked its cut with `…[+N]`. A gate invoked at the TAIL of a long compound command therefore read as never run to every consumer — and on 2026-09-12 that silence was used to refute two gates that had in fact run and passed. A ledger that drops evidence without saying so manufactures false negatives, the exact mirror of the false-clean it exists to catch. `cmd` is now marked, and `files.dropped` counts what fell off the cap (absent when nothing did). `classify()` always read the full command, so `kind` was never affected.
+- `session-digest` can now observe branch (3) of its own ask. The ask offered "if the turn genuinely produced nothing worth keeping, say so in one line", but `satisfied()` had exactly two arms and both required the digest FILE to be written or touched — so a turn that correctly took that branch re-armed the duty and escalated to a `block`, leaving a no-op bullet as the only way out. `NO_OP_MARKERS` (an open registry, so a new phrasing is one entry) makes the stated no-op checkable. Same class as the 09-11 `ask()` finding: a duty's ask is executable instruction, so every branch it offers must be answerable by its own check.
+
 ## [0.12.0] - 2026-09-12
 
 ### Added

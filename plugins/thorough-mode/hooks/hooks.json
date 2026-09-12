@@ -1,5 +1,5 @@
 {
-  "description": "Detects ++ or @thorough in user prompts and injects thoroughness instructions",
+  "description": "Detects prompt-modifier keywords (++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc) and injects the matching behavioural protocol; also hints the modifier when the intent is typed without the keyword. Stands down on machine-authored prompts.",
   "hooks": {
     "UserPromptSubmit": [
       {

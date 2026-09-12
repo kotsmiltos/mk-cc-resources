@@ -86,6 +86,40 @@ function classify(command) {
   return 'other';
 }
 
+/*
+ * A cut that is not MARKED is a cut nobody can see. `truncateSample` below has always marked
+ * its own (`…[+N]`); `cmd` and the file lists did not, so a gate invoked at the tail of a long
+ * compound command read as NEVER RUN to every consumer of this ledger. Measured 2026-09-12:
+ * that silence was used to refute two gates that had in fact run and passed. A ledger that
+ * drops evidence without saying so manufactures FALSE NEGATIVES — the exact mirror of the
+ * false-clean this file exists to catch. `classify()` still sees the FULL command, so `kind`
+ * is unaffected by the cut.
+ */
+/* `dropped` appears only when something WAS dropped: an always-present zero is noise. */
+function filesField(files) {
+  const reads = cappedFiles(files.reads);
+  const writes = cappedFiles(files.writes);
+  const out = { reads: reads.kept, writes: writes.kept };
+  if (reads.dropped || writes.dropped) {
+    out.dropped = { reads: reads.dropped, writes: writes.dropped };
+  }
+  return out;
+}
+
+function truncateCmd(command) {
+  const text = String(command || '');
+  return text.length > MAX_CMD_CHARS
+    ? `${text.slice(0, MAX_CMD_CHARS)}…[+${text.length - MAX_CMD_CHARS}]`
+    : text;
+}
+
+/* Same principle for the file lists: keep the cap, NAME what fell off it. */
+function cappedFiles(list) {
+  const kept = list.slice(0, MAX_FILES_PER_KIND);
+  const dropped = Math.max(0, list.length - kept.length);
+  return { kept, dropped };
+}
+
 function truncateSample(value) {
   if (typeof value === 'string') return value.length > MAX_SAMPLE_TEXT_CHARS ? `${value.slice(0, MAX_SAMPLE_TEXT_CHARS)}…[+${value.length - MAX_SAMPLE_TEXT_CHARS}]` : value;
   if (Array.isArray(value)) return value.slice(0, 5).map(truncateSample);
@@ -134,9 +168,9 @@ function lineFor(payload, now = new Date()) {
     session_id: typeof payload.session_id === 'string' ? payload.session_id : null,
     prompt_id: typeof payload.prompt_id === 'string' ? payload.prompt_id : null,
     tool: typeof payload.tool_name === 'string' ? payload.tool_name : null,
-    cmd: command.slice(0, MAX_CMD_CHARS),
+    cmd: truncateCmd(command),
     kind: command ? classify(command) : 'other',
-    files: { reads: files.reads.slice(0, MAX_FILES_PER_KIND), writes: files.writes.slice(0, MAX_FILES_PER_KIND) },
+    files: filesField(files),
     exit,
     ok: event === 'PostToolUse' && (exit === null || exit === 0),
     payload_keys: Object.keys(payload),
@@ -166,4 +200,6 @@ if (require.main === module) {
   main().catch(() => process.exit(0));
 }
 
-module.exports = { lineFor, parseExit, classify, CHECKS_REL, SAMPLES_REL, STATE_REL };
+module.exports = {
+  truncateCmd,
+  filesField, lineFor, parseExit, classify, CHECKS_REL, SAMPLES_REL, STATE_REL };

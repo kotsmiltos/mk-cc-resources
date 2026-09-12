@@ -55,6 +55,15 @@ lib/detectors/          # the extension surface: index.js registry + one module 
                         #   missing/extra markers; holds no canonical of its own — the
                         #   invariant is sameness; a test fixture must not spell the constant
                         #   name literally or the live scan reads it as a copy).
+                        #   control-char (1.18.0: a RAW control byte in tracked source —
+                        #   a word-boundary escape arriving as literal 0x08 via a heredoc
+                        #   compiles, loads and greps clean while the regex means something
+                        #   else; measured 3x in one sitting, caught only by `cat -v`. Names
+                        #   the codepoint AND the sed|cat -v that reveals it. Tab/newline/CR
+                        #   excluded; fixtures/ __fixtures__/ testdata/ skipped. First run
+                        #   found 11 live bytes, all DELIBERATE sentinels written raw —
+                        #   converted to unicode escapes, not allowlisted: the value was fine,
+                        #   the FORM hid it).
                         #   Does NOT cover: uncommitted
                         #   circling (review rounds leave no commits), circling that
                         #   migrates across files, `| head -N` truncation.
@@ -63,7 +72,7 @@ bin/repo-guard.js       # CLI adapter: gathers tracked files + git history, prin
                         #   0 clean / 1 blocking / 2 cannot-run. Skips vendored trees.
                         #   Config .claude/repo-guard.json merges BY DETECTOR ID over
                         #   defaults/repo-guard.json; malformed config THROWS
-tests/repo-guard.test.js # 94 checks, in-memory fixtures only — a guard whose tests read the
+tests/repo-guard.test.js # 104 checks, in-memory fixtures only — a guard whose tests read the
                         #   tree it guards passes for the wrong reason the day it changes
 lib/test-sweep.js       # PURE plan + classify + summarise; execution is INJECTED, which is
                         #   what lets the whole policy be tested without running a suite.

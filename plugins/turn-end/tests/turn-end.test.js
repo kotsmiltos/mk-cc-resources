@@ -2647,6 +2647,61 @@ check('fewer-clicks never hardens the tail', () => {
   assert.strictEqual(fewerClicks.severity, 'advise', 'a prose heuristic with no escape hatch must not block');
 });
 
+// ---- session-digest: every branch the ask OFFERS must be observable by its own check ----
+
+check('a stated no-op satisfies the digest duty (branch 3 of its own ask)', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'Answered a question about the schema; this turn produced nothing worth keeping.' });
+  assert.strictEqual(sessionDigest.satisfied(ctx), true);
+});
+
+check('the no-op wording is an open set, not one magic phrase', () => {
+  for (const msg of [
+    'Nothing worth keeping from this turn.',
+    'No digest-worthy outcome here.',
+    'Nothing new to capture — it was a read-only pass.',
+    'This turn produced nothing that changes the model.',
+  ]) {
+    assert.strictEqual(sessionDigest.statedNoOp(fakeCtx({ lastAssistantMessage: msg })), true, msg);
+  }
+});
+
+check('an ordinary work answer does NOT read as a no-op', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'Fixed the truncation and added four tests; suite is 222/222.' });
+  assert.strictEqual(sessionDigest.statedNoOp(ctx), false);
+  assert.strictEqual(sessionDigest.satisfied(ctx), false, 'real work still owes a digest line');
+});
+
+// ---- tool-record: a cut nobody can see is the ledger lying by omission ----
+
+check('tool-record MARKS a truncated command instead of dropping the tail silently', () => {
+  const long = 'node gate.js ' + 'x'.repeat(400);
+  const out = toolRecord.truncateCmd(long);
+  assert.ok(out.length < long.length, 'still capped');
+  assert.ok(/…\[\+\d+\]$/.test(out), 'and the cut is NAMED, like truncateSample has always done');
+  assert.ok(out.startsWith('node gate.js'), 'head preserved');
+});
+
+check('a short command is passed through untouched', () => {
+  assert.strictEqual(toolRecord.truncateCmd('git status'), 'git status');
+  assert.strictEqual(toolRecord.truncateCmd(''), '');
+});
+
+check('the kind is classified from the FULL command, never the cut one', () => {
+  const long = 'echo ' + 'y'.repeat(400) + ' && node test/run.js';
+  const line = toolRecord.lineFor({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: long }, tool_response: { stdout: '', stderr: '' } });
+  assert.ok(/…\[\+\d+\]$/.test(line.cmd), 'cmd is marked as cut');
+  assert.strictEqual(line.kind, toolRecord.classify(long), 'kind still reads the whole command');
+});
+
+check('dropped file entries are counted, and the counter is absent when nothing dropped', () => {
+  const many = Array.from({ length: 14 }, (_, i) => `f${i}.js`);
+  const over = toolRecord.filesField({ reads: many, writes: [] });
+  assert.strictEqual(over.reads.length, 10);
+  assert.deepStrictEqual(over.dropped, { reads: 4, writes: 0 });
+  const under = toolRecord.filesField({ reads: ['a.js'], writes: [] });
+  assert.ok(!('dropped' in under), 'an always-present zero would be noise');
+});
+
 // Async checks resolve after the sync pass, so the report waits on them — otherwise a failing
 // async test would print after the exit code was already decided.
 Promise.all(pending).then(() => {

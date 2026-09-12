@@ -37,7 +37,8 @@ const DETECTORS = [
   require('./leaked-path'),
   require('./silenced-failure'),
   require('./revert-chain'),
-  require('./machine-guard-drift')
+  require('./machine-guard-drift'),
+  require('./control-char')
 ];
 
 const VALID_SURFACES = ['files', 'history'];

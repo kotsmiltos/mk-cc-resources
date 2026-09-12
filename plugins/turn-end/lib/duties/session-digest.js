@@ -88,6 +88,36 @@ function hasCuratedMemory(ctx) {
   return ctx.disk.exists(STEWARD_DIR) && ctx.disk.hasFilesIn(STEWARD_DIR);
 }
 
+/*
+ * Branch (3) of the ask — "if the turn genuinely produced nothing worth keeping, say so in one
+ * line" — was for a long time UNOBSERVABLE: `satisfied` had exactly two arms and both required
+ * the digest FILE to be written or touched. Measured 2026-09-11: a turn that correctly took
+ * branch (3) in prose re-armed this duty and escalated to a BLOCK, so the only way out of a
+ * no-op turn was to write a no-op bullet — polluting the distillation this duty exists to keep
+ * clean. Same class as the 09-11 `ask()` finding: a duty's ask is EXECUTABLE INSTRUCTION, so
+ * every branch it offers must be checkable by its own `satisfied`.
+ *
+ * Precedent for the shape: self-check's universal escape hatch is likewise a sentence in the
+ * final message, and its header argues that exactly this is what makes `severity: block` safe —
+ * compliance is never more than one sentence away, and a FALSE claim is an explicit claim the
+ * deep tier or the owner can catch, which beats the silent skip it replaces.
+ *
+ * Open registry: a new way of saying "nothing to keep" is one entry, never a logic change.
+ */
+const NO_OP_MARKERS = [
+  /\bnothing (?:worth|that is worth|worthy of) keeping\b/i,
+  /\bnothing (?:new )?(?:to|worth) (?:distil|distill|record|capture|keep)\w*\b/i,
+  /\bno(?:thing)? digest[- ]worthy\b/i,
+  /\bnothing (?:here )?for the (?:session )?digest\b/i,
+  /\bthis turn produced nothing\b/i,
+];
+
+/** Did the final message TAKE branch (3) explicitly? PURE. */
+function statedNoOp(ctx) {
+  const text = (ctx && (ctx.lastAssistantMessage || (ctx.turn && ctx.turn.text))) || '';
+  return NO_OP_MARKERS.some((rx) => rx.test(text));
+}
+
 function wroteDigest(ctx) {
   return (ctx.turn.toolTargets || []).some(
     (p) => typeof p === 'string' && p.replace(/\\/g, '/').endsWith(DIGEST_POSIX)
@@ -129,6 +159,8 @@ module.exports = {
    */
   satisfied(ctx) {
     if (wroteDigest(ctx)) return true;
+    // Branch (3) of the ask, now observable — see NO_OP_MARKERS above.
+    if (statedNoOp(ctx)) return true;
     const requestAt = ctx.turn && typeof ctx.turn.userRequestAt === 'number' ? ctx.turn.userRequestAt : null;
     const startedAt = ctx.ledger && ctx.ledger.startedAt;
     const since = requestAt !== null ? requestAt : startedAt;
@@ -152,3 +184,6 @@ module.exports.DEFAULT_IMPORTANT = DEFAULT_IMPORTANT;
 module.exports.buildAsk = buildAsk;
 module.exports.PRODUCE_TOOLS = PRODUCE_TOOLS;
 module.exports.hasCuratedMemory = hasCuratedMemory;
+
+module.exports.statedNoOp = statedNoOp;
+module.exports.NO_OP_MARKERS = NO_OP_MARKERS;

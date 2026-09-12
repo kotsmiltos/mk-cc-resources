@@ -32,8 +32,8 @@ const ctxOf = (files = [], history = []) => ({ files, history });
 const wheres = (findings) => findings.map((f) => f.where);
 
 // ---------------------------------------------------------------- registry contract
-check('registry exposes the four shipped detectors',
-  registry.all().map((d) => d.id).sort().join(',') === 'leaked-path,machine-guard-drift,revert-chain,silenced-failure');
+check('registry exposes the five shipped detectors',
+  registry.all().map((d) => d.id).sort().join(',') === 'control-char,leaked-path,machine-guard-drift,revert-chain,silenced-failure');
 check('every shipped detector validates', registry.all().every((d) => registry.validate(d).length === 0));
 check('byId finds a detector', registry.byId('leaked-path') === leakedPath);
 check('byId returns null for an unknown id', registry.byId('nope') === null);
@@ -303,7 +303,7 @@ registry.all = originalAll;
 check('a crashed detector becomes a BLOCKING finding', crashed.blocking.length === 1);
 check('crash finding names the detector', crashed.errored.includes('boom'));
 check('crash finding carries the error message', crashed.blocking[0].evidence === 'kaboom');
-check('registry restored after the crash test', registry.all().length === 4);
+check('registry restored after the crash test', registry.all().length === 5);
 
 // ---------------------------------------------------------------- machine-guard-drift
 const machineGuardDrift = require('../lib/detectors/machine-guard-drift');
@@ -336,6 +336,32 @@ check('clean report says clean', format(guard(ctxOf([], []))).includes('clean'))
 check('report names skipped detectors so absence is visible',
   format(disabled).includes('skipped') && format(disabled).includes('leaked-path'));
 check('report flags errored detectors', format(crashed).includes('ERRORED: boom'));
+
+// ---- control-char: the invisible byte that passes every other gate ----
+
+check('control-char finds a lost word boundary and NAMES the byte', () => {
+  const cc = registry.byId('control-char');
+  const text = 'const RX = /' + String.fromCharCode(8) + 'nothing worth keeping' + String.fromCharCode(8) + '/i;';
+  const f = cc.run({ files: [{ path: 'plugins/x/lib/y.js', text }] }, {});
+  assert.strictEqual(f.length, 2, 'one finding per byte, not per file');
+  assert.ok(f[0].evidence.includes('BACKSPACE'), 'the byte is named, since a human cannot see it');
+  assert.ok(f[0].evidence.includes('cat -v'), 'and the finding says how to look at it');
+  assert.strictEqual(f[0].severity, 'block');
+});
+
+check('control-char is silent on ordinary source, tabs and CRLF included', () => {
+  const cc = registry.byId('control-char');
+  const text = 'function f() {' + String.fromCharCode(10) + String.fromCharCode(9) + 'return /" + BS + BS + "bword" + BS + BS + "b/.test(x);' + String.fromCharCode(13) + String.fromCharCode(10) + '}';
+  assert.deepStrictEqual(cc.run({ files: [{ path: 'a.js', text }] }, {}), []);
+});
+
+check('control-char skips fixture trees, where a control byte may be the point', () => {
+  const cc = registry.byId('control-char');
+  const text = 'x' + String.fromCharCode(8);
+  assert.deepStrictEqual(cc.run({ files: [{ path: 'plugins/x/tests/fixtures/bad.js', text }] }, {}), []);
+  assert.strictEqual(cc.run({ files: [{ path: 'plugins/x/lib/bad.js', text }] }, {}).length, 1);
+});
+
 
 console.log(`\n${total - failures}/${total} checks passed`);
 process.exit(failures ? 1 : 0);

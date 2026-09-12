@@ -278,5 +278,24 @@ const corruptCtx = JSON.parse(runHook(statProj)).hookSpecificOutput.additionalCo
 check('corrupt status named in instruments, never silent', corruptCtx.includes('status.json UNREADABLE'));
 check('corrupt status: hook still briefs (fail-soft)', corruptCtx.includes('Ship: status test.'));
 
+// N. A git WORKTREE: `.git` is a FILE (`gitdir: <path>`), not a directory. Before the fix both
+// git readers joined `.git/HEAD` blindly, threw ENOTDIR into their own catch, and the `git:`
+// instrument vanished with no error — the defect the 2026-09-06 audit flagged, uncaught until now.
+const wtGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-wt-real-'));
+fs.mkdirSync(path.join(wtGitDir, 'refs', 'heads'), { recursive: true });
+fs.writeFileSync(path.join(wtGitDir, 'HEAD'), 'ref: refs/heads/feature-x' + String.fromCharCode(10));
+fs.writeFileSync(path.join(wtGitDir, 'refs', 'heads', 'feature-x'), 'abc1234def5678' + String.fromCharCode(10));
+
+const wtProj = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-wt-'));
+fs.mkdirSync(path.join(wtProj, '.steward', 'inbox'), { recursive: true });
+fs.writeFileSync(path.join(wtProj, '.steward', 'briefing.md'), 'Ship: worktree project.' + String.fromCharCode(10));
+// The worktree marker: a FILE named .git pointing elsewhere.
+fs.writeFileSync(path.join(wtProj, '.git'), 'gitdir: ' + wtGitDir + String.fromCharCode(10));
+
+const wtOut = runHook(wtProj);
+check('worktree: the git instrument survives a .git FILE', wtOut.includes('feature-x'));
+check('worktree: the sha is read through the resolved gitdir', wtOut.includes('abc1234'));
+check('worktree: the briefing itself still renders', wtOut.includes('Ship: worktree project.'));
+
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

@@ -82,16 +82,16 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [turn-end](plugins/turn-end/README.md) | | 0.12.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
+| [turn-end](plugins/turn-end/README.md) | | 0.12.1 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
 | [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.7.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
-| [thorough-mode](plugins/thorough-mode/README.md) | | 1.12.0 | Keyword modifiers — `++`, `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) |
+| [thorough-mode](plugins/thorough-mode/README.md) | | 1.12.1 | Keyword modifiers — `++`, `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) |
 | [reuse-gate](plugins/reuse-gate/README.md) | | 0.1.0 | One reuse-first reminder per message, at the moment code is first written |
 
 ### Remember across sessions
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [steward](plugins/steward/README.md) | | 0.6.0 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
+| [steward](plugins/steward/README.md) | | 0.6.1 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
 | [kb](plugins/kb/README.md) | B | 0.14.0 | The project's queryable knowledge base: decisions and their why, dead ends, conventions. Ask before re-deriving |
 | [session-lifecycle](plugins/session-lifecycle/README.md) | B | 1.3.1 | `/handoff`, `/resume`, `/claude-md-sync`, `/retro`, `/meta-review` — an append-only handoff history |
 
@@ -108,7 +108,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.17.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
+| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.18.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
 
 Bundle: **mk-cc-all 2.28.0**.
 

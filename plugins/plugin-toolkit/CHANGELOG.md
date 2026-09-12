@@ -5,6 +5,12 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-09-12
+
+### Added
+- `repo-guard` detector #5, `control-char` (block): a raw control byte in tracked source. Measured three times in one sitting — an intended `\b` word boundary delivered as a literal 0x08 BACKSPACE through a shell heredoc. The regex then read with the boundary simply absent and matched nothing, while `node --check` passed, the module loaded, and grep printed what looked correct; only `cat -v` showed `^H`. Findings name the codepoint and the `sed | cat -v` command that reveals it, because a defect a human cannot see must say exactly what it is. Tab, newline and CR are excluded; `fixtures/`, `__fixtures__/` and `testdata/` trees are skipped, where such a byte may be the point.
+- On first run it found 11 live bytes in tracked source: 8 deliberate 0x01 glob sentinels in `essense-flow/lib/rule-sweep.cjs` and 2 in repo-guard's own `LOG_SEPARATOR`/`COMMIT_SEPARATOR`. All were converted to `\u0001`-style escapes — identical values, visible intent — rather than allowlisted.
+
 ## [1.17.0] - 2026-09-12
 
 ### Fixed

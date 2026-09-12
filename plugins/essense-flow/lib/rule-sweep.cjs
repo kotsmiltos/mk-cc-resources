@@ -42,10 +42,10 @@ function globToRegex(glob) {
   // Phase 1: tokenize glob wildcards to unique sentinels.
   // Phase 2: escape remaining regex metacharacters.
   // Phase 3: expand sentinels to their regex equivalents.
-  const SENTINEL_DOUBLESTAR_SLASH = 'GS1';
-  const SENTINEL_DOUBLESTAR = 'GS2';
-  const SENTINEL_STAR = 'GS3';
-  const SENTINEL_QMARK = 'GS4';
+  const SENTINEL_DOUBLESTAR_SLASH = '\u0001GS1\u0001';
+  const SENTINEL_DOUBLESTAR = '\u0001GS2\u0001';
+  const SENTINEL_STAR = '\u0001GS3\u0001';
+  const SENTINEL_QMARK = '\u0001GS4\u0001';
 
   let g = String(glob).replace(/\\/g, '/');
   // Tokenize wildcards (order matters: **/ before **, ** before *).

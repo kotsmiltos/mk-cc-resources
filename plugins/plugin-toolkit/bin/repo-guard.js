@@ -72,8 +72,8 @@ function collectFiles(repo) {
   return files;
 }
 
-const LOG_SEPARATOR = '';
-const COMMIT_SEPARATOR = '';
+const LOG_SEPARATOR = '\u0001';
+const COMMIT_SEPARATOR = '\u0002';
 
 function collectHistory(repo, count) {
   if (count === 0) return [];

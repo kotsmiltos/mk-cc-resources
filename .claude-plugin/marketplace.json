@@ -75,7 +75,7 @@
       "source": "./plugins/thorough-mode",
       "displayName": "Thorough Mode",
       "description": "Prompt modifiers that inject behavioral rules on a keyword: ++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only \u2014 no skill to remember.",
-      "version": "1.12.0",
+      "version": "1.12.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -155,7 +155,7 @@
       "source": "./plugins/plugin-toolkit",
       "displayName": "Plugin Toolkit",
       "description": "Build and maintain Claude Code plugins: skill-heal, plugin-scaffold, version-bump, docs-audit, code-glossary, dry-refactor, plus repo-guard, test-all, registry-check and harness-stats gates.",
-      "version": "1.17.0",
+      "version": "1.18.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -216,7 +216,7 @@
       "source": "./plugins/steward",
       "displayName": "Steward",
       "description": "A living model per project (.steward/: vision, state, parts, questions, tasks). Stray thoughts land in an inbox; the steward agent recomputes the whole model and shows you the diff.",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.12.0",
+      "version": "0.12.1",
       "author": {
         "name": "kotsmiltos"
       },

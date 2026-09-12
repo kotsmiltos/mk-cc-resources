@@ -4,6 +4,11 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] - 2026-09-12
+
+### Fixed
+- The hook registration's own description still read "Detects ++ or @thorough" — written when there were two modifiers. There are nine.
+
 ## [1.12.0] - 2026-09-12
 
 ### Added
