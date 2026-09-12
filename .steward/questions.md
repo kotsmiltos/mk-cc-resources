@@ -59,6 +59,51 @@ to run a gate outside this repo, and the model will say so plainly instead of im
 
 ---
 
+## Q25 · `@fc` is built and sitting uncommitted — ship it, and should the fewer-clicks LAW stay opt-in or become ambient? [NEW 2026-09-12; the model's copy of this question was lost when the stale base was replaced, so it is re-derived here with the audit evidence folded in]
+
+**Context.** Invariant 13 (owner law, verbatim 2026-09-09: *"this cannot be poitning me to
+files… leaving the least amount of clicks to me"*) has been standing law for three days with no
+mechanism. thorough-mode 1.12.0 gives it one — **`@fc`**, protocol-shaped, a drop-in registry
+entry costing zero new machinery — but it is **BUILT, UNCOMMITTED and UNPUSHED**, and installs
+read the GitHub remote, so today it reaches nobody. Two parts, one keystroke: (i) does it go out;
+(ii) does a LAW that applies to *every* owner-facing surface get carried by a keyword the owner
+has to remember (invariant 6 says no vocabulary may be required; invariant 3 says a discipline
+kept as text is not kept).
+
+**Evidence that decides it better than argument (audit 2, 2026-09-06 —
+`.claude/kb/captures/20260906-1340-second-usage-audit-five-projects-measured.md:38,166`; the same
+numbers this model already carries under Audit verdicts):** modifiers fired on **17 of 212 human
+prompts** (`@prompt` 11 · `@ship` 5 · `++ @verify` 1) and the audit names `@prompt`/`@ship` **the
+owner's real workflow**. The surfaces that fired ZERO were *unadopted slash-commands* — `/kb`,
+`kb-capture`, `/patterns`, `/verifiability`, `steward:brief/next/fleet`. So the familiar worry
+"opt-in under-fires" is TRUE of a command nobody adopted and NOT true of a keyword the owner
+took up; a new keyword is a credible surface here. The counter-fact in the same row: 17/212 is
+~8% of prompts, so a keyword cannot be the only carrier of a law that is supposed to hold on
+every reply.
+
+**Options.** (a) **Commit + push `@fc` as built; the law stays on demand**, with the existing
+smart hint suggesting it when the intent appears without the keyword — zero standing bytes
+(invariant 5: injected text is a per-session tax), adoption then MEASURED like any other
+mechanism (invariant 12). (b) Push it AND make the rules a default ambient injection on every
+prompt — pays ~0.5 KB per prompt forever on a harness already measured at avg 6.3 KB / p95
+20.5 KB, exactly the push-side weight #17 exists to cut. (c) Push it now, and pre-register the
+CONDITIONAL fold: a turn-end duty that fires only when the final message carries an anti-signal
+("you can run…", "see <path>", a to-do list addressed to the owner) — no standing bytes, fires
+where the failure actually is, the fold-don't-add shape the house values prefer. (d) Leave it
+uncommitted — the law stays in the model and in nothing else.
+
+**Recommended default (Claude's): (a) now, (c) pre-registered.** (a) makes three days of
+standing law reachable in one push at zero recurring cost, and the audit says an adopted keyword
+is a real surface, not a dead one. (c) is the honest answer to "8% of prompts": build it when the
+scorecard shows sittings where the law was broken and the keyword was absent — never on the
+promise that it would have helped (invariant 11). (b) is the one option that contradicts a
+measured invariant, and (d) wastes work already paid for.
+
+**Blocks:** nothing built waits on it, but `@fc` is INERT until (i) is answered — and `@fc` is
+the only mechanism invariant 13 has.
+
+---
+
 ## Q21 · Who may mark knowledge WRONG or unnecessary? [harness §7.8 / G15 — the garden job's authority; feeds #38]
 
 **Context.** Owner, 2026-09-08 (verbatim): *"we are storing too many things. we should be

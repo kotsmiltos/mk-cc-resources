@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260912-0110",
+  "updated": "20260912-0345",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -473,14 +473,34 @@
       "groups": ["dogfood", "turn-end", "harness"],
       "log": "2026-09-12 · Two items + five ships integrated at a50fa75 — #39 and #40 CLOSED and deleted, Q23 closed as answered two days ago, leg C's watch re-cut with a yield guard, every pre-1.14.0 test-all total RETIRED",
       "check": "the item's numbers are CARRIED, not re-measured (a model pass runs no probes): 142 checks.jsonl lines vs 0 Stop trace lines for the session, one promptId across 760 transcript lines, hand-run exit 0 / 38,436 ms / 2,334-byte tail / +2 trace lines · the RULING the item asked the model to take is written in three places so it cannot drift: tasks #1 leg C (new trigger = a sitting that YIELDED at least once — a stop_hook_summary, or ≥2 distinct promptIds — and still has no Stop line while checks.jsonl grew), state.md PLATFORM INVARIANT 6 (amended with the yield denominator) and state.md live-leg (h) · the exclusion rule for prompt_id \"legC-handrun\" recorded in parts.md's turn-end section · leg C stays OPEN: the 09-09 silence is still unexplained and this finding does not close it"
+    },
+    {
+      "id": "20260912-0330-parts-thorough-mode-version-drift-8-modifiers-vs-9",
+      "type": "outcome",
+      "status": "integrated",
+      "at": "20260912-0345",
+      "by": "steward-agent",
+      "groups": ["thorough-mode", "model-vs-disk"],
+      "log": "2026-09-12 (late) · Two items integrated at c4d8093 — the @fc build recorded as BUILT-not-shipped, parts drift corrected, #42 + #41 opened ahead of Phase 2, Q25 re-derived with the audit evidence",
+      "check": "plugins/thorough-mode/.claude-plugin/plugin.json read this pass = 1.12.0; @fc matcher read at hooks/thorough-mode.js:181; parts.md now records 1.12.0 + nine modifiers + the built-uncommitted state"
+    },
+    {
+      "id": "20260912-0335-fc-built-uncommitted-fetch-law-checks-truncation-flake-mechanism",
+      "type": "outcome",
+      "status": "integrated",
+      "at": "20260912-0345",
+      "by": "steward-agent",
+      "groups": ["thorough-mode", "release", "harness", "dogfood", "turn-end"],
+      "log": "2026-09-12 (late) · Two items integrated at c4d8093 — the @fc build recorded as BUILT-not-shipped, parts drift corrected, #42 + #41 opened ahead of Phase 2, Q25 re-derived with the audit evidence",
+      "check": "log.md's 2026-09-12 tail entry is the authoritative record; every claim the model took from it was re-read at source this pass: tool-record.js:44,137 (MAX_CMD_CHARS = 300, silent cut) + :90 (the sibling truncator that DOES mark) + :127,138 (classify/filesInCommand see the full string) · test-sweep.js:199,257 + test-all.js:118,122-123 (output captured, then discarded at the reporter) · .git/refs/heads/main = c4d8093 · type 'outcome' is a new open-set value (contract rule 4, tolerant readers)"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260912-0013-leg-c-watch-fired-false-positive-predicate-needs-a-yield-guard"
+      "derived_through": "20260912-0335-fc-built-uncommitted-fetch-law-checks-truncation-flake-mechanism"
     },
     "model": {
-      "derived_through": "20260912-0013-leg-c-watch-fired-false-positive-predicate-needs-a-yield-guard"
+      "derived_through": "20260912-0335-fc-built-uncommitted-fetch-law-checks-truncation-flake-mechanism"
     }
   }
 }

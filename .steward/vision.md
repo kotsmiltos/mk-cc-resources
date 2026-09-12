@@ -255,7 +255,10 @@ work. Recall and demand are the two ways a turn ends badly; one runner covers bo
     tail, steward diffs, question surfacing: paths, ids and §refs are for machines and the
     model, never the owner's reading path; decisions reach the owner as one-keystroke
     questions, recommended default first, batched; work that needs no ruling proceeds
-    within the sitting without asking.
+    within the sitting without asking. **First MECHANISM, 2026-09-12: thorough-mode 1.12.0's
+    `@fc`** (protocol-shaped, drop-in, zero new machinery) — but it is ON DEMAND, so on every
+    prompt the owner does not type it the law is still carried by text alone, the shape
+    invariant 3 rejects; and it is uncommitted, so today it carries nothing at all → Q25.
 
 ## Declared growth axes (change expected here)
 

@@ -1,4 +1,4 @@
-# State — current truth (2026-09-12 · HEAD `a50fa75` == origin/main — Tracks 4 + 5 AND three unplanned toolkit ships are PUSHED, and NOTHING is installed: the ledger still reads the 09-10 generation, so SIX plugins run behind their checkout, the new `elicit` 0.1.0 has never been installed anywhere, and plugin-toolkit still has no entry at all → Q24)
+# State — current truth (2026-09-12, late · HEAD `c4d8093` == origin/main after this checkout was found TEN COMMITS STALE and fast-forwarded — Tracks 4 + 5 and three unplanned toolkit ships are PUSHED and NOTHING is installed, and the working tree now holds the model's FIRST built-but-uncommitted plugin, thorough-mode 1.12.0 `@fc`. The reach chain fetch → bump → push → install → restart is now broken at three links at once: commit, install, restart → Q24 + Q25)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -8,8 +8,13 @@
 
 ## Ship position
 
-**HEAD `a50fa75` == origin/main `a50fa75`** (both ref files read this pass) — **0 unpushed
-commits.** The 019e007 position is SUPERSEDED: since it, the same long sitting shipped Tracks 4
+**HEAD `c4d8093` == origin/main** (`.git/refs/heads/main` read this pass) — **the `a50fa75`
+position recorded this morning is SUPERSEDED, and not because work landed here: this checkout was
+TEN COMMITS behind (`acb736b`) and has been fast-forwarded to upstream `c4d8093`.** Any model
+state computed on that base was replaced by upstream's; this pass recomputed against disk.
+**0 unpushed commits, but the tree is NO LONGER CLEAN:** thorough-mode 1.12.0 (`@fc`) is built
+and UNCOMMITTED (below) — the first time this model has had to distinguish "built" from "pushed".
+The 019e007 position is SUPERSEDED too: since it, the same long sitting shipped Tracks 4
 and 5 of the 09-11 plan (four commits, pushed as `acb736b..7cc3d3d` after a rebase — the branch
 push was REJECTED first because another session had moved origin) plus three UNPLANNED
 plugin-toolkit ships, and 29 `<plugin>@<version>` tags now exist on origin. The only untracked
@@ -20,7 +25,8 @@ version/sha/lastUpdated field) is UNMOVED at the 2026-09-10T11:03:50Z generation
 autopilot 0.4.1 / thorough-mode 1.11.2 / patterns 0.1.1 / mk-cc-all 2.27.0 at `bc39fe0`. So the
 hook code running in any session is still the 09-10 build, and the drift is now SIX behind-install
 plugins (turn-end 0.9.0→**0.11.0** · lens 0.6.0→0.7.0 · steward 0.5.2→0.6.0 · essense-flow
-0.26.2→**0.27.0** · autopilot 0.4.1→**0.5.0** · thorough-mode 1.11.2→**1.11.3**) plus TWO with no
+0.26.2→**0.27.0** · autopilot 0.4.1→**0.5.0** · thorough-mode 1.11.2→**1.11.3 on origin, 1.12.0
+in the working tree — an install can reach 1.11.3 at best, so `@fc` reaches nobody at all**) plus TWO with no
 entry at all: plugin-toolkit (Q24) and the new **elicit 0.1.0**. Elicit rides the mk-cc-all
 bundle (disk 2.28.0 carries `plugins/elicit/skills/`, read this pass) — but the INSTALLED bundle
 is 2.27.0, so today neither the bundle path nor a standalone install reaches it.
@@ -34,6 +40,13 @@ sources — `plugin-docs` is the new one) · **test-all 32/35 suites / 1,476 che
 exit 1** on three named non-green: two pre-existing (essense-flow's CJS suite resolves fixtures
 outside the repo; code-glossary's pytest deps absent) and the ledger-compaction SKIP, newly
 visible.
+**Gates RE-RUN at the `@fc` build (09-12 late; the session's records, exit codes read directly,
+never after a pipe):** `thorough-mode/tests/thorough-mode.test.js` exit 0 **30/30** (21 upstream
+baseline + 9 new) · repo-guard exit 0 (4 detectors) · registry-check exit 0 (8 claim sources) ·
+**test-all run THREE times: exit 1 / 0 / 0, 2,100 checks** — the exit-1 run is the #9 flake, whose
+MECHANISM is now named (below), not a fourth red. Baseline lesson riding along: "22 checks" was
+reported before the fetch; the true upstream baseline is 21 — a count read on a stale base is as
+wrong as a remembered one.
 **CHECK-COUNT CORRECTION — every test-all total this model recorded before 1.14.0 is unsound.**
 The sweep matched node:test's old `# pass N` marker, so on node 24 THIRTY of 35 suites counted
 ZERO: the `019e007` record of "1,325 checks" was measured against a real 1,443, and the number
@@ -41,11 +54,11 @@ could not move when 16 tests were added or removed (both measured). Do not compa
 total with a post-1.14.0 one; the 33/35 · 1,325 and 35/35 · 2,023 figures are retired, not
 baselines. The tree did not move mid-pass.
 
-## Versions on disk (all 16 plugin.json grep-read this pass) vs installed (`installed_plugins.json` grep-read this pass)
+## Versions on disk vs installed (all 16 plugin.json + the install ledger grep-read at the 09-12 0110 pass; only thorough-mode's manifest was re-read this pass, and only it moved)
 
 **On disk now (17 plugins — every plugin.json version grep-read this pass):** turn-end **0.11.0**
 · plugin-toolkit **1.16.0** · essense-flow **0.27.0** · essense-autopilot **0.5.0** ·
-thorough-mode **1.11.3** · **elicit 0.1.0 (NEW plugin)** · verifiability-lens 0.7.0 · steward
+thorough-mode **1.12.0 — UNCOMMITTED (origin: 1.11.3)** · **elicit 0.1.0 (NEW plugin)** · verifiability-lens 0.7.0 · steward
 0.6.0 · kb 0.14.0 · patterns 0.1.1 · prism 0.1.0 · statusline 0.2.0 · session-lifecycle 1.3.1 ·
 schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1 · reuse-gate 0.1.0
 (+ marketplace metadata **2.51.0** and the mk-cc-all bundle **2.28.0**, both read).
@@ -113,6 +126,12 @@ lives in first. (Law recorded in parts.md's cross-reference discipline.)
   `.steward/log.md` scored 0/1 used across 5 surfacings), and `asset.origin_recorded` = FALSE:
   `.claude/kb/` is gitignored, so no entry carries a commit, author or history, and recording
   provenance needs a frontmatter field AT CAPTURE TIME (owner deferred → #38).
+- **NOT a ship, and the distinction is the point: thorough-mode 1.12.0 `@fc` (2026-09-12, late).**
+  A ninth prompt modifier (fewer clicks) encoding vision invariant 13 as an ON-DEMAND keyword,
+  built as a drop-in entry in the existing `MODIFIERS`/`HINTS` registries — zero new machinery,
+  `hooks.json` untouched, suite 30/30 (parts.md). It is BUILT, UNCOMMITTED and UNPUSHED by the
+  owner's call, so unlike everything above it has not even reached the remote an install reads.
+  Whether the law it encodes should stay opt-in is the open decision → **Q25**.
 - What each mechanism does beyond these records is not claimed here; none of it has fired in the
   field, because none of it is installed. The doc pass did NOT close the counts-class defect:
   the root CLAUDE.md text injected at THIS session's open still says "three repo-level gates"
@@ -352,6 +371,19 @@ cheapest possible shape for a new capability, and the reason it costs no per-ses
   "second run shows the deltas" leg → #32's done-check.
 - **Verification ground truth (G2): CLOSED at 0.8.0;** fixtures real (arrival). Residual:
   `requireGreen` per project (Q19).
+- **NEW DEFECT, measured 2026-09-12 — the exec ledger manufactures FALSE NEGATIVES, the exact
+  mirror of the false-clean it was built to catch.** `.claude/turn-end/checks.jsonl` records
+  `cmd: command.slice(0, MAX_CMD_CHARS)` with `MAX_CMD_CHARS = 300`
+  (`plugins/turn-end/hooks/scripts/tool-record.js:44,137`, read this pass), so a gate invoked at
+  the TAIL of a long compound command is simply absent from the ledger text. Cost this session:
+  the verifiability lens refuted TWO gate runs that had in fact run and passed. Two details the
+  fix turns on, both from the source: (a) the cut is SILENT — the sibling sample truncator marks
+  its own (`:90` appends `…[+N]`), this one does not, so a reader cannot distinguish "short
+  command" from "cut command"; (b) `classify(command)` and `filesInCommand(command)` run on the
+  FULL string (`:127,138`), so `kind: "check"` and `files` stay correct while the evidence text
+  is gone — the ledger half that a reader trusts least is the half that survived. This poisons
+  every consumer of "did a check run": self-check (invariant 10), Q19's ran-and-observed floor,
+  the lens's refute/confirm, and #32's goal duty, whose satisfaction signal IS this file → #42.
 - **No goal-based termination (G3):** → #32, UNBLOCKED (Q18/Q19). `/goal` excluded by default
   under invariant 1 (harness §9.5, not ruled).
 - **Briefing staleness — NOT dead:** authored prose wrong 4/5; false git-HEAD ⚠;
@@ -399,6 +431,16 @@ cheapest possible shape for a new capability, and the reason it costs no per-ses
   model held it "red on a clean tree (calendar drift)", and the truth is it asserted nothing at
   all; only 1.14.0's counting fix made that visible. Suspect (4) also invalidates the old reading
   that "test-all's shape-discovery missed it".
+  **Suspect (1)'s MECHANISM is NAMED 2026-09-12 — and it is a REPORTER defect, not a flake in
+  essense-flow.** The signature is stable across 4 of 8 observed sweeps: `essense-flow:
+  test/run-all.cjs — exit 1` under the sweep, green standalone. Why every investigation stalled:
+  `bin/test-all.js:118` runs each child through `spawnSync(..., {encoding:'utf8'})` so stdout AND
+  stderr ARE captured and passed to `classify` (`:122-123`), but the FAILED branch keeps only
+  `note: exit <status>` (`lib/test-sweep.js:199`) and the renderer prints label + suite + note
+  (`:257`) — **the evidence is DISCARDED at the reporter, never missing.** So the sweep can say a
+  suite failed and can never say why, and four red sweeps produced zero diagnostic bytes. The
+  first move is therefore plugin-toolkit's, not essense-flow's: surface the captured output on
+  failure, THEN re-run and read what the child actually printed (→ #9).
 - **Git hygiene across ships:** unchanged (aithseis uncommitted 43 days; volatile
   `.claude/turn-end/` committed in Endure + twin; lens state committed in psience + aithseis;
   11 MB PNG in crowd; this repo gitignores `.claude/*`) → #12 / #5. **This repo's own residue:**
@@ -412,6 +454,13 @@ cheapest possible shape for a new capability, and the reason it costs no per-ses
   with `git merge-base --is-ancestor <tag> main`, re-pointed and force-pushed; `ls-remote --tags`
   now matches local for all 29. Law: **push the branch first, tags only after it lands** (parts.md
   cross-reference discipline).
+- **Base freshness, learned the same day and more expensively:** a whole feature (thorough-mode
+  1.12.0) was built on a checkout TEN COMMITS stale, so its doc cascade landed on surfaces
+  upstream had already retired and its suite baseline was read wrong (21 vs 22). `registry-check`
+  exited 0 throughout — it validates the checkout against ITSELF and structurally cannot see a
+  stale remote. Law: **`git fetch` is step 0 of any version bump**, making the reach chain
+  fetch → bump → push → install → restart (parts.md cross-reference discipline) → #41 mechanizes
+  it as a claim source, because invariant 3 says a rule kept as text is a rule that will break.
 - Standing, unchanged: invariant-9 hole (#3) · Q12 CI · Q13 sonnet · absolute-path debt (#7) ·
   counts-in-prose (#6) · crowd deep-seed (#5) · Diploma banner (#10) · #21 patterns
   interactive legs · kb MCP version-proof (#4 — 0.14.0 is now the INSTALLED version, so the

@@ -1570,3 +1570,100 @@ gates at HEAD are the session's own records, not re-run in this pass: repo-guard
 registry-check exit 0 (8 sources), test-all 32/35 · 1,476 checks · 1 skipped · exit 1 on three
 named non-green · the root CLAUDE.md's "three repo-level gates" line was read in the text
 INJECTED at this session's open — #6's instance survived both doc passes.
+
+## 2026-09-12 · thorough-mode 1.12.0 — `@fc` (fewer clicks), built twice: once on a dead base, then on origin
+
+Owner asked for a ninth prompt modifier: "doing everything it can on its own instead of telling me
+to do things ... least effort to see what it is you wanna show me". Shipped as `@fc`, tag
+`[fewer-clicks]` — a drop-in entry in the existing `MODIFIERS` + `HINTS` registries (the extension
+surface already existed; zero new machinery, `hooks.json` untouched). Protocol-shaped per the
+plugin's own convention: failure named (OUTSOURCING) -> SPLIT / DO / DELIVER IN-ENVIRONMENT /
+MINIMIZE CLICKS / STILL CONFIRM -> anti-signals -> exit check. Content is the 2026-09-09 owner law
+(`.steward/inbox/20260909-0010-…`) cited with provenance, available ON DEMAND, not as a default.
+
+**The expensive lesson: the first build was done on a base 10 commits stale.** `origin/main` had
+moved `acb736b -> c4d8093` (RELEASE-NOTES.md retired for a per-plugin CHANGELOG.md across 17
+plugins, `plugins/thorough-mode/README.md` added with its own modifier table, marketplace entries
+reshaped with displayName/category/short description, `/elicit` promoted to a plugin,
+thorough-mode already at 1.11.3). The whole first doc cascade landed on retired surfaces and would
+have been a non-fast-forward push reverting two commits. No `git fetch` ran before the work; the
+local `origin/main` ref was trusted as current. **Rule earned: `git fetch` is step 0 of any version
+bump — `registry-check` cannot catch this class, because it validates the checkout against itself.**
+Recovered by stashing, `merge --ff-only`, and re-applying onto upstream's shape.
+
+**Two corrections to my own reporting, both caught by the lens:** the suite baseline was **21, not
+22** (upstream at c4d8093 runs 21/21 — verified by running it), and `.steward/parts.md` still
+carries thorough-mode at 1.11.2 exposing 8 modifiers.
+
+**Lens defect found in the exec ledger:** `.claude/turn-end/checks.jsonl` truncates `command` at
+exactly 300 chars, so a gate invoked at the tail of a long compound command is invisible to any
+ledger reader. The lens used that silence to refute two gate runs that had in fact run and passed.
+The ledger manufactures FALSE NEGATIVES, the mirror of the false-clean it was built to catch.
+
+**Checks this pass (all captured to files, exit codes read directly, never after a pipe):**
+`node plugins/thorough-mode/tests/thorough-mode.test.js` exit 0 — **30/30** (21 baseline + 9 new:
+fire, machine-text guard over `@fc`, 4 hint-intent branches, hint suppression, the STILL CONFIRM
+rule and the DELIVER IN-ENVIRONMENT rule present in the rendered text) · `repo-guard` exit 0, 4
+detectors · `registry-check --root .` exit 0, **8** claim sources (upstream added one) · `test-all`
+run x3: **exit 1 / 0 / 0**, 2100 checks.
+
+**#9 flake — mechanism finally named.** 4 of 8 observed sweeps red, always the same signature:
+`essense-flow:test/run-all.cjs — exit 1` with the suite passing standalone. Why it has survived
+every investigation: `bin/test-all.js:118` runs children with `spawnSync(..., {encoding:'utf8'})`
+so stdout/stderr ARE captured, but the FAILED block prints only the exit code. **The evidence is
+discarded at the reporter, not missing.** Surfacing the captured output on failure is the next
+move, and it is a plugin-toolkit change, not an essense-flow one.
+
+NOT committed, NOT pushed — owner's call. Installs read the GitHub remote
+(`.claude/kb/captures/20260827-1520-…`), so `@fc` stays inert until a push; the running install is
+cache 1.11.3 with zero `@fc`.
+
+## 2026-09-12 (late) · Two items integrated at `c4d8093` — the `@fc` build recorded as BUILT-not-shipped, parts drift corrected, #42 + #41 opened ahead of Phase 2, Q25 re-derived with the audit evidence
+
+**Base note first, because it invalidates a same-day pass:** this checkout was ten commits stale
+and has been fast-forwarded `acb736b` → `c4d8093` (`.git/refs/heads/main` read this pass). The
+model state computed this morning on `a50fa75` was replaced by upstream's; this pass recomputed
+against disk and against upstream's model, not against memory of the earlier one. One casualty:
+the Q25 raised by that pass did not survive, so it is re-derived below from the same evidence.
+
+**Item 1 — model-vs-disk drift, verified and corrected.** parts.md carried thorough-mode at
+1.11.3 exposing EIGHT modifiers. Disk: `plugins/thorough-mode/.claude-plugin/plugin.json` version
+**1.12.0**, with a ninth modifier `@fc` (matcher at `hooks/thorough-mode.js:181`, injection text
+carrying STILL CONFIRM + DELIVER IN-ENVIRONMENT, 9 new suite checks). parts.md now records the
+version, the ninth modifier, what `@fc` is, and the fact that it is **built, uncommitted and
+therefore inert** — the first working-tree-only plugin state this model has had to represent.
+*Check: plugin.json + hook + tests re-read this pass.*
+
+**Item 2 — the sitting's outcome, cascaded into four places:**
+- **A new law, parts.md cross-reference discipline: `git fetch` is step 0 of any version bump.**
+  The first `@fc` build landed entirely on retired doc surfaces because the local `origin/main`
+  ref was trusted as current. `registry-check` exited 0 throughout and always will — it validates
+  the checkout against ITSELF. The reach chain is now **fetch → bump → push → install → restart**.
+  Mechanized as **#41** (a `base-freshness` claim source in the existing drop-in registry), because
+  invariant 3 says a rule kept as text breaks again.
+- **A new defect, and it is a ground-truth defect: #42.** `.claude/turn-end/checks.jsonl` writes
+  `cmd: command.slice(0, 300)` (`hooks/scripts/tool-record.js:44,137`), silently — the sibling
+  sample truncator marks its cut (`:90`), this one does not — while `classify()` and
+  `filesInCommand()` parse the FULL string (`:127,138`). So a gate at the tail of a compound
+  command is invisible to any ledger reader; it produced two false refutations by the lens in one
+  sitting. The ledger built to kill false-cleans manufactures false NEGATIVES. Placed ahead of
+  Phase 2 because **#32's goal duty is satisfied by this exact file**. *Check: source read this
+  pass at the cited lines.*
+- **#9's flake has a MECHANISM, and the first move changes plugin:** `essense-flow:
+  test/run-all.cjs — exit 1` under the sweep, green standalone, 4 of 8 observed sweeps.
+  `bin/test-all.js:118` captures stdout+stderr via `spawnSync` and hands them to `classify`
+  (`:122-123`), but the FAILED branch keeps only `note: exit <status>` (`lib/test-sweep.js:199`,
+  rendered at `:257`) — the evidence is discarded at the REPORTER. #9 now starts in
+  plugin-toolkit: print the child's output on failure, THEN re-run and read it. *Check: both
+  source files read this pass.*
+- **Q25 (re-derived, with the audit data folded in):** ship `@fc`, and should invariant 13 stay
+  opt-in? Audit 2 measured modifiers at 17 of 212 human prompts (`@prompt` 11 · `@ship` 5 ·
+  `++ @verify` 1) and named `@prompt`/`@ship` the owner's real workflow, while every ZERO-use
+  surface was an unadopted slash-command. So "opt-in under-fires" is false of adopted keywords —
+  but 8% of prompts cannot carry a law meant to hold on every reply. Default: (a) push it as
+  built, on demand, with (c) the conditional turn-end fold pre-registered — never a standing
+  injection on a harness already at p95 20.5 KB.
+
+State/tasks recomputed against all of it: HEAD, the uncommitted-tree fact, the re-run gates
+(thorough-mode 30/30 · repo-guard 0 · registry-check 0/8 · test-all ×3 = exit 1/0/0, 2,100
+checks), #1 leg B's new sequencing note, ids stable, next free id 43.

@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-09-12 · everything through HEAD `a50fa75` is PUSHED and NOTHING is installed · six plugins run behind, and plugin-toolkit + elicit need an INSTALL, not an update → Q24 · numbers are stable ids, file order is the order; next free id 41)
+# Tasks — ordered, executor-ready (recomputed 2026-09-12 late · HEAD is `c4d8093` after a ten-commit fast-forward · everything through it is PUSHED and NOTHING is installed, and thorough-mode 1.12.0 `@fc` is not even COMMITTED → Q25 · six plugins run behind, plugin-toolkit + elicit need an INSTALL not an update → Q24 · numbers are stable ids, file order is the order; next free id 43)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -27,7 +27,17 @@ in a done-check below is a CHECKOUT command until Q24 lands an install. **No pre
 total may be used as a baseline anywhere below** — that sweep could not count (state.md). Under
 invariant 12 every task that ships a mechanism names its METRIC KEY in its done-check, and the
 key must be REGISTERED in `plugins/plugin-toolkit/lib/metrics/index.js` — no key, not done.
-#13 stays deleted; ids 1–40 stable, never reused.
+#13 stays deleted; ids 1–42 stable, never reused.
+
+**TWO NEW TASKS from the `@fc` sitting, and both sit AHEAD of Phase 2 deliberately.** **#42**
+(the exec ledger truncates the command at 300 chars) is not a nicety: `checks.jsonl` is the
+satisfaction signal for self-check, for Q19's ran-and-observed floor, for the lens's
+refute/confirm — and for **#32's goal duty, which cannot be built on a ledger that reports
+"no check ran" when one did**. It already produced two false refutations in one sitting, so it
+is a precondition, not a parallel chore. **#41** (fetch before bump) is a 30-minute claim source
+that just cost a whole feature's doc cascade; it protects every remaining ship in this file.
+Both are small; neither displaces #1, which is still the one command between five sittings of
+built work and any observable behaviour.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
@@ -60,7 +70,11 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   leaves the process on the old code (platform invariant 4). That moves SIX plugins and is a
   NO-OP for **plugin-toolkit** (no ledger entry) and for **elicit 0.1.0** (new; it rides the
   mk-cc-all bundle only from 2.28.0, while the installed bundle is 2.27.0) — both need an
-  install or a bundle update, which is Q24's ruling, not this leg's. **Do not expect `[instr]
+  install or a bundle update, which is Q24's ruling, not this leg's. **Sequencing added
+  2026-09-12: if Q25 says ship `@fc`, its commit + push happens BEFORE the update** — otherwise
+  the update installs thorough-mode 1.11.3 and the modifier the owner asked for still reaches
+  nobody, which is the reach chain (fetch → bump → push → install → restart) failing one link
+  earlier than this leg looks. **Do not expect `[instr]
   running` to have warned about any of this:** it compares the executing script against the
   ledger, so a pushed-but-uninstalled checkout is invisible to it; only
   `running.installed_vs_checkout` sees it.
@@ -95,6 +109,60 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   comparison as the prose predicate, but with the fire count in the denominator, so it cannot
   divide by zero.
 
+## 42. The exec ledger must record the EVIDENCE, not the first 300 characters of it (turn-end; S) — precondition for #32, and a live source of false refutations
+
+- **Why:** measured 2026-09-12 in this repo. `.claude/turn-end/checks.jsonl` writes
+  `cmd: command.slice(0, MAX_CMD_CHARS)` with `MAX_CMD_CHARS = 300`
+  (`plugins/turn-end/hooks/scripts/tool-record.js:44,137`), so a gate invoked at the TAIL of a
+  long compound command leaves no trace in the ledger text. The verifiability lens read that
+  silence as proof and **refuted two gate runs that had actually run and passed**. This is the
+  exact mirror of the false-clean the recorder was built (#28) to kill: a ledger that
+  manufactures FALSE NEGATIVES teaches everyone downstream to distrust it, which is worse than
+  no ledger. Two facts from the source shape the fix: the cut is SILENT (the sibling sample
+  truncator at `:90` appends `…[+N]`; this one appends nothing, so "short" and "cut" are
+  indistinguishable), while `classify()` and `filesInCommand()` already run on the FULL string
+  (`:127,138`) — the parse is right, only the record is lossy.
+- **What:** keep a bound (the file is append-only and must stay cheap to read) but make it
+  honest and evidence-preserving: (1) mark every truncation the way `truncateSample` does, so a
+  reader can always tell; (2) preserve the CHECK-BEARING segments rather than the first N chars —
+  the same `CHECK_COMMAND_RX` that sets `kind: 'check'` knows where they are, so record the
+  matched segments (or head + the matched tail) instead of a blind prefix; (3) raise
+  `MAX_CMD_CHARS` only as far as the real compound commands in this repo's ledger require —
+  measure, do not guess a number (the no-arbitrary-thresholds rule); (4) a regression test built
+  from a REAL 600+ char compound command whose gate sits last. Consumers need no change if the
+  recorded text stops lying.
+- **Done-check:** replay the exact compound command that produced the false refutation → its
+  ledger line names the gate; a truncated line is visibly marked; `kind`/`files` unchanged on
+  every existing fixture; turn-end suite green; then the lens, re-run over the same sitting,
+  confirms instead of refuting. **Metric key:** `checks.truncated_pct` (lines whose cmd was cut /
+  lines) registered in `plugins/plugin-toolkit/lib/metrics/index.js` beside the existing `checks`
+  source — a number that must trend to ~0 and that makes any future regression visible.
+
+## 41. `git fetch` before a bump, as a CLAIM SOURCE rather than a habit (plugin-toolkit / registry-check; S)
+
+- **Why:** 2026-09-12, measured the expensive way: a full feature (thorough-mode 1.12.0) was
+  built on a checkout TEN COMMITS stale, so its whole doc cascade landed on surfaces upstream had
+  already retired (RELEASE-NOTES.md, the pre-Track-5 marketplace shape, a plugin README that did
+  not exist locally), its suite baseline was read wrong (21 vs 22), and the push would have been
+  a non-fast-forward reverting two commits. `registry-check` exited 0 the whole time — it
+  validates the checkout against ITSELF and structurally CANNOT see a stale remote. Invariant 3:
+  a rule that lives only as "remember to fetch" is a rule that breaks again.
+- **What:** a new claim source in the existing drop-in registry (`lib/registry-claims/`, the
+  house gate pattern — one `require`, no runner change): **`base-freshness`** — compare the local
+  `origin/<branch>` ref against the remote's (`git ls-remote --heads origin <branch>`, the only
+  network call in the family, so it degrades to INFORMATIONAL, never a hard fail, when offline);
+  report how many commits behind and NAME the branch. Report as a MISMATCH (exit 1) only when
+  behind, since that is a fact that is wrong; offline or detached = informational. Wire it where
+  the bump actually happens: `/version-bump`'s first step runs the gate, and `@ship`'s checklist
+  names it — the same retargeting Track 5 did for CHANGELOG, so the text and the gate agree.
+- **Done-check:** with the local ref deliberately rewound one commit behind origin,
+  `node bin/registry-check.js --root <repo>` exits 1 naming `base-freshness` and the count;
+  after a fetch it exits 0; with the network unavailable it prints an informational line and
+  still exits on the other claims' verdict alone; a negative control in
+  `tests/registry-check.test.js` (every claim source has one — the suite's own rule).
+  **Metric key:** the claim's own verdict, the #36 precedent — the gate exists to fail once and
+  never again.
+
 ## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19
 
 - **Why:** no goal-based termination exists in the layer; "stopping while there is planned
@@ -108,7 +176,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   `steward:goal <n>` and machine-checkable-only as config, never default): criterion = the
   armed task's done-check from `tasks.md` / `status.json`; satisfied by the 0.8.0
   `checks.jsonl` (a check RAN after the last mutation and was observed — Q19; `requireGreen`
-  per project) or an explicit owner "stop"; capped by fires (3), never by a promise phrase;
+  per project) — **#42 lands first: that ledger truncates its command at 300 chars, so a gate
+  run at the tail of a compound command reads as absent, and a goal duty built on it would nag
+  about checks that had already passed** — or an explicit owner "stop"; capped by fires (3), never by a promise phrase;
   `defer()` while agents are in flight (0.7.0 primitive). Prose done-checks go through a
   turn-end JUDGE inside the one tail (lens escalation 1 — never a second Stop hook), off by
   default. `/goal` itself EXCLUDED (harness §9.5 default, invariant 1): the goal lives in
@@ -448,7 +518,7 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   (root cwd, direct exit read) still exits 0 AND `node plugins/essense-flow/test/run-all.cjs`
   reports zero failures.
 
-## 9. Adjudicate the essense-flow reds: ledger-compaction (calendar) AND the run-all intermittent under the sweep
+## 9. Adjudicate the essense-flow reds — starting by making the sweep SAY why a suite failed (the first move is plugin-toolkit's, not essense-flow's)
 
 - **What:** FOUR suspects now, and they must not be merged. **(0) the two standing reds:**
   `essense-flow test/run-all.cjs` resolves fixture paths OUTSIDE the repo (the #7
@@ -461,21 +531,28 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   test-all to read node 24's pass marker. So the old sub-question ("why does the sweep report it
   green?") is answered — the sweep could not count — and the real work is to find out whether
   the suite's assertions were lost, never written, or skipped by a guard, then restore them and
-  prove the count moves. (2) NEW
-  09-09: `test/run-all.cjs` reported exit 1 under test-all on 3 of 7 sweeps in one day (2/5
-  in the evening, the #30 sweep 33/34, the #31 sweep green) while the same suite run
-  directly passed 54/0 — intermittent under the parallel sweep, untouched by any of the work
-  (the 08-23 transient, stale-lock timing suspect, was never reproduced until now). Run each
-  suite DIRECTLY first, then under the sweep five times. If red: author the archive sibling
-  (the root fix; raising the threshold re-fires in 30 days — #38's garden job wants the
-  same motion) AND find why test-all's shape-discovery missed it; for the intermittent, find
-  the shared resource (lock file / temp dir / cwd) two parallel suites contend for and make
-  the sweep name a flaky suite as SUSPECT, never green. Also the precondition for Q12(b)/(c)
+  prove the count moves. (2) **MECHANISM NAMED
+  2026-09-12, and the first move moved plugins.** The signature is stable — `essense-flow:
+  test/run-all.cjs — exit 1` under the sweep, green standalone, now **4 of 8 observed sweeps**
+  (was 3 of 7). Why four investigations stalled: `bin/test-all.js:118` runs children through
+  `spawnSync(..., {encoding:'utf8'})` so stdout AND stderr ARE captured and handed to `classify`
+  (`:122-123`), but the FAILED branch keeps only `note: exit <status>`
+  (`lib/test-sweep.js:199`) and the renderer prints label + suite + note (`:257`) — **the
+  evidence is discarded at the REPORTER, not missing.** So: (2a) FIRST, in plugin-toolkit, make
+  a FAILED/SUSPECT suite print the captured output (bounded, marked when cut — the same honesty
+  #42 demands of the other ledger) and add a sweep test asserting the child's text reaches the
+  report; (2b) THEN re-run the sweep until it goes red and read what the child actually said —
+  only after that does hunting a shared resource (lock file / temp dir / cwd) make sense, since
+  the hypothesis is currently unfalsifiable; (2c) a flaky suite is named SUSPECT, never green.
+  For the ledger-compaction suspect: author the archive sibling (the root fix; raising the
+  threshold re-fires in 30 days — #38's garden job wants the same motion). Also the precondition for Q12(b)/(c)
   if the owner wants CI back.
-- **Done-check:** both suites green on a clean tree, ledger-compaction still green with the
-  system date advanced 60 days AND reporting a NON-ZERO check count that moves when an assertion
-  is added or removed, run-all green on 5 consecutive sweeps, AND `test-all --root` demonstrably
-  counts them. Run `tests/` explicitly; `test/run-all` says nothing about it.
+- **Done-check:** a deliberately failing fixture suite makes `test-all` print the child's own
+  output (and say so when it bounds it); both suites green on a clean tree, ledger-compaction
+  still green with the system date advanced 60 days AND reporting a NON-ZERO check count that
+  moves when an assertion is added or removed, run-all green on 5 consecutive sweeps, AND
+  `test-all --root` demonstrably counts them. Run `tests/` explicitly; `test/run-all` says
+  nothing about it.
 
 ## 10. Diploma residual: confirm the corrupt-state banner (next Diploma session)
 

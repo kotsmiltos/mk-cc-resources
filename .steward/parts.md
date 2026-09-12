@@ -799,17 +799,34 @@ capability reach) — it CHECKS, never generates.
   skills/elicit/SKILL.md, CLAUDE.md, README.md, CHANGELOG.md}` · **Tests:** none (no code) —
   test-all NAMES it as a no-suite unit, the prism precedent.
 
-## thorough-mode (1.11.3 — its guard is THE canonical machine-text list since #25)
+## thorough-mode (1.12.0 BUILT 2026-09-12 and UNCOMMITTED — the first working-tree-only plugin state this model has ever carried; origin carries 1.11.3, the install cache 1.11.2 — its guard is THE canonical machine-text list since #25)
 
-- **Exposes:** modifiers ++/@thorough @ship @present @debug @verify @fresh @prompt @build
-  via UserPromptSubmit injection; protocol-shaped convention as extension surface;
+- **Exposes:** NINE modifiers ++/@thorough @ship @present @debug @verify @fresh @prompt @build
+  **@fc** via UserPromptSubmit injection; protocol-shaped convention as extension surface;
   machine-text guard; steward-aware @prompt (kickoff rendered FROM the `.steward/` model).
   `@ship` now PROBES for repo-guard before naming it, and says so when absent — the rule
   that an instruction may not name a path an install cannot resolve. **1.11.3 (2026-09-12, NOT
   INSTALLED — Track 5):** `@ship`'s injected text retargeted from RELEASE-NOTES to CHANGELOG,
   with `/version-bump`, `/plugin-scaffold` and `/docs-audit`. A convention change costs a bump in
   every surface that STATES it — the injected copy is one of them.
-- **Files:** `plugins/thorough-mode/hooks/thorough-mode.js`.
+- **1.12.0 (2026-09-12 — BUILT, NOT COMMITTED, NOT PUSHED; owner's call):** a NINTH modifier
+  **`@fc` (fewer clicks)**, tag `[fewer-clicks]`, asked for by the owner (*"doing everything it
+  can on its own instead of telling me to do things … least effort to see what it is you wanna
+  show me"*). It is a DROP-IN entry in the existing `MODIFIERS` + `HINTS` registries — zero new
+  machinery, `hooks.json` untouched — i.e. the growth axis the vision declares, exercised at its
+  own cost. Protocol-shaped per the plugin's convention: failure named (OUTSOURCING) → SPLIT / DO
+  / DELIVER IN-ENVIRONMENT / MINIMIZE CLICKS / **STILL CONFIRM** (destructive or outward-facing
+  actions keep their ask; `@fc` makes it one keystroke) → anti-signals → exit check; a smart hint
+  fires on the intent without the keyword and is suppressed once `@fc` is active. Content =
+  vision invariant 13 (owner law 2026-09-09) cited with provenance and served **ON DEMAND, not
+  as a default** — the first mechanism for that law, and opt-in, which is the open decision
+  → **Q25**. Verified this pass: `plugin.json` version 1.12.0, `@fc` matcher at
+  `hooks/thorough-mode.js:181`. Suite exit 0, **30/30** (21 upstream baseline + 9 new).
+  **Reach today: NONE** — installs read the GitHub remote, so an uncommitted modifier is inert
+  for the owner; this is the reach chain failing at its FIRST link (commit), a link no earlier
+  ship in this model had ever missed.
+- **Files:** `plugins/thorough-mode/hooks/thorough-mode.js` · **Tests:**
+  `plugins/thorough-mode/tests/thorough-mode.test.js` (30 checks).
 - **Audit 2 (2026-09-06):** `@prompt` 11 + `@ship` 5 + `++ @verify` 1 = the owner's REAL
   workflow (the "obsoleted by the model" role below is refuted by usage — @prompt renders
   FROM the model and is how the owner starts work). Gaps (audit citations): `++` was
@@ -1014,3 +1031,16 @@ tag with `git merge-base --is-ancestor <tag> main`, then re-point and force-push
 `git ls-remote --tags` against local (29/29 match). A tag is a PUBLISHED ref: it inherits the
 same reach chain as a version (bump → push → install → restart) and must never be published
 against a commit that may still be rewritten.
+
+**`git fetch` IS STEP 0 OF ANY VERSION BUMP (learned 2026-09-12, the expensive way).** The first
+build of thorough-mode 1.12.0 was done on a base TEN COMMITS STALE: the local `origin/main` ref
+was trusted as current, so the whole doc cascade landed on surfaces upstream had already retired
+(RELEASE-NOTES.md, the pre-Track-5 marketplace shape, a `thorough-mode/README.md` that did not
+exist locally) and the push would have been a non-fast-forward reverting two commits. Recovery
+cost a stash + `merge --ff-only` + a re-apply onto upstream's shape. **No gate can catch this
+class from inside the checkout:** `registry-check` validates the checkout against ITSELF, and it
+passed at exit 0 on the dead base — consistency with a stale world is still consistency. The
+freshness fact lives only in the remote, so the reach chain gains a zeroth link: **fetch → bump →
+push → install → restart**, and a second lesson rides with it — a suite BASELINE read before a
+fetch is also stale (the baseline was 21, not the 22 first reported). → task #41 makes it a claim
+source instead of a habit.

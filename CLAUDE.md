@@ -53,7 +53,7 @@ plugins/
   schema-scout/             # Data file schema exploration CLI (Python: typer + openpyxl + rich)
 
   thorough-mode/            # Prompt modifiers (++/@thorough, @ship, @present, @debug, @verify,
-                            #   @fresh, @prompt, @build) — hooks-only, protocol-shaped
+                            #   @fresh, @prompt, @build, @fc) — hooks-only, protocol-shaped
                             #   injections, machine-text guard; @prompt is steward-aware.
                             #   See plugins/thorough-mode/CLAUDE.md.
 
@@ -108,7 +108,10 @@ plugins/
                             #   hook — plugins ship DUTIES, not hooks;
                             #   one runner checks each against real state, ONE consolidated
                             #   tail per user request. Duty kinds: DEMAND (ask) + SUPPLY
-                            #   (material). Shipped duties: context-recall, session-digest,
+                            #   (material). Shipped duties: fewer-clicks (0.12.0 —
+                            #   the owner's fewest-clicks law, conditional: zero bytes unless the
+                            #   answer carries an outsourcing tell; TELLS/EXCUSES are the
+                            #   extension surfaces; permanently advise), context-recall, session-digest,
                             #   quality-lens, steward-sync, self-check (0.4.0 — default-ON,
                             #   severity:block: a turn that changed real files may not yield
                             #   until a check ran AFTER the last change or the final message
