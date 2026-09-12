@@ -77,6 +77,25 @@ const SKIP_PATTERNS = [
 ];
 
 const OK = 'ok';
+// A failing suite's output is already captured by the runner; printing only its exit code
+// throws the evidence away. Measured 2026-09-12: `essense-flow:test/run-all.cjs — exit 1`
+// survived FOUR sweeps across two sessions with no diagnosis available, because the report
+// named the exit code and nothing else. Bounded so one pathological suite cannot bury the
+// summary line that follows it.
+const FAILURE_EXCERPT_LINES = 12;
+const FAILURE_EXCERPT_MAX_CHARS = 1200;
+
+/** Last few meaningful lines of a failing suite's output, bounded. PURE. */
+function excerptOf(output) {
+  const text = String(output || '').replace(/\r/g, '');
+  const lines = text.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim() !== '');
+  if (!lines.length) return null;
+  const tail = lines.slice(-FAILURE_EXCERPT_LINES).join('\n');
+  return tail.length > FAILURE_EXCERPT_MAX_CHARS
+    ? `…${tail.slice(-FAILURE_EXCERPT_MAX_CHARS)}`
+    : tail;
+}
+
 const FAILED = 'failed';
 const SUSPECT = 'suspect';
 const CANNOT_RUN = 'cannot-run';
@@ -193,16 +212,17 @@ function parseSkips(output) {
 function classify(exec) {
   const output = exec.output || '';
   if (exec.spawnError) {
-    return { state: CANNOT_RUN, counts: null, note: exec.spawnError };
+    return { state: CANNOT_RUN, counts: null, note: exec.spawnError, excerpt: excerptOf(output) };
   }
   if (exec.status !== 0) {
-    return { state: FAILED, counts: parseCounts(output), note: `exit ${exec.status}` };
+    return { state: FAILED, counts: parseCounts(output), note: `exit ${exec.status}`, excerpt: excerptOf(output) };
   }
   if (looksFailed(output)) {
     return {
       state: SUSPECT,
       counts: parseCounts(output),
-      note: 'exited 0 while printing a failure — a suite that lies about itself is worse than a red one'
+      note: 'exited 0 while printing a failure — a suite that lies about itself is worse than a red one',
+      excerpt: excerptOf(output)
     };
   }
   const counts = parseCounts(output);
@@ -257,7 +277,16 @@ function format(summary, { verbose = false, results = [] } = {}) {
   for (const [label, group] of [['FAILED', summary.failed], ['SUSPECT', summary.suspect], ['CANNOT RUN', summary.cannotRun]]) {
     if (!group.length) continue;
     lines.push(`${label} (${group.length}):`);
-    for (const r of group) lines.push(`  ${r.suite}${r.note ? ` — ${r.note}` : ''}`);
+    for (const r of group) {
+      lines.push(`  ${r.suite}${r.note ? ` — ${r.note}` : ''}`);
+      // The evidence, not just the verdict. "no output captured" is itself a diagnosis:
+      // a child that dies without writing a line is a different bug from a failing assertion.
+      if (r.excerpt) {
+        for (const l of r.excerpt.split('\n')) lines.push(`    | ${l}`);
+      } else {
+        lines.push('    | (no output captured — the suite produced nothing on stdout or stderr)');
+      }
+    }
   }
 
   if (summary.erroredRunners.length) {
@@ -295,6 +324,9 @@ module.exports = {
   isClaimed,
   OK,
   FAILED,
+  excerptOf,
+  FAILURE_EXCERPT_LINES,
+  FAILURE_EXCERPT_MAX_CHARS,
   SUSPECT,
   CANNOT_RUN,
   NOTHING_CHECKED

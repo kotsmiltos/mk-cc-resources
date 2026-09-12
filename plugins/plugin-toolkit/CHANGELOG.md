@@ -5,6 +5,11 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-09-12
+
+### Fixed
+- `test-all` now prints a failing suite's **captured output**, not just its exit code. The runner already captured stdout/stderr (`bin/test-all.js:118`); the report threw it away, so `essense-flow:test/run-all.cjs — exit 1` survived four red sweeps across two sessions with zero diagnostic bytes and the "shared resource" hypothesis was never falsifiable. FAILED, SUSPECT and CANNOT RUN each carry a bounded tail excerpt (12 lines / 1200 chars, `|`-prefixed). A suite that fails while printing **nothing** now says so explicitly — silence is itself a diagnosis, and a different bug from a failing assertion.
+
 ## [1.16.0] - 2026-09-12
 
 ### Fixed

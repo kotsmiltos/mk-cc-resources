@@ -285,6 +285,42 @@ check('the report NAMES what did not run', () => {
   assert.ok(text.includes('quiet'), 'names the unit with no suite');
 });
 
+check('a FAILED suite carries its captured output into the report', () => {
+  const r = sweep.classify({ status: 1, output: 'running x'+String.fromCharCode(10)+'AssertionError: expected 3 got 4' });
+  assert.strictEqual(r.state, sweep.FAILED);
+  assert.ok(r.excerpt && r.excerpt.includes('AssertionError'), 'the evidence rides along with the verdict');
+  const planned = { unitsWithoutSuites: [], errored: [], ran: ['node-file'], skipped: [] };
+  const text = sweep.format(sweep.summarise(planned, [{ suite: 'u:t.js', ...r }]));
+  assert.ok(text.includes('AssertionError: expected 3 got 4'), 'and reaches the printed report');
+});
+
+check('a suite that fails while printing NOTHING says so explicitly', () => {
+  // The measured #9 shape: exit 1, zero output. "no output captured" is the diagnosis.
+  const r = sweep.classify({ status: 1, output: '' });
+  assert.strictEqual(r.excerpt, null);
+  const planned = { unitsWithoutSuites: [], errored: [], ran: ['aggregator'], skipped: [] };
+  const text = sweep.format(sweep.summarise(planned, [{ suite: 'essense-flow:test/run-all.cjs', ...r }]));
+  assert.ok(text.includes('no output captured'), 'silence is reported, not skipped over');
+});
+
+check('the excerpt is bounded so one noisy suite cannot bury the summary', () => {
+  const noisy = Array.from({ length: 400 }, (_, i) => `line ${i}`).join(String.fromCharCode(10));
+  const r = sweep.classify({ status: 1, output: noisy });
+  const lines = r.excerpt.split(String.fromCharCode(10));
+  assert.ok(lines.length <= sweep.FAILURE_EXCERPT_LINES, 'line-bounded');
+  assert.ok(r.excerpt.length <= sweep.FAILURE_EXCERPT_MAX_CHARS + 1, 'char-bounded');
+  assert.ok(r.excerpt.includes('line 399'), 'keeps the TAIL — where the failure prints');
+});
+
+check('SUSPECT and CANNOT RUN carry evidence too, not just FAILED', () => {
+  const suspect = sweep.classify({ status: 0, output: 'ok 1'+String.fromCharCode(10)+'2 FAILED' });
+  assert.strictEqual(suspect.state, sweep.SUSPECT);
+  assert.ok(suspect.excerpt.includes('2 FAILED'));
+  const cannot = sweep.classify({ status: null, output: '', spawnError: 'node: ENOENT' });
+  assert.strictEqual(cannot.state, sweep.CANNOT_RUN);
+  assert.strictEqual(cannot.excerpt, null);
+});
+
 console.log(`\n${passed}/${passed + failures} checks passed`);
 if (failures) console.log(`${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);
