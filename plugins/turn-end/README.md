@@ -133,6 +133,10 @@ consolidated message describe a turn that never happened.
 | `session-digest` | `block` | the project curates memory (`.claude/kb/*` or `.steward/` hold real files) **and** the turn used Write/Edit/NotebookEdit/Bash | the turn wrote `.claude/kb/session-digest.md` |
 | `steward-sync` | `advise` | `.steward/inbox/` holds at least one staged `*.md` note | the inbox is empty, **or** the steward agent was dispatched, **or** it was already asked this **sitting** |
 | `quality-lens` | `advise` | `.claude/verifiability-lens.json` `{"enabled": true}` (project beats global; off by default) **and** the turn did substantive work | the lens was dispatched, **or** it was already asked this `prompt_id` |
+| `self-check` | `block` | the turn changed real files | a check ran AFTER the last change, or the final message names the check and its result |
+| `context-recall` | `advise` | the project keeps knowledge the answer may have needed | the judge (or the fallback ranker) found nothing material missed |
+| `request-closure` | `advise` | the span was woken by, or dispatched, agents | the answer closes the **user's** original request, not the last agent's return |
+| `fewer-clicks` | `advise` | the final message carries an outsourcing tell (and the owner did not ask for instructions) | no tell remains, **or** the message names why only the owner can do it, **or** it was already asked this `prompt_id` |
 
 `steward-sync` closes the gap between capturing a thought and recomputing the model it changes.
 Captures are cheap and land mid-conversation; the recompute is the expensive half, and nothing
@@ -149,6 +153,14 @@ revisable.
 passes 1–3 found real defects and passes 4–8 were the reviewer repairing its own earlier
 characterisations. Until a duty can tell advancing from oscillating, it gets the channel that
 continues the turn without raising an error. Set `severity: "block"` in config to enforce.
+
+`fewer-clicks` carries the owner's 2026-09-09 law — *"this cannot be pointing me to files … doing
+as many of the things on its own and leaving the least amount of clicks to me"* — into the one
+place that reads the finished answer. Two properties make it safe to leave on: it prints **zero
+bytes** unless a tell is actually present, and it is permanently `advise`, because every tell is
+a regex over prose and a false positive must never trap the session. Its shape (the tell list,
+the excuse list, the 200-char floor, priority 50) was chosen by Claude; the ruling that it should
+exist at all, alongside the on-demand `@fc` keyword rather than instead of it, is the owner's.
 
 ## Judgment
 

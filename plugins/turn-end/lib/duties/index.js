@@ -55,8 +55,9 @@ const stewardSync = require('./steward-sync');
 const qualityLens = require('./quality-lens');
 const selfCheck = require('./self-check');
 const requestClosure = require('./request-closure');
+const fewerClicks = require('./fewer-clicks');
 
-const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure];
+const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure, fewerClicks];
 
 function all() {
   return DUTIES.slice();

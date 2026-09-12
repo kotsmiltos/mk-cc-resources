@@ -4,6 +4,14 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-09-12
+
+### Added
+- Duty `fewer-clicks` (`advise`, default ON) — the owner's 2026-09-09 law checked at turn end: an answer must not hand the owner work the session could have done. Ruled by the owner on 2026-09-12, answering Q25: the `@fc` keyword (thorough-mode 1.12.0) stays on demand **and** the bar is folded into a duty.
+- It costs **zero bytes on a clean turn**: `applies` is false unless the final message actually carries an outsourcing tell, so it is a conditional check, never a standing injection.
+- The extension surface is `TELLS` — outsourcing is a category, not one shape: `run-it-yourself`, `pointer-instead-of-content`, `offer-instead-of-doing`, `todo-for-the-owner`, `wrote-without-showing`. A newly-observed shape is one entry, never a runner change. `EXCUSES` is the matching surface for work that genuinely belongs to the owner (credentials, a login, an owner-gated push) — naming why is step 1 of the protocol, so it *satisfies* the duty.
+- Guards that decide whether it nags: fenced code blocks and quoted text are stripped before scanning (a paste-ready command in a fence is delivery, the opposite of outsourcing), a message under 200 chars is an acknowledgement rather than a deliverable, and a request that ASKED for instructions ("how do I…") disables it entirely. Severity is `advise` and cannot harden: every tell is a prose heuristic with no one-sentence escape hatch, unlike `self-check`.
+
 ## [0.11.0] - 2026-09-12
 
 ### Fixed

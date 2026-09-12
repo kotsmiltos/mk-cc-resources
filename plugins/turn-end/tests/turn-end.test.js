@@ -32,6 +32,7 @@ const qualityLens = require('../lib/duties/quality-lens');
 const stewardSync = require('../lib/duties/steward-sync');
 const requestClosure = require('../lib/duties/request-closure');
 const contextRecall = require('../lib/duties/context-recall');
+const fewerClicks = require('../lib/duties/fewer-clicks');
 const selfCheck = require('../lib/duties/self-check');
 const claudeP = require('../lib/judges/claude-p');
 const duties = require('../lib/duties');
@@ -2564,12 +2565,95 @@ check('E2E: v1 hook line (plugin/version/session_id/ms/decision/bytes) + ONE act
   assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'ledger.json'), 'utf8')).actedOnUpTo, Date.parse('2026-09-09T10:00:00.000Z'));
 });
 
+// ---- fewer-clicks: the owner-law duty. Its false-POSITIVE guards matter more than its
+// hits — an advisory that cries wolf on clean turns is the nag the owner rejected. ----
+
+const LONG = ' Context filler so the message clears the length floor and reads like a real answer.'.repeat(4);
+
+check('fewer-clicks stays SILENT on a clean delivered answer', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'Suite is green: 33/33 passed.' + LONG });
+  assert.strictEqual(fewerClicks.applies(ctx), false);
+});
+
+check('fewer-clicks is silent on a short acknowledgement', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'You can run it now.' });
+  assert.strictEqual(fewerClicks.applies(ctx), false, 'below the length floor');
+});
+
+check('fewer-clicks fires when the answer tells the owner to run something', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'The bump is in place. You can run the suite to confirm.' + LONG });
+  assert.strictEqual(fewerClicks.applies(ctx), true);
+  assert.strictEqual(fewerClicks.satisfied(ctx), false);
+  assert.ok(fewerClicks.ask(ctx).includes('run-it-yourself'));
+});
+
+check('fewer-clicks fires on a pointer used instead of content', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'The findings are recorded. See .claude/kb/notes.md for the details.' + LONG });
+  assert.ok(fewerClicks.tellsIn(ctx.lastAssistantMessage).some((t) => t.id === 'pointer-instead-of-content'));
+});
+
+check('fewer-clicks fires on an offer instead of doing it', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'The helper is written. Let me know if you want me to wire it in.' + LONG });
+  assert.ok(fewerClicks.tellsIn(ctx.lastAssistantMessage).some((t) => t.id === 'offer-instead-of-doing'));
+});
+
+check('fewer-clicks fires on a write reported without its content', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'Done. I wrote the summary to docs/report.md and moved on.' + LONG });
+  assert.ok(fewerClicks.tellsIn(ctx.lastAssistantMessage).some((t) => t.id === 'wrote-without-showing'));
+});
+
+check('a command inside a FENCE is delivery, not outsourcing', () => {
+  // The fence IS the content: stripping fences before scanning is what keeps the duty from
+  // punishing the exact behaviour it asks for (hand over a paste-ready one-liner).
+  const msg = 'Paste this and the output lands here:' + LONG + String.fromCharCode(10) +
+    '```' + String.fromCharCode(10) + 'you can run npm test' + String.fromCharCode(10) + '```';
+  assert.strictEqual(fewerClicks.tellsIn(msg).length, 0);
+});
+
+check('QUOTING the owner does not fire the duty', () => {
+  const msg = '> you can run the suite yourself' + String.fromCharCode(10) +
+    'I ran it instead; here is the output.' + LONG;
+  assert.strictEqual(fewerClicks.tellsIn(msg).length, 0);
+});
+
+check('a NAMED reason why only the owner can do it satisfies the duty', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'You can run the install once it is live — pushing is your call, so I stopped here.' + LONG });
+  assert.strictEqual(fewerClicks.applies(ctx), true, 'the tell is present');
+  assert.strictEqual(fewerClicks.satisfied(ctx), true, 'and it is justified, which is step 1 of the protocol');
+});
+
+check('a credential-gated ask is excused', () => {
+  const ctx = fakeCtx({ lastAssistantMessage: 'You should run the deploy after you log in — I have no credentials here.' + LONG });
+  assert.strictEqual(fewerClicks.satisfied(ctx), true);
+});
+
+check('when the OWNER asked for instructions, instructions are the deliverable', () => {
+  const ctx = fakeCtx({
+    lastAssistantMessage: 'You can run the migration with the following steps, in order.' + LONG,
+    turn: { userRequest: 'how do i migrate the database?', toolNames: [], toolTargets: [] },
+  });
+  assert.strictEqual(fewerClicks.applies(ctx), false);
+});
+
+check('fewer-clicks asks once per prompt, never twice', () => {
+  const ctx = fakeCtx({
+    lastAssistantMessage: 'Done. You can run the suite to confirm.' + LONG,
+    ledger: { promptId: 'prompt-1', fires: 1, asked: ['fewer-clicks'] },
+  });
+  assert.strictEqual(fewerClicks.satisfied(ctx), true, 'the ledger is the termination');
+});
+
+check('fewer-clicks never hardens the tail', () => {
+  assert.strictEqual(fewerClicks.severity, 'advise', 'a prose heuristic with no escape hatch must not block');
+});
+
 // Async checks resolve after the sync pass, so the report waits on them — otherwise a failing
 // async test would print after the exit code was already decided.
 Promise.all(pending).then(() => {
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (_e) { /* best effort */ }
 
   const total = passed + failed;
+
   console.log(`\n${passed}/${total} checks passed`);
   if (failed) {
     console.error(`${failed} FAILED`);
