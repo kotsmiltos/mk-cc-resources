@@ -22,6 +22,7 @@
  *   @fresh          — context refresh, re-read key files
  *   @prompt         — produce a copy-paste kickoff prompt for the next session
  *   @build          — plan the change, review the plan, then build it
+ *   @fc             — fewer clicks: do everything doable yourself, deliver in-terminal
  */
 
 // Markers that identify machine-generated user-role content. Matched against the
@@ -174,6 +175,20 @@ EXIT CHECK: every citation in the saved prompt was disk-verified this turn, and 
    - Surface open decisions, risks, or unknowns the plan cannot resolve alone — flag them, don't guess.
 3. BUILD — implement the reviewed plan in the smallest viable steps, running the verifiable check after each. Fix at the root. Do not drift from the plan; if the plan turns out wrong, revise the plan and re-review, don't patch around it.`,
   },
+  {
+    name: "fc",
+    triggers: [
+      /(?:^|\s)@fc(?:\s|$)/i,  // @fc as standalone token
+    ],
+    injection: `[fewer-clicks] Do it yourself; hand back the RESULT, not instructions. The failure this guards: OUTSOURCING — ending a turn with work the user now has to do (a path to open, a command to run, a file to diff, a choice buried in prose) that you had the tools to do here. Run this shape:
+1. SPLIT the work — what CAN you do in this environment (read, run, search, edit, fetch, compute, publish) vs what genuinely REQUIRES the user (their credentials, an interactive login, an outward or irreversible action, a judgment only they own)? The second list must be short and each item justified; "it is faster if you do it" is not a justification.
+2. DO your whole side, in this sitting. Before writing any instruction addressed to the user, check the tools once more: runnable -> run it and paste the output; readable -> read it and show the part that matters; fixable -> fix it; comparable -> diff it and show the diff; unknown -> go find out.
+3. DELIVER IN-ENVIRONMENT — the content lands in the terminal, already digested. A path, id, or section ref is a machine address, never the user's reading path: cite it AFTER the content, never instead of it. "I wrote it to X" without showing what is in X is an unfinished turn.
+4. MINIMIZE the clicks that remain — every decision becomes ONE keystroke: AskUserQuestion, batched (up to 4 independent decisions), recommended default first and labelled. When the user truly must run something, hand them the exact paste-ready one-liner (in Claude Code, \`! <command>\` runs it in this session so the output lands here). Never make them hunt, retype, or assemble.
+5. STILL CONFIRM what must be confirmed — destructive, outward-facing, or irreversible actions get an explicit ask, and a raised concern still gets stated. @fc makes that ask ONE keystroke; it does not remove it.
+ANTI-SIGNALS (stop; return to step 2): about to write "you can run...", "check the file at...", "see <path>", "let me know if you want me to..."; ending with a to-do list addressed to the user; reporting a file was written without showing its content; offering options as prose instead of a question; asking permission for something already authorized.
+EXIT CHECK: everything still on the user is something only they can do, and each of those carries the exact command or a one-keystroke question. Nothing you could have done yourself is waiting on them.`,
+  },
 ];
 
 // Steward-aware @prompt variant: in a project with a .steward/ living model, the
@@ -245,6 +260,13 @@ const HINTS = [
     ],
     hint: `[hint] Tip: add \`@build\` to plan the change (files touched/added/removed), review the plan against our patterns, then implement.`,
   },
+  {
+    name: "fc",
+    patterns: [
+      /\b(do it yourself|don'?t tell me to|stop telling me to|instead of telling me|without me having to|don'?t (make|want) me (to )?(run|open|read|click)|(least|fewer|less) (amount of )?clicks|don'?t point me to|stop pointing me to|show me (it |them )?(right )?here)\b/i,
+    ],
+    hint: `[hint] Tip: add \`@fc\` (fewer clicks) — I do everything I can myself and deliver the result here, instead of handing you instructions.`,
+  },
 ];
 
 /**
@@ -288,9 +310,14 @@ async function main() {
   const activeModifiers = new Set();
   const injections = [];
 
+  // Root-anchored, not cwd-anchored: a shell sitting in a subdirectory of a steward
+  // project must still get the steward variant (measured defect, 2026-09-06 audit).
   const stewardModelExists = (() => {
-    try { return require("fs").existsSync(require("path").join(process.cwd(), ".steward")); }
-    catch (_e) { return false; }
+    try {
+      const { resolveProjectRoot } = require("../lib/project-root.js");
+      const root = resolveProjectRoot(process.cwd());
+      return require("fs").existsSync(require("path").join(root, ".steward"));
+    } catch (_e) { return false; }
   })();
 
   for (const modifier of MODIFIERS) {

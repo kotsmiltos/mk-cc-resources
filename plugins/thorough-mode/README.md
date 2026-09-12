@@ -24,6 +24,7 @@ Hooks only — install it standalone, not through the bundle.
 | `@fresh` | Distrust compressed context — re-read the key files from disk |
 | `@prompt` | Write the kickoff prompt for the next cold session, and save it |
 | `@build` | Reuse before building; check what already exists first |
+| `@fc` | Fewer clicks — everything doable gets done here, the result lands in the terminal instead of a path to open, and what is left is one keystroke |
 
 Put the keyword anywhere in the message. They stack — `++ @verify` fires both. Describe the
 intent without the keyword ("prove it", "root cause", "re-read the file") and you get a one-line

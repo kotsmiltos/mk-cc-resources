@@ -4,7 +4,7 @@ Keyword triggers that inject behavioral rules into the current response.
 
 ## Injection shape (the convention new modifiers drop into)
 
-An abstract imperative list ("be careful", "re-read") under-fires — it drifts out of working memory at exactly the moment it matters. Protocol-bearing injections follow this shape instead: **failure named** (what the modifier guards against) → **ordered RESPONSE** (numbered steps run in order) → **ANTI-SIGNALS** (concrete tells that the failure is happening right now; each names where to return to) → **EXIT CHECK** (the verifiable condition that proves the modifier was honored, not just read). `@thorough`, `@fresh`, and `@prompt` carry the full shape; a new modifier should too. Checklist-style modifiers (`@ship`) and already-stepped ones (`@build`, `@debug`, `@verify`) are exempt where their form is inherently concrete.
+An abstract imperative list ("be careful", "re-read") under-fires — it drifts out of working memory at exactly the moment it matters. Protocol-bearing injections follow this shape instead: **failure named** (what the modifier guards against) → **ordered RESPONSE** (numbered steps run in order) → **ANTI-SIGNALS** (concrete tells that the failure is happening right now; each names where to return to) → **EXIT CHECK** (the verifiable condition that proves the modifier was honored, not just read). `@thorough`, `@fresh`, `@prompt`, and `@fc` carry the full shape; a new modifier should too. Checklist-style modifiers (`@ship`) and already-stepped ones (`@build`, `@debug`, `@verify`) are exempt where their form is inherently concrete.
 
 ## Available Modifiers
 
@@ -72,6 +72,18 @@ Plans a change, reviews the plan against the bar, then implements it:
 - PLAN: enumerate code to MODIFY (file/symbol + what changes), ADD (new files/functions/types + where), REMOVE (what's deleted/replaced + why safe); order of ops + verifiable check per step
 - REVIEW: is it the best option (name the rejected alternative)? is it already built here or served by a package/library (reuse-first — reuse/extend, don't reinvent)? does it match existing style/implementation patterns (read neighbors, reuse helpers)? does it honor project conventions (code-conventions.md / CLAUDE.md)? surface risks/unknowns
 - BUILD: smallest viable steps, verify after each, fix at root, no drift from the plan — if the plan was wrong, revise and re-review rather than patch around it
+
+### `@fc` — Fewer Clicks
+Guards against OUTSOURCING — ending a turn with work the user now has to do (a path to open, a command to run, a choice buried in prose) that you had the tools to do here:
+- SPLIT: what you can do in this environment vs what genuinely requires the user (their credentials, an interactive login, an outward/irreversible action, a judgment they own) — the second list stays short and justified; "faster if you do it" is not a justification
+- DO your whole side in this sitting: runnable -> run it and paste the output; readable -> read it and show what matters; fixable -> fix it; comparable -> diff it and show the diff
+- DELIVER IN-ENVIRONMENT: the content lands in the terminal, already digested; a path/id/section-ref is a machine address, cited AFTER the content, never instead of it
+- MINIMIZE remaining clicks: every decision is ONE keystroke (AskUserQuestion, batched, recommended default first); anything the user must run comes as a paste-ready one-liner
+- STILL CONFIRM destructive, outward-facing, or irreversible actions — `@fc` makes the ask one keystroke, it does not remove it
+- Anti-signals: "you can run...", "check the file at...", "see <path>", a to-do list addressed to the user, reporting a file was written without showing its content
+- Exit check: everything left on the user is something only they can do, each with the exact command or a one-keystroke question
+
+Provenance: owner law, verbatim 2026-09-09 — "this cannot be pointing me to files. it needs to be giving me everything i need in a digestible manner within this environment ... doing as many of the things on its own and leaving the least amount of clicks to me". `@fc` is that law on demand; the modifier does not make it the default.
 
 ## Smart Hints
 

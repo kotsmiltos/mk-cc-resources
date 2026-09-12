@@ -4,6 +4,12 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-09-12
+
+### Added
+- `@fc` (fewer clicks) — a ninth modifier, asked for in the owner's words: "doing everything it can on its own instead of telling me to do things ... so I have to put in the least effort to see what it is you wanna show me". It names its failure as OUTSOURCING and runs SPLIT (what only you can do — short and justified) -> DO your whole side -> DELIVER IN-ENVIRONMENT (a path is a machine address, cited after the content, never instead of it) -> MINIMIZE the clicks left (one-keystroke questions, paste-ready one-liners) -> STILL CONFIRM. Step 5 is load-bearing: `@fc` compresses a destructive or outward-facing confirmation into one keystroke, it never removes it.
+- A smart hint for the same intent without the keyword ("stop telling me to...", "don't point me to...", "least clicks"), suppressed once `@fc` is active.
+
 ## [1.11.3] - 2026-09-11
 
 ### Changed
