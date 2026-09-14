@@ -42,7 +42,7 @@
  * So LEAN_ARGS buy: no hook/plugin/MCP boot (the 235 judge children on this machine each
  * fired the whole harness and polluted fleet/kb state), ~36% lower cost, and no dependence on
  * the user's settings. They do NOT buy speed on a real prompt: that time is inference, and
- * the 60 s budget below is what a long deliberation overruns (12 ETIMEDOUTs in real sittings).
+ * the budget below is what a long deliberation used to overrun (12 ETIMEDOUTs at the old 60 s).
  * The earlier "~11s" and "46s" figures in this repo were harness boot, not judge time.
  *
  * LEAN_ARGS, and the caveat that keeps them honest: `--setting-sources ""` (an EMPTY source
@@ -62,13 +62,30 @@ const path = require('path');
 
 const DEPTH_VAR = 'MK_TURN_END_DEPTH';
 const DEFAULT_MODEL = 'haiku';
-const DEFAULT_TIMEOUT_MS = 60000;
+/*
+ * TIMEOUT — owner ruling 2026-09-14, verbatim: "extend the timeout if it's in our hands make
+ * it 5 times longer i don't care". 60 s -> 300 s. It IS in our hands, and the 60 s was never
+ * the platform's:
+ *
+ *   PROBED 2026-09-14 (decisive): a Stop `command` hook declared `"timeout": 300` ran for
+ *   75 SECONDS to completion under `claude -p` (exit 0, marker file written). So the platform
+ *   does not cap a Stop hook at 60 s, and capture 20260731-1950's "platform default 60 s" is
+ *   REFUTED. The docs put the `command` default at 600 s and lower it only for
+ *   UserPromptSubmit / PreModelSwitch / PostModelSwitch (30 s), MessageDisplay (10 s) and
+ *   SessionEnd — Stop is NOT on that list. Docs alone would not have been enough: this repo
+ *   has measured two hooks-reference drifts in three days, so the probe is the authority.
+ *
+ * Every 60,615 ms ceiling ever seen in the Stop durations was THIS constant firing, not a
+ * platform kill. The hook's own ceiling is raised to match (hooks.json), and the fail-open
+ * ranker still catches anything that overruns even 300 s.
+ */
+const DEFAULT_TIMEOUT_MS = 300000;
 
 const LEAN_ARGS = ['--setting-sources', '', '--disable-slash-commands', '--strict-mcp-config'];
 
 /*
  * A failure that a retry cannot cure: the child ran past the budget (or was signalled). A
- * second spawn would double the wait and overrun the hook's own 90 s ceiling, so those errors
+ * second spawn would double the wait and overrun the hook's own ceiling, so those errors
  * stand as they are; only an argument-class failure (non-zero exit, no timeout) earns the
  * retry without LEAN_ARGS.
  */

@@ -1,5 +1,5 @@
 {
-  "description": "The single blocking Stop hook — runs every applicable turn-end duty in one pass — plus the ground-truth recorder for exec tool results (PostToolUse + PostToolUseFailure on Bash|PowerShell, informational, fail-soft)",
+  "description": "The single blocking Stop hook (timeout 420 s: clears the 300 s judge cap plus the rest of the duty pass; PROBED 2026-09-14 \u2014 a Stop command hook honoured \"timeout\": 300 for a 75 s run, so the platform does not cap at 60) \u2014 runs every applicable turn-end duty in one pass \u2014 plus the ground-truth recorder for exec tool results (PostToolUse + PostToolUseFailure on Bash|PowerShell, informational, fail-soft)",
   "hooks": {
     "Stop": [
       {
@@ -8,8 +8,10 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/turn-end.js"],
-            "timeout": 90
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/turn-end.js"
+            ],
+            "timeout": 420
           }
         ]
       }
@@ -21,7 +23,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"
+            ],
             "timeout": 10
           }
         ]
@@ -34,7 +38,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/tool-record.js"
+            ],
             "timeout": 10
           }
         ]

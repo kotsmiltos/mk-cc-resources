@@ -47,12 +47,42 @@ const path = require("path");
 const CONFIG_REL = path.join(".claude", "reuse-gate.json");
 const STATE_REL = path.join(".claude", "reuse-gate", "state.json");
 
-const REMINDER =
-  "[reuse-gate] Reuse-first check before writing new code (surfaced once per message):\n" +
-  "  1. Already implemented here? Search the codebase / functionality glossary (MAP.md) — reuse or extend it, don't duplicate.\n" +
-  "  2. Served by a package/library? For well-solved problems (parsing, dates, HTTP, crypto, retries, validation), adopt a maintained dependency — pinned, wrapped behind your own contract — over hand-rolling.\n" +
-  "Only write new when neither fits (say why if you reimplement anyway). What you DO write: modular, decoupled, reusable.\n" +
-  "Ref: your project's reuse-first conventions — e.g. essense-flow references/code-conventions.md \"Before you build: reuse what exists\", or the global ~/.claude/CLAUDE.md Code Quality rule.";
+/*
+ * THE LADDER. Four rungs, climbed in order, cheapest first — the two at the ends were added
+ * 2026-09-14 after measuring what the two-rung version let through.
+ *
+ * Rung 0 (DELETE) and rung 3 (the RUNTIME) came from comparing this gate with `ponytail`, the
+ * prior art the owner named: its ladder is delete -> reuse -> standard library -> platform
+ * feature -> write. Ours had only the middle two, and the gap is not theoretical — measured in
+ * this repo the same day: 17 test files carry a hand-written `check()` counter while `node:test`
+ * ships inside the Node we already run, and CLI flags are parsed by hand where `util.parseArgs`
+ * exists. Neither is a "package/library" (rung 2's wording), so rung 2 read straight past them.
+ * A runtime you are ALREADY running is the cheapest dependency there is.
+ */
+/*
+ * THE LADDER. Four rungs, climbed in order, cheapest first - the two at the ends were added
+ * 2026-09-14 after measuring what the two-rung version let through.
+ *
+ * Rung 0 (DELETE) and rung 2 (the RUNTIME) came from comparing this gate with `ponytail`, the
+ * prior art the owner named: its ladder is delete -> reuse -> standard library -> platform
+ * feature -> write. Ours had only the middle two, and the gap is not theoretical - measured in
+ * this repo the same day: 17 test files carry a hand-written check() counter while node:test
+ * ships inside the Node we already run, and CLI flags are parsed by hand where util.parseArgs
+ * exists. Neither is a "package/library" (the old rung 2 wording), so it read straight past
+ * them. A runtime you are ALREADY running is the cheapest dependency there is.
+ *
+ * Built as an ARRAY joined at load: this file has been mangled twice by shell-heredoc editing
+ * turning an escape into a raw control byte, and an array of plain lines has no escapes to lose.
+ */
+const REMINDER = [
+  "[reuse-gate] Before writing new code, climb this ladder in order (surfaced once per message):",
+  "  0. Can it be DELETED instead? The cheapest code is the code not written - check whether the need disappears if something is removed, simplified, or configured rather than added.",
+  "  1. Already implemented HERE? Search the codebase / functionality glossary (MAP.md) - reuse or extend it, do not duplicate.",
+  "  2. In the RUNTIME you already run? Node ships node:test, util.parseArgs, fs/promises, crypto, worker_threads; Python ships argparse, pathlib, dataclasses, unittest. Already installed, zero supply chain, no version to pin.",
+  "  3. Served by a maintained PACKAGE? For well-solved problems (globbing, parsing, dates, HTTP, crypto, retries, validation), adopt one - pinned, wrapped behind your own contract - over hand-rolling.",
+  "Only write new when no rung fits, and say WHICH rung you rejected and why. What you DO write: modular, decoupled, reusable.",
+  "Ref: your project reuse-first conventions - essense-flow references/code-conventions.md \"Before you build: reuse what exists\", or the global ~/.claude/CLAUDE.md Code Quality rule.",
+].join(String.fromCharCode(10))
 
 // Source-code file extensions the reminder applies to. Docs/config/data
 // (.md .json .yaml .txt .lock …) are deliberately excluded — reuse-first is a

@@ -196,7 +196,7 @@
       "source": "./plugins/reuse-gate",
       "displayName": "Reuse Gate",
       "description": "Reuse-first reminder at the moment code is written: one nudge per message on the first source write \u2014 is this already implemented here, or served by a library you already have?",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -256,7 +256,7 @@
       "source": "./plugins/kb",
       "displayName": "Knowledge Base",
       "description": "The project's queryable knowledge base \u2014 decisions and their why, dead ends, conventions \u2014 indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
-      "version": "0.14.0",
+      "version": "0.15.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.12.1",
+      "version": "0.13.0",
       "author": {
         "name": "kotsmiltos"
       },

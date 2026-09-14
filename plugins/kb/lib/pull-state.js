@@ -31,6 +31,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PULL_STATE_REL = path.join('.claude', 'kb', 'pull-state');
+/*
+ * THE CHANNELS. Each is one injected payload with its own hook output and therefore its own
+ * full share of the platform's per-output bound (PROBED 2026-09-14: two hooks on one event
+ * delivered ~7 KB each — 14 KB combined — with no stub, so the bound is per OUTPUT). Adding a
+ * payload is one name here plus one hooks.json entry; nothing else changes.
+ */
+const HINTS_CHANNEL = 'hints';
+const DIGEST_CHANNEL = 'digest';
 // Test override so a suite never writes into the real home. Not documented as user config.
 const PULL_STATE_DIR_VAR = 'KB_PULL_STATE_DIR';
 
@@ -38,12 +46,23 @@ function stateDir(env = process.env) {
   return env[PULL_STATE_DIR_VAR] || path.join(os.homedir(), PULL_STATE_REL);
 }
 
-/** Home-side state file for a project root — the hash keys the project, never its spelling. */
-function statePathFor(projectRoot, dir) {
+/*
+ * Home-side state file for a project root — the hash keys the project, never its spelling.
+ *
+ * `channel` (0.15.0): kb-pull now emits its payloads as SEPARATE hook outputs so they stop
+ * competing for one bounded injection, which means two processes fire on the same prompt.
+ * They must not share one state file: `writeState` writes the whole object, so the second
+ * writer would erase the first's field — the exact clobber class this repo measured in the
+ * turn-end ledger, and there is no locking anywhere to lean on. One file per channel removes
+ * the race instead of managing it. An absent channel keeps the original path, so a config
+ * still registering the single combined hook reads and writes exactly what it always did.
+ */
+function statePathFor(projectRoot, dir, channel) {
   const resolved = path.resolve(projectRoot);
   const normalized = process.platform === 'win32' ? resolved.toLowerCase() : resolved;
   const hash = crypto.createHash('md5').update(normalized).digest('hex');
-  return path.join(dir || stateDir(), `${hash}.json`);
+  const suffix = channel ? `.${channel}` : '';
+  return path.join(dir || stateDir(), `${hash}${suffix}.json`);
 }
 
 function emptyState(sessionId) {
@@ -79,8 +98,18 @@ function writeState(file, state) {
  * Forget the digest hash for a project (any session) so the next kb-pull fire re-injects the
  * digest in full. Called by kb-session-start on every fire. True when a file was updated.
  */
-function clearDigestHash(projectRoot, dir) {
-  const file = statePathFor(projectRoot, dir);
+function clearDigestHash(projectRoot, dir, channels) {
+  // Clear EVERY channel that could hold a digest hash: the combined file (no channel) and the
+  // split digest channel. A session-start that cleared only one would leave the other's pointer
+  // live, and the first prompt after a compaction would get a pointer to a transcript that no
+  // longer exists — the precise failure this function was written to prevent.
+  const list = Array.isArray(channels) ? channels : [null, DIGEST_CHANNEL];
+  let cleared = false;
+  for (const channel of list) if (clearOne(statePathFor(projectRoot, dir, channel))) cleared = true;
+  return cleared;
+}
+
+function clearOne(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (!parsed || typeof parsed !== 'object' || !parsed.digestHash) return false;
@@ -96,5 +125,6 @@ function digestHashOf(text) {
 
 module.exports = {
   stateDir, statePathFor, readState, writeState, clearDigestHash, digestHashOf, emptyState,
+  HINTS_CHANNEL, DIGEST_CHANNEL,
   PULL_STATE_REL, PULL_STATE_DIR_VAR,
 };

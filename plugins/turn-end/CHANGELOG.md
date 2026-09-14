@@ -4,6 +4,14 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-09-14
+
+### Changed
+- The context-recall judge's budget goes **60 s -> 300 s**, and the Stop hook's ceiling **90 s -> 420 s** to clear it. Owner ruling, verbatim: *"extend the timeout if it's in our hands make it 5 times longer i don't care."*
+- It was always in our hands. **PROBED 2026-09-14 (decisive):** a Stop `command` hook declaring `"timeout": 300` ran for **75 seconds** to completion under `claude -p` — exit 0, marker file written. So the platform does not cap a Stop hook at 60 s, and the "platform default 60 s" recorded in capture `20260731-1950` is **REFUTED**. The docs put the `command` default at 600 s and lower it only for UserPromptSubmit / PreModelSwitch / PostModelSwitch, MessageDisplay and SessionEnd — Stop is not on that list. The probe, not the docs, is the authority here: this repo has measured two hooks-reference drifts in three days.
+- Consequence: every 60,615 ms ceiling ever seen in the Stop durations was **our own constant**, never a platform kill. The 12 ETIMEDOUTs measured in real sittings were long deliberations hitting it.
+- Two new checks lock the pair together, because the old config had a 60 s judge inside a 90 s hook and nothing said so: the judge cap is asserted, and the hook ceiling must exceed it with at least 60 s spare for the duties that run around it. A caller-supplied `timeoutMs` still wins.
+
 ## [0.12.1] - 2026-09-12
 
 ### Fixed

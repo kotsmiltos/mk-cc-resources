@@ -248,6 +248,22 @@ function trace(root, record) {
   } catch (_e) { /* telemetry never blocks */ }
 }
 
+/*
+ * `--channel=<name>` (or `--channel <name>`). Unknown or absent -> null = the combined output,
+ * so a registration that predates the split behaves exactly as before.
+ */
+function channelArg(argv) {
+  const known = [pullState.HINTS_CHANNEL, pullState.DIGEST_CHANNEL];
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = String(argv[i]);
+    const eq = a.startsWith('--channel=') ? a.slice('--channel='.length) : null;
+    const next = a === '--channel' ? String(argv[i + 1] || '') : null;
+    const value = eq !== null ? eq : next;
+    if (value && known.includes(value)) return value;
+  }
+  return null;
+}
+
 async function main() {
   if (isChildSession()) process.exit(0);
   const startedMs = Date.now();
@@ -285,10 +301,28 @@ async function main() {
   const cfg = pullConfig(kb ? kb.config : {});
   if (!cfg.enabled) process.exit(0);
 
+  /*
+   * CHANNEL — which payload this process emits. `--channel=hints` / `--channel=digest` run as
+   * SEPARATE hook outputs so they stop competing for one bounded injection; no flag keeps the
+   * original combined behaviour, so an old single registration is unaffected.
+   *
+   * WHY (measured 2026-09-14): the digest's budget used to be `bound − whatever the hints
+   * emitted`, so a busy hints turn silently starved the session's own memory — a 7,585-byte
+   * digest was still cut. PROBED the same day: two hooks on one event delivered ~7 KB each,
+   * 14 KB combined, neither stubbed. The bound is per OUTPUT, so splitting BUYS budget rather
+   * than trading one payload against the other. 89 stub events were measured in this project's
+   * transcripts (kb-hints 40, turn-end 25) — the content being thrown away was the retrieval.
+   */
+  const channel = channelArg(process.argv);
+  const wantHints = channel !== pullState.DIGEST_CHANNEL;
+  const wantDigest = channel !== pullState.HINTS_CHANNEL;
+
   // This sitting's memory of what it was shown (home-side, session-scoped; absent session_id
   // = stateless, never suppress on a missing signal). Presence-gated like every other side
   // effect: a project keeping no curated memory leaves no state anywhere, home included.
-  const stateFile = sessionId && hasMemory(root) ? pullState.statePathFor(root) : null;
+  // One state file PER CHANNEL: writeState writes the whole object, so two channels sharing a
+  // file would erase each other's field, and this repo has no locking anywhere to lean on.
+  const stateFile = sessionId && hasMemory(root) ? pullState.statePathFor(root, undefined, channel) : null;
   const state = stateFile ? pullState.readState(stateFile, sessionId) : pullState.emptyState(null);
 
   const out = [];
@@ -296,7 +330,8 @@ async function main() {
   let shown = [];
   let held = 0;
   let repeats = 0;
-  if (configError) {
+  if (!wantHints) { /* digest channel: no hints in this output */ }
+  else if (configError) {
     out.push(`[kb-pull] ${String(configError.message || configError).split('\n')[0]} — hints off this prompt; the digest still injects`);
   } else {
     // scan: the text is a prompt, not a query — score for "is this entry ABOUT the
@@ -312,7 +347,7 @@ async function main() {
 
   // The digest: full when it changed since this session last saw it (or was never shown),
   // one pointer line when it did not, and never past the platform bound either way.
-  const raw = readDigest(root);
+  const raw = wantDigest ? readDigest(root) : null;
   let digestMode = false;
   let digestHash = state.digestHash;
   if (raw) {
@@ -327,7 +362,7 @@ async function main() {
       out.push(block);
       digestMode = cut ? 'cut' : 'full';
     }
-  } else if (shown.length && hasMemory(root)) {
+  } else if (wantDigest && wantHints && shown.length && hasMemory(root)) {
     // Bootstrap: without this line the digest can never come into existence — the
     // maintenance nudge lives INSIDE the injected digest, which requires a digest.
     // Ride the hint injection (never a standalone fire) so it costs no extra

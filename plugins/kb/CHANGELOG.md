@@ -4,6 +4,15 @@ All notable changes to **kb** are recorded here, newest first, in the terms that
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-09-14
+
+### Changed
+- `kb-pull` now emits its two payloads as **separate hook outputs**: `--channel=hints` and `--channel=digest`, registered as two UserPromptSubmit entries. No flag keeps the old combined behaviour, so a stale registration is unaffected.
+- Why: the platform bounds each hook **OUTPUT** at ~10 KB, not the event. Sharing one output made the digest's budget `bound - whatever the hints emitted`, so a busy hints turn silently starved the session's own memory — a 7,585-byte digest was still cut. **PROBED 2026-09-14:** two hooks on one event delivered ~7 KB each, **14 KB combined, neither stubbed**. Splitting therefore BUYS budget instead of trading one payload against the other.
+- What was being lost: 89 stub events measured across this project's transcripts (kb-hints 40, turn-end 25, 24 unattributable). The content thrown away was the knowledge retrieval itself.
+- Each channel keeps its **own** home-side state file (`statePathFor` gains a `channel`). `writeState` writes the whole object, so two channels sharing one file would erase each other's field — the clobber class this repo measured in the turn-end ledger, and there is no locking anywhere to lean on. One file per channel removes the race rather than managing it.
+- `clearDigestHash` now clears every channel that can hold a hash. Clearing only one would leave a live pointer into a transcript that a compaction had already discarded — the exact failure it exists to prevent.
+
 ## [0.14.0] - 2026-09-09
 
 ### Changed

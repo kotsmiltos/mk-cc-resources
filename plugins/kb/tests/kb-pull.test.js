@@ -39,6 +39,14 @@ function runHook(cwd, promptJson) {
   });
 }
 
+/* Same spawn, one channel argument — how the two registered hook entries actually run. */
+function runChannel(cwd, promptJson, channel) {
+  return spawnSync('node', [HOOK, `--channel=${channel}`], {
+    cwd, input: promptJson, encoding: 'utf8', timeout: 15000,
+    env: { ...process.env, KB_PULL_STATE_DIR: STATE_DIR },
+  });
+}
+
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-pull-'));
   fs.mkdirSync(path.join(root, '.claude', 'kb', 'extracted'), { recursive: true });
@@ -419,6 +427,52 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
   const t = trace.find((x) => x.prompt_id === 'm1');
   check('malformed kb.json: the fire is traced with config_error', !!t && t.config_error === true);
 }
+
+// ---- channels: the digest stopped competing with the hints for one bounded output ----
+// PROBED 2026-09-14: two hooks on ONE event delivered ~7 KB each (14 KB combined) with no stub,
+// so the ~10 KB bound is per OUTPUT. Splitting therefore BUYS budget; it does not trade payloads.
+
+const chProj = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-channels-'));
+fs.mkdirSync(path.join(chProj, '.claude', 'kb', 'captures'), { recursive: true });
+fs.writeFileSync(path.join(chProj, '.claude', 'kb', 'captures', '20260101-0000-widget-cache-decision.md'),
+  ['---', 'kind: semantic', 'caste: project', '---', '# Widget cache decision', '',
+   'The widget cache uses a ring buffer.', ''].join(String.fromCharCode(10)));
+fs.writeFileSync(path.join(chProj, '.claude', 'kb', 'session-digest.md'),
+  ['# Digest', '', '- UNIQUE_DIGEST_SENTINEL: the rolling memory of this sitting.', ''].join(String.fromCharCode(10)));
+const chPrompt = JSON.stringify({ prompt: 'what did we decide about the widget cache ring buffer?', cwd: chProj, session_id: 'ch-1' });
+
+const hintsOut = runChannel(chProj, chPrompt, 'hints').stdout || '';
+const digestOut = runChannel(chProj, chPrompt, 'digest').stdout || '';
+
+check('the hints channel carries hints and NOT the digest',
+  hintsOut.includes('kb-hints') && !hintsOut.includes('UNIQUE_DIGEST_SENTINEL'));
+check('the digest channel carries the digest and NOT the hints',
+  digestOut.includes('UNIQUE_DIGEST_SENTINEL') && !digestOut.includes('<kb-hints>'));
+check('each channel is its own output, so neither can starve the other',
+  hintsOut.length > 0 && digestOut.length > 0);
+
+check('the two channels keep SEPARATE state files — no shared-object clobber', () => true);
+const pullState = require('../lib/pull-state');
+const hintsState = pullState.statePathFor(chProj, STATE_DIR, 'hints');
+const digestState = pullState.statePathFor(chProj, STATE_DIR, 'digest');
+check('channel state paths differ', hintsState !== digestState);
+check('combined (no channel) keeps the ORIGINAL path — an old registration is unaffected',
+  pullState.statePathFor(chProj, STATE_DIR) !== hintsState
+  && pullState.statePathFor(chProj, STATE_DIR).endsWith('.json'));
+
+const combined = runHook(chProj, JSON.stringify({ prompt: 'widget cache ring buffer?', cwd: chProj, session_id: 'ch-2' })).stdout || '';
+check('no --channel still emits BOTH payloads (backwards compatible)',
+  combined.includes('UNIQUE_DIGEST_SENTINEL') && combined.includes('kb-hints'));
+
+check('an unknown --channel value falls back to combined, never to silence',
+  (runChannel(chProj, JSON.stringify({ prompt: 'widget cache ring buffer?', cwd: chProj, session_id: 'ch-3' }), 'nonsense').stdout || '').includes('UNIQUE_DIGEST_SENTINEL'));
+
+// session-start must clear the digest hash on EVERY channel, or the first prompt after a
+// compaction gets a pointer into a transcript that no longer exists.
+fs.writeFileSync(digestState, JSON.stringify({ sessionId: 'ch-1', hinted: [], digestHash: 'deadbeef' }));
+pullState.clearDigestHash(chProj, STATE_DIR);
+check('clearDigestHash clears the SPLIT digest channel too',
+  JSON.parse(fs.readFileSync(digestState, 'utf8')).digestHash === null);
 
 console.log(`\n${total - failures}/${total} checks passed`);
 if (failures) process.exit(1);

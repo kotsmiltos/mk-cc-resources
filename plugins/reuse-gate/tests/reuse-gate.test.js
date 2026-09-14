@@ -113,6 +113,22 @@ test("injectionPayload has correct PreToolUse additionalContext shape", () => {
   assert.strictEqual(p.hookSpecificOutput.permissionDecision, undefined); // no permission side effect
 });
 
+test('the ladder has four rungs, cheapest first, and names the two that got past the old wording', () => {
+  // Measured 2026-09-14: the 2-rung version read straight past node:test and util.parseArgs,
+  // because neither is a "package/library". A runtime already running is the cheapest dependency.
+  const r = String(REMINDER);
+  assert.ok(/DELETED instead/.test(r), 'rung 0: can it be deleted');
+  assert.ok(/Already implemented HERE/.test(r), 'rung 1: already here');
+  assert.ok(/RUNTIME you already run/.test(r) && r.includes('node:test') && r.includes('util.parseArgs'),
+    'rung 2: the runtime, with the two measured misses named');
+  assert.ok(/maintained PACKAGE/.test(r), 'rung 3: a maintained package');
+  assert.ok(r.indexOf('DELETED') < r.indexOf('Already implemented HERE')
+    && r.indexOf('Already implemented HERE') < r.indexOf('RUNTIME you already run')
+    && r.indexOf('RUNTIME you already run') < r.indexOf('maintained PACKAGE'), 'ordered cheapest-first');
+  assert.ok(/say WHICH rung you rejected/.test(r), 'an unexplained reimplementation is the defect');
+  assert.ok(!new RegExp('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]').test(r), 'no raw control byte — this file has been mangled twice');
+});
+
 // ---- summary ----
 const total = passed + failed;
 process.stdout.write(`\nreuse-gate: ${passed}/${total} passed\n`);

@@ -2671,6 +2671,31 @@ check('an ordinary work answer does NOT read as a no-op', () => {
   assert.strictEqual(sessionDigest.satisfied(ctx), false, 'real work still owes a digest line');
 });
 
+// ---- judge budget: the cap is OURS and the hook must clear it (owner ruling 2026-09-14) ----
+// PROBED the same day: a Stop command hook with "timeout": 300 ran 75 s to completion, so the
+// platform does not cap Stop at 60 s. These two checks keep the pair from silently diverging
+// again — the old config had a 60 s judge inside a 90 s hook and nothing said so.
+
+check('the judge cap is the owner-ruled 5x budget', () => {
+  assert.strictEqual(claudeP.DEFAULT_TIMEOUT_MS, 300000);
+});
+
+check('the Stop hook ceiling CLEARS the judge cap, with room for the rest of the pass', () => {
+  const hooks = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'hooks', 'hooks.json'), 'utf8'));
+  const stop = hooks.hooks.Stop[0].hooks[0];
+  assert.ok(stop.timeout * 1000 > claudeP.DEFAULT_TIMEOUT_MS,
+    `hook ceiling ${stop.timeout}s must exceed the judge cap ${claudeP.DEFAULT_TIMEOUT_MS / 1000}s`);
+  assert.ok(stop.timeout * 1000 - claudeP.DEFAULT_TIMEOUT_MS >= 60000,
+    'leave at least 60s for the duties that run around the judge');
+});
+
+check('a caller-supplied timeout still wins over the default', () => {
+  // The default is a floor for the hook, not a mandate: harness-stats probes and tests pass
+  // their own, and a future per-project budget would too.
+  const r = claudeP.judge('q', { exe: path.join(TMP, 'definitely-not-a-binary'), timeoutMs: 5 });
+  assert.strictEqual(r.ok, false, 'a 5ms budget cannot succeed — the option was honoured');
+});
+
 // ---- tool-record: a cut nobody can see is the ledger lying by omission ----
 
 check('tool-record MARKS a truncated command instead of dropping the tail silently', () => {
