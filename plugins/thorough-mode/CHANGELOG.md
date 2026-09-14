@@ -4,6 +4,11 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.2] - 2026-09-14
+
+### Changed
+- `@prompt` now makes the next session name its END STATE, not only its first step — what "done" means for the whole sitting, and where the work must land: committed, pushed, or explicitly "stays local because X". A census of 23 real sessions found the relay itself works (opening on a kickoff file produced 1.7× the commits per owner message, measured within a single project so difficulty is held constant), but it carried no landing: 15 of the 23 sessions never pushed, and one project sat ~40 commits local-only for a month while its model believed the work was backed up. An unnamed landing is how finished work ends up on one disk only.
+
 ## [1.12.1] - 2026-09-12
 
 ### Fixed

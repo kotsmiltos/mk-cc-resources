@@ -22,7 +22,7 @@ Hooks only — install it standalone, not through the bundle.
 | `@ship` | Pre-push checklist: README, CHANGELOG, version bumps, docs, and the repo guard |
 | `@present` | Every choice comes back as an arrow-key question instead of a paragraph |
 | `@fresh` | Distrust compressed context — re-read the key files from disk |
-| `@prompt` | Write the kickoff prompt for the next cold session, and save it |
+| `@prompt` | Write the kickoff prompt for the next cold session — including where the work must land — and save it |
 | `@build` | Reuse before building; check what already exists first |
 | `@fc` | Fewer clicks — everything doable gets done here, the result lands in the terminal instead of a path to open, and what is left is one keystroke |
 

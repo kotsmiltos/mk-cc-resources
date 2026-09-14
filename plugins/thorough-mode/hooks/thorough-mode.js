@@ -136,6 +136,14 @@ ANTI-SIGNALS (stop; back to step 2): citing a file:line from memory; editing a f
 EXIT CHECK: you can list what was re-read + the drift found (or "none" per source). If you can't, the refresh didn't happen.`,
   },
   {
+    /*
+     * END STATE clause added 2026-09-14 from a transcript census of 23 real sessions: sessions
+     * opening on a kickoff file produced 1.7x the commits per owner message (2.11 vs 1.22,
+     * measured within one project so difficulty is held constant) — the relay works. What it
+     * did NOT carry was where the work lands: 15 of the 23 sessions never pushed, and one
+     * project sat ~40 commits local-only for a month while the model believed it was backed up.
+     * The prompt named the first action and its check, never the sitting's end state.
+     */
     name: "prompt",
     triggers: [
       /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
@@ -145,6 +153,7 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
    - Lead with the objective in one or two sentences: what the next session should accomplish.
    - Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
    - Name the concrete first action AND the verifiable check that proves it done.
+   - Name the sitting's END STATE, not only its first step: what "done" means for the whole session AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
    - List open decisions / blockers the next session must resolve (or that need the user).
    - Point to durable artifacts instead of restating them (handoff.md, CHANGELOG.md, task specs) — reference, don't paste.
    - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
@@ -196,6 +205,7 @@ EXIT CHECK: everything still on the user is something only they can do, and each
 // re-deriving via the full DRAFT→VERIFY ritual. Same SAVE discipline.
 const PROMPT_STEWARD_INJECTION = `[prompt-mode/steward] This project carries a .steward/ living model — render the kickoff FROM the model instead of re-deriving state. Protocol — RENDER → SPOT-CHECK → SAVE → SHOW:
 1. RENDER one fenced code block from .steward/: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`++\`, \`@verify\`).
+1b. NAME THE END STATE, not only the first task: what "done" means for the whole sitting AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
 2. SPOT-CHECK only what the block cites beyond the model: any file path or branch named that is NOT already in the model gets disk-verified now; model-sourced content is already the maintained truth — if you doubt it, dispatch the steward agent (job: brief) rather than re-deriving inline.
 3. SAVE to \`.claude/prompts/prompt-<fs-ts>.md\` + prepend the INDEX.md line (same append-only history as always).
 4. SHOW the prompt + where it was saved. If briefing.md is stale vs tasks.md/log.md, say so and have the steward regenerate it first.
