@@ -160,6 +160,12 @@ lib/judges/             # judgment surface. 0.7.0: the child is spawned LEAN (--
                         #   on identical input; see claude-p.js header. 0.6.0: context-recall carries a fail-open
                         #   term-overlap FALLBACK (its own tiny ranker — no kb import) for
                         #   judge deaths only; material NAMES the engine, supply() returns
+                        #   0.13.1: `duties.context-recall.engine` = judge (default, per the
+                        #   same ruling) | ranker (project opt-in, no spawn, banner says
+                        #   "not judged", trace engine:ranker) — measured 81% empty picks
+                        #   post-300 s is a COST fact; the default moves only when note-uptake
+                        #   scores the two engines. Same release FIXED supply(ctx) being
+                        #   called bare — no duties.context-recall knob had ever reached it.
                         #   engine judge|fallback-ranker (owner ruling: quality over speed —
                         #   the judge stays default, a dead fire is a quality failure). `claude -p` adapter, plan-billed, four measured
                         #   constraints encoded: argv-not-stdin (stdin is refused as prompt

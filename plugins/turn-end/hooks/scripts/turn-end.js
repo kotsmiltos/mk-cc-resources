@@ -171,7 +171,10 @@ async function main() {
       ...(produced && Array.isArray(produced.alreadyRead) && produced.alreadyRead.length ? { alreadyRead: produced.alreadyRead } : {}),
     });
     try {
-      const produced = await duty.supply(ctx);
+      // The duty's own config block rides along (0.13.1) — before this, `supply(ctx)` was called
+      // bare, so every `.claude/turn-end.json` knob under duties.context-recall (maxChosen,
+      // maxTotalChars, engine …) was documented and silently unreachable.
+      const produced = await duty.supply(ctx, (config && config.duties && config.duties[id]) || {});
       supplyRuns.push({ id, ms: Date.now() - startedMs, produced: produced || {} });
       if (produced && produced.material) {
         materials[id] = produced;

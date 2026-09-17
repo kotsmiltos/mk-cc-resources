@@ -407,6 +407,25 @@ const ctx = { root: fixtureRoot, registry: reg };
   check('unterminated frontmatter treated as body', markdownDir.parseFrontmatter('---\nkind: episodic\nno closer').meta.kind === undefined);
   check('unknown keys ignored', markdownDir.parseFrontmatter('---\nbogus: x\nkind: semantic\n---\ny').meta.bogus === undefined);
 
+  // 0.16.1: the toolkit's four-line preamble is stripped from every collected body (store less).
+  const PRE = '> Read this before doing anything:\n> - Limits-awareness: x.\n> - Positive mindset: y.\n> - Quality ownership: z.\n> - Propagation requirement: w.\n';
+  const strip = markdownDir.stripBoilerplatePreamble;
+  check('preamble strip: block after an h1 + blank goes, the h1 and body stay',
+    strip(`# Title\n\n${PRE}\nBody line.\n`) === '# Title\n\nBody line.\n');
+  check('preamble strip: block at the very top goes', strip(`${PRE}\nBody.`) === 'Body.');
+  check('preamble strip: a blockquote WITHOUT the marker is content and stays',
+    strip('# T\n\n> a real quote\n\nBody.') === '# T\n\n> a real quote\n\nBody.');
+  check('preamble strip: a marker deeper than the scan window is left alone (body text, not boilerplate)',
+    strip(`# T\n${'x\n'.repeat(14)}${PRE}`).includes('Read this before'));
+  check('preamble strip: empty / null safe', strip('') === '' && strip(null) === '');
+  {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-preamble-'));
+    fs.writeFileSync(path.join(dir, 'n.md'), `---\nkind: semantic\ncaste: project\n---\n# Note\n\n${PRE}\nThe substance.\n`);
+    const entries = markdownDir.collect({ id: 's', dir: '.', split: 'file', kind: 'semantic', caste: 'project' }, { root: dir, registry: makeRegistry() });
+    check('collect: an entry body carries the substance and not the preamble',
+      entries.length === 1 && entries[0].body.includes('The substance.') && !entries[0].body.includes('Propagation requirement'));
+  }
+
   // End-to-end: a mixed-kind store — one dir, files declaring their own axes.
   fs.mkdirSync(path.join(fixtureRoot, 'mixed'), { recursive: true });
   fs.writeFileSync(path.join(fixtureRoot, 'mixed', 'a-decision.md'),

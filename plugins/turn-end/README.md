@@ -84,6 +84,12 @@ prompt?" — kb's pull hook already does that, cheaply, at prompt time. This que
 reading: an answer can be fluent, complete-looking, and quietly contradict a note whose
 vocabulary it never used.
 
+**`engine` (0.13.1).** `judge` is the default; `"engine": "ranker"` runs the deterministic
+term-overlap picker instead — no spawn, no cost, the material says it was not judged. Measured
+2026-09-17: after the 300 s cap the judge still returned an empty pick on 81% of 21 fires in one
+project (median 34 s); the two engines agree on 17% of picks (n = 8). That is a cost fact, not a
+quality one, so the default stays until `note-uptake` scores the engines side by side.
+
 `supply` is the one impure step, so the pure runner only reports it is **due** and the adapter
 executes it: **plan (pure) → execute (impure) → compose (pure)**.
 
@@ -206,6 +212,7 @@ be called by this runner. Two blocking peers is the bug.
     "steward-sync":   { "enabled": true, "severity": "advise" },
     "quality-lens":   { "enabled": true, "severity": "advise" },
     "context-recall": {
+      "engine": "judge",
       "maxIndexEntries": null,
       "maxChosen": null,
       "maxContentChars": 2400

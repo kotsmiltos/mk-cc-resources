@@ -4,6 +4,11 @@ All notable changes to **kb** are recorded here, newest first, in the terms that
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2026-09-18
+
+### Changed
+- The four-line "Read this before doing anything" blockquote at the top of every toolkit note is stripped from every collected entry body and from the injected session digest. The file on disk keeps it; ranking, `kb_read`, hints and the digest injection see the substance only. Measured 2026-09-17: 50 files carry it, every injection repeated the same ~330 bytes, and the content scorer once counted it as "use". Owner 2026-09-08 + 09-18: store less.
+
 ## [0.16.0] - 2026-09-17
 
 ### Changed

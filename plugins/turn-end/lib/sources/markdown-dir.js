@@ -85,11 +85,38 @@ function makeSource(spec) {
         if (!wanted.has(entry.id)) continue;
         const text = ctx.disk.read(entry.path);
         if (text === null) continue;
-        out.push({ id: entry.id, title: entry.title, path: entry.path, content: text });
+        out.push({ id: entry.id, title: entry.title, path: entry.path, content: stripBoilerplatePreamble(text) });
       }
       return out;
     },
   };
 }
 
-module.exports = { makeSource, titleOf };
+/*
+ * The four-line "Read this before doing anything" blockquote every toolkit file carries belongs in
+ * the FILE, not in the tail: measured 2026-09-17, 50 files carry it and every recall supply
+ * re-injected the same ~330 bytes per note. Stripped from the fetched body only; disk untouched.
+ * Own copy of kb's lib/sources/markdown-dir.js function — plugins install alone.
+ */
+const BOILERPLATE_MARKER = 'Read this before doing anything';
+const BOILERPLATE_SCAN_LINES = 12;
+
+function stripBoilerplatePreamble(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  let i = 0;
+  while (i < Math.min(lines.length, BOILERPLATE_SCAN_LINES)) {
+    if (!lines[i].startsWith('>')) { i += 1; continue; }
+    let j = i;
+    let hasMarker = false;
+    while (j < lines.length && lines[j].startsWith('>')) {
+      if (lines[j].includes(BOILERPLATE_MARKER)) hasMarker = true;
+      j += 1;
+    }
+    if (!hasMarker) { i = j; continue; }
+    const after = j < lines.length && lines[j].trim() === '' ? j + 1 : j;
+    return lines.slice(0, i).concat(lines.slice(after)).join('\n');
+  }
+  return String(text || '');
+}
+
+module.exports = { makeSource, titleOf, stripBoilerplatePreamble };

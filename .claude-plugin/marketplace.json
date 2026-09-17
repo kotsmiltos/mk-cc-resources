@@ -4,7 +4,7 @@
     "name": "kotsmiltos"
   },
   "metadata": {
-    "description": "Custom Claude Code plugins \u2014 multi-phase AI development pipeline (essense-flow + autopilot), a living-model steward loop, /elicit for brainstorming a vision to completion, a queryable project knowledge base (kb), one blocking turn-end hook the others hang duties on, design-pattern and reuse gates, data exploration, prompt modifiers, question tracking, and cross-platform alerts.",
+    "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), a living-model steward loop, /elicit for brainstorming a vision to completion, a queryable project knowledge base (kb), one blocking turn-end hook the others hang duties on, design-pattern and reuse gates, data exploration, prompt modifiers, question tracking, and cross-platform alerts.",
     "version": "2.51.0"
   },
   "plugins": [
@@ -74,7 +74,7 @@
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
       "displayName": "Thorough Mode",
-      "description": "Prompt modifiers that inject behavioral rules on a keyword: ++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only \u2014 no skill to remember.",
+      "description": "Prompt modifiers that inject behavioral rules on a keyword: ++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only — no skill to remember.",
       "version": "1.12.2",
       "author": {
         "name": "kotsmiltos"
@@ -114,7 +114,7 @@
       "name": "alert-sounds",
       "source": "./plugins/alert-sounds",
       "displayName": "Alert Sounds",
-      "description": "Cross-platform alerts for Claude Code events \u2014 sound, desktop notification, statusline color, volume and mute, each configurable per event.",
+      "description": "Cross-platform alerts for Claude Code events — sound, desktop notification, statusline color, volume and mute, each configurable per event.",
       "version": "1.1.1",
       "author": {
         "name": "kotsmiltos"
@@ -195,7 +195,7 @@
       "name": "reuse-gate",
       "source": "./plugins/reuse-gate",
       "displayName": "Reuse Gate",
-      "description": "Reuse-first reminder at the moment code is written: one nudge per message on the first source write \u2014 is this already implemented here, or served by a library you already have?",
+      "description": "Reuse-first reminder at the moment code is written: one nudge per message on the first source write — is this already implemented here, or served by a library you already have?",
       "version": "0.2.0",
       "author": {
         "name": "kotsmiltos"
@@ -216,7 +216,7 @@
       "source": "./plugins/steward",
       "displayName": "Steward",
       "description": "A living model per project (.steward/: vision, state, parts, questions, tasks). Stray thoughts land in an inbox; the steward agent recomputes the whole model and shows you the diff.",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -255,8 +255,8 @@
       "name": "kb",
       "source": "./plugins/kb",
       "displayName": "Knowledge Base",
-      "description": "The project's queryable knowledge base \u2014 decisions and their why, dead ends, conventions \u2014 indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
-      "version": "0.16.0",
+      "description": "The project's queryable knowledge base — decisions and their why, dead ends, conventions — indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
+      "version": "0.16.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -316,7 +316,7 @@
       "name": "prism",
       "source": "./plugins/prism",
       "displayName": "Prism",
-      "description": "Panel a question across sole-focus agents \u2014 one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name) \u2014 then compile the best points into one plan.",
+      "description": "Panel a question across sole-focus agents — one lens each (simple, decoupled, performant, extendable, sustainable, or any lens you name) — then compile the best points into one plan.",
       "version": "0.1.0",
       "author": {
         "name": "kotsmiltos"

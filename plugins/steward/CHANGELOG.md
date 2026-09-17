@@ -4,6 +4,11 @@ All notable changes to **steward** are recorded here, newest first, in the terms
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-09-18
+
+### Changed
+- The steward agent declares `model: sonnet` in its frontmatter — integrate and garden are bookkeeping over a text model, not design. Measured 2026-09-17: one integrate pass on the session model (Fable) cost 214k tokens and 14.6 minutes for two notes. Override per dispatch with the Agent tool's `model` parameter. Claude's call under your 2026-09-18 delegation.
+
 ## [0.7.0] - 2026-09-18
 
 ### Added

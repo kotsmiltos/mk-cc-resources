@@ -185,7 +185,11 @@ function hintLines(hits, cue) {
 
 function readDigest(root) {
   try {
-    const raw = fs.readFileSync(path.join(root, DIGEST_REL), 'utf8').trim();
+    // The digest file carries the toolkit's four-line preamble like every other file; the
+    // injection does not need it (0.16.1 — same strip the collector applies to every entry).
+    const raw = require('../../lib/sources/markdown-dir').stripBoilerplatePreamble(
+      fs.readFileSync(path.join(root, DIGEST_REL), 'utf8')
+    ).trim();
     return raw || null;
   } catch (_e) {
     return null; // no digest — the session has not started one; say nothing.

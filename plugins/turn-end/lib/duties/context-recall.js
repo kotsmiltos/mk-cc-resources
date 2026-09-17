@@ -59,6 +59,10 @@ const DEFAULT_MAX_CHOSEN = null;        // unlimited
  */
 const DEFAULT_MAX_CONTENT_CHARS = 2400;
 const DEFAULT_MAX_TOTAL_CHARS = 7000;
+// The engine names a fire's trace line carries (harness-stats reads `judge.engine_mix`).
+const ENGINE_JUDGE = 'judge';           // claude -p haiku picks — the default (owner ruling 2026-08-23)
+const ENGINE_RANKER = 'ranker';         // project opted into the deterministic term-overlap ranker
+const ENGINE_FALLBACK = 'fallback-ranker'; // the judge died; the ranker picked instead
 const DEFAULT_MAX_EXCERPT_OF_TURN = 4000;
 
 /** Resolve every bound from config; absent/invalid falls back to the declared default. */
@@ -293,7 +297,22 @@ module.exports = {
         'on prior decisions.',
     });
 
-    const verdict = claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
+    /*
+     * ENGINE (0.13.1): `judge` (default) or `ranker`, per project via
+     * .claude/turn-end.json {"duties":{"context-recall":{"engine":"ranker"}}}.
+     * The default STAYS the judge — owner ruling 2026-08-23 ("we go for quality, not
+     * necessarily speed"), and no measurement yet shows the ranker's picks are USED more:
+     * post-install the judge returns an empty pick 81% of 21 fires on one ship (p50 34 s), but an
+     * empty pick may be the correct answer, and judge-vs-ranker agreement is 17% on n=8 — they
+     * choose DIFFERENT notes, not provably better or worse ones. Flipping the default on wall-
+     * clock alone would be the latency-over-quality trade the ruling forbids. The switch exists
+     * so a project can run ranker-only and note-uptake can score the two engines side by side;
+     * the default moves when `uptake.used_pct` per engine says so, not before.
+     */
+    const engineChoice = options && options.engine === ENGINE_RANKER ? ENGINE_RANKER : ENGINE_JUDGE;
+    const verdict = engineChoice === ENGINE_RANKER
+      ? { ok: true, ranker: true, costUsd: 0, durationMs: 0, lean: 'n/a' }
+      : claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
     // Telemetry that every return carries, so a fire is accountable from the trace alone.
     const cost = { costUsd: verdict.costUsd, durationMs: verdict.durationMs, lean: verdict.lean };
     /*
@@ -306,7 +325,8 @@ module.exports = {
     let needed = null;
     let judgeDeath = null;
     let judgeChosen = null;
-    if (!verdict.ok) judgeDeath = verdict.error;
+    if (verdict.ranker) needed = fallbackPick(ctx, index, limits, ENGINE_RANKER);
+    else if (!verdict.ok) judgeDeath = verdict.error;
     else {
       needed = parseVerdict(verdict.text);
       if (needed === null) judgeDeath = 'judge returned unparseable output';
@@ -332,7 +352,7 @@ module.exports = {
         };
       }
     }
-    if (!needed.length) return { material: null, chosen: [], error: null, engine: 'judge', ...cost, ...agreement }; // the strict, common, correct answer
+    if (!needed.length) return { material: null, chosen: [], error: null, engine: engineChoice, ...cost, ...agreement }; // the strict, common, correct answer
 
     // Cap what the judge asked for only if the project set a limit — and say so if it bites,
     // so a dropped note is never mistaken for one the judge deemed irrelevant.
@@ -355,7 +375,7 @@ module.exports = {
         for (const f of src.fetch(ctx, ids)) items.push({ ...f, why: whyById.get(f.id) || '' });
       } catch (_e) { /* skip a source that cannot read its own files */ }
     }
-    const engine = judgeDeath ? 'fallback-ranker' : 'judge';
+    const engine = judgeDeath ? ENGINE_FALLBACK : engineChoice;
     if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost, ...agreement };
 
     // A note this turn already OPENED (Read, or `cat`/`head`/`sed -n`/`grep` through Bash)
@@ -372,7 +392,9 @@ module.exports = {
     const banner = judgeDeath
       ? `[recall via FALLBACK RANKER — the judge could not run (${judgeDeath}); ` +
         'these notes matched the turn lexically, they were not judged]\n'
-      : '';
+      : engineChoice === ENGINE_RANKER
+        ? '[recall via RANKER — this project set engine:ranker; these notes matched the turn lexically, they were not judged]\n'
+        : '';
     return {
       chosen: items.map((i) => i.path),
       material: banner + renderMaterial(fresh, limits, clipped, alreadyHeld),
@@ -401,7 +423,10 @@ function fallbackTokens(text) {
   );
 }
 
-function fallbackPick(ctx, index, limits) {
+function fallbackPick(ctx, index, limits, mode) {
+  const why = mode === ENGINE_RANKER
+    ? (n) => `ranker: ${n} shared terms with the turn (engine:ranker)`
+    : (n) => `fallback ranker: ${n} shared terms with the turn (judge unavailable)`;
   const turnText = `${ctx.turn.userRequest || ''} ${ctx.lastAssistantMessage || ctx.turn.text || ''}`;
   const turn = fallbackTokens(turnText);
   if (!turn.size) return [];
@@ -413,13 +438,13 @@ function fallbackPick(ctx, index, limits) {
   }
   scored.sort((a, b) => b.shared - a.shared);
   const cap = Math.min(FALLBACK_MAX_PICKS, limits.maxChosen || FALLBACK_MAX_PICKS);
-  return scored.slice(0, cap).map((s) => ({
-    id: s.id,
-    why: `fallback ranker: ${s.shared} shared terms with the turn (judge unavailable)`,
-  }));
+  return scored.slice(0, cap).map((s) => ({ id: s.id, why: why(s.shared) }));
 }
 
 module.exports.fallbackPick = fallbackPick;
+module.exports.ENGINE_JUDGE = ENGINE_JUDGE;
+module.exports.ENGINE_RANKER = ENGINE_RANKER;
+module.exports.ENGINE_FALLBACK = ENGINE_FALLBACK;
 module.exports.dropAlreadyRead = dropAlreadyRead;
 module.exports.openedPaths = openedPaths;
 module.exports.parseVerdict = parseVerdict;

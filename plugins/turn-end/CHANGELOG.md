@@ -4,6 +4,16 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1] - 2026-09-18
+
+### Added
+- `context-recall` takes an `engine`: `judge` (default, unchanged) or `ranker` — `.claude/turn-end.json` → `{"duties":{"context-recall":{"engine":"ranker"}}}`. The ranker is the same deterministic term-overlap picker the judge's death already fell back to; it spawns nothing, costs nothing, and the supplied material says `[recall via RANKER … not judged]`. Trace lines carry `engine: ranker`.
+- Why the default did NOT move: your 2026-08-23 ruling ("we go for quality, not necessarily speed") keeps the judge. The measurement that argued for the ranker (empty picks 81% of 21 fires on one project after the 300 s cap, median 34 s) shows cost, not quality — an empty pick can be right, and the two engines agree on only 17% of picks (n=8), so they choose different notes, not provably worse ones. The switch lets a project run ranker-only so `note-uptake` can score the two side by side; the default follows that number.
+
+### Fixed
+- **The duty's config never reached it.** `supply()` was called without its options, so every documented `duties.context-recall` knob (`maxChosen`, `maxTotalChars`, `maxContentChars`, `maxIndexEntries`) was silently ignored since 0.6.0. The hook now passes the block.
+- The four-line "Read this before doing anything" preamble every toolkit note carries is stripped from the fetched body before injection — the file is untouched. Measured 2026-09-17: 50 notes carry it; every recall re-injected the same ~330 bytes per note.
+
 ## [0.13.0] - 2026-09-14
 
 ### Changed

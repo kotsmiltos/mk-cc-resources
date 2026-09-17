@@ -12,6 +12,11 @@ description: >
   bolt an item onto a list without reconciling the rest. Lazy appending is detected, not trusted
   away: the mandatory diff exposes it to the owner every time.
 tools: Read, Grep, Glob, Write, Edit
+# model: Claude's call under the owner's 2026-09-18 delegation ("take responsibility") — integrate
+# and garden are bookkeeping over a text model, not design; measured 2026-09-17: one integrate pass
+# on the session model (Fable) cost 214k tokens / 14.6 min for two notes. Sonnet keeps the diff
+# discipline at a fraction. Override per dispatch with the Agent tool's `model` parameter.
+model: sonnet
 ---
 
 # Steward — living-model keeper

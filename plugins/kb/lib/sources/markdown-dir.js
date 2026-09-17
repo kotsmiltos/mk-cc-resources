@@ -68,6 +68,36 @@ function substanceLineCount(body) {
  * unknown keys are ignored, `themes` accepts `[a, b]` or `a, b`, everything else
  * is a plain string. Returns { meta, body } — body has the block stripped.
  */
+/*
+ * The four-line "Read this before doing anything" blockquote rides at the top of every file the
+ * toolkit writes (the global CLAUDE.md propagation rule). It belongs in the FILE; it does not
+ * belong in an injection — measured 2026-09-17: 50 files carry it, every recall / digest / hint
+ * body re-injected the same ~330 bytes, and the content scorer once counted it as "use". Owner
+ * 2026-09-08 + 09-18: store less. Stripped here at collect, so ranking, kb_read and every hook
+ * injection see the substance only; the file on disk is untouched. Own copy in turn-end's
+ * lib/sources/markdown-dir.js — cross-plugin duplication is deliberate (plugins install alone).
+ */
+const BOILERPLATE_MARKER = 'Read this before doing anything';
+const BOILERPLATE_SCAN_LINES = 12; // the block sits at the top, after at most a title + blank
+
+function stripBoilerplatePreamble(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  let i = 0;
+  while (i < Math.min(lines.length, BOILERPLATE_SCAN_LINES)) {
+    if (!lines[i].startsWith('>')) { i += 1; continue; }
+    let j = i;
+    let hasMarker = false;
+    while (j < lines.length && lines[j].startsWith('>')) {
+      if (lines[j].includes(BOILERPLATE_MARKER)) hasMarker = true;
+      j += 1;
+    }
+    if (!hasMarker) { i = j; continue; }
+    const after = j < lines.length && lines[j].trim() === '' ? j + 1 : j;
+    return lines.slice(0, i).concat(lines.slice(after)).join('\n');
+  }
+  return String(text || '');
+}
+
 function parseFrontmatter(text) {
   const lines = text.split(/\r?\n/);
   if (lines[0] !== FRONTMATTER_DELIM) return { meta: {}, body: text };
@@ -281,7 +311,9 @@ function collect(spec, ctx) {
     const raw = fs.readFileSync(file, 'utf8');
     // A file may declare its own kind/caste/title/when/themes; the source spec is
     // the fallback. File themes EXTEND spec themes (both are true about the entry).
-    const { meta, body: text } = parseFrontmatter(raw);
+    const parsed = parseFrontmatter(raw);
+    const meta = parsed.meta;
+    const text = stripBoilerplatePreamble(parsed.body);
     const kind = meta.kind || spec.kind;
     const caste = meta.caste || spec.caste;
     const themes = meta.themes ? specThemes.concat(meta.themes) : specThemes;
@@ -344,6 +376,7 @@ module.exports = {
   type: 'markdown-dir',
   describe: () => 'a directory of .md files; one entry per file or per ## section',
   collect,
+  stripBoilerplatePreamble,
   // exported for tests
   splitByH2, splitByLinePattern, resolveSplit, patternToRegex, listMarkdown,
   parseFrontmatter, substanceLineCount,

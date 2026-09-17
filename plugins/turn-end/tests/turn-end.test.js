@@ -1360,6 +1360,63 @@ checkAsync('supply() returns NO material — but still its accounting — when t
   }
 });
 
+// 0.13.1 — engine switch. Each block holds the judge mock across ONE await only: checkAsync
+// interleaves tests, so a mock held across several awaits is swapped by a sibling mid-test.
+function engineFixture(name) {
+  const dir = tmpdir(name);
+  fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'kb', 'captures', 'widget-cache-ring-buffer.md'), '# Widget cache ring buffer decision\nRANKER-MARKER-7Q');
+  return dir;
+}
+
+checkAsync('supply() engine:ranker never spawns the judge, supplies the lexical pick, names itself', async () => {
+  const dir = engineFixture('recall-engine-ranker');
+  const realJudge = claudeP.judge;
+  let judgeCalls = 0;
+  claudeP.judge = () => { judgeCalls += 1; return { ok: true, text: '{"needed":[]}' }; };
+  try {
+    const r = await contextRecall.supply(fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'what did we decide about the widget cache ring buffer' }), { engine: 'ranker' });
+    assert.strictEqual(judgeCalls, 0, 'ranker engine: no judge spawn');
+    assert.strictEqual(r.engine, 'ranker');
+    assert.strictEqual(r.costUsd, 0);
+    assert.ok(r.material && r.material.includes('RANKER-MARKER-7Q'), 'the lexical pick is supplied');
+    assert.ok(r.material.includes('[recall via RANKER'), 'the banner says it was not judged');
+    assert.ok(r.material.includes('(engine:ranker)'), 'the why names the engine, not a dead judge');
+    assert.strictEqual(r.judgeChosen, null, 'agreement input: no judge pick to compare');
+  } finally { claudeP.judge = realJudge; }
+});
+
+checkAsync('supply() engine:ranker with no lexical match is quiet and still names its engine', async () => {
+  const dir = engineFixture('recall-engine-quiet');
+  const quiet = await contextRecall.supply(fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'unrelated lasagna recipe' }), { engine: 'ranker' });
+  assert.strictEqual(quiet.material, null);
+  assert.strictEqual(quiet.engine, 'ranker');
+});
+
+checkAsync('supply() with no engine option runs the judge (owner ruling 2026-08-23) and reports engine judge', async () => {
+  const dir = engineFixture('recall-engine-default');
+  const realJudge = claudeP.judge;
+  let judgeCalls = 0;
+  claudeP.judge = () => { judgeCalls += 1; return { ok: true, text: '{"needed":[]}', costUsd: 0.01, durationMs: 40, lean: 'applied' }; };
+  try {
+    const dflt = await contextRecall.supply(fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'widget cache ring buffer' }));
+    assert.strictEqual(judgeCalls, 1, 'no engine option -> the judge runs');
+    assert.strictEqual(dflt.engine, 'judge');
+  } finally { claudeP.judge = realJudge; }
+});
+
+checkAsync('supply() with an unknown engine value falls back to the judge, never to silence', async () => {
+  const dir = engineFixture('recall-engine-bogus');
+  const realJudge = claudeP.judge;
+  let judgeCalls = 0;
+  claudeP.judge = () => { judgeCalls += 1; return { ok: true, text: '{"needed":[]}' }; };
+  try {
+    const bogus = await contextRecall.supply(fakeCtx({ cwd: dir, disk: makeDisk(dir), lastAssistantMessage: 'widget cache ring buffer' }), { engine: 'nonsense' });
+    assert.strictEqual(judgeCalls, 1);
+    assert.strictEqual(bogus.engine, 'judge');
+  } finally { claudeP.judge = realJudge; }
+});
+
 checkAsync('supply() surfaces a judge failure instead of silently recalling nothing', async () => {
   const dir = tmpdir('recall-fail');
   fs.mkdirSync(path.join(dir, '.claude', 'kb', 'captures'), { recursive: true });
@@ -1454,6 +1511,21 @@ check('markdown-dir indexes titles cheaply and fetches bodies exactly', () => {
   const got = src.fetch(ctx, [idx.find((e) => e.title === 'The real title').id]);
   assert.strictEqual(got.length, 1);
   assert.ok(got[0].content.includes('BODY-HERE'));
+});
+
+check('markdown-dir fetch strips the toolkit preamble from the supplied body (0.13.1) — the file keeps it', () => {
+  const dir = tmpdir('src-md-preamble');
+  fs.mkdirSync(path.join(dir, 'notes'), { recursive: true });
+  const PRE = '> Read this before doing anything:\n> - Limits-awareness: x.\n> - Propagation requirement: w.\n';
+  fs.writeFileSync(path.join(dir, 'notes', 'p.md'), `# Titled\n\n${PRE}\nSUBSTANCE\n`);
+  const src = makeSource({ id: 'notes', title: 'notes', dirs: ['notes'] });
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir) });
+  const got = src.fetch(ctx, [src.index(ctx)[0].id]);
+  assert.ok(got[0].content.includes('SUBSTANCE'));
+  assert.ok(!got[0].content.includes('Propagation requirement'), 'preamble stripped from the supply');
+  assert.ok(fs.readFileSync(path.join(dir, 'notes', 'p.md'), 'utf8').includes('Propagation requirement'), 'disk untouched');
+  const { stripBoilerplatePreamble } = require('../lib/sources/markdown-dir');
+  assert.strictEqual(stripBoilerplatePreamble('# T\n\n> a real quote\n\nBody.'), '# T\n\n> a real quote\n\nBody.', 'a real quote stays');
 });
 
 check('a source over a missing directory is simply empty, never an error', () => {
