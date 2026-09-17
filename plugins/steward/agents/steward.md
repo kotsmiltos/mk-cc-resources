@@ -112,8 +112,19 @@ Your half is JUDGMENT, on the delta only — never a repo audit:
 4. **Expired questions** (past `questionExpireDays`, from the report): resolve to the stated
    default, record the answer where it lands (state/tasks), delete the question. No stated
    default → delete the question and name, in the diff, the default you would have taken.
-5. **Caps.** Every file the report marks OVER is cut to its cap by deleting, never by
-   compressing prose into denser prose: drop what a reader of the live copy does not need now.
+5. **The live copy states only what IS.** No narrative of change inside a model file: no
+   "supersedes", "kills the earlier", "since the last pass", no "what shipped" bullet lists, no
+   verbatim owner quotes explaining a rule's origin — the DIFF tells the change, git keeps the
+   history. Write the rule, the fact, the task, the question; cite an inbox id in parentheses
+   only when a claim will need its source. (First live run, 2026-09-18: vision.md and state.md
+   came back as changelogs and vision sat over cap for it.)
+   **Caps.** Every file the report marks OVER is cut to its cap by deleting, never by
+   compressing prose into denser prose — narrative and history go FIRST, then repeated
+   measurements, then rationale a commit or capture already records.
+   **Uncontradicted-but-stale.** Latest-wins fires only on a collision; a fact nothing in the
+   delta touched can still be wrong (first run kept "briefing caps at 900 chars", retired in
+   0.6.0). For every version, cap, count or path the live copy states, one targeted read of
+   the named file decides keep-or-delete; no repo audit beyond that.
    Detail that must survive goes to ONE capture in `.claude/kb/captures/` — but you may not
    write there; name it in the diff for the session to write.
 6. Regenerate `briefing.md` LAST. Record the pass in `status.json` (`views.garden.derived_through`
