@@ -4,6 +4,19 @@ All notable changes to **kb** are recorded here, newest first, in the terms that
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-09-17
+
+### Changed
+- **`kb-hints` are OFF by default.** The `--channel=hints` UserPromptSubmit output is total silence unless the project opts in with `.claude/kb.json`:
+  ```json
+  { "pull": { "hints": true } }
+  ```
+  Only literal `true` opts in. The digest channel, the MCP tools (`kb_query` / `kb_read` / `kb_overview`), the CLI, and `kb-session-start` are unchanged.
+- Why (measured 2026-09-17 with `harness-stats` over four projects since 09-06): hints are a POINTER — the session must `kb_read` the id to use one — and the pointer was followed on **7.5% / 0% / 0% / 0%** of hinted prompts, while hints were the **largest hook-text family in every project** (145–225 KB each) and pushed the per-prompt hook text to 12–16 KB against a 2 KB control project. The pull side is what gets used (109 `kb_query`/`kb_read` calls in this repo over the same window). Audit 2 (09-06) had already read 84% ignored. This is slice 1 of the memory redesign (`.steward/inbox/20260917-1830-…`): stop the push, keep the pull.
+- A malformed `.claude/kb.json` still prints its one visible `[kb-pull] … hints off this prompt; the digest still injects` line — the config is broken either way and the owner should know.
+- The digest bootstrap line ("no session digest yet …") rode the hint injection; with hints off it no longer appears. turn-end's `session-digest` duty is the digest's creator and is unaffected.
+- `harness-stats`: `hints.prompts_with_hints` and `hint-followed` read 0 for any project that has not opted in — BY DESIGN, not a dead writer; the `kb-pull` trace line is not written for a silent hints fire (same as a prompt with no strong hit).
+
 ## [0.15.0] - 2026-09-14
 
 ### Changed

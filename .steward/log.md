@@ -1667,3 +1667,68 @@ therefore inert** — the first working-tree-only plugin state this model has ha
 State/tasks recomputed against all of it: HEAD, the uncommitted-tree fact, the re-run gates
 (thorough-mode 30/30 · repo-guard 0 · registry-check 0/8 · test-all ×3 = exit 1/0/0, 2,100
 checks), #1 leg B's new sequencing note, ids stable, next free id 43.
+
+## 2026-09-17 · Two items integrated at `6052e6b` — the owner's value question parked as Q26 with its measured table, Q25 + Q13 closed into it, the 09-14 judge-timeout ruling recorded from source; the 09-13/14 sitting is NOT in the model (no capture)
+
+**Base note:** HEAD `6052e6b` == origin/main, tree clean (both ref files read). Five commits and one
+sitting (09-13/14) sit between the model's last recompute (`c4d8093`) and here with NO inbox item
+and NO log entry; this pass did not audit them. It verified exactly what it wrote from that sitting
+and named the rest at subject level in state.md — **the session owes ONE capture** so the next pass
+can integrate turn-end 0.12/0.13, toolkit 1.17/1.18, kb 0.15.0, steward 0.6.1, thorough-mode 1.12.2,
+reuse-gate 0.2.0 and the four 09-14 kb captures properly. The tree did not move mid-pass.
+
+**Item 1 (inbox 20260910-0510, the "zero Stop fires = one unyielded turn" correction):** its
+substance was ALREADY integrated by the 09-11 correction pass (leg 0 deleted, platform invariant 6
+kept as the pairing rule and amended with the yield denominator on 09-12, Q23 closed) — recorded as
+integrated with that provenance, nothing re-derived. Its one residue, the `harness-stats --line`
+form at session open, is folded into #8 (the computed-briefing task owns the `[instr]` surface),
+not opened as a task. *Check: status.json items 20260911-1230 + 20260912-0013 carry the
+integration; tasks #8 now names the clause.*
+
+**Item 2 (inbox 20260917-1652, OWNER, verbatim: "is steward and verification and all that adding
+value?… it feels like it's just burning tokens… infinite things that conflict… lighter models?"):**
+→ **Q26**, new, with the four-ship + control table carried verbatim into state.md and three
+corrections the model's own records force on it: (i) `hints.followed_strict` / `digest.past_used`
+are file-open metrics — honest for pointer kinds, unscorable for injected bodies (capture
+`20260911-0300`; the digest's "0/3" is 3 unscorable); (ii) judge p95 = 60 s in all four ships is
+OUR constant, not a platform kill — **owner ruling 09-14, verbatim "extend the timeout if it's in
+our hands make it 5 times longer i don't care", 60 → 300 s, hook ceiling 420 s**, read at
+`claude-p.js:66-82` + `hooks.json:14`, recorded in the resolved ledger — and the raised build IS
+installed (mid-pass correction below); (iii) this ship's "19 unintegrated"
+is a file count — status.json said 2 before this pass, 0 after. Options (a)–(d) with Claude's default
+(cut the measured-dead push, garden the memory, install-then-measure the judge, lighter-model trial
+for steward/lens). **Cascade:** Q13 (steward on sonnet) MERGED into Q26; Q25 CLOSED BY BUILD (tree
+clean at `6052e6b`, thorough-mode 1.12.2 on disk; `34536d9` = the option-(c) fewer-clicks duty —
+whether owner-ruled or delegated is not recorded, flagged); Q20 + Q21 amended; **#17 and #38 moved
+AHEAD of #32/#8** (Claude's call, reversible by Q26); #42 part (1) closed on disk
+(`tool-record.js:111-112` marks the cut, `MAX_CMD_CHARS` still 300); #9 steps 2a/2b CLOSED — the
+flake is lock contention (`with-lock.cjs:56` MAX_ATTEMPTS 5 vs :51 60 s stale threshold; capture
+`20260914-2130` read), fix still open; #41 still open (no `base-freshness` under
+`plugin-toolkit/lib`, grep). parts.md: one line (the judge budget). *Checks: named per claim above;
+all greps on explicit paths.*
+
+**MID-PASS CORRECTION (the lens amended the inbox item while this pass ran; the ledger was then
+read directly):** the "60 s (=timeout)" row is a WHOLE-LIFE artifact and **the raised build IS
+installed** — `installed_plugins.json` (grep-read, every version/sha/lastUpdated): turn-end 0.13.0
+· kb 0.15.0 · reuse-gate 0.2.0 · thorough-mode 1.12.2 at `6052e6b` (2026-09-14T18:27Z);
+**plugin-toolkit 1.18.0 standalone** + steward 0.6.1 at `553c366` (09-12T17:21Z); lens 0.7.0
+(09-11); essense-flow 0.27.0 · autopilot 0.5.0 · mk-cc-all 2.28.0 (09-11T21:33Z). INSTALLED ==
+DISK for all 17. Post-install judge (`--since 2026-09-14T18:30Z`): aithseis 21 fires / p50 34 s /
+p95 66 s / **81% empty**; twin 3 / 67%; mk-cc 2 @ 73 s / 0%; post-install hook bytes 12.4 / 16.2 /
+11.8 KB. Cascade of the correction: **#1 leg B CLOSED**, leg E rewritten around the reading that
+exists; **Q24 CLOSED BY INSTALL** (layout in fact = standalone toolkit + full bundle; #2 keeps the
+slim-or-keep residue); Q26's "install first" option dropped, its (a) package re-cut to the seven
+ranked amendments from the capture (kb-hints off · judge ranker-only if empty >50% after 20 more
+fires · log rotation + `model: sonnet` on the steward agent · digest scored by content · lens
+`lens.refuted` after 20 · preamble stripped from injected bodies · lighter models = one `model:`
+line); Q20 given the post-install numbers and a numeric trigger; state.md header, snapshot,
+table reading (2), G5 gap rewritten; the 09-12 versions section marked superseded. **The model
+and the session's 09-17 digest both carried "nothing installed" for three to six days past the
+truth** — an authored install fact, the class `running.installed_vs_checkout` exists to compute;
+recorded in #1 leg B as the lesson. Every install claim above is ledger-read this pass.
+
+## 2026-09-17 (session) · slice 1 of the memory redesign SHIPPED: kb 0.16.0 — kb-hints OFF by default
+- Owner delegated the shape ("explain it to me or take responsibility"); plan of record in `inbox/20260917-1830-claude-decision-memory-redesign-plan-of-record.md`; research in `.claude/kb/captures/20260917-1800-…`.
+- Change: `pull.hints` opt-in (literal `true`), shipped default `false`; hints channel = total silence when off; malformed kb.json still prints its one line; digest channel + MCP pull unchanged.
+- Check: kb-pull 107/107 (5 new), footprint 32/32, session 79/79, kb 276/276, mcp 45/45; registry-check exit 0 (8 claims); repo-guard clean (5 detectors); test-all 34/35, 2156 checks — the red is essense-flow `run-all.cjs` lock contention (#9, pre-existing).
+- NOT yet measured: `hook_bytes.per_prompt.avg` ≤ 3,000 needs the plugin INSTALLED (`claude plugin update kb` + restart) and ~20 real prompts; running≠installed until then.

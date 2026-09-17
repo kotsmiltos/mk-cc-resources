@@ -183,11 +183,20 @@ function touched(root) {
 
   // (a) the pull hook, on a prompt that genuinely matches ambient content
   const a = unseededProject();
+  const off = spawnSync('node', [path.join(HOOKS, 'kb-pull.js')], {
+    cwd: a, input: JSON.stringify({ prompt: 'what happened with the porter ferry caste for transfers?' }), encoding: 'utf8',
+  });
+  check('pull hook: silent by default (0.16.0 — hints are opt-in) and leaves nothing behind',
+    off.status === 0 && off.stdout === '' && !touched(a));
+  // Opted in via `.claude/kb.json` — NOT a memory marker (lib/presence.js), so the project is
+  // still unseeded; the footprint promise is then "nothing under .claude/kb", not "no .claude".
+  fs.mkdirSync(path.join(a, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(a, '.claude', 'kb.json'), JSON.stringify({ pull: { hints: true } }));
   const pull = spawnSync('node', [path.join(HOOKS, 'kb-pull.js')], {
     cwd: a, input: JSON.stringify({ prompt: 'what happened with the porter ferry caste for transfers?' }), encoding: 'utf8',
   });
-  check('pull hook: fires on ambient content (precondition)', pull.stdout.includes('<kb-hints>'));
-  check('pull hook: leaves nothing behind', !touched(a));
+  check('pull hook: fires on ambient content once opted in (precondition)', pull.stdout.includes('<kb-hints>'));
+  check('pull hook: leaves nothing behind under .claude/kb', !fs.existsSync(path.join(a, '.claude', 'kb')));
 
   // (b) the write side lives in turn-end's session-digest duty since 0.9.0 (the scribe hook was
   // retired then and deleted in 0.12.0) — its footprint is turn-end's suite's to prove.
@@ -215,10 +224,11 @@ function touched(root) {
   );
   writeTrace(e, { t: 'now', tool: 'kb_query', text: 'porter ferry' });
   check('seeding switches tracing on', fs.existsSync(path.join(e, '.claude', 'kb', 'trace.jsonl')));
+  fs.writeFileSync(path.join(e, '.claude', 'kb.json'), JSON.stringify({ pull: { hints: true } })); // 0.16.0 opt-in
   const pull2 = spawnSync('node', [path.join(HOOKS, 'kb-pull.js')], {
     cwd: e, input: JSON.stringify({ cwd: e, prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?' }), encoding: 'utf8',
   });
-  check('seeding switches the pull hook on (hints fire, a trace line lands)',
+  check('seeding + opt-in switches the pull hook on (hints fire, a trace line lands)',
     pull2.status === 0 && pull2.stdout.includes('<kb-hints>') &&
     fs.readFileSync(path.join(e, '.claude', 'kb', 'trace.jsonl'), 'utf8').includes('kb-pull'));
 }

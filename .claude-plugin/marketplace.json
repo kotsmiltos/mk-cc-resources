@@ -256,7 +256,7 @@
       "source": "./plugins/kb",
       "displayName": "Knowledge Base",
       "description": "The project's queryable knowledge base \u2014 decisions and their why, dead ends, conventions \u2014 indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "author": {
         "name": "kotsmiltos"
       },

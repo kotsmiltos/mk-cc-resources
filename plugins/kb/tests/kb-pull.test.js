@@ -47,9 +47,17 @@ function runChannel(cwd, promptJson, channel) {
   });
 }
 
-function fixture() {
+/* The project-side opt-in for hints (0.16.0: OFF by default — a measured-dead push). */
+const HINTS_ON = JSON.stringify({ pull: { hints: true } });
+function optInHints(root) {
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.claude', 'kb.json'), HINTS_ON);
+}
+
+function fixture({ hints = true } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-pull-'));
   fs.mkdirSync(path.join(root, '.claude', 'kb', 'extracted'), { recursive: true });
+  if (hints) optInHints(root);
   fs.writeFileSync(
     path.join(root, '.claude', 'kb', 'extracted', '20260701-rejected-porter-ferry.md'),
     '---\nkind: semantic\ncaste: project\nthemes: [rejected, porter]\n---\n# Rejected: porter ferry caste for transfers\n\nSuperseded by the handoff layer; a dedicated porter caste was rejected.\n',
@@ -62,6 +70,15 @@ function fixture() {
 check('pullConfig defaults when absent', hook.pullConfig({}).enabled === true && hook.pullConfig({}).minScore === hook.DEFAULT_MIN_SCORE);
 check('pullConfig honors enabled:false', hook.pullConfig({ pull: { enabled: false } }).enabled === false);
 check('pullConfig keeps floor when only enabled overridden', hook.pullConfig({ pull: { enabled: true } }).minScore === hook.DEFAULT_MIN_SCORE);
+// 0.16.0: hints are opt-in. Measured 2026-09-17: pointer followed 7.5/0/0/0% across four
+// ships while being the largest hook-text family — the shipped default must be OFF.
+check('pullConfig: hints OFF by default (shipped constant + absent config)',
+  hook.DEFAULT_HINTS_ENABLED === false && hook.pullConfig({}).hints === false && hook.pullConfig({ pull: { enabled: true } }).hints === false);
+check('pullConfig: hints:true opts in', hook.pullConfig({ pull: { hints: true } }).hints === true);
+check('pullConfig: only literal true opts in ("true" / 1 stay off)',
+  hook.pullConfig({ pull: { hints: 'true' } }).hints === false && hook.pullConfig({ pull: { hints: 1 } }).hints === false);
+check('shipped defaults/config.json carries hints:false (the doc half of the default)',
+  require('../defaults/config.json').pull.hints === false);
 check('machine text detected', hook.isMachineText('[SYSTEM NOTIFICATION - blah'));
 check('plain text not machine', !hook.isMachineText('why did we reject the porter caste'));
 check('system-reminder prompts are machine text (audit 2: this copy lacked the marker)',
@@ -96,6 +113,25 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
 
   const r4 = runHook(root, 'not json at all');
   check('non-JSON stdin -> silent exit 0', r4.status === 0 && r4.stdout === '');
+}
+
+// ---- e2e (0.16.0): hints are OFF by default — the strong match stays silent until opted in ----
+
+{
+  const root = fixture({ hints: false });
+  const strong = JSON.stringify({ prompt: 'should we add a porter ferry caste for transfers, or was that rejected already?', session_id: 'sess-OFF', prompt_id: 'off1' });
+  const h = runChannel(root, strong, 'hints');
+  check('default: the hints channel is total silence on a strong match', h.status === 0 && h.stdout === '');
+  check('default: no trace line for a silent hints fire (same as no strong hit)',
+    !fs.existsSync(path.join(root, '.claude', 'kb', 'trace.jsonl')));
+  const c = runHook(root, strong);
+  check('default: the combined output carries no <kb-hints> either', c.status === 0 && !c.stdout.includes('<kb-hints>'));
+  fs.writeFileSync(path.join(root, '.claude', 'kb', 'session-digest.md'), '# Now\nDIGEST_STILL_HERE\n');
+  const d = runChannel(root, strong, 'digest');
+  check('default: the digest channel is untouched by hints being off', d.stdout.includes('DIGEST_STILL_HERE'));
+  optInHints(root);
+  const on = runChannel(root, strong, 'hints');
+  check('opt-in {"pull":{"hints":true}} -> the same prompt now hints', on.stdout.includes('<kb-hints>'));
 }
 
 // ---- e2e: hints fire on a strong match ----
@@ -142,6 +178,7 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-precision-'));
   const dir = path.join(root, '.claude', 'kb', 'extracted');
   fs.mkdirSync(dir, { recursive: true });
+  optInHints(root); // the ranker's precision is measured with hints ON (0.16.0 default is off)
   const put = (name, body) => fs.writeFileSync(path.join(dir, name), body);
   put('20260701-rejected-porter-ferry.md',
     '---\nkind: semantic\ncaste: project\nthemes: [rejected]\n---\n# Rejected: a porter ferry caste for transfers\n\nSuperseded by the handoff layer.\n');
@@ -190,6 +227,9 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-unseeded-'));
   fs.writeFileSync(path.join(root, 'CLAUDE.md'),
     '# Project\n\n## Porter ferry caste\n\nThe porter ferry caste was rejected for transfers.\n');
+  // 0.16.0: hints are opt-in, and `.claude/kb.json` is NOT a memory marker (lib/presence.js),
+  // so an opted-in project is still unseeded — the footprint promise must hold there too.
+  optInHints(root);
 
   const r = runHook(root, JSON.stringify({ prompt: 'what happened with the porter ferry caste for transfers?' }));
   // Pin the precondition: if hints ever stop firing here, the two assertions below would
@@ -434,6 +474,7 @@ check('a child session (turn-end judge) is detected from the env', hook.isChildS
 
 const chProj = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-channels-'));
 fs.mkdirSync(path.join(chProj, '.claude', 'kb', 'captures'), { recursive: true });
+optInHints(chProj);
 fs.writeFileSync(path.join(chProj, '.claude', 'kb', 'captures', '20260101-0000-widget-cache-decision.md'),
   ['---', 'kind: semantic', 'caste: project', '---', '# Widget cache decision', '',
    'The widget cache uses a ring buffer.', ''].join(String.fromCharCode(10)));

@@ -38,6 +38,16 @@ const pullState = require('../../lib/pull-state');
 // roughly a title-level hit with decent coverage — body-only brushes stay quiet.
 const DEFAULT_MIN_SCORE = 6;
 const DEFAULT_MAX_HINTS = 3;
+// Hints are OFF unless a project opts in with `.claude/kb.json {"pull":{"hints":true}}`.
+// WHY (measured 2026-09-17, harness-stats over four ships since 09-06): hints are a POINTER
+// kind — the session must kb_read the id to use one — and the pointer was followed on
+// 7.5% / 0% / 0% / 0% of hinted prompts (mk-cc / aithseis / twin / ar-mystery) while being
+// the largest hook-text family everywhere (145–225 KB per project). Audit 2 (09-06) read
+// 84% ignored. The pull side (kb_query / kb_read, 109 calls here in the same window) is what
+// gets used; the push was crowding the ~8 KB inline bound the digest and recall need.
+// Owner ruling 2026-09-17 ("take responsibility"): slice 1 of the memory redesign —
+// `.steward/inbox/20260917-1830-claude-decision-memory-redesign-plan-of-record.md`.
+const DEFAULT_HINTS_ENABLED = false;
 // Prompts shorter than this are commands/acks ("push", "do it") — never worth a scan.
 const MIN_PROMPT_CHARS = 15;
 // The digest is the SESSION'S OWN MEMORY of the sitting, and it is injected because the
@@ -129,6 +139,8 @@ function pullConfig(config) {
   const p = config && typeof config.pull === 'object' && config.pull ? config.pull : {};
   return {
     enabled: p.enabled !== false,
+    // Opt-in only: anything but literal `true` keeps the measured-dead push off.
+    hints: p.hints === true ? true : DEFAULT_HINTS_ENABLED,
     minScore: Number.isFinite(p.minScore) ? p.minScore : DEFAULT_MIN_SCORE,
     maxHints: Number.isFinite(p.maxHints) ? p.maxHints : DEFAULT_MAX_HINTS,
     // Uncapped unless a project asks for a budget. See the DEFAULT_DIGEST_* note.
@@ -314,7 +326,12 @@ async function main() {
    * transcripts (kb-hints 40, turn-end 25) — the content being thrown away was the retrieval.
    */
   const channel = channelArg(process.argv);
-  const wantHints = channel !== pullState.DIGEST_CHANNEL;
+  // Hints need BOTH the channel and the project's opt-in. A malformed kb.json cannot say
+  // whether the project opted in, so that case still gets the one visible line below
+  // (the config is broken either way and the owner should know); otherwise hints-off is
+  // total silence on the hints channel — no output, no state, no trace, exactly like a
+  // prompt with no strong hit.
+  const wantHints = channel !== pullState.DIGEST_CHANNEL && (cfg.hints || Boolean(configError));
   const wantDigest = channel !== pullState.HINTS_CHANNEL;
 
   // This sitting's memory of what it was shown (home-side, session-scoped; absent session_id
@@ -407,7 +424,7 @@ main().catch((err) => {
 module.exports = {
   pullConfig, isMachineText, isChildSession, hintLines, digestBlock, digestBlockWithin,
   digestPointer, selectHints, cueLine, cueTerms,
-  DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, MIN_PROMPT_CHARS,
+  DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, DEFAULT_HINTS_ENABLED, MIN_PROMPT_CHARS,
   DEFAULT_DIGEST_MAX_CHARS, DEFAULT_DIGEST_MAX_LINES, DIGEST_REL,
   PLATFORM_INLINE_BOUND_BYTES, CUT_NOTE_RESERVE_BYTES, SCAN_LIMIT_MULTIPLIER, CUE_TERMS,
   MACHINE_TEXT_MARKERS, MACHINE_PREFIXES, CHILD_SESSION_VAR,

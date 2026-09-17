@@ -164,7 +164,12 @@ plugins/
                             #   Standalone, not in mk-cc-all (bundle would strip catalog/).
                             #   See plugins/patterns/CLAUDE.md.
 
-  kb/                       # (0.14.0: all three trace writers on TRACE SCHEMA v1 through the pure
+  kb/                       # (0.16.0: kb-hints OFF BY DEFAULT — opt in per project via
+                            #   .claude/kb.json {"pull":{"hints":true}}; measured 2026-09-17 the
+                            #   pointer was followed 7.5/0/0/0% across four ships while the
+                            #   largest hook-text family everywhere; slice 1 of the memory
+                            #   redesign, .steward/inbox/20260917-1830-… — stop the push, keep
+                            #   the pull. 0.14.0: all three trace writers on TRACE SCHEMA v1 through the pure
                             #   lib/trace-line.js — hook:kb-pull / hook:kb-session-start / tool:kb_*.
                             #   0.13.0: kb-pull within the MEASURED 8 KiB platform bound, hinted
                             #   ids never repeated per session, unchanged digest = one pointer

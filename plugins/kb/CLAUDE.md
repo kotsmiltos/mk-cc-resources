@@ -80,7 +80,12 @@ skills/kb-capture/SKILL.md   # MAINTAIN: file one decision/dead-end/finding -> .
 hooks/hooks.json             # UserPromptSubmit (kb-pull) + SessionStart (kb-session-start)
                              #   registration; the kb-scribe Stop registration is RETIRED
                              #   (0.9.0 — see below)
-hooks/scripts/kb-pull.js     # the awareness surface (0.13.0: whole output within the MEASURED
+hooks/scripts/kb-pull.js     # the awareness surface (0.16.0: HINTS OFF BY DEFAULT — opt in with
+                             #   .claude/kb.json {"pull":{"hints":true}}; measured 2026-09-17:
+                             #   pointer followed 7.5/0/0/0% across four ships while the largest
+                             #   hook-text family everywhere; slice 1 of the memory redesign,
+                             #   .steward/inbox/20260917-1830-…; the digest channel + MCP pull
+                             #   are unchanged) (0.13.0: whole output within the MEASURED
                              #   platform bound of 8 KiB — past ~10 KB the platform stubs it
                              #   unread; digest cut loud, pointer line when unchanged this
                              #   session, hinted ids never repeated + a "+N more — kb_query" cue,

@@ -99,6 +99,12 @@ Note: the `mk-cc-all` bundle carries only the *skills*. The MCP server and the t
 (`kb-pull` on UserPromptSubmit, `kb-session-start` on SessionStart) come with installing the
 `kb` plugin itself; the write side (the session digest) is enforced by the `turn-end` plugin.
 
+**Hints are opt-in since 0.16.0.** `kb-pull`'s hint lines (pointers to entries that match the
+prompt) stay silent unless the project sets `.claude/kb.json` → `{ "pull": { "hints": true } }`.
+Measured across four projects: the pointer was followed on 0–7.5% of prompts while being the
+largest hook-text family everywhere. The digest injection and the `kb_query` / `kb_read` tools —
+the side that is actually used — are unchanged.
+
 ## Use
 
 ```bash
