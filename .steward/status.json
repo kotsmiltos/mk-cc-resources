@@ -513,14 +513,47 @@
       "groups": ["owner-question", "harness", "audit-2", "knowledge-hygiene", "recall-judge"],
       "log": "2026-09-17 · Two items integrated at `6052e6b` — the owner's value question parked as Q26 with its measured table, Q25 + Q13 closed into it, the 09-14 judge-timeout ruling recorded from source; the 09-13/14 sitting is NOT in the model (no capture)",
       "check": "owner words verbatim into questions.md Q26 (context + options + Claude's default marked); table carried verbatim into state.md with three corrections from the model's own records (file-open metrics per capture 20260911-0300 via the 09-17 session digest; judge cap = our constant, owner ruling 09-14 read at plugins/turn-end/lib/judges/claude-p.js:66-82 + hooks/hooks.json:14; 'inbox unintegrated 19' vs this ledger's 2); Q13 merged in, Q25 closed by build (.git/refs/heads/main == refs/remotes/origin/main = 6052e6b, all 17 plugin.json versions grep-read); #17 + #38 reordered ahead of #32/#8 as Claude's call; #42 part (1) closed on tool-record.js:111-112; #9 2a/2b closed on capture 20260914-2130 + with-lock.cjs:51,56; #41 open (grep base-freshness|ls-remote over plugin-toolkit/lib = 0 files); MID-PASS: the lens amended the item (60 s row = whole-life artifact; 300 s build installed 09-14; aithseis 81% empty of 21 post-install) and the install ledger was grep-read directly — installed == disk for all 17 (turn-end 0.13.0/kb 0.15.0/reuse-gate 0.2.0/thorough-mode 1.12.2 @ 6052e6b 09-14T18:27Z; plugin-toolkit 1.18.0 + steward 0.6.1 @ 553c366; lens 0.7.0; essense-flow 0.27.0/autopilot 0.5.0/mk-cc-all 2.28.0) → #1 leg B closed, Q24 closed by install, Q26 (b) 'install first' dropped and (a) re-cut to the capture's seven amendments; nothing decided by the owner"
+    },
+    {
+      "id": "20260917-1740-owner-rethink-memory-context-callbacks-research-better-solutions",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260918-0100",
+      "by": "steward-agent",
+      "groups": ["knowledge-hygiene", "memory-redesign"],
+      "log": "2026-09-18 (garden pass) · FIRST REAL GARDEN RUN — every model file cut to cap by deletion, Q12+Q14 resolved to default, the 09-17/18 research + ruling integrated, three inbox items marked integrated",
+      "check": "superseded in fact by the 09-18 ruling and the 09-17-session kb 0.16.0 ship; recorded as integrated with that provenance — its research request produced the 20260917-1800 capture, read this pass"
+    },
+    {
+      "id": "20260917-1830-claude-decision-memory-redesign-plan-of-record",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260918-0100",
+      "by": "steward-agent",
+      "groups": ["knowledge-hygiene", "memory-redesign"],
+      "log": "2026-09-18 (garden pass) · FIRST REAL GARDEN RUN — every model file cut to cap by deletion, Q12+Q14 resolved to default, the 09-17/18 research + ruling integrated, three inbox items marked integrated",
+      "check": "file read this pass — only slice 1 (kb 0.16.0 hints-off) survived the next day's ruling; slices 2-5's status-lifecycle/importance-scoring machinery is DEAD, recorded as such in vision.md and state.md, not carried into any open task"
+    },
+    {
+      "id": "20260918-0010-owner-ruling-one-live-copy-latest-wins-nightly-gardener-deletes",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260918-0100",
+      "by": "steward-agent",
+      "groups": ["knowledge-hygiene", "memory-redesign", "garden"],
+      "log": "2026-09-18 (garden pass) · FIRST REAL GARDEN RUN — every model file cut to cap by deletion, Q12+Q14 resolved to default, the 09-17/18 research + ruling integrated, three inbox items marked integrated",
+      "check": "ruling read this pass and applied to the MODEL for the first time (steward 0.7.0 already shipped the code 09-18 earlier the same day): vision.md invariant 4 rewritten, Q21 moved to the resolved ledger, every over-cap file cut by deletion per its law, log.md's pre-09-11 history deleted with this entry naming the cutoff"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260917-1652-owner-is-steward-verification-hooks-adding-value-or-burning-tokens"
+      "derived_through": "20260918-0010-owner-ruling-one-live-copy-latest-wins-nightly-gardener-deletes"
     },
     "model": {
-      "derived_through": "20260917-1652-owner-is-steward-verification-hooks-adding-value-or-burning-tokens"
+      "derived_through": "20260918-0010-owner-ruling-one-live-copy-latest-wins-nightly-gardener-deletes"
+    },
+    "garden": {
+      "derived_through": "20260918-0010-owner-ruling-one-live-copy-latest-wins-nightly-gardener-deletes"
     }
   }
 }

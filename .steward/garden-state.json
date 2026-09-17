@@ -1,0 +1,16 @@
+{
+  "lastRunAt": "2026-09-17T22:55:41.315Z",
+  "lastHead": "6729e54bd107",
+  "runs": [
+    {
+      "at": "2026-09-17T22:55:41.315Z",
+      "head": "6729e54bd107",
+      "deleted": {
+        "logEntries": 43,
+        "digests": 23,
+        "inboxIntegrated": 17,
+        "inboxDone": 29
+      }
+    }
+  ]
+}

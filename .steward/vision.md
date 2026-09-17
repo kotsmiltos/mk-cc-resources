@@ -8,311 +8,114 @@
 
 ## Core idea
 
-The owner's Claude Code plugin marketplace — the toolkit that makes Claude the owner's
-best ally for turning ideas into well-built software (optimal code + docs + everything
-needed). Public repo, but built first for the owner's own ~40 production codebases.
+The owner's Claude Code plugin marketplace — the toolkit that makes Claude the owner's best
+ally for turning ideas into well-built software (optimal code + docs + everything needed).
+Public repo, built first for the owner's own ~40 production codebases.
 
-## The active thrust (2026-07-21)
+## Model-keeping law (owner ruling, 2026-09-18 — supersedes the 09-08 lifecycle proposal)
 
-**Continuous transformation** (`design/continuous-transformation.md` v3 — design source
-of truth). The toolkit is pivoting from phase-ceremony (essense-flow pipeline) to the
-**steward loop**: a per-project living model + inbox, recomputed on every input, with
-pull-based owner-present work. Ceremony retires (Phase E); the craft survives inside
-steward + executor protocols. The classic pipeline stays available, no longer the
-recommended path once the transition completes.
+Owner, verbatim: *"i like the nightly call that checks what is going on and what is still
+valid or not and keeping a valid and fresh copy of info, but keeping everything still sounds
+wrong. I think if we have contradictions we keep the latest input on them."* Law: **ONE live
+copy** of what's true now, capped per file. **A contradiction keeps the LATEST input and
+DELETES the older text** — no supersedes links, no dormant tier, no archive tier inside
+`.steward/`; git history is the archive. Inbox, log.md, digests are CONSUMED, not kept. A
+**garden** pass (steward job `garden`, built as steward 0.7.0: `lib/garden.js`,
+`bin/steward-garden.js`, `/steward:garden`) reads the delta since its last run, marks every
+live fact still-valid / contradicted / stale, deletes the losers, returns a diff the owner
+reviews. This kills the earlier `live/superseded-by/refuted-by/archived` status-lifecycle
+proposal and answers Q21 (removal authority): **the gardener deletes; the diff is the
+review.** Provenance: `inbox/20260918-0010-…`.
 
-The loop now has BOTH context directions (owner direction, 2026-07-24): the long-lens
-tools (steward, verifiability-lens) PUSH a fixed briefing at session open; **kb** is the
-permanent PULL surface — a session asks for exactly what it needs, when it needs it
-(kind x caste axes, MCP/skill/command/CLI reach). Steward stays the sole writer of
-`.steward/`; kb reads it downstream. Push what's always needed, pull the rest — this is
-the session-scope answer to "the big tools handle too much context to help in one
-session."
+## The active thrust
 
-Refined 2026-07-25 (kb 0.5.0–0.7.0, owner: "you have to build it"): pull alone
-under-fires. A tool the session *can* call is not a tool the session *does* call — the
-T13 datum (a design turn where the trigger was visible in context and no query fired)
-settled it. So kb now spans all three jobs (create / maintain / reach), and MEMORY HAS
-TWO LENGTHS:
-- **awareness** (ambient push, cheap + conditional) — score-floored hint lines per
-  prompt naming what the KB holds, so the session can see what it may ask for;
-- **short-term** — a rolling session digest injected every prompt, rotated at each new
-  sitting so "now" never carries yesterday's context;
-- **durable** — captures / extracted / the steward model, written under ENFORCEMENT,
-  because the owner ruled a nudge insufficient. (The enforcement MOVED on 2026-07-27:
-  it is now a duty inside the one blocking Stop hook, not a hook kb owns — see below.)
-Pull remains the permanent core; push is what makes pull reachable.
+The toolkit is a **harness LAYER** over Claude Code (Claude Code itself is the harness — loop,
+tools, memory, hooks; research: `design/harness.md`, owner ask 2026-09-08). The steward loop
+replaced phase-ceremony (essense-flow pipeline retired to a frozen slot, its one wanted phase
+extracted into the standalone `elicit` plugin). Memory has two directions: the long-lens
+tools (steward, verifiability-lens) PUSH a fixed briefing at session open; **kb** is the PULL
+surface (kind × caste axes). Measured 2026-09-06 (audit 2, five projects): model-keeping
+WORKS, injecting mostly does NOT (kb-hints 84% ignored, push rising, browse skills/pipeline
+unused in any real session) — the prescription since then has been deletions, folds and
+guards on the push side, not new mechanisms, and the garden law above is the mechanism that
+finally does the deleting.
 
-Re-derived 2026-08-23 (owner, after the four-project usage audit: *"it feels like you are
-patching things… think about this like a transformation team"*): the audit's verdict —
-steward recompute SUCCEEDS everywhere, but the most-INJECTED surface (briefing) is the
-most often WRONG, in all four projects — forced a whole-system re-derivation instead of
-six local fixes. `design/logbook-spine.md` → `design/stack-a-blueprint.md`; **§6 owner
-rulings + §6b phases are now the PLAN OF RECORD beside v3:** per-ship `status.json`
-(lifecycle + `groups[]`; files NEVER move or rename; kb JOINS status as themes at
-collect, zero engine change), briefings = authored narrative + COMPUTED instruments
-(volatile claims — installs, git position, counts — computed at read, never authored, so
-the false-install-claim class dies by construction), harbor fleet stream at owner scope,
-statusline truth from status.json. Strike 1 (steward 0.4.0 freshness ⚠ + root anchoring ·
-kb 0.10.3 root-anchored hooks) SHIPPED, PUSHED and INSTALLED same day — the ⚠ line fired
-live on this repo's own briefing. The v3 phases resume AFTER, on the honest substrate.
+**One blocking tail (2026-07-27):** two plugins each owning a blocking Stop hook re-armed
+each other; law now — plugins ship DUTIES (DEMAND or SUPPLY), `turn-end` owns the one Stop
+hook.
 
-Measured 2026-09-06 (audit 2 — five projects, 212 human prompts, every plugin; kb capture
-`20260906-1340-second-usage-audit-five-projects-measured`): the owner's 09-04 doubt
-(verbatim: *"I don't think that we've built this. Really doing anything."*) is ANSWERED by
-measurement, not argued. **Model-keeping WORKS** — 97 inbox captures, 28 integrate
-dispatches, the recompute verdict unchanged, `@prompt`/`@ship`/`/prism` are the owner's
-real workflow. **Injecting mostly does NOT yet** — kb-hints 84% ignored, per-prompt hook
-tax avg 6.3 KB / p95 20.5 KB and RISING after 08-23 while deliberate pull fell to ~0,
-briefing prose contradicted by the log in 4/5 ships, 235 of 269 session files are
-headless recall judges each paying the whole harness. **Browse skills + the pipeline are
-used in ZERO real sessions** (essense-flow, session-lifecycle, code-glossary, reuse-gate,
-/kb, /patterns, /verifiability). Reading (Claude's, not a ruling): the next moves are
-deletions, folds and guards on the PUSH side, not new mechanisms — the ranked plan is
-inbox `20260906-1345`; nothing in it is decided. **Owner, same day (verbatim):** *"ok,
-decide what is the best way to handle it. the need is that my vision is applied and
-works."* — the standing delegation shape: Claude decides HOW within the vision; the owner
-still rules vision-level forks. Under it Tier 1 (#22–#26 + the lens-restored 1b) was built
-and SHIPPED `bc39fe0` that sitting. **Built ≠ running** (2026-09-08): the owner's process
-predated the install and ran 0.6.0 for two days after — the G1 finding in the frame below.
-**The reading's own prescription started EXECUTING 2026-09-11/12** (Tracks 4 + 5): the pipeline's
-535 banners + 305 halt diagnostics per audit window were DELETED at the source rather than
-tuned, its one wanted phase was EXTRACTED into the `elicit` plugin instead of being retired with
-it, and the public surface — unread for months while the harness got all the attention — was
-rebuilt and then GUARDED by a claim source so it cannot rot again. Deletions, folds and guards,
-in that order, exactly as the reading said. Built ≠ running still bites: none of it is installed.
-
-## The frame (2026-09-08) — a harness LAYER over Claude Code (Claude's reading; the owner asked)
-
-Owner (verbatim): *"What I currently have, is it considered a harness? What does it need to
-do in order for it to be considered a harness? … complete management of what I'm trying to
-do — of managing memory, of managing context, of pushing the work further, of verifying the
-work."* Research + plan: `design/harness.md` (log 2026-09-08). The answer, sourced to
-Anthropic's own 2026 definitions: **Claude Code IS the harness** (loop, tools, compaction,
-permissions, subagents, memory, 33 hook events); **this toolkit is a harness LAYER** —
-duties on the loop's end, memory the loop reads and writes, context it is fed, judges and
-gates it must pass — and "harness design" in Anthropic's vocabulary is exactly deciding
-what belongs in that layer and what to take out as models improve. So "is it a harness?"
-becomes measurable: does it cover the ten components (loop · tools · context · memory ·
-verification · sub-agents · checkpoints · observability · guardrails · evals), and does each
-demonstrably change outcomes? Verdict against audit 2: MEMORY + LOOP work; the PUSH side is
-over-built and unread; **GOAL** (no goal-based termination — "stopping while there is
-planned work" is a plea in prose), **VERIFY** (self-check satisfied by prose and Bash-blind;
-the lens untraced), **OBSERVE** (no scorecard; installed≠running invisible — live-proven
-09-08 on this repo's own process) and **GUARD** (no budgets) are under-built. The owner's
-four axes map onto those components one-to-one.
-
-**Rule — RATIFIED by the owner 2026-09-09 (Q18, one-keystroke panel; Claude's proposal):
-a mechanism ships with its result-metric key or it does not ship.** Now invariant 12.
-prism already meets it ("owner invokes it again unprompted" — met); nothing else in the
-toolkit does yet — `harness-stats` (#31) is the thing that reads the keys. Companion
-practice from Anthropic's own harnesses (they dropped context resets + the sprint construct
-when Opus 4.6 landed): on every model release, re-run the scorecard and remove any
-mechanism whose metric is flat. What the plan does NOT do: add injections, add a second
-judge, or run unattended (invariant 1). **Phase 0 of the plan (#29 #27 #28) was built and
-SHIPPED `68ce999` in the same sitting (09-09)** — the first ship that can SAY whether it is
-running.
-
-**Two more axes from the owner, same evening (inbox `20260908-1905`, verbatim):** *"one more
-aspect i need is good and modular and decoupled code. i've been tryin to enforce it but the
-idea is that as new things are added and context is enriched we need to be designing better
-code. code is cheap now so we need to be designing better codebases. we need to also be
-keeping our documents clean because i think now we are storing too many things. we should
-be able to clean up wrong things or things that are not necessary and also keep learning
-from what we are seeing. how could these fit into my harness layer?"* → harness G14 (code
-design MEASURED, not texted — `design/harness.md` §7.7) + G15 (knowledge lifecycle + garden
-job — §7.8): tasks #37/#38, owner decisions Q21/Q22. Extends invariants 4 and 7 below;
-nothing beyond the wish is decided.
-
-## The turn-end law (2026-07-27) — one blocking tail
-
-Two plugins each owning a blocking `Stop` hook RE-ARMED each other: each one's mandated
-response was fresh work for the other, so the allow-gap never landed on an idle turn
-(measured: 6 blocks + 3 fires in one sitting over ONE request; another sitting ran 8
-passes and was ended by the platform's 8-consecutive-block cap, not by a criterion).
-Stop hooks run in PARALLEL with no ordering and blocking is fail-closed, so runtime
-negotiation between hooks is racy by construction. Law now: **plugins ship DUTIES, one
-runner owns the tail.** Owner decisions taken that day: a new `turn-end` plugin rather
-than hosting it in an existing one · escalate `additionalContext` → `block` · autopilot
-should become a duty. A second duty KIND followed the same day — SUPPLY, which hands the
-session MATERIAL (its own notes, chosen by a judge, fetched verbatim) instead of demanding
-work. Recall and demand are the two ways a turn ends badly; one runner covers both.
+**The owner's value question (Q26, 2026-09-17 — open):** *"is steward/verification/hooks
+adding value or burning tokens?"* Measured: push 9–14 KB/prompt vs 2 KB on a no-harness
+control; kb-hints the largest family, 0–7.5% followed (now cut — kb 0.16.0 ships hints OFF by
+default); the recall judge returns an EMPTY pick 42–81% of the time even after its timeout was
+raised 60 s→300 s (owner ruling 2026-09-14 — the cap was never the platform's, never the
+cause). The 2026-09-17 research pass (owner: *"research better solutions… keep memory fresh
+and accurate"*) produced a five-slice redesign proposal; the owner's 09-18 ruling above
+REPLACED that proposal's machinery (status lifecycle, bitemporal timestamps, importance
+scoring) with the simpler garden law — only slice 1 (kb-hints off) survives as shipped.
 
 ## Who it serves
 
 - The owner, primarily — real projects (crowd-game, EMDE, psience, Binance tooling…).
-- Public marketplace users, secondarily — plugins must stay portable, no personal setup
-  details in shipped files. **"Shipped" includes every committed file: skills, docs and
-  the `.steward/` model itself** (only `inbox/` stays local). Absolute paths, usernames
-  and drive letters are leaks, not conveniences. The class kept coming back under
-  hand-written sweeps (each sweep shaped wrong, not run lazily), so it is now a
-  MECHANISM: plugin-toolkit's `repo-guard` `leaked-path` detector over `git ls-files`,
-  blocking severity. Counting the remaining sites is what kept failing; the guard's
-  allowlist is the honest ledger of the debt instead.
-- **Reachability is part of "shipped."** A capability that no install can resolve does
-  not exist for the owner, however good the checkout is. Instructions may only name
-  paths an install provides, or must probe first. Since plugin-toolkit 1.9.0 this is
-  MEASURED, not argued: registry-check's `capability-reach` claim source reads the
-  installed cache and reports what a bundle install does not carry (informational —
-  which install the owner uses is their call, not a wrong fact).
+- Public marketplace users, secondarily — plugins stay portable, no personal setup details in
+  shipped files ("shipped" includes `.steward/` itself; only `inbox/` stays local).
+  `repo-guard`'s `leaked-path` detector (blocking) enforces this mechanically.
+- **Reachability is part of "shipped."** A capability no install can resolve does not exist
+  for the owner. `registry-check`'s `capability-reach` claim measures this against the
+  installed cache.
 
 ## Invariants (must stay true)
 
-1. **No work in the owner's absence — ever.** Autonomy in DEPTH, never in TIME. The ship
-   never moves unseen. Absent-owner = inbox staging only, permanently. (Owner: "this can
-   never happen.")
+1. **No work in the owner's absence — ever.** Autonomy in DEPTH, never in TIME. Absent-owner
+   = inbox staging only, permanently.
 2. **Situational awareness IS engagement.** Every integration shows a short, concrete,
-   why-first diff. If the owner can't say where the ship is, the artifact failed.
+   why-first diff.
 3. **Mechanisms, not text.** Disciplines become hooks/gates/roles, not preached rules.
-   (Owner: "if you just add the line somewhere, you're not gonna respect it.")
-4. **Recompute, never accrete.** Re-derivation over patching, at every altitude —
-   turn, code, project, and this repo's own design docs. **Extended by the owner
-   2026-09-08 (two-axes wish, docs half):** the knowledge itself is in scope — *"we are
-   storing too many things… clean up wrong things or things that are not necessary and
-   also keep learning."* Recompute includes DELETION of knowledge: a lifecycle for kb
-   entries (`live / superseded-by / refuted-by / archived`, owned by `status.json`, joined
-   at collect, held back by default and SAID) and a garden job whose removals the owner
-   ratifies as one diff → #38, Q21 (who may mark wrong).
-5. **Per-task cost budget:** one build pass + deterministic checks + max one review
-   pass. Nothing loops. Tool quality×cost is a first-class design constraint —
-   deterministic > LLM, fold > add, fire conditionally. Standing injections are part
-   of the price: injected text is a per-session tax the owner reads — every line earns
-   its place (owner, 2026-08-03: "make the steward lighter — unbearable").
-   **Measured platform bound (2026-09-06):** Claude Code stubs any hook output over
-   ~10 KB to a 2 KB preview (53× kb-pull, 1× a turn-end tail whose four DEMANDS sat at
-   line 126 → the nudge was wasted) — an injection over 10 KB is NOT READ. Every push
-   surface stays under it, DEMANDS before supply; a capped surface names what it cut.
-6. **Zero added memory load.** Interfaces attach to motions the owner already makes;
-   slash commands are optional aliases, never required vocabulary. Corollary proven by
-   kb 0.7.0: a tool SELF-ACTIVATES on presence (a project that keeps curated memory gets
-   upkeep; one that doesn't is never touched) — never on per-project wiring the owner
-   must remember to switch on.
-7. **Decoupled + open-for-extension code**, enforced by measurement (`runner coupling`,
-   `runner extensibility`), not by instruction. SCOPE LIMIT, measured 2026-07-28: the
-   coupling model assumes ONE codebase whose modules genuinely import each other — run
-   across this marketplace of independently-installed plugins it fabricates edges (a
-   5-module "cycle" between plugins that import nothing from one another). Run per
-   project; cross-plugin duplication (`readPayload` ×6) is CORRECT, never extract it —
-   extraction would pin separately-versioned plugins to each other.
-   **Re-affirmed by owner 2026-08-26 — the HFDP wish** (verbatim: *"we build code too
-   specific for anything I ask. I wanna start building code in a more generic way that
-   allows us to expand and build for the future… avoid dialing into something very
-   specifically and then passing things on and patching things on"*): instance-shaped
-   output is a FAILURE even where no gate flags it, and the invariant covers EVERY
-   code-writing surface — pipeline, executor, AND ambient sessions. Ambient coverage
-   today is injected rule text only, the load-bearing shape invariant 3 rejects.
-   **Extended 2026-09-08 (same wish, code half):** *"as new things are added and context
-   is enriched we need to be designing better code. code is cheap now so we need to be
-   designing better codebases"* — not only "don't regress" but CONVERGE: a duplicate
-   cluster reaching three members demands an extraction decision; measured on the files a
-   turn touched (the 0.8.0 file-touch extractor) with the glossary engine's signals, advise
-   with the closing seam named → #37, Q22 (severity). **Q15 ruled 2026-09-09 SLIM ONLY:**
-   the text surfaces stay as they are (global gate slimmed 1,788 → ~640 B, hooks untouched)
-   and retire only as the measured duty proves itself — never folded into a registry hook.
-8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they
-   don't apply. The ONE hook that may block blocks the turn's END, never a tool call,
-   and fails open on every path.
-9. **One blocking tail.** At most one blocking `Stop` hook exists across the whole
-   toolkit; every other plugin contributes a DUTY to it. A duty terminates by becoming
-   SATISFIED against real state (a file on disk, a ledger entry) — never by a counter;
-   a fire budget is only the backstop for a satisfaction check that is wrong, and it
-   names what it abandons. Currently holds everywhere except a project running
-   essense-autopilot, which still owns its own blocking Stop hook (0.4.1 stands it down
-   cheaply without `.pipeline/`, still REGISTERED; tasks: extract its `decide()`).
-10. **Never hand the owner an unverified "DONE."** (Owner, verbatim, 2026-08-01: *"just
-    arbitrarily calling 'DONE' — can we make sure this has happened before finishing and
-    me having to ask?"*) A turn that produced work must carry verification evidence — a
-    check actually RUN, or the check + result NAMED — before it may yield, and the check
-    must live in the work's own medium: visual work gets LOOKED at, code gets run.
-    "Verifiably correct" is not "checked." Enforced by mechanism per invariant 3:
-    turn-end's default-ON `self-check` DEMAND duty (deterministic evidence detectors, no
-    judge — SHIPPED 0.4.0). Sharpened by owner pass 2 (2026-08-02): a run counts only if
-    OBSERVED (output actually looked at, with logs enough to understand what happened),
-    COMPARED against what was ASKED, and probed to BREAK — happy-path-only is not a
-    check. Two tiers on purpose: self-check is the cheap always-on floor; quality-lens
-    stays the opt-in deep tier — this does NOT re-take lens economics (Phase C).
-11. **Quality over speed.** (Owner, verbatim, 2026-08-23: *"46 seconds is not really a
-    problem. getting things done to the highest degree is so switch your focus please.
-    if it works we keep it. if we cna enhance we do that. we go for quality, not
-    necessarily speed."*) Latency alone never motivates a change. A mechanism that
-    silently delivers nothing (a dead judge fire, a swallowed recall) is a QUALITY
-    failure — fix fragility with fail-open fallbacks that NAME which engine answered,
-    never with cheaper replacements. Bounds invariant 5: the cost budget prices the
-    loop, never the discipline or the result.
-12. **A mechanism ships with its result-metric key or it does not ship.** (Claude's
-    proposal from the harness research; RATIFIED by the owner 2026-09-09 via Q18.) The key
-    is what `harness-stats` (#31) reads; on every model release the scorecard is re-run and
-    a flat mechanism is removed. prism meets it today; the goal duty (#32) is the first new
-    mechanism built under it, and every task in tasks.md that ships a mechanism names its
-    key in its done-check.
-13. **In-environment delivery, least clicks.** (Owner, verbatim, 2026-09-09: *"this cannot
-    be poitning me to files. it needs to be giving me eveyrhting i need in a digestible
-    manner within this environment or i need to be seeing something it needs to be doing as
-    many of the thigns on it's own and leaving the least amount of clicks to me"*; echoes
-    aithseis 08-10 *"i don't wanna read all that, sum it up for me neatly"*.) Sharpens 2
-    (the diff IS the reading, never a pointer to it) and 6 (no motion the owner must make
-    to see). Applies to EVERY owner-facing surface — session replies, briefing, turn-end
-    tail, steward diffs, question surfacing: paths, ids and §refs are for machines and the
-    model, never the owner's reading path; decisions reach the owner as one-keystroke
-    questions, recommended default first, batched; work that needs no ruling proceeds
-    within the sitting without asking. **First MECHANISM, 2026-09-12: thorough-mode 1.12.0's
-    `@fc`** (protocol-shaped, drop-in, zero new machinery) — but it is ON DEMAND, so on every
-    prompt the owner does not type it the law is still carried by text alone, the shape
-    invariant 3 rejects; and it is uncommitted, so today it carries nothing at all → Q25.
+4. **Recompute, never accrete — including knowledge itself.** Re-derivation over patching at
+   every altitude. Deletion is part of recompute: the 2026-09-18 garden law (above) is how
+   this invariant now applies to `.steward/` and kb — a contradiction deletes the loser, a
+   stale fact is removed, never archived in-place.
+5. **Per-task cost budget:** one build pass + deterministic checks + max one review pass.
+   Deterministic > LLM, fold > add, fire conditionally. Injected text is a per-session tax —
+   every line earns its place. **Measured platform bound:** hook output over ~10 KB is
+   stubbed to a 2 KB preview and NOT READ — every push surface must stay under it.
+6. **Zero added memory load.** Interfaces attach to motions the owner already makes; a tool
+   self-activates on presence, never on per-project wiring to remember.
+7. **Decoupled + open-for-extension code**, enforced by measurement (`runner
+   coupling`/`extensibility`), not instruction. Scope limit: run per-project, never across
+   this marketplace's independently-installed plugins (fabricates cross-plugin edges).
+   HFDP wish (owner 2026-08-26): instance-shaped output is a failure invariant 3 rejects,
+   covering pipeline, executor AND ambient sessions. Extended 2026-09-08: code should
+   CONVERGE as context enriches, not just avoid regressing (#37, measured design duty).
+8. **Fail-soft hooks.** Advisory injections never block tool calls; silent where they don't
+   apply. The one hook that may block blocks the turn's END, never a tool call, fail-open.
+9. **One blocking tail.** At most one blocking `Stop` hook exists toolkit-wide; every other
+   plugin contributes a DUTY. A duty terminates against real state, never a counter.
+10. **Never hand the owner an unverified "DONE."** A turn that produced work must carry
+    verification evidence before it may yield. Enforced by turn-end's default-ON `self-check`
+    DEMAND (deterministic evidence detectors, no judge).
+11. **Quality over speed.** (Owner, 2026-08-23: *"if it works we keep it… we go for quality,
+    not necessarily speed."*) A mechanism that silently delivers nothing is a QUALITY
+    failure — fix with fail-open fallbacks that NAME which engine answered, never with
+    cheaper replacements.
+12. **A mechanism ships with its result-metric key or it does not ship.** (Owner-ratified,
+    Q18.) `harness-stats` reads the keys; on every model release re-run the scorecard and
+    remove a flat mechanism.
+13. **In-environment delivery, least clicks.** (Owner, 2026-09-09.) Every owner-facing
+    surface: paths/ids/§refs are for machines, never the owner's reading path; decisions
+    reach the owner as one-keystroke questions, recommended default first, batched.
 
 ## Declared growth axes (change expected here)
 
-- New plugins / prompt modifiers (protocol-shaped injection convention is the drop-in
-  surface). prism (2026-09-04) adds a second shape: an axis open at the LANGUAGE level —
-  naming a lens at invocation IS the extension, zero files.
-- Steward verbs beyond seed/brief/sync/next (/discuss, /test, /work — Phase B). **The
-  idea → shaped-vision seam is FILLED first and from outside (2026-09-12):** `elicit` 0.1.0, one
-  SKILL.md that questions the owner's gaps against `vision.md` + `questions.md` and writes ONE
-  inbox capture. So this axis grows two ways — a verb inside steward, or a skill-only plugin that
-  feeds the inbox — and the second costs no hook, no state and no per-session tax. `/discuss`
-  must absorb it, never duplicate it (#16).
-- External-project generalization of the steward loop (mk-cc-resources = Phase 0
-  pilot; crowd-game seeded 2026-07-21, running in parallel; EMDE/psience next).
-- Glossary engine language coverage (Python/TS/JS/C# today; extensibility measure is
-  C#-only MVP).
-- Lens firing economics (Phase C: hand-back + risk-triggered, not per-turn) — kb is now
-  an instrument here: pull replaces push wherever a session can ask instead of being fed,
-  and turn-end's per-`prompt_id` scoping already collapsed the lens from N fires per
-  sitting to at most one ask per user request.
-- **The status spine (blueprint §6b):** `status.json` item TYPES (inbox/question/watch/
-  orphan…) and `groups[]` are data, not code — a new lifecycle facet is a JSON field;
-  instruments are the drop-in surface for computed briefing lines.
-- **"Pure runner over a drop-in registry" is now the house gate pattern**, instantiated
-  three times in plugin-toolkit alone (repo-guard detectors · test-all suite-runners ·
-  registry-check claim sources) — one context gathered once, silence is a finding, a
-  crashed member is reported not skipped. New gates should take this shape.
-- **turn-end has three drop-in surfaces** (add one = one `require`, no runner change):
-  DUTIES (`lib/duties/` — demand or supply), SOURCES of recallable knowledge
-  (`lib/sources/` — `markdown-dir` is the generic TYPE; every shipped source is config
-  over it), and JUDGES (`lib/judges/` — `claude -p` today). Retiring another plugin's
-  Stop hook into a duty is the expected motion, not an exception. **A fourth since 0.7.0:
-  DEFERRAL predicates** (`lib/deferral.js` — agents in flight, plan mode; a new reason a
-  duty may stand down for is a predicate, never runner code).
-- **Harness-layer drop-ins (2026-09-08, planned — the plan's extension surfaces):** METRIC
-  sources for the `harness-stats` gate (pure runner over a registry, the house gate
-  pattern); trace schema v1 fields every plugin's own writer emits; goal-duty arming
-  policies (the base supports all three; Q18 ruled EVERY task the owner starts arms it);
-  ground-truth strictness per project (Q19 ruled ran-and-observed as the floor —
-  `requireGreen` is the per-project knob, shipped 0.8.0); code-design MEASURES
-  (`code_glossary/` signals) + catalog entries (#37); knowledge-lifecycle status types
-  (data) + garden motions (#38). The injection-registry fold is OFF the plan (Q15: slim
-  only, 2026-09-09).
-- kb axes are drop-in surfaces: kinds (all four now written — `working` since the 0.5.0
-  session digest), castes, source types (`markdown-dir` is the first; its `split` knob is
-  its own extension point — `h2`, then `pattern` for non-heading ledgers), rankers
-  (`term-overlap` is the first; `scan` mode scores a prompt rather than a query), config
-  knobs (generic `mergeLayer` — a future knob is config, not a branch), and adapters
-  (MCP/CLI/2 hooks are peers over one facade — the third retired into a duty). Retrieval
-  improves along an ANSWERED
-  3-rung ladder (Q9, 2026-07-25): deterministic term-overlap upgrades (rung 1 SHIPPED,
-  kb 0.4.0) → characterization pass → embeddings, each rung evidence-gated on real
-  corpora. First foreign datum (crowd-game, 2026-07-25) was NOT what the ladder
-  expected: the miss was SPLITTER-class — structural, pre-lexical, unfixable by rungs
-  2/3 — and was closed by the pattern split mode. Rungs 2/3 therefore remain UNGATED;
-  the deep re-seed is the next chance at real evidence. Still parked: kb_capture MCP
-  write tool.
+- New plugins / prompt modifiers (protocol-shaped injection is the drop-in surface); prism
+  opens a second shape (naming a lens at invocation IS the extension, zero files).
+- Steward verbs beyond seed/brief/sync/next/**garden** (0.7.0); `/discuss` (Phase B) must
+  absorb `elicit`, never duplicate it.
+- External-project generalization of the steward loop (mk-cc-resources = pilot).
+- `turn-end`'s three drop-in surfaces: DUTIES, SOURCES, JUDGES, plus DEFERRAL predicates.
+- `harness-stats`'s metric-source registry (pure runner over `lib/metrics/`, 14+ sources) —
+  a mechanism registers its key here or does not ship (invariant 12).
+- kb axes: kinds/castes/source-types/rankers/config-knobs/adapters, all drop-in; retrieval
+  improves along an evidence-gated 3-rung ladder (rung 1 shipped).
+- The garden's own motions (merge / supersede / archive / cut) are a drop-in surface on the
+  status-derived measures, not new machinery per motion.
