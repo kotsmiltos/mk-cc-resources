@@ -24,7 +24,7 @@ first for the owner's own ~40 production codebases.
 
 ## Where we are (2026-09-18)
 
-- HEAD on `main`, eight commits ahead of origin, NOT pushed. Tree clean.
+- HEAD on `main`, seven commits ahead of origin, NOT pushed. Tree clean.
 - Running in the toolkit's own repo: **the subtraction**, built this sitting. turn-end 0.14.0
   ships the `page` duty (presence-gated on this file; check: turn-end suite 240/240, +7 page
   checks; live probe of the Stop hook from this root read page ON and the seven others OFF).
