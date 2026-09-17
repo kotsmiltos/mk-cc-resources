@@ -114,7 +114,9 @@ capability reach) — it CHECKS, never generates.
   `costUsd`. **Measured the same day (inbox 1700 — SUPERSEDES "slow from startup"):** on a
   real 8.8 KB prompt `api_ms ≈ wall` — the child DELIBERATES 2.1–8.9k output tokens for a
   ~600-char verdict, 4× variance on identical input, `--effort medium` 95.8 s > the 60 s
-  budget (the ETIMEDOUT mechanism); same config twice → DIFFERENT picks in every pairing;
+  budget (the ETIMEDOUT mechanism — **that 60 s was OUR constant, never the platform's: owner
+  ruling 2026-09-14 raised it to 300 s, hook ceiling 420 s; `claude-p.js:66-82` + `hooks.json:14`
+  read 09-17**); same config twice → DIFFERENT picks in every pairing;
   10-turn replay: identical verdict sets 3/10. Lean buys no-boot + −36% cost + no state
   pollution, NOT speed. The verdict is a distribution, not a fact → Q20.
 - **SHIPPED 0.7.0 (2026-09-06, under the owner delegation "decide… my vision is applied

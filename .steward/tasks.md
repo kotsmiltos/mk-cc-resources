@@ -1,4 +1,4 @@
-# Tasks — ordered, executor-ready (recomputed 2026-09-12 late · HEAD is `c4d8093` after a ten-commit fast-forward · everything through it is PUSHED and NOTHING is installed, and thorough-mode 1.12.0 `@fc` is not even COMMITTED → Q25 · six plugins run behind, plugin-toolkit + elicit need an INSTALL not an update → Q24 · numbers are stable ids, file order is the order; next free id 43)
+# Tasks — ordered, executor-ready (recomputed 2026-09-17 · HEAD `6052e6b` == origin, tree clean · INSTALLED == DISK for all 17 plugins (ledger read) — #1's install leg and Q24 are CLOSED · the owner's value question is Q26 and it moved #17 + #38 ahead of Phase 2 · the 09-13/14 sitting is held at subject level only and needs ONE capture · numbers are stable ids, file order is the order; next free id 43)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,45 +6,37 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-**Ordering rationale (2026-09-12 recompute).** FIVE ships landed since the last pass — Tracks 4
-and 5 of the 09-11 plan plus three unplanned plugin-toolkit releases — and every one of them is
-pushed and UNINSTALLED, so the order barely moves: **#1's INSTALL leg is still the one command
-between five sittings of built work and any observable behaviour**, and it now moves SIX plugins
-(turn-end 0.11.0 · lens 0.7.0 · steward 0.6.0 · essense-flow 0.27.0 · autopilot 0.5.0 ·
-thorough-mode 1.11.3) plus TWO that need an install rather than an update — plugin-toolkit and
-the brand-new `elicit` 0.1.0 (Q24). **#39 and #40 are CLOSED and DELETED from this file** (log
-2026-09-11 night / 09-12); what survived them is folded, not re-listed: the hook-bytes
-before/after that proves Track 4's silence was worth shipping is a leg of #1, and this repo's
-dead `.pipeline/` is a chore under #12. Phase 2 (#32 then #8) is next and unblocked — **#8's
-case got stronger a third time:** this model carried Q23 as an OPEN question for two days after
-the owner had answered it in the log — a log-vs-model contradiction, precisely the class
-`briefing.contradictions` (#8 unblocks the key) and #38's contradiction measure exist to catch;
-and no running instrument can see pushed-but-uninstalled drift, so the briefing must AUTHOR it. Phase 3 (#17 — now with a datum: the installed Stop hook hand-ran in
-38.4 s on ONE real transcript, half the 90 s budget, essentially all of it the whole-transcript
-re-read #17 targets; then #33, #35). Phase 4 (#34 #36). Phase 4b (#37 #38 — #38 gained real
-input: `asset-value`'s `unused_assets` list plus the provenance gap it exposed). Every gate named
-in a done-check below is a CHECKOUT command until Q24 lands an install. **No pre-1.14.0 test-all
-total may be used as a baseline anywhere below** — that sweep could not count (state.md). Under
-invariant 12 every task that ships a mechanism names its METRIC KEY in its done-check, and the
-key must be REGISTERED in `plugins/plugin-toolkit/lib/metrics/index.js` — no key, not done.
-#13 stays deleted; ids 1–42 stable, never reused.
-
-**TWO NEW TASKS from the `@fc` sitting, and both sit AHEAD of Phase 2 deliberately.** **#42**
-(the exec ledger truncates the command at 300 chars) is not a nicety: `checks.jsonl` is the
-satisfaction signal for self-check, for Q19's ran-and-observed floor, for the lens's
-refute/confirm — and for **#32's goal duty, which cannot be built on a ledger that reports
-"no check ran" when one did**. It already produced two false refutations in one sitting, so it
-is a precondition, not a parallel chore. **#41** (fetch before bump) is a 30-minute claim source
-that just cost a whole feature's doc cascade; it protects every remaining ship in this file.
-Both are small; neither displaces #1, which is still the one command between five sittings of
-built work and any observable behaviour.
+**Ordering rationale (2026-09-17 recompute).** Three things moved the order. **First, the
+install gate is GONE:** the ledger (read this pass) shows every plugin installed at its disk
+version — turn-end 0.13.0 / kb 0.15.0 / reuse-gate 0.2.0 / thorough-mode 1.12.2 on 09-14,
+plugin-toolkit 1.18.0 + steward 0.6.1 on 09-12, the rest on 09-11 — so #1 leg B is CLOSED, Q24 is
+closed by install, and every gate in this file reaches any project. The model (and the session's
+09-17 digest) carried "nothing installed" three to six days past the truth — an authored install
+fact, the class the instruments exist to compute. **Second, the owner's question (Q26):** *"is
+steward and verification and all that adding value?… it feels like it's just burning tokens"* —
+and the table (state.md) says where: push 9.3–13.5 KB per prompt (2.0 KB on the control), kb-hints
+the largest family at 0–7.5% followed, the judge EMPTY 81% of 21 post-install fires on aithseis
+with the 300 s cap live, 31–55 min per ship inside Stop, logs never rotated. So **#17 (push-side
+cuts) and #38 (memory garden) move AHEAD of #32 (a new duty) and #8** — Claude's call, reversible
+by Q26: building a new tail duty while the owner asks whether the tail earns its keep is the wrong
+order, and the 09-06 reading already prescribed deletions before mechanisms. **Third, the
+09-13/14 sitting the model has not seen:** five commits to `6052e6b` (subjects only), four kb
+captures. What this pass VERIFIED from it: `@fc` committed (Q25 closed by build), the judge cap
+300 s by owner ruling (source read), #42's truncation MARKER landed, #9's flake is lock contention
+(capture read) — the rest waits for the sitting's capture. **Order:** #1 stays first as the
+standing READINGS task (watch + the post-install numbers Q26 needs — leg E), then #42 (its
+evidence-preserving half is unverified — `checks.jsonl` is #32's satisfaction signal) and #41 (no
+`base-freshness` under `plugin-toolkit/lib` — still open, a 30-minute claim source), then #17,
+#38, Phase 2. No pre-1.14.0 test-all total is a baseline; under invariant 12 every mechanism task
+names its METRIC KEY, registered in `plugins/plugin-toolkit/lib/metrics/index.js` — no key, not
+done. #13 stays deleted; ids 1–42 stable, never reused.
 
 **Hygiene rule for this file:** `.steward/` model files are COMMITTED to a PUBLIC repo
 (only `inbox/` is gitignored). Never write an absolute path, username or machine-specific
 detail here — name projects, not drives. Under invariant 13, a task's done-check is what the
 executor RUNS; the owner reads the outcome in the session, never this file.
 
-## 1. Dogfood — INSTALL five sittings of pushed work (leg A CLOSED, one of its numbers RETIRED), and keep the hook-liveness WATCH under its new YIELD GUARD (standing; gates Phase 2, #12)
+## 1. Dogfood — the INSTALL leg is CLOSED (ledger 09-17: installed == disk for all 17); what stands is the hook-liveness WATCH under its YIELD GUARD and the post-install READINGS Q26 needs (legs D + E) (standing; feeds #17, #12)
 
 - **Where it stands (2026-09-12):** Phase 1 (turn-end 0.9.0 / kb 0.14.0 / lens 0.6.0) is
   installed, LIVE and demonstrably healthy — 28 v1 trace lines, 9 `duty:"context-recall"` lines
@@ -60,24 +52,27 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   **Do NOT carry that run's `uptake.used_pct` 100 forward:** the scorer credited boilerplate as
   use until plugin-toolkit 1.16.0 added idf weighting, so it is not comparable to anything after
   it. Method for the re-run, unchanged: (1) read one `duty:"context-recall"` line and confirm the
-  judge fields; (2) `node plugins/plugin-toolkit/bin/harness-stats.js --root .` (a CHECKOUT
-  command — Q24) and record `trace.lines_per_dispatch`, `acted_on.spans`, `judge.agreement_*`,
+  judge fields; (2) `node plugins/plugin-toolkit/bin/harness-stats.js --root .` (plugin-toolkit
+  1.18.0 is installed standalone since 09-12 — reaches any project) and record `trace.lines_per_dispatch`, `acted_on.spans`, `judge.agreement_*`,
   `running.installed_vs_checkout`, `uptake.used_pct`. Re-run it AFTER leg B — that run is the
   proof the install took, and it is the only place the drift shows.
-- **Leg B — INSTALL it. The push half is done five times over; this leg has not moved since
-  09-10.** `claude plugin update` (or name them: turn-end · verifiability-lens · steward ·
-  essense-flow · essense-autopilot · thorough-mode), then RESTART Claude Code — update alone
-  leaves the process on the old code (platform invariant 4). That moves SIX plugins and is a
-  NO-OP for **plugin-toolkit** (no ledger entry) and for **elicit 0.1.0** (new; it rides the
-  mk-cc-all bundle only from 2.28.0, while the installed bundle is 2.27.0) — both need an
-  install or a bundle update, which is Q24's ruling, not this leg's. **Sequencing added
-  2026-09-12: if Q25 says ship `@fc`, its commit + push happens BEFORE the update** — otherwise
-  the update installs thorough-mode 1.11.3 and the modifier the owner asked for still reaches
-  nobody, which is the reach chain (fetch → bump → push → install → restart) failing one link
-  earlier than this leg looks. **Do not expect `[instr]
-  running` to have warned about any of this:** it compares the executing script against the
-  ledger, so a pushed-but-uninstalled checkout is invisible to it; only
-  `running.installed_vs_checkout` sees it.
+- **Leg B — CLOSED 2026-09-17 from the ledger, not from a claim.** `installed_plugins.json`
+  (grep-read: every version / sha / lastUpdated): turn-end 0.13.0 · kb 0.15.0 · reuse-gate 0.2.0 ·
+  thorough-mode 1.12.2 at `6052e6b` (09-14T18:27Z) · plugin-toolkit 1.18.0 · steward 0.6.1 at
+  `553c366` (09-12) · lens 0.7.0 (09-11) · essense-flow 0.27.0 · autopilot 0.5.0 · mk-cc-all
+  2.28.0 with elicit (09-11). Nothing is behind. Lesson for this file: the model asserted "not
+  installed" for up to six days after the update — the install fact must come from
+  `running.installed_vs_checkout` (which now names NOTHING, or the model is wrong again), never
+  from prose. Restart is per process (platform invariant 4): the aithseis post-install fires prove
+  at least one process runs 0.13.0; a stale process shows itself via `[instr] running`.
+- **Leg E — NEW 09-17, Q26's judge input; the first reading is IN.** Post-install window
+  (`--since 2026-09-14T18:30Z`, the lens correction on inbox 20260917-1652): aithseis 21 fires /
+  p50 34 s / p95 66 s / **81% empty picks**; twin 3 fires / 67%; mk-cc 2 fires @ 73 s / 0%. The
+  300 s cap (`claude-p.js:66-82`) did not change the failure mode. **Next reading:** after 20 more
+  fires per ship, `judge.chosen_empty_pct` + `judge.agreement_pct` with the command; empty >50%
+  → Q20 option (5) ranker-only on that ship (Q26 amendment 2). Also read `lens.refuted` per ship
+  after 20 dispatches (amendment 5) — the lens has ONE v1 line per ship today: unmeasured, not
+  zero.
 - **Leg C — the WATCH, predicate SHARPENED 2026-09-12 because it FIRED FALSE (Claude's ruling,
   taken by the model rather than patched by a session, as the capture asked).** The old trigger
   ("no Stop line while `checks.jsonl` grows") is true of the FIRST TURN OF EVERY SITTING, so it
@@ -88,23 +83,31 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   fires, capture IN THAT SITTING (it is unreproducible afterwards): the transcript's per-turn
   hook summaries and a TIMED hand-run of the installed hook over that transcript. Hand-run lines
   are stamped `prompt_id: "legC-handrun"` and must be excluded from per-fire measurements. The
-  finding is an inbox item, never a hotfix.
-- **Leg D — prove Track 4's silence paid (folded in from the closed #39).** Record
-  `hook_bytes.p50` / `hook_bytes.p95` on this repo BEFORE the install and again a sitting after
-  it: essense-flow 0.27.0 + autopilot 0.5.0 removed 535 DEGRADED banners and 305 halt
-  diagnostics per audit window, and none of that can move a number until the install lands.
+  finding is an inbox item, never a hotfix. **09-17: the "platform kill at the 90 s hook timeout"
+  candidate has lost its mechanism** — every 60,615 ms Stop ceiling was the judge's own constant
+  and the hook ceiling is 420 s now; a crash before the ledger write and a registration that did
+  not take remain the candidates.
+- **Leg D — prove Track 4's silence paid (folded in from the closed #39).** essense-flow
+  0.27.0 + autopilot 0.5.0 are INSTALLED (09-11) and silent outside `.pipeline/` (lens correction
+  09-17: remaining cost is process spawn only). Post-install hook bytes per prompt read 12.4 /
+  16.2 / 11.8 KB on three ships (the capture's order) — NOT lower than whole-life, because
+  kb-hints, not the banners, is the byte family (#17). Record this repo's `hook_bytes.p50` /
+  `p95` with the command before and after #17's hints cut; that pair, not the install, is the
+  before/after that matters now.
 - **Still-open legs:** (a) staleness — ⚠ right 5/5, false git-HEAD ⚠ + authored prose wrong
   4/5 → #8; (e) 0.7.0 legs — no kb-pull fire inside a judge child, `[instr] items: N new
   (oldest Nd)`, one real wake-turn ending on the owner's request; (f) a self-check nudge naming
   a real un-checked mutation, a silent allow on a named check, `digest: pointer` + the
   `kb_query` cue. (b) readable now · (c) CLOSED (#24) · (d) correct · (h) leg C's false positive
   recorded and closed as a predicate fix.
-- **Done-check:** after leg B, `running.installed_vs_checkout` names NOTHING but plugin-toolkit
-  and elicit (those two residues are Q24, not a failure here); a fresh trace line reports
-  `"version":"0.11.0"` — the trace, not the install cache, is what proves the restart took; leg
-  D's two hook-bytes readings recorded in log.md with the command; each remaining leg observed at
-  least once with zero UNEXPLAINED instrument lies; then #12 unblocks. **Metric keys:**
-  `running.*` · `acted_on.spans` · `judge.agreement_n` · `hook_bytes.p50`/`p95`; the watch reads
+- **Done-check:** `running.installed_vs_checkout` names NOTHING (a non-empty list now means
+  the checkout moved past a fresh install, never the reverse); a fresh trace line in THIS repo
+  reports `"version":"0.13.0"` — the trace, not the install cache, proves the restart took here;
+  leg D's two hook-bytes readings recorded in log.md with the command; leg E's next judge reading
+  (20 more fires) recorded the same way; each remaining leg observed at least once with zero UNEXPLAINED
+  instrument lies; then #12 unblocks. **Metric keys:** `running.*` · `acted_on.spans` (a
+  file-open measure — pointer kinds only) · `judge.agreement_n` · `judge.p95_ms` ·
+  `hook_bytes.p50`/`p95`; the watch reads
   `spawns.stop_hooks_per_fire` (transcript) against `turn_end.prompts` (trace) — the same
   comparison as the prose predicate, but with the fire count in the denominator, so it cannot
   divide by zero.
@@ -123,8 +126,9 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   indistinguishable), while `classify()` and `filesInCommand()` already run on the FULL string
   (`:127,138`) — the parse is right, only the record is lossy.
 - **What:** keep a bound (the file is append-only and must stay cheap to read) but make it
-  honest and evidence-preserving: (1) mark every truncation the way `truncateSample` does, so a
-  reader can always tell; (2) preserve the CHECK-BEARING segments rather than the first N chars —
+  honest and evidence-preserving: (1) ~~mark every truncation the way `truncateSample` does~~ —
+  **DONE on disk by 09-17** (`tool-record.js:111-112` appends `…[+N]` to a cut `cmd`, grep-read;
+  `MAX_CMD_CHARS` still 300, so (2)–(4) are what remain); (2) preserve the CHECK-BEARING segments rather than the first N chars —
   the same `CHECK_COMMAND_RX` that sets `kind: 'check'` knows where they are, so record the
   matched segments (or head + the matched tail) instead of a blind prefix; (3) raise
   `MAX_CMD_CHARS` only as far as the real compound commands in this repo's ledger require —
@@ -163,7 +167,87 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   **Metric key:** the claim's own verdict, the #36 precedent — the gate exists to fail once and
   never again.
 
-## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19
+## 17. Phase C — the push side re-economized under the quality-over-speed law (audit-2 Tier 2 items 15–16 + harness G7 + the prism run; MOVED ahead of Phase 2 on 2026-09-17 — Claude's call, Q26 rules the shape) — registry-fold leg OFF (Q15 SLIM ONLY, 09-09)
+
+- **Why it moved (09-17):** the owner asked whether the harness *"is just burning tokens"*, and
+  the table (state.md) says where: push 9.3–13.5 KB/prompt on the steward ships vs 2.0 KB on the
+  control, and it ROSE since audit 2; kb-hints is the largest family everywhere (145–225
+  KB/project) at 0–7.5% strict-followed — the one push kind whose file-open metric is honest;
+  31–55 min per ship inside Stop. Cutting the measured-dead push is what the 09-06 reading
+  prescribed; adding a duty (#32) to a tail the owner is questioning is the wrong order. Nothing
+  here is decided — Q26 rules which cuts; this task is where they land, each with its key.
+- **What:** (0) `harness-stats` EXISTS (1.12.0+) — put its current numbers (`hook_bytes.*`,
+  `hints.*`, `spawns.*`, `tail.*`, `kb_pull.*`) in the brief, then ONE `/prism` run on the
+  push-side question — verbatim brief + owner-named lens *what-I-actually-experience* in
+  inbox `20260906-1500` — build the winner, re-measure; **(0b) the Q26 (a) cut if ruled:**
+  kb-hints ambient injection off by default, the `kb_query` cue kept (Q16), before/after
+  `hook_bytes.p50/p95` recorded with the command; (1) ~~fold the per-prompt regex
+  stack into ONE registry hook~~ — REMOVED by the Q15 ruling: every hook stays as it is;
+  the global CLAUDE.md slim is DONE (6,528 → 5,228 B); the text surfaces retire only as
+  #37's measured duty proves itself; (2) serena PreToolUse hook: matcher `Read|Grep|Glob`,
+  advisory or raised thresholds (owner settings, owner session); alert-sounds `clear` off
+  Python (one of the ≥8 spawns); (3) tail-read the transcript (`context.js:122-123`) — scan
+  back to the last genuine user entry; datum 2026-09-11: a timed hand-run of the INSTALLED
+  Stop hook over one real 760-line transcript took 38,436 ms before any duty decided anything —
+  the hook ceiling is 420 s since 09-14, so this is now a COST datum (Q26's wall-clock row), not
+  a kill risk; (4) per-duty supply budget via `Promise.race` + a
+  suite timing assertion that sync duties stay cheap (lens item 20); `DUTIES` discovered by
+  shape (`lib/duties/index.js:59`). Economics may cut FIRES and SCOPE, never quality; every
+  cut ships with a fail-open path.
+- **Done-check:** the audit's `measure.js` before/after — plain prompt unchanged, Stop
+  spawns 5 → 3, one fewer UPS spawn; a 170 MB transcript reads in < 100 ms with identical
+  `toolCalls`; hint-followed and tail-bytes metrics moved in #31's second run; each
+  injector fires only where its trigger holds; on this repo `hook_bytes.p50` below the 09-17
+  reading (10.1 KB avg) with the command recorded. **Metric key:** `push.bytes_per_prompt`
+  p50/p95 + `push.spawns_per_prompt` (#31).
+
+## 38. Knowledge lifecycle + garden job — "store less, mark wrong things, keep learning" (owner 2026-09-08 + 09-17; harness G15 / §7.8; MOVED ahead of Phase 2 on 2026-09-17; M) [removal authority: Q21]
+
+- **Why:** owner, verbatim 09-08: *"we are storing too many things. we should be able to clean up
+  wrong things or things that are not necessary and also keep learning from what we are
+  seeing."* — and 09-17: *"are we keeping a good digestibgle memory or infinite things that
+  conflict each other as we go on?"* Measured 09-17 (state.md table): log.md 1669 / 1528 / 1255 /
+  529 lines across four ships, never rotated; tasks.md up to 1145 lines; 12–25 open questions
+  per ship; every capture repeating the four-line preamble; earlier: standing 25.6 KB per
+  session AND per sub-agent; 23 archived digests titled by stamp = noise hits; 84% of hints
+  unread; no lifecycle on kb entries — the status contract has one for inbox items only. **The
+  first garden pass is THIS repo** (Q26 (a)): rotate log.md, merge/close questions, and note
+  that the digest's "19 unintegrated" was a FILE count — the ledger said 2. Precondition on the
+  usage measure, CORRECTED 09-17: `acted_on.*` is a FILE-OPEN measure (honest for pointer kinds
+  only); for injected bodies use the content-scored `uptake.used_pct` (idf-weighted since
+  1.16.0; capture `20260911-0300`).
+- **What:** (1) extend the status contract's item types to kb entries — `live |
+  superseded-by:<id> | refuted-by:<id> | archived` in `status.json` (steward = only writer),
+  joined at collect (the 0.11.0 `status-join` shape, zero engine change); the engine holds
+  non-live entries back by default and SAYS so ("2 superseded held back"); history stays;
+  (2) deterministic measures — per entry: pulls, hint slots, content uptake over the last N
+  sittings; per file: bytes injected standing (CLAUDE.md, MEMORY.md, briefing, digest);
+  contradictions (briefing vs log; two captures with opposing claims — the lens flags);
+  never-used-in-N + never-cited = archive candidate; the "would removing this cause a
+  mistake?" test applied to every CLAUDE.md line; (3) the GARDEN job — a steward verb,
+  background, one per sitting like `integrate`, proposing merges / supersessions /
+  archives / CLAUDE.md cuts as ONE diff the owner ratifies in-session (Q21 sets what may be
+  automatic; invariant 13: one keystroke per batch, never a file to read); log compaction
+  (#9's archive sibling) is one of its motions; the lens's refute/confirm marks
+  `refuted-by`; (4) sweep the residual kb defects on the way: `source` facet unfilterable,
+  stamp-titled archived digests as noise, 8-digit runs read as timestamps, BOM defeating
+  frontmatter; **(5) record PROVENANCE at capture time.** `asset-value` reports
+  `asset.origin_recorded` FALSE: `.claude/kb/` is gitignored, so no entry carries a commit,
+  author or date, and an archive proposal cannot answer "who said this, when, and was it ever
+  true". Add the field where the WRITE happens (capture / seed / digest frontmatter) — it costs
+  nothing then and is unrecoverable later. Owner deferred it; the garden job needs it.
+  **Real input exists for the measures (1.16.0):** `unused_assets` is a keep/cut list, and
+  `.steward/log.md` scored 0/1 used across 5 surfacings — but no "never used" verdict from
+  before the idf fix may be trusted (the scorer counted this model's own four-line preamble as
+  use). Drop-in surfaces: status types (data), measures, garden motions.
+- **Done-check:** mark a capture `refuted-by` → it leaves the hints and `kb_query` says
+  "1 refuted held back"; the garden diff proposes ≥1 CLAUDE.md cut WITH its measure; a
+  stamp-titled digest no longer wins a hint slot; this repo's log.md rotated with nothing lost
+  (the archive sibling readable by kb); kb + steward suites green. **Metric key:**
+  `knowledge.standing_bytes_per_session` (trend down across two sittings) +
+  `knowledge.held_back` + `knowledge.never_acted_on`.
+
+## 32. Goal duty — the armed task's done-check becomes the loop's termination criterion (harness G3, Phase 2; M) — UNBLOCKED by Q18/Q19; sequenced AFTER #17/#38 on 09-17 (Q26)
 
 - **Why:** no goal-based termination exists in the layer; "stopping while there is planned
   work" (owner, twin 08-12) is prose; Anthropic's harnesses hold the loop to a checked list;
@@ -217,37 +301,16 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   `<git root>/…` (`SKILL.md:55-56,79`, `commands/next.md:8`, `agents/steward.md:24`,
   `session-digest.js:76,78`); optional: a configurable backlog-age escalation for
   steward-sync (lens item 19's block half — config, no default). Contract v2 in
-  `design/status-contract.md`.
+  `design/status-contract.md`. The five-key `harness-stats --line` form AT SESSION OPEN (inbox
+  20260910-0510's follow-up, folded here 09-17 — the `[instr]` surface is this task's) rides the
+  same computed lines; a hand-written copy of any of its numbers is the defect this task exists
+  to kill.
 - **Done-check:** commit the regenerated model → no ⚠; the hook's `Last:` equals the
   tail heading of log.md by construction on all 5 ships; a deliberately stale authored
   `Ship:` is the ONLY line that can lie; a real briefing over budget fails a deterministic
   check in the steward suite; a grep for "done/" over the steward protocol text hits only
   the pre-contract note; hook tests green. **Metric key:** `briefing.contradictions`
   (briefing-vs-log, #31) = 0 by construction on computed lines.
-
-## 17. Phase C — the push side re-economized under the quality-over-speed law (audit-2 Tier 2 items 15–16 + harness G7 + the prism run; Phase 3) — registry-fold leg OFF (Q15 SLIM ONLY, 09-09)
-
-- **What:** (0) `harness-stats` EXISTS (1.12.0) — put its current numbers (`hook_bytes.*`,
-  `hints.*`, `spawns.*`, `tail.*`, `kb_pull.*`) in the brief, then ONE `/prism` run on the
-  push-side question — verbatim brief + owner-named lens *what-I-actually-experience* in
-  inbox `20260906-1500` — build the winner, re-measure; (1) ~~fold the per-prompt regex
-  stack into ONE registry hook~~ — REMOVED by the Q15 ruling: every hook stays as it is;
-  the global CLAUDE.md slim is DONE (6,528 → 5,228 B); the text surfaces retire only as
-  #37's measured duty proves itself; (2) serena PreToolUse hook: matcher `Read|Grep|Glob`,
-  advisory or raised thresholds (owner settings, owner session); alert-sounds `clear` off
-  Python (one of the ≥8 spawns); (3) tail-read the transcript (`context.js:122-123`) — scan
-  back to the last genuine user entry; **new datum 2026-09-11: a timed hand-run of the INSTALLED
-  Stop hook over one real 760-line transcript took 38,436 ms — 43% of the 90 s hook budget spent
-  before any duty decides anything**, so this leg is the difference between a tail that lands and
-  a platform kill on a long sitting; (4) per-duty supply budget via `Promise.race` + a
-  suite timing assertion that sync duties stay cheap (lens item 20); `DUTIES` discovered by
-  shape (`lib/duties/index.js:59`). Economics may cut FIRES and SCOPE, never quality; every
-  cut ships with a fail-open path.
-- **Done-check:** the audit's `measure.js` before/after — plain prompt unchanged, Stop
-  spawns 5 → 3, one fewer UPS spawn; a 170 MB transcript reads in < 100 ms with identical
-  `toolCalls`; hint-followed and tail-bytes metrics moved in #31's second run; each
-  injector fires only where its trigger holds. **Metric key:** `push.bytes_per_prompt`
-  p50/p95 + `push.spawns_per_prompt` (#31).
 
 ## 33. Compaction guard — PreCompact snapshot + PostCompact "where we are" (harness G8, Phase 3; S)
 
@@ -353,45 +416,6 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   which signals were blind; turn-end + toolkit suites green. **Metric key:**
   `design.regressions_caught` per sitting + `design.text_bytes_retired`.
 
-## 38. Knowledge lifecycle + garden job — "store less, mark wrong things, keep learning" (owner 2026-09-08; harness G15 / §7.8; Phase 4b; M) [removal authority: Q21]
-
-- **Why:** owner, verbatim: *"we are storing too many things. we should be able to clean up
-  wrong things or things that are not necessary and also keep learning from what we are
-  seeing."* Measured: standing 25.6 KB per session AND per sub-agent; log 82 KB, parts
-  49 KB; 23 archived digests titled by stamp = noise hits; 84% of hints unread; no
-  lifecycle on kb entries — the status contract has one for inbox items only. Precondition:
-  the 0.9.0 `acted_on` trace + the 1.12.0 `acted_on.*` keys give the usage measure (built;
-  live pending #1).
-- **What:** (1) extend the status contract's item types to kb entries — `live |
-  superseded-by:<id> | refuted-by:<id> | archived` in `status.json` (steward = only writer),
-  joined at collect (the 0.11.0 `status-join` shape, zero engine change); the engine holds
-  non-live entries back by default and SAYS so ("2 superseded held back"); history stays;
-  (2) deterministic measures — per entry: pulls, hint slots, acted-on over the last N
-  sittings; per file: bytes injected standing (CLAUDE.md, MEMORY.md, briefing, digest);
-  contradictions (briefing vs log; two captures with opposing claims — the lens flags);
-  never-used-in-N + never-cited = archive candidate; the "would removing this cause a
-  mistake?" test applied to every CLAUDE.md line; (3) the GARDEN job — a steward verb,
-  background, one per sitting like `integrate`, proposing merges / supersessions /
-  archives / CLAUDE.md cuts as ONE diff the owner ratifies in-session (Q21 sets what may be
-  automatic; invariant 13: one keystroke per batch, never a file to read); log compaction
-  (#9's archive sibling) is one of its motions; the lens's refute/confirm marks
-  `refuted-by`; (4) sweep the residual kb defects on the way: `source` facet unfilterable,
-  stamp-titled archived digests as noise, 8-digit runs read as timestamps, BOM defeating
-  frontmatter; **(5) NEW 2026-09-12 — record PROVENANCE at capture time.** `asset-value` reports
-  `asset.origin_recorded` FALSE: `.claude/kb/` is gitignored, so no entry carries a commit,
-  author or date, and an archive proposal cannot answer "who said this, when, and was it ever
-  true". Add the field where the WRITE happens (capture / seed / digest frontmatter) — it costs
-  nothing then and is unrecoverable later. Owner deferred it; the garden job needs it.
-  **Real input now exists for the measures (1.16.0):** `unused_assets` is a keep/cut list, and
-  `.steward/log.md` scored 0/1 used across 5 surfacings — but no "never used" verdict from
-  before the idf fix may be trusted (the scorer counted this model's own four-line preamble as
-  use). Drop-in surfaces: status types (data), measures, garden motions.
-- **Done-check:** mark a capture `refuted-by` → it leaves the hints and `kb_query` says
-  "1 refuted held back"; the garden diff proposes ≥1 CLAUDE.md cut WITH its measure; a
-  stamp-titled digest no longer wins a hint slot; kb + steward suites green. **Metric key:**
-  `knowledge.standing_bytes_per_session` (trend down across two sittings) +
-  `knowledge.held_back` + `knowledge.never_acted_on`.
-
 ## 21. Patterns 0.1.1 — finish the interactive legs (Q15's answer is EXECUTED)
 
 - **Why:** pushed + installed 08-27, menu hook live in a scratch session; `/patterns` was
@@ -404,29 +428,26 @@ executor RUNS; the owner reads the outcome in the session, never this file.
 - **Done-check:** both hooks observed in the owner's session once each; citation lines
   present or explicitly declined.
 
-## 2. Ratify the distribution layout — and it is no longer the one the /doctor session set [needs owner → Q24]
+## 2. Ratify the distribution layout — it is now standalone toolkit + FULL bundle, six skills double-listed (Q24 closed by install; the slim-or-keep residue is the one decision left)
 
-- **Why:** on 2026-07-31 the owner approved: mk-cc-all bundle DISABLED + plugin-toolkit
-  standalone INSTALLED (user scope). **Measured 2026-09-11: the reverse is true** — the install
-  ledger has NO plugin-toolkit entry, while mk-cc-all 2.27.0 IS installed, so the four gates
-  reach a checkout only (state.md, parts.md). The unratified state drifted on its own, which is
-  exactly what an unclosed decision does. What a PUBLIC marketplace user should install
-  (README/marketplace prose still centers the bundle) was never decided either.
-- **What:** (1) the owner's one-keystroke pick is **Q24** (reinstall standalone / standalone +
-  slim the bundle / declare it checkout-only / wrapper) — #40 already rebuilt that file family
-  and deliberately wrote it layout-INDEPENDENT, so what follows the ruling is a small edit inside
-  a doc set the `plugin-docs` claim now keeps honest, not a second docs pass; this task owns the
-  DECISION and its record. **A second plugin now waits on the same ruling:** `elicit` 0.1.0 has
-  no ledger entry and rides only bundle 2.28.0 while 2.27.0 is installed; (2) prove the reach: run ONE gate
-  (repo-guard or test-all `--root`) from a DIFFERENT project via the installed toolkit —
-  possible only under Q24 (a)/(b); under (c) the leg becomes "run it from a checkout and say
-  so in the docs"; (3) the bundle is installed at 2.27.0 (`bc39fe0`, ledger-read 09-11) — any
-  bundle change needs its version bumped first so the cache updates, then read the CACHED
-  skill text; (4) the repo-guard detector for
-  instruction-names-unreachable-path remains a candidate (Claude's proposal, unrequested).
-- **Done-check:** (1) decision recorded in log.md with its reason; (2) one gate run
-  recorded from a different project (command + exit code); (3) README + marketplace
-  prose match the chosen layout.
+- **Why:** the layout has flipped twice without a ruling: 07-31 "bundle disabled + toolkit
+  standalone"; 09-11 "no toolkit entry, bundle 2.27.0"; **09-17 (ledger read): plugin-toolkit
+  1.18.0 standalone (09-12) AND mk-cc-all 2.28.0 (09-11) both installed** — reach is restored,
+  the six toolkit skills are listed twice, and elicit rides the bundle. An unclosed decision
+  drifts; this one has drifted three times. What a PUBLIC marketplace user should install was
+  never decided either.
+- **What:** (1) the owner's one-keystroke pick: KEEP the duplication (zero work; the bundle stays
+  the one-install path for public users) or SLIM the bundle (drop the six toolkit skills, bump
+  the bundle so the cache updates, re-verify registry-check's bundle-path claim) — Claude's
+  default: keep, until a public user or the scorecard shows the double listing costs anything;
+  (2) prove the reach: run ONE gate (repo-guard or test-all `--root`) from a DIFFERENT project
+  via the installed 1.18.0 and record command + exit code; (3) README + marketplace prose match
+  the chosen layout (#40's doc set is layout-independent, so this is a small edit under the
+  `plugin-docs` claim); (4) the repo-guard detector for instruction-names-unreachable-path remains
+  a candidate (Claude's proposal, unrequested).
+- **Done-check:** (1) decision recorded in log.md with its reason; (2) one gate run recorded from
+  a different project (command + exit code); (3) README + marketplace prose match the chosen
+  layout.
 
 ## 3. Extract autopilot's `decide()` so it can become a duty (closes invariant 9; harness G12 leg)
 
@@ -541,9 +562,15 @@ executor RUNS; the owner reads the outcome in the session, never this file.
   evidence is discarded at the REPORTER, not missing.** So: (2a) FIRST, in plugin-toolkit, make
   a FAILED/SUSPECT suite print the captured output (bounded, marked when cut — the same honesty
   #42 demands of the other ledger) and add a sweep test asserting the child's text reaches the
-  report; (2b) THEN re-run the sweep until it goes red and read what the child actually said —
-  only after that does hunting a shared resource (lock file / temp dir / cwd) make sense, since
-  the hypothesis is currently unfalsifiable; (2c) a flaky suite is named SUSPECT, never green.
+  report — **DONE: plugin-toolkit 1.17.0 (`edae5e5`) gives FAILED/SUSPECT/CANNOT RUN a bounded tail
+  excerpt (capture 20260914-2130, read 09-17)**; (2b) **DONE on the very first red run after it —
+  the cause is LOCK CONTENTION, not a shared resource:** `withLock: failed to acquire
+  .pipeline/heal/HEAL-LOG.md.lock after 5 attempts (~1.5s)`; `with-lock.cjs:56` `MAX_ATTEMPTS = 5`
+  with 50 ms backoff (~1.5 s) against `LOCK_STALE_THRESHOLD_MS = 60000` (:51) — three orders of
+  magnitude apart, which is the smell; green alone, red in company. **What remains is the FIX:**
+  raise the retry budget in `essense-flow/lib/with-lock.cjs` (governed by D-Rd11-4) with a MEASURED
+  number from contended sweeps, never a guess; and the two pre-existing `state-shape WARN` lines
+  the same excerpt surfaced; (2c) a flaky suite is named SUSPECT, never green.
   For the ledger-compaction suspect: author the archive sibling (the root fix; raising the
   threshold re-fires in 30 days — #38's garden job wants the same motion). Also the precondition for Q12(b)/(c)
   if the owner wants CI back.

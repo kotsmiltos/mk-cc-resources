@@ -10,97 +10,76 @@ Surfacing rule (owner law 2026-09-09, vision invariant 13): a question reaches t
 ONE one-keystroke choice with the recommended default first, batched with its siblings —
 never as a file to read. The context below is for the model and the asking session.
 
-## Q24 · plugin-toolkit is NOT INSTALLED — should the four repo gates reach an install, or stay a checkout-only maintainer tool? [NEW 2026-09-11; unblocks #2, and decides gate reach in every other project]
+## Q26 · OWNER, 2026-09-17: is steward / verification / the hooks adding value, or burning tokens? Is memory digestible, or infinite conflicting things? Lighter models? [NEW; absorbs Q13; nothing decided]
 
-**Context.** Measured this pass: `installed_plugins.json` carries no `plugin-toolkit` entry at
-all (all 13 mk-cc-resources ledger keys grep-read), while the `mk-cc-all` bundle 2.27.0 IS
-installed. A bundle carries `skills` only — registry-check's own `capability-reach` claim source
-says so — so `bin/repo-guard.js`, `bin/test-all.js`, `bin/registry-check.js` and
-`bin/harness-stats.js` exist ONLY where this repo is checked out. Live consequences: every gate
-named in a task done-check is a maintainer-only command; `@ship`'s repo-guard probe finds
-nothing from another project; #12 cannot run a gate on the other four ships; and the vision's own
-rule — *"a capability that no install can resolve does not exist for the owner"* — is broken by
-the toolkit's own gates. The 07-31 /doctor record said the opposite (standalone installed, bundle
-disabled); how it changed is NOT recoverable from disk, since an uninstall leaves no ledger
-trace. Nothing here is a bug in the gates: they pass (35/35 suites / 2,023 checks at the last
-sweep) — this is reach, not quality.
+**Owner, verbatim (inbox 20260917-1652):** *"dude, check out what has been going on on all my othger
+sessions. is steward and verification and all that adding value? are we keeping good quality content
+or eveyrhing? it feels like it's just burning tokens for the most part, are we keeping a good
+digestibgle memory or infinite things that conflict each other as we go on? how can we amend? shall
+we use lighter models for this work in generaL?"* — and mid-turn: *"the hooks as well please"*.
 
-**UNCHANGED by the ships since, and sharper with every one:** an update now moves SIX plugins
-(turn-end 0.11.0 · lens 0.7.0 · steward 0.6.0 · essense-flow 0.27.0 · autopilot 0.5.0 ·
-thorough-mode 1.11.3) and is still a NO-OP for plugin-toolkit, because there is no entry to
-update. Closing Q24 takes an INSTALL (options a/b) or option (c)'s explicit declaration; nothing
-the owner does at update time will close it by accident. Note the loop it creates: the only
-instrument that can see checkout-ahead-of-install drift (`running.installed_vs_checkout`) ships
-inside the uninstalled plugin — the gate that measures reach is itself unreachable.
-**NEW 2026-09-12, a second plugin now has the same shape:** `elicit` 0.1.0 exists on origin, has
-no ledger entry, and rides the mk-cc-all bundle only from version 2.28.0 while the INSTALLED
-bundle is 2.27.0 — so a brand-new capability the owner asked for reaches nobody until this
-layout question is answered and something is actually installed. Whatever the ruling, the
-practical follow-up is the same in options (a)/(b): the bundle needs updating for skill-only
-plugins, and hook/bin-carrying plugins need their own entry.
+**Context — measured, not argued (the full table is in state.md, carried verbatim):** on the four
+steward ships push is 9.3–13.5 KB per prompt vs 2.0 KB on the no-harness control and ROSE since
+audit 2; kb-hints is the largest family everywhere and is followed 0–7.5% (the one honest file-open
+metric); recall notes are USED by content 49–90% — the one push mechanism that scores as used;
+steward-model surfacings 25–51%; the judge returns an empty pick 42–52% of the time whole-life —
+and **81% of 21 fires on aithseis AFTER the 300 s cap went live on 09-14** (p50 34 s, p95 66 s;
+twin 67% of 3; mk-cc 0% of 2), so the empty picks are not the cap's doing; 31–55 min of
+wall-clock per ship inside the Stop hook; log.md 529–1669 lines never rotated, 12–25
+open questions per ship, every capture repeating the four-line preamble. Cost is BYTES + WALL-CLOCK:
+the judge is already haiku and its whole spend is ≈ $5.2 across four ships; steward + lens agents run
+on the session model (no `model:` frontmatter). Three of the table's numbers mislead without the
+model's own corrections (state.md): digest "0/3" is unscorable-not-zero, "judge p95 = 60 s" is a
+whole-life artifact of our old constant (the 300 s build is installed and measured above), and
+this ship's "19 unintegrated" is a file count where the ledger says 2. Also measured, not zero:
+the lens has ONE v1 trace line per ship — value UNMEASURED; essense-flow 0.27.0 + autopilot 0.5.0
+are installed and silent outside `.pipeline/` — their remaining cost is process spawn only.
 
-**Options.** (a) install plugin-toolkit standalone again, leave the bundle as is — restores
-reach in one command, re-introduces the six double-listed skills the 07-31 session objected to;
-(b) install standalone AND drop the six toolkit skills from the bundle — one layout, no
-duplication, one version to bump, registry-check's bundle-path claim re-verified after;
-(c) declare it checkout-only ON PURPOSE — the gates are maintainer commands, the model stops
-implying an install, #2's reach leg becomes "run from a checkout" and #12's per-ship gate use is
-dropped; (d) keep it uninstalled and add a run-from-anywhere wrapper — a new mechanism, no
-budget, and invariant 5 prices it badly.
+**Where the model already stands on each half:** the 09-06 reading (vision) prescribed deletions,
+folds and guards on the PUSH side — #17 is that task, now moved ahead of Phase 2; "infinite
+conflicting things" is #38 + Q21 (lifecycle + garden job, removal authority still unruled); the
+judge is Q20 (option 3 pre-registered, n=3 then, four ships now); lighter models was Q13, folded
+here. Invariant 11 binds: nothing retires on a promise or a thin sample, and a dead mechanism is a
+QUALITY failure, not a cost one; invariant 12 binds the other way: a flat metric on a re-run
+scorecard REMOVES a mechanism.
 
-**Recommended default (Claude's): (b).** The gate family is the toolkit's most exercised product
-this month, and reach is exactly what the vision's "reachability is part of shipped" clause
-protects; (b) is the only option that restores reach AND removes the duplication objection that
-ended the previous layout. (c) is honest and costs nothing — take it if the owner never intends
-to run a gate outside this repo, and the model will say so plainly instead of implying reach.
+**Options (Claude's; each is a package the owner can take whole or per row):**
+(a) **Cut the measured-dead push, keep what scores as used, garden the memory — the seven ranked
+amendments from the capture, each with its evidence and its key:** (1) kb-hints OFF by default —
+pointer kind, strict-follow 0 / 0 / 0 / 7.5%, the largest byte family, crowding the ~8–10 KB inline
+bound recall needs (a QUALITY argument, not cost; pull stays — 109 `kb_query`/`kb_read` here since
+09-06 say pull IS used, Q16's cue stays); (2) judge — with the 300 s cap live aithseis still picks
+EMPTY 81% of 21 fires at p50 34 s: decide ranker-only vs judge per ship from
+`judge.chosen_empty_pct` + `judge.agreement_pct`, and **if empty stays >50% after 20 more fires,
+ranker-only** (Q20 option 5 — its trigger is now a number); (3) steward — rotate log.md (1669
+lines); its recall row `used 0 / unknown 66` is UNSCORED, not unused — score by content before
+dropping it from the index; the integration cadence contradicts 0.6.0's "integrate whenever
+anything is unintegrated" (19 files here — 2 by the ledger — 15 on aithseis); `model: sonnet`
+frontmatter on the steward agent for integrate passes (old Q13 (a): the visible diff is the
+tripwire); (4) digest — keep, hard-bounded (kb 0.15.0 already does), score by content
+(`uptake.by_family`) before judging; (5) lens — keep ON, read `lens.refuted` per ship after 20
+dispatches, opt-in only if it reads 0; (6) strip the four-line preamble from MACHINE-INJECTED
+bodies (keep it in the files) — every capture and inbox file repeats it; (7) "lighter models" —
+the judge is already haiku; the lever for steward + lens is ONE `model:` frontmatter line each;
+model price is not the cost, bytes and wall-clock are. (b) **Measure two more sittings on the
+installed build, then cut what is still flat** — invariant 12's rule applied as written; costs
+two more sittings of today's tax and the judge's answer is already in. (c) **Lighter models
+everywhere, mechanisms unchanged** — addresses the lever the table says is NOT the cost.
+(d) **Pull-only harness** — no per-prompt injection, no Stop judge; the psience control (2.0 KB,
+0.3 min) is what that looks like, and psience is also where the owner said *"why is it not
+saved?"*.
 
-**Blocks:** #2's ratification (it has been waiting on an unratified state since 07-31); #1(g)'s
-`harness-stats` leg, which runs from the checkout meanwhile; #12's per-ship gate use.
+**Recommended default (Claude's): (a), all seven, in that order — one keystroke per row if the
+owner wants to split it.** The two numbers the owner is feeling — bytes per prompt and minutes
+inside Stop — have named owners (kb-hints bytes; the judge's empty picks), and each has a check
+that decides it without argument: `hook_bytes.p50/p95` after the hints cut, `judge.chosen_empty_pct`
+after 20 more fires. (b) would spend two sittings learning what the post-install window already
+says; (c) alone would leave both numbers where they are; (d) is the one option the owner's own
+psience complaint argues against. Nothing retires on a promise (invariant 11): every cut above is
+gated on a number the scorecard already prints.
 
----
-
-## Q25 · `@fc` is built and sitting uncommitted — ship it, and should the fewer-clicks LAW stay opt-in or become ambient? [NEW 2026-09-12; the model's copy of this question was lost when the stale base was replaced, so it is re-derived here with the audit evidence folded in]
-
-**Context.** Invariant 13 (owner law, verbatim 2026-09-09: *"this cannot be poitning me to
-files… leaving the least amount of clicks to me"*) has been standing law for three days with no
-mechanism. thorough-mode 1.12.0 gives it one — **`@fc`**, protocol-shaped, a drop-in registry
-entry costing zero new machinery — but it is **BUILT, UNCOMMITTED and UNPUSHED**, and installs
-read the GitHub remote, so today it reaches nobody. Two parts, one keystroke: (i) does it go out;
-(ii) does a LAW that applies to *every* owner-facing surface get carried by a keyword the owner
-has to remember (invariant 6 says no vocabulary may be required; invariant 3 says a discipline
-kept as text is not kept).
-
-**Evidence that decides it better than argument (audit 2, 2026-09-06 —
-`.claude/kb/captures/20260906-1340-second-usage-audit-five-projects-measured.md:38,166`; the same
-numbers this model already carries under Audit verdicts):** modifiers fired on **17 of 212 human
-prompts** (`@prompt` 11 · `@ship` 5 · `++ @verify` 1) and the audit names `@prompt`/`@ship` **the
-owner's real workflow**. The surfaces that fired ZERO were *unadopted slash-commands* — `/kb`,
-`kb-capture`, `/patterns`, `/verifiability`, `steward:brief/next/fleet`. So the familiar worry
-"opt-in under-fires" is TRUE of a command nobody adopted and NOT true of a keyword the owner
-took up; a new keyword is a credible surface here. The counter-fact in the same row: 17/212 is
-~8% of prompts, so a keyword cannot be the only carrier of a law that is supposed to hold on
-every reply.
-
-**Options.** (a) **Commit + push `@fc` as built; the law stays on demand**, with the existing
-smart hint suggesting it when the intent appears without the keyword — zero standing bytes
-(invariant 5: injected text is a per-session tax), adoption then MEASURED like any other
-mechanism (invariant 12). (b) Push it AND make the rules a default ambient injection on every
-prompt — pays ~0.5 KB per prompt forever on a harness already measured at avg 6.3 KB / p95
-20.5 KB, exactly the push-side weight #17 exists to cut. (c) Push it now, and pre-register the
-CONDITIONAL fold: a turn-end duty that fires only when the final message carries an anti-signal
-("you can run…", "see <path>", a to-do list addressed to the owner) — no standing bytes, fires
-where the failure actually is, the fold-don't-add shape the house values prefer. (d) Leave it
-uncommitted — the law stays in the model and in nothing else.
-
-**Recommended default (Claude's): (a) now, (c) pre-registered.** (a) makes three days of
-standing law reachable in one push at zero recurring cost, and the audit says an adopted keyword
-is a real surface, not a dead one. (c) is the honest answer to "8% of prompts": build it when the
-scorecard shows sittings where the law was broken and the keyword was absent — never on the
-promise that it would have helped (invariant 11). (b) is the one option that contradicts a
-measured invariant, and (d) wastes work already paid for.
-
-**Blocks:** nothing built waits on it, but `@fc` is INERT until (i) is answered — and `@fc` is
-the only mechanism invariant 13 has.
+**Blocks:** the shape of #17's cuts; #38's first garden pass on this repo; the steward/lens
+`model:` frontmatter (old Q13); Q20's ranker-only trigger.
 
 ---
 
@@ -132,7 +111,9 @@ header names its target), proposal-only for archives and refutations.
 (c) can follow immediately. A lifecycle mark that hides knowledge is a removal in effect, and no
 removal moves unseen; (c) is safe only where the evidence is in the entry itself, and it removes
 the most ritual. (b) still needs the usage measure to ACCUMULATE (`acted_on.*` keys — spans are
-non-zero now, but "never pulled in N sittings" needs N sittings of it).
+non-zero now, but "never pulled in N sittings" needs N sittings of it — and `acted_on.*` is a
+FILE-OPEN measure, honest for POINTER kinds only; for injected bodies the measure is the
+content-scored `uptake.used_pct`, capture `20260911-0300`, digest 09-17).
 
 **REAL INPUT ARRIVED 2026-09-12 — the question is no longer argued from a wish (plugin-toolkit
 1.16.0 `asset-value`):** knowledge is now ranked per kb SOURCE and per ASSET, with an
@@ -206,35 +187,6 @@ status is now UNCERTAIN (tasks #9 adjudicates whether it is red or test-all miss
 treat it as deliberate; correct the stale prose (folds into tasks #6). Re-adding is cheap
 whenever wanted. If CI ever returns, its invocation must carry `--root` (the 08-23
 gate-record correction).
-
-**Blocks:** nothing.
-
----
-
-## Q13 · Steward agent model override — run routine integrates on sonnet?
-
-**Context.** Third economics escalation in two days (owner: *"steward fires too often and
-for too long"* → *"can we make the steward lighter? it is unbearable right now"*). Steward
-0.3.0/0.3.1 already cut fires (one background pass per sitting), pass scope (agent Economy
-budget) and standing injected text (halved). The remaining big lever is the MODEL the
-steward agent itself runs on: a `model: sonnet` override would cut integrate cost roughly
-5x and speed the pass up (Claude's estimate, not measured here). Not taken silently,
-because recompute quality is the plugin's soul and the trade is the owner's.
-
-**Weighed 2026-08-23 against the new quality-over-speed law (vision invariant 11):** the
-law says latency/cost alone never motivates a change — but the "unbearable" directives
-were the owner's own, so this stays THEIR trade to take, not a dead question. The audit
-adds a datum FOR quality: the recompute discipline is the part that measurably succeeds
-in all four projects — the thing a weaker model would put at risk.
-
-**Options:** (a) try sonnet for routine integrates and watch the diffs — the visible diff
-is the built-in safety net that exposes a weak pass, and provenance makes any pass
-re-runnable; (b) keep the default model — pay full price for full quality on every pass;
-(c) split by job — sonnet for routine integrates, default model for pivots/seed (the
-dispatching session chooses per job).
-
-**Recommended default (Claude's): (a), with the law as the tripwire** — one weak diff
-ends the trial immediately; reverting is one line.
 
 **Blocks:** nothing.
 
@@ -368,10 +320,45 @@ material the session then had to re-derive.
 
 **Blocks:** nothing — the wait is over and the first reading is in.
 
+**2026-09-17 (the owner's value question, Q26): the cap is gone as an excuse, and the judge still
+declines.** Whole-life: empty picks 42–52%, p95 pinned at the old cap in every ship (state.md
+table) — a whole-life artifact, because the 60 s cap was OURS, raised to 300 s by the owner's
+09-14 ruling (resolved ledger) and INSTALLED the same day. Post-install (`--since
+2026-09-14T18:30Z`): **aithseis 21 fires, p50 34 s, p95 66 s, 81% EMPTY**; twin 3 fires, 67%;
+mk-cc 2 fires @ 73 s, 0%. So the dominant mode is confirmed on a build that can finish: the judge
+declines to choose, and giving it time did not change that. **Trigger, now a number (Q26
+amendment 2):** per ship, `judge.chosen_empty_pct` + `judge.agreement_pct`; if empty stays >50%
+after 20 more fires → option (5), ranker-only, that ship. Option (3) stays the alternative if the
+owner wants to keep a judge at all.
+
 ---
 
 ## Resolved ledger (provenance — these answers are now law in the model)
 
+- **Owner RULING (2026-09-14, recorded from source 09-17 — the sitting left no inbox item): the
+  judge timeout ×5.** Verbatim: *"extend the timeout if it's in our hands make it 5 times longer i
+  don't care"* → `DEFAULT_TIMEOUT_MS` 60 s → 300 s, Stop hook ceiling 420 s; the platform never
+  capped Stop at 60 s (probed: a 300 s-declared hook ran 75 s to completion). Provenance:
+  `plugins/turn-end/lib/judges/claude-p.js:66-82`, `hooks/hooks.json:14`; kb capture
+  `20260914-0200`. Supersedes every "60 s budget" wording in Q20, state.md and parts.md.
+- **Q24 · plugin-toolkit reach → CLOSED BY INSTALL (recorded 09-17 from the ledger; the sitting
+  left no capture).** `installed_plugins.json` carries `plugin-toolkit@mk-cc-resources` 1.18.0 at
+  `553c366`, 2026-09-12T17:21Z, AND `mk-cc-all` 2.28.0 (09-11T21:33Z, which carries elicit) — the
+  layout in fact is option (a): standalone toolkit + the full bundle, six skills double-listed.
+  The four gates reach any project; elicit reaches every bundle install. Whether to slim the
+  bundle (the (b) half) is #2's residue, not a reach question. The model carried "plugin-toolkit
+  is NOT installed" for six days after it stopped being true — the 09-17 digest still said so —
+  which is the counts-class defect on the install side: an authored install fact, exactly what
+  `running.installed_vs_checkout` exists to compute.
+- **Q25 · `@fc` → CLOSED BY BUILD (09-13/14; recorded 09-17 at subject level).** The tree is clean
+  at `6052e6b` == origin with thorough-mode 1.12.2 on disk, so (i) is answered — it shipped; and
+  commit `34536d9` "feat(turn-end): fewer-clicks — the owner's law, checked where the answer is" is
+  option (c)'s conditional duty, built (turn-end 0.12.0 per the root CLAUDE.md). Whether the owner
+  ruled (a)+(c) or the session executed under the standing 09-06 delegation is NOT recorded in the
+  model — the sitting left no capture; the next pass integrates it from one.
+- **Q13 · steward on sonnet → MERGED into Q26 (2026-09-17).** The owner's own question now covers
+  it (*"lighter models for this work in general"*); Q13's trial shape — try it, the visible diff is
+  the tripwire, one weak diff ends it — is carried inside Q26 option (a).
 - **Q23 · the standing `[instr]` keys → DELEGATED and SHIPPED (owner 2026-09-10, verbatim "you
   decide"); the model carried it as open for two days too long.** Five keys ship in
   `plugins/plugin-toolkit/defaults/harness-stats.json` (a project overrides the list wholesale in

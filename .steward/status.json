@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "20260912-0345",
+  "updated": "20260917-1730",
   "updatedBy": "steward-agent",
   "items": [
     {
@@ -493,14 +493,34 @@
       "groups": ["thorough-mode", "release", "harness", "dogfood", "turn-end"],
       "log": "2026-09-12 (late) · Two items integrated at c4d8093 — the @fc build recorded as BUILT-not-shipped, parts drift corrected, #42 + #41 opened ahead of Phase 2, Q25 re-derived with the audit evidence",
       "check": "log.md's 2026-09-12 tail entry is the authoritative record; every claim the model took from it was re-read at source this pass: tool-record.js:44,137 (MAX_CMD_CHARS = 300, silent cut) + :90 (the sibling truncator that DOES mark) + :127,138 (classify/filesInCommand see the full string) · test-sweep.js:199,257 + test-all.js:118,122-123 (output captured, then discarded at the reporter) · .git/refs/heads/main = c4d8093 · type 'outcome' is a new open-set value (contract rule 4, tolerant readers)"
+    },
+    {
+      "id": "20260910-0510-zero-stop-fires-this-sitting-is-one-unyielded-turn-not-a-hook-failure",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260917-1730",
+      "by": "steward-agent",
+      "groups": ["dogfood", "turn-end", "harness"],
+      "log": "2026-09-17 · Two items integrated at `6052e6b` — the owner's value question parked as Q26 with its measured table, Q25 + Q13 closed into it, the 09-14 judge-timeout ruling recorded from source; the 09-13/14 sitting is NOT in the model (no capture)",
+      "check": "substance already integrated by the 09-11 correction pass (items 20260911-1230 + 20260912-0013 in this ledger: leg 0 deleted, platform invariant 6 kept as the pairing rule + yield denominator, Q23 closed) — recorded with that provenance, nothing re-derived; residue (harness-stats --line at session open) folded into tasks #8 as one clause, not a new task"
+    },
+    {
+      "id": "20260917-1652-owner-is-steward-verification-hooks-adding-value-or-burning-tokens",
+      "type": "inbox",
+      "status": "integrated",
+      "at": "20260917-1730",
+      "by": "steward-agent",
+      "groups": ["owner-question", "harness", "audit-2", "knowledge-hygiene", "recall-judge"],
+      "log": "2026-09-17 · Two items integrated at `6052e6b` — the owner's value question parked as Q26 with its measured table, Q25 + Q13 closed into it, the 09-14 judge-timeout ruling recorded from source; the 09-13/14 sitting is NOT in the model (no capture)",
+      "check": "owner words verbatim into questions.md Q26 (context + options + Claude's default marked); table carried verbatim into state.md with three corrections from the model's own records (file-open metrics per capture 20260911-0300 via the 09-17 session digest; judge cap = our constant, owner ruling 09-14 read at plugins/turn-end/lib/judges/claude-p.js:66-82 + hooks/hooks.json:14; 'inbox unintegrated 19' vs this ledger's 2); Q13 merged in, Q25 closed by build (.git/refs/heads/main == refs/remotes/origin/main = 6052e6b, all 17 plugin.json versions grep-read); #17 + #38 reordered ahead of #32/#8 as Claude's call; #42 part (1) closed on tool-record.js:111-112; #9 2a/2b closed on capture 20260914-2130 + with-lock.cjs:51,56; #41 open (grep base-freshness|ls-remote over plugin-toolkit/lib = 0 files); MID-PASS: the lens amended the item (60 s row = whole-life artifact; 300 s build installed 09-14; aithseis 81% empty of 21 post-install) and the install ledger was grep-read directly — installed == disk for all 17 (turn-end 0.13.0/kb 0.15.0/reuse-gate 0.2.0/thorough-mode 1.12.2 @ 6052e6b 09-14T18:27Z; plugin-toolkit 1.18.0 + steward 0.6.1 @ 553c366; lens 0.7.0; essense-flow 0.27.0/autopilot 0.5.0/mk-cc-all 2.28.0) → #1 leg B closed, Q24 closed by install, Q26 (b) 'install first' dropped and (a) re-cut to the capture's seven amendments; nothing decided by the owner"
     }
   ],
   "views": {
     "briefing": {
-      "derived_through": "20260912-0335-fc-built-uncommitted-fetch-law-checks-truncation-flake-mechanism"
+      "derived_through": "20260917-1652-owner-is-steward-verification-hooks-adding-value-or-burning-tokens"
     },
     "model": {
-      "derived_through": "20260912-0335-fc-built-uncommitted-fetch-law-checks-truncation-flake-mechanism"
+      "derived_through": "20260917-1652-owner-is-steward-verification-hooks-adding-value-or-burning-tokens"
     }
   }
 }

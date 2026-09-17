@@ -1,4 +1,4 @@
-# State — current truth (2026-09-12, late · HEAD `c4d8093` == origin/main after this checkout was found TEN COMMITS STALE and fast-forwarded — Tracks 4 + 5 and three unplanned toolkit ships are PUSHED and NOTHING is installed, and the working tree now holds the model's FIRST built-but-uncommitted plugin, thorough-mode 1.12.0 `@fc`. The reach chain fetch → bump → push → install → restart is now broken at three links at once: commit, install, restart → Q24 + Q25)
+# State — current truth (2026-09-17 · HEAD `6052e6b` == origin/main, tree CLEAN · EVERYTHING IS INSTALLED at its disk version (ledger read this pass — the "nothing installed" line the model carried since 09-10 was stale by three days, and the session's own 09-17 digest repeated it) · five commits and one sitting (09-13/14) are held at SUBJECT level only · the owner's value question is Q26)
 
 > Read this before doing anything:
 > - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -6,7 +6,100 @@
 > - Quality ownership: this work matters. Take ownership.
 > - Propagation requirement: every descendant artifact must carry these same four instructions.
 
-## Ship position
+## Position snapshot, 2026-09-17 (this pass; supersedes the 09-12 section below)
+
+**HEAD `6052e6b` == origin/main** (both ref files read), **0 unpushed, tree clean** — so `@fc` is
+COMMITTED and the "built-but-uncommitted" state the 09-12 pass had to invent is gone. **Five commits
+the model has not integrated** (subjects from the session's git status; no inbox item, no log entry,
+NOT re-audited here): `34536d9` turn-end fewer-clicks duty (the Q25 option-(c) shape) · `707c647`
+registry + model sync · `553c366` "five defect classes, each invisible to every existing gate"
+(turn-end, steward, plugin-toolkit, thorough-mode) · `51b40b9` "stop three mechanisms from failing
+quietly" (turn-end, kb, reuse-gate) · `6052e6b` `@prompt` names where the work lands. **On disk now
+(all 17 plugin.json grep-read this pass):** turn-end **0.13.0** (model held 0.11.0) · plugin-toolkit
+**1.18.0** (1.16.0) · kb **0.15.0** (0.14.0) · steward **0.6.1** (0.6.0) · thorough-mode **1.12.2**
+(1.12.0) · reuse-gate **0.2.0** (0.1.0) · essense-flow 0.27.0 · autopilot 0.5.0 · lens 0.7.0 ·
+elicit 0.1.0 · patterns 0.1.1 · prism 0.1.0 · statusline 0.2.0 · session-lifecycle 1.3.1 ·
+schema-scout 1.2.1 · project-note-tracker 1.8.0 · alert-sounds 1.1.1. **Four kb captures from
+09-14 exist and are unintegrated** (titles: judge 60 s is ours / inline bound is per chunk /
+ponytail-as-reuse-gate never switched on / #9 flake was lock contention — the last one READ this
+pass, below). **INSTALLED == DISK for every plugin** (`installed_plugins.json` grep-read this
+pass, every version/sha/lastUpdated): turn-end 0.13.0 · kb 0.15.0 · reuse-gate 0.2.0 ·
+thorough-mode 1.12.2 at `6052e6b` (2026-09-14T18:27Z) · steward 0.6.1 · **plugin-toolkit 1.18.0
+— a standalone entry EXISTS** at `553c366` (09-12T17:21Z) · verifiability-lens 0.7.0 at `019e007`
+(09-11) · essense-flow 0.27.0 · essense-autopilot 0.5.0 · **mk-cc-all 2.28.0 (carries elicit)** at
+`d44a524` (09-11T21:33Z) · patterns 0.1.1 · statusline 0.2.0 · prism 0.1.0 · session-lifecycle
+1.3.1 · alert-sounds 1.1.1. So: the 300 s judge cap is LIVE (post-install aithseis 21 fires, p50
+34 s, p95 66 s, **81% empty picks**; twin 3 fires 67% empty; mk-cc 2 fires @ 73 s, 0% — the lens
+correction on inbox 20260917-1652), Track 4's silence is live, `@fc` reaches installs, and the
+four repo gates reach ANY project. What the model held as "pushed, not installed" since 09-10 was
+true for at most a day; the 09-17 digest's "the raised build is not the installed one" was WRONG
+and this pass first repeated it — corrected mid-pass from the ledger, not from the digest.
+Whether every running process has RESTARTED onto the new code is per-process (platform
+invariant 4); the aithseis post-install fires prove at least one has. **The 09-13/14 sitting still
+needs ONE capture** so the next pass can integrate it properly; this pass verified only what it
+wrote: `claude-p.js:66-82`, `hooks.json:14`, `tool-record.js:111-112`, `with-lock.cjs:56`, and the
+absence of `base-freshness` under `plugin-toolkit/lib`. parts.md's version lines lag by the same
+sitting.
+
+## Measured 2026-09-17 — the owner's value question (→ Q26; table carried verbatim from inbox 20260917-1652, the session's harness-stats run over 4 steward ships + psience control, whole-life window; steward/lens/kb counts from transcripts since 09-06)
+
+| | mk-cc | aithseis | twin | ar-mystery | psience (no kb/steward) |
+|---|---|---|---|---|---|
+| hook bytes / prompt avg | 10.1 KB | 9.3 KB | 12.7 KB | 13.5 KB | 2.0 KB |
+| kb-hints strict-followed | 7.5% | 0% | 0% | 0% | n/a |
+| past digest used | 0/3 | — | — | — | — |
+| recall notes used (content proxy) | 56% | 76% | 49% | 90% | — |
+| steward-model surfacings used | 33% | 51% | 25% | 36% | — |
+| judge picks empty | 42% | 52% | 50% | 52% | — |
+| judge p95 | 60 s (=timeout) | 60 s | 60 s | 60 s | — |
+| wall-clock inside turn-end Stop | 55 min | 43 min | 31 min | 39 min | 0.3 min |
+| steward dispatches since 09-06 | 8 | 19 | 6 | 16 | 0 |
+| lens dispatches since 09-06 | 7 | 5 | 3 | 8 | 9 |
+| open questions | 21 | 25 | 12 | 17 | — |
+| inbox unintegrated | 19 | 15 | 1 | 1 | — |
+| log.md lines | 1669 | 529 | 1255 | 1528 | — |
+
+Judge already `haiku` (`claude-p.js` DEFAULT_MODEL, read); steward + lens agents carry no `model:`
+frontmatter → session model; judge $ ≈ $5.2 total across four ships — **cost is bytes + wall-clock,
+not model price**. Push ROSE since audit 2 (8.1 KB → 9.3–13.5 KB); the biggest family everywhere is
+kb-hints (145–225 KB/project), then recall supply, then the digest. **Three readings the table
+needs, all from this repo's own records:** (1) `kb-hints strict-followed` and `past digest used` are
+FILE-OPEN metrics — honest for POINTER kinds (hints) and meaningless for body-injected kinds
+(digest "0/3" = 3 unscorable, not zero; capture `20260911-0300`); only content-scored uptake counts
+for supply material. (2) `judge p95 = 60 s` in all four ships is OUR OWN constant, not a platform
+kill — raised to 300 s on 09-14 by owner ruling (below) and INSTALLED the same day; the row is a
+whole-life artifact. The post-install window (`--since 2026-09-14T18:30Z`, the lens correction)
+is the honest reading: aithseis 21 fires / p50 34 s / p95 66 s / 81% empty; twin 3 fires / 67%
+empty; mk-cc 2 fires @ 73 s / 0% empty; post-install hook bytes per prompt 12.4 / 16.2 / 11.8 KB
+(three ships, the capture's order). The judge's failure mode is now measured on a build that can
+finish: it declines to pick, at a rate the cap did not cause. (3) `inbox unintegrated 19`
+for this ship is a FILE count on a ship where files never move (the status contract); `status.json`
+says exactly 2 were new before this pass and 0 after — the digest's own steward-sync counter
+(installed 0.5.2) still counts files, the #24 defect from the install side.
+
+## Judge timeout — owner RULING 2026-09-14, recorded from source this pass (`plugins/turn-end/lib/judges/claude-p.js:66-82`; `hooks/hooks.json:14`)
+
+Verbatim: *"extend the timeout if it's in our hands make it 5 times longer i don't care"* → 60 s →
+**300 s** (`DEFAULT_TIMEOUT_MS = 300000`); the Stop hook's own ceiling raised to **420 s**. The
+60 s was NEVER the platform's: probed 09-14, a Stop `command` hook declared `"timeout": 300` ran
+75 s to completion under `claude -p` — so the "platform default 60 s" claim (capture 20260731-1950)
+is REFUTED, and **every 60,615 ms ceiling ever seen in the Stop durations was this constant firing,
+not a platform kill.** Consequences: the "platform kill at the 90 s hook timeout" candidate for the
+09-09 silence (#1 leg C) loses its mechanism; #17's "38.4 s against a 90 s budget" datum is now
+against 420 s; Q20's "60 s budget" wording is superseded. The fail-open ranker still catches an
+overrun past 300 s.
+
+## #9's flake is NAMED (capture 20260914-2130, read this pass; measured at `6052e6b`)
+
+`essense-flow test/run-all.cjs` red under the sweep = `withLock: failed to acquire
+.pipeline/heal/HEAL-LOG.md.lock after 5 attempts (~1.5s)` — `with-lock.cjs:56` `MAX_ATTEMPTS = 5`
+with 50 ms backoff (~1.5 s budget) against `LOCK_STALE_THRESHOLD_MS = 60000` (both still on disk,
+grep-read). Green alone, red in company: lock contention, not a shared resource, not the exit path.
+Found on the FIRST red run after plugin-toolkit 1.17.0 made FAILED/SUSPECT suites carry a bounded
+tail excerpt (#9 step 2a, DONE). The fix (raise the retry budget with a measured number) is NOT
+done. Two pre-existing `state-shape WARN` lines surfaced the same way.
+
+## Ship position as recorded 2026-09-12 (SUPERSEDED by the snapshot above; kept for the reach-chain and version-pin lessons learned here)
 
 **HEAD `c4d8093` == origin/main** (`.git/refs/heads/main` read this pass) — **the `a50fa75`
 position recorded this morning is SUPERSEDED, and not because work landed here: this checkout was
@@ -54,7 +147,7 @@ could not move when 16 tests were added or removed (both measured). Do not compa
 total with a post-1.14.0 one; the 33/35 · 1,325 and 35/35 · 2,023 figures are retired, not
 baselines. The tree did not move mid-pass.
 
-## Versions on disk vs installed (all 16 plugin.json + the install ledger grep-read at the 09-12 0110 pass; only thorough-mode's manifest was re-read this pass, and only it moved)
+## Versions on disk vs installed — AS OF 09-12 (SUPERSEDED 09-17: installed == disk for all 17, snapshot above; kept for the reach-chain lesson only)
 
 **On disk now (17 plugins — every plugin.json version grep-read this pass):** turn-end **0.11.0**
 · plugin-toolkit **1.16.0** · essense-flow **0.27.0** · essense-autopilot **0.5.0** ·
@@ -229,12 +322,13 @@ duty arms EVERY task the owner starts, advise; the metric rule RATIFIED → inva
 KEEP THE CUE · Q15 SLIM ONLY. Owner law → invariant 13: no pointers, in-environment, least
 clicks.
 
-## The judge finding (2026-09-06; Q20 open — its inputs are WRITTEN by 0.9.0 and 0.9.0 is now LIVE, so Q20's one check is runnable)
+## The judge finding (2026-09-06; Q20 open — its inputs are WRITTEN by 0.9.0 and 0.9.0 is now LIVE, so Q20's one check is runnable; the 60 s budget below was OURS and is 300 s since 09-14 — section above)
 
 On one real 8.8 KB recall prompt (haiku, 28-entry index): `api_ms ≈ wall` — the child
 DELIBERATES 2.1–8.9k output tokens for a ~600-char verdict, 4× variance on identical input
-(`--effort low` 25.8 → 56.9 s; `--effort medium` 95.8 s > the 60 s budget — the ETIMEDOUT
-mechanism); same configuration twice → DIFFERENT picks in every pairing; 10-turn replay
+(`--effort low` 25.8 → 56.9 s; `--effort medium` 95.8 s > the then-60 s budget — the ETIMEDOUT
+mechanism, our constant, not the platform's); **09-17 across four ships: empty picks 42–52%, p95
+pinned at the old cap everywhere** (table above); same configuration twice → DIFFERENT picks in every pairing; 10-turn replay
 identical 3/10. Lean buys no-boot + −36% cost + no state pollution, NOT speed. Since 0.9.0
 every recall fire writes judge_chosen + ranker_top → `judge.agreement_pct` / `judge.agreement_n`
 (1.12.0 keys) — 0.9.0 lines now EXIST here (13), so Q20's one check is a scorecard run away.
@@ -363,9 +457,9 @@ cheapest possible shape for a new capability, and the reason it costs no per-ses
   never runs — that is why the pairing rule (platform invariant 6) is the mechanism.
 - **Evaluators unmeasured (G4): CLOSED at 0.9.0 / 0.14.0 / 0.6.0 and LIVE since the 09-10
   install** — turn-end 13 lines / kb 2 / lens 1 read this pass; residual legs → #1(g).
-- **No scorecard (G5): CLOSED at 1.12.0 and grown to 1.16.0 (16 metric sources; PUSHED, still
-  uninstalled)** — plugin-toolkit remains UNINSTALLED, so the gate runs from a checkout only →
-  Q24. The standing `[instr]` pick is NO LONGER open: the owner delegated it 09-10 ("you decide")
+- **No scorecard (G5): CLOSED at 1.12.0, grown to 1.18.0 on disk AND INSTALLED standalone
+  (ledger 09-12T17:21Z, read 09-17)** — the gates reach any project now; Q24's premise is dead
+  (resolved ledger), the bundle-duplication residue lives in #2. The standing `[instr]` pick is NO LONGER open: the owner delegated it 09-10 ("you decide")
   and five keys ship in `plugins/plugin-toolkit/defaults/harness-stats.json`, re-picked 09-11 to
   lead with `uptake.used_pct` and carry no byte count (file read this pass) — Q23 CLOSED. The
   "second run shows the deltas" leg → #32's done-check.
@@ -379,7 +473,9 @@ cheapest possible shape for a new capability, and the reason it costs no per-ses
   the verifiability lens refuted TWO gate runs that had in fact run and passed. Two details the
   fix turns on, both from the source: (a) the cut is SILENT — the sibling sample truncator marks
   its own (`:90` appends `…[+N]`), this one does not, so a reader cannot distinguish "short
-  command" from "cut command"; (b) `classify(command)` and `filesInCommand(command)` run on the
+  command" from "cut command" — **(a) FIXED on disk by 09-17: `tool-record.js:111-112` appends
+  `…[+N]` to a cut `cmd` (grep-read); `MAX_CMD_CHARS` is still 300, so #42's evidence-preserving
+  half stays unverified**; (b) `classify(command)` and `filesInCommand(command)` run on the
   FULL string (`:127,138`), so `kind: "check"` and `files` stay correct while the evidence text
   is gone — the ledger half that a reader trusts least is the half that survived. This poisons
   every consumer of "did a check run": self-check (invariant 10), Q19's ran-and-observed floor,
