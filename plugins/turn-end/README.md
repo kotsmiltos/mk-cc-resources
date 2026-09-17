@@ -143,6 +143,7 @@ consolidated message describe a turn that never happened.
 | `context-recall` | `advise` | the project keeps knowledge the answer may have needed | the judge (or the fallback ranker) found nothing material missed |
 | `request-closure` | `advise` | the span was woken by, or dispatched, agents | the answer closes the **user's** original request, not the last agent's return |
 | `fewer-clicks` | `advise` | the final message carries an outsourcing tell (and the owner did not ask for instructions) | no tell remains, **or** the message names why only the owner can do it, **or** it was already asked this `prompt_id` |
+| `page` (0.14.0) | `block` | the project has a `PROJECT.md` **and** the turn changed a real file (not the page, not `DECISIONS.md`, not `.claude/`/`.steward/`) | `PROJECT.md` was rewritten this request (its mtime, or a tool target naming it) — the ONE question of a subtracted project; `duties.page.path` renames the file |
 
 `steward-sync` closes the gap between capturing a thought and recomputing the model it changes.
 Captures are cheap and land mid-conversation; the recompute is the expensive half, and nothing

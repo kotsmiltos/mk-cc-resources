@@ -2,6 +2,12 @@
 
 > Claude Code plugin marketplace: skills distributed as installable plugins.
 
+@PROJECT.md
+
+The page above is the project's ONE live record (owner ruling 2026-09-18, `subtract`): where we
+are, next three with their checks, open decisions. Rewrite it WHOLE at the end of every sitting;
+a decision with its why is one dated line in `DECISIONS.md`. Answer "where are we" from it.
+
 Deep per-plugin notes live in `plugins/<name>/CLAUDE.md` — loaded automatically when working
 under that plugin's directory. This root file is orientation + the rules that apply repo-wide.
 

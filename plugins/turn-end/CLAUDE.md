@@ -106,6 +106,12 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   Satisfied = asked-once-per-prompt from the ledger; advise,
                         #   zero tokens, no judge).
                         #   Add one = one require, no runner change
+                        #   page (0.14.0, owner `subtract` ruling 2026-09-18 — the ONE question of
+                        #   a subtracted project: a turn that changed real files may not yield
+                        #   until PROJECT.md is REWRITTEN WHOLE; presence-gated on the file;
+                        #   satisfied by its mtime vs the request start or a tool target; folds
+                        #   session-digest + steward-sync + self-check into one demand; shipped
+                        #   defaults unchanged — this repo's .claude/turn-end.json runs page-only)
 lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
                         #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
                         #   TWO-PHASE and the split is load-bearing: index() emits titles+

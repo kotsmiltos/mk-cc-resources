@@ -56,8 +56,11 @@ const qualityLens = require('./quality-lens');
 const selfCheck = require('./self-check');
 const requestClosure = require('./request-closure');
 const fewerClicks = require('./fewer-clicks');
+const page = require('./page');
 
-const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure, fewerClicks];
+// `page` (0.14.0, owner's `subtract` ruling 2026-09-18) is the ONE question a subtracted project
+// keeps; presence-gated on PROJECT.md, so projects without the page never see it.
+const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure, fewerClicks, page];
 
 function all() {
   return DUTIES.slice();

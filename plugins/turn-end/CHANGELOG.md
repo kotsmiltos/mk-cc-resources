@@ -4,6 +4,12 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-09-18
+
+### Added
+- **The `page` duty — the one Stop question of a subtracted project.** Owner ruling 2026-09-18 (`subtract`): one page per project, `PROJECT.md`, rewritten WHOLE at the end of every sitting (what it is, where we are with the check that proved this turn's work, next three with their checks, open decisions with defaults; under 100 lines), plus one `DECISIONS.md` of dated one-liners. A turn that changed real files may not yield until the page is rewritten. Presence-gated: no `PROJECT.md`, no question — creating the file is the whole setup. Satisfied by a disk fact (the page's mtime against this request's start, or a tool target naming it). Rewriting the page or `DECISIONS.md` is never itself "work". Bash mutations count; writes under `.claude/`, `.steward/`, `.pipeline/` and temp do not. `duties.page.path` names a different page file.
+- Why: a rewritten page cannot accumulate, so it cannot contradict itself, so it needs no garden, ledger, inbox or status contract. It folds `session-digest` (the page is the recap), `steward-sync` (the page is the model) and `self-check` (the page carries the check) into one demand. Shipped defaults are UNCHANGED in this release — a project turns the others off in `.claude/turn-end.json`; the toolkit's own repo runs that way now, and the defaults follow once it has held for five sittings.
+
 ## [0.13.1] - 2026-09-18
 
 ### Added
