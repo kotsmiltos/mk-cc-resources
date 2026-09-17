@@ -42,7 +42,21 @@ file is pathological rather than merely long.
 
 ```
 .claude-plugin/plugin.json
-agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/;
+lib/garden.js           # 0.7.0: the GARDEN planner — pure over disk: deletes by DATE (log entries
+                        #   > logKeepDays, digests > digestKeepDays, integrated inbox > inboxKeepDays,
+                        #   inbox/done/ when the ledger is healthy), reports judgment candidates
+                        #   (expired questions, over-cap files, captures new since last run).
+                        #   Owner ruling 2026-09-18: ONE live copy, contradiction → latest wins,
+                        #   loser deleted; git is the archive. Overrides: .steward/garden.json;
+                        #   stamp: .steward/garden-state.json. Never touches the model files.
+bin/steward-garden.js   # 0.7.0: --root <p> [--json] [--apply] — the deterministic half the session
+                        #   runs BEFORE dispatching the agent (job: garden, model: sonnet)
+commands/garden.md      # 0.7.0: /steward:garden — on-demand garden
+agents/steward.md       # the model keeper: integrate/brief/seed/GARDEN jobs; writes ONLY .steward/;
+                        #   0.7.0 garden = judgment half: replace contradicted claims with the newer
+                        #   input, delete stale, resolve expired questions to default, cut to caps,
+                        #   diff `kept · replaced · deleted` + ⚠ on owner-statement overwrites;
+                        #   "files never move" superseded for THIS job only;
                         #   0.5.0: ONLY writer of status.json (the lifecycle ledger — record
                         #   integrated items with log+check refs, advance view cursors, files
                         #   NEVER move, briefing regenerated LAST, volatile facts never authored)
@@ -53,7 +67,7 @@ lib/status.js           # tolerant reader of design/status-contract.md — deriv
                         #   model, every reader (turn-end's steward-sync ports the same rule)
 bin/steward-backfill.js # one-shot absent-only seeder: done/ copies + INTEGRATED tombstones ->
                         #   items[], cursors to highest id; adoption is one run, never hand-JSON
-commands/               # seed | brief | sync | next | fleet — optional aliases only
+commands/               # seed | brief | sync | next | fleet | garden — optional aliases only
 bin/steward-fleet.js    # fleet briefing renderer — all steward projects at a glance;
                         #   registry ~/.claude/steward/fleet.json auto-populated by the hook
 hooks/

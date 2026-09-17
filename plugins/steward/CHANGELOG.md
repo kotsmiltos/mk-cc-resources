@@ -4,6 +4,18 @@ All notable changes to **steward** are recorded here, newest first, in the terms
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-09-18
+
+### Added
+- **The garden: a nightly pass that deletes what is no longer valid.** Your ruling (2026-09-18): one live copy, a contradiction keeps the latest input, "keeping everything still sounds wrong." Once a day the session-open briefing prints `garden: DUE` with the exact command; `/steward:garden` runs it on demand.
+- `bin/steward-garden.js` — the deterministic half. Deletes by date only: log entries past 14 days, archived digests past 7, inbox files integrated more than 7 days ago, all of `inbox/done/`. Reports the judgment candidates: questions open past 14 days, model files over their byte cap, captures new since the last run. `--json` for the agent brief, `--apply` to execute and stamp `.steward/garden-state.json`. Undated log entries are never deleted; without a healthy `status.json` the inbox is never touched (the `done/` copies ARE the history then).
+- The steward agent's `garden` job — the judgment half, dispatched on sonnet: replace contradicted claims with the newer input and delete the older text, delete stale claims, resolve expired questions to their stated default, cut over-cap files to their cap, regenerate the briefing last. The diff opens with `kept N · replaced M · deleted K` and marks every line where a newer Claude note overwrote one of your statements.
+- `.steward/garden.json` overrides any threshold or cap; `lib/garden.js` is the pure planner.
+
+### Changed
+- For the garden job the 2026-08-23 "files never move" rule is superseded: the ledger keeps the record, the file goes. Measured reason: log.md at 1669 / 1528 / 1255 / 529 lines across four projects, never rotated; a 452 KB live model here; nothing in the toolkit had a delete path.
+- The SessionStart briefing carries a `garden: never run` / `garden: due (Nd since last)` instrument and the protocol line states the latest-wins law.
+
 ## [0.6.1] - 2026-09-12
 
 ### Fixed

@@ -1732,3 +1732,9 @@ recorded in #1 leg B as the lesson. Every install claim above is ledger-read thi
 - Change: `pull.hints` opt-in (literal `true`), shipped default `false`; hints channel = total silence when off; malformed kb.json still prints its one line; digest channel + MCP pull unchanged.
 - Check: kb-pull 107/107 (5 new), footprint 32/32, session 79/79, kb 276/276, mcp 45/45; registry-check exit 0 (8 claims); repo-guard clean (5 detectors); test-all 34/35, 2156 checks — the red is essense-flow `run-all.cjs` lock contention (#9, pre-existing).
 - NOT yet measured: `hook_bytes.per_prompt.avg` ≤ 3,000 needs the plugin INSTALLED (`claude plugin update kb` + restart) and ~20 real prompts; running≠installed until then.
+
+## 2026-09-18 (session) · the GARDEN shipped: steward 0.7.0 — one live copy, latest wins, nightly deletes
+- Owner ruling verbatim in `inbox/20260918-0010-…` (supersedes Claude's five-slice plan: no supersedes links, no dormant tier, no importance scores — delete).
+- Built: `lib/garden.js` (pure planner), `bin/steward-garden.js` (--json/--apply), agent job `garden`, brief-hook instrument + DUE note + protocol law, `/steward:garden`, `.steward/garden.json` overrides.
+- Check: garden 40/40, steward-brief 59/59 (+5), status 13/13; dry run on THIS repo: 43 log entries, 23 digests, 17 integrated inbox files, 29 inbox/done deletable; every model file over cap (log.md 154 KB vs 40 KB cap); Q12 + Q14 expired.
+- NOT yet applied here: the first real garden run is the owner's to watch (the diff is the review surface).

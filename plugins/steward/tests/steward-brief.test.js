@@ -297,5 +297,22 @@ check('worktree: the git instrument survives a .git FILE', wtOut.includes('featu
 check('worktree: the sha is read through the resolved gitdir', wtOut.includes('abc1234'));
 check('worktree: the briefing itself still renders', wtOut.includes('Ship: worktree project.'));
 
+// 0.7.0 — the garden instrument + note: due when never run / >24h, silent after a fresh run.
+const gProj = fs.mkdtempSync(path.join(os.tmpdir(), 'steward-garden-brief-'));
+fs.mkdirSync(path.join(gProj, '.steward', 'inbox'), { recursive: true });
+fs.writeFileSync(path.join(gProj, '.steward', 'briefing.md'), 'Ship: garden project.' + String.fromCharCode(10));
+// Read the injected context through JSON.parse — a Windows path is backslash-escaped in the raw output.
+const gNever = JSON.parse(runHook(gProj)).hookSpecificOutput.additionalContext;
+check('garden: never run → [instr] says so', /\[instr\][^\n]*garden: never run/.test(gNever));
+check('garden: the DUE note names the apply command with the resolved bin path and the project root',
+  gNever.includes('garden: DUE') && gNever.includes('steward-garden.js') && gNever.includes('--apply') && gNever.includes(gProj));
+check('garden: the protocol carries the latest-wins law', gNever.includes('keeps the LATEST input and deletes the older'));
+fs.writeFileSync(path.join(gProj, '.steward', 'garden-state.json'), JSON.stringify({ lastRunAt: new Date().toISOString() }));
+const gFresh = runHook(gProj);
+check('garden: ran just now → no instrument, no note', !/garden: (never run|due)/.test(gFresh) && !gFresh.includes('garden: DUE'));
+fs.writeFileSync(path.join(gProj, '.steward', 'garden-state.json'), JSON.stringify({ lastRunAt: new Date(Date.now() - 3 * 86400000).toISOString() }));
+const gOld = runHook(gProj);
+check('garden: 3 days since last run → due with the age', /garden: due \(3d since last\)/.test(gOld) && gOld.includes('garden: DUE'));
+
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

@@ -31,6 +31,33 @@ Design source of truth: `design/continuous-transformation.md` (v3) in this repo.
 | `/steward:sync` | Force integration + diff right now |
 | `/steward:next` | Do the top task right now |
 | `/steward:fleet` | All your steward projects in one glance — position, top task, inbox — for choosing where tonight's energy goes (projects register automatically when opened) |
+| `/steward:garden` | Clean the model NOW: delete what is no longer valid — a contradiction keeps the latest input — consume the inbox / log / digests, show kept · replaced · deleted (runs by itself once a day when a session opens) |
+
+## Garden — one live copy, nothing kept forever (0.7.0)
+
+> Your ruling, 2026-09-18: "keeping everything still sounds wrong … if we have contradictions we
+> keep the latest input."
+
+Once a day (first session open after `dueAfterHours`, default 24) the briefing prints `garden: DUE`
+with the exact command. Two halves:
+
+1. **Deterministic** (`bin/steward-garden.js --apply`): deletes by date — log entries older than
+   14 days, archived session digests older than 7, inbox files integrated more than 7 days ago,
+   everything in `inbox/done/` (the `status.json` ledger stays the record). Reports what needs
+   judgment: open questions past 14 days, files over their size cap, captures new since the last
+   run. Nothing is deleted blind: an undated log entry stays; with no healthy ledger the inbox
+   stays.
+2. **Judgment** (the steward agent, job `garden`, on sonnet): every live claim a newer input
+   contradicts is REPLACED and the older text deleted; stale claims deleted; expired questions
+   resolved to their stated default; over-cap files cut to their cap. The diff flags every place a
+   newer Claude note overwrote one of your statements, so you see it happen.
+
+Git history is the archive. Thresholds and caps live in `.steward/garden.json`:
+
+```json
+{ "dueAfterHours": 24, "logKeepDays": 14, "digestKeepDays": 7, "inboxKeepDays": 7,
+  "questionExpireDays": 14, "caps": { "state.md": 12000, "parts.md": 24000 } }
+```
 
 ## The model (`.steward/` at project root)
 

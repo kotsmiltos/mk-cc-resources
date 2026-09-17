@@ -236,7 +236,37 @@ function instrRunning() {
   } catch (_e) { return ''; }
 }
 
-const INSTRUMENTS = [instrGit, instrItems, instrRunning];
+/*
+ * GARDEN due-ness (0.7.0). Owner ruling 2026-09-18: one live copy, contradictions → latest
+ * wins, a nightly check that deletes what is no longer valid. "Nightly" = due once per
+ * dueAfterHours (default 24), checked here at session open — the only moment a project is
+ * reliably looked at. Computed from .steward/garden-state.json; never authored.
+ */
+function gardenDue(projectRoot) {
+  const garden = require('../../lib/garden');
+  const { config } = garden.readConfig(projectRoot);
+  return garden.isDue(garden.readState(projectRoot), Date.now(), config.dueAfterHours);
+}
+
+function instrGarden(projectRoot) {
+  try {
+    const { due, hoursSince } = gardenDue(projectRoot);
+    if (!due) return '';
+    return hoursSince === null ? 'garden: never run' : `garden: due (${Math.floor(hoursSince / 24)}d since last)`;
+  } catch (_e) { return ''; }
+}
+
+/** The line that tells the session exactly what to run — the path is resolved here, so the
+ *  session never guesses where the plugin lives. */
+function gardenNote(projectRoot) {
+  try {
+    if (!gardenDue(projectRoot).due) return '';
+    const bin = path.join(__dirname, '..', '..', 'bin', 'steward-garden.js');
+    return `garden: DUE — run \`node "${bin}" --root "${projectRoot}" --apply\` (deletes by date: old log entries, archived digests, integrated inbox files, inbox/done), then a background steward pass (job: garden, model: sonnet) for the judgment half — contradictions → latest wins; diff on return.`;
+  } catch (_e) { return ''; }
+}
+
+const INSTRUMENTS = [instrGit, instrItems, instrGarden, instrRunning];
 
 function instrumentLine(projectRoot) {
   const parts = INSTRUMENTS.map((fn) => { try { return fn(projectRoot); } catch (_e) { return ''; } })
@@ -314,6 +344,7 @@ const PROTOCOL = [
   'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to <PROJECT GIT ROOT>/.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md (always the repo root — never resolve against a subdir cwd), ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
   'Integration runs WHENEVER anything is unintegrated (owner ruling 2026-09-11: quality over cost — the one-pass-per-sitting cap let a backlog survive 88 sessions and a briefing go 5 days stale). Dispatch in the BACKGROUND (never make the owner wait); a stale briefing or a staged inbox item is reason enough; an explicit owner "sync" always dispatches.',
   'The steward agent is the only writer of the model files; the session writes only inbox/ + log.md. No work absent the owner.',
+  'Garden (owner ruling 2026-09-18): ONE live copy; a contradiction keeps the LATEST input and deletes the older; inbox / log / digests are consumed, not kept. When the briefing says garden is DUE, run the apply command it prints, then dispatch the steward (job: garden) in the background.',
   '</steward-protocol>'
 ].join('\n');
 
@@ -377,6 +408,7 @@ function main() {
 
   const stale = stalenessLine(projectRoot, root);
   const instr = instrumentLine(projectRoot);
+  const gardenLine = gardenNote(projectRoot);
   const context = [
     '<steward-briefing>',
     ...(stale ? [stale] : []),
@@ -384,6 +416,7 @@ function main() {
     briefing,
     '',
     pendingNote,
+    ...(gardenLine ? [gardenLine] : []),
     '</steward-briefing>',
     PROTOCOL
   ].join('\n');
