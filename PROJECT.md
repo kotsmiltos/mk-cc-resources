@@ -22,46 +22,44 @@ first for the owner's own ~40 production codebases.
 7. Nothing personal in shipped files (repo-guard's `leaked-path` enforces it).
 8. Decoupled, open-for-extension code; measured per project, never across plugins.
 
-## Where we are (2026-09-18)
+## Where we are (2026-09-18, second sitting)
 
-- `main` is ahead of origin and NOT pushed (count: `git rev-list --count origin/main..HEAD`). Tree clean.
-- Running in the toolkit's own repo: **the subtraction**, built this sitting. turn-end 0.14.0
-  ships the `page` duty (presence-gated on this file; check: turn-end suite 240/240, +7 page
-  checks; live probe of the Stop hook from this root read page ON and the seven others OFF).
-  Enabled here (`.claude/settings.local.json`, machine-local): turn-end with ONE duty,
-  thorough-mode (`@prompt`, `@ship`), prism, elicit, plugin-toolkit (dev gates), caveman,
-  statusline, alert-sounds. Disabled here: kb, steward, verifiability-lens, patterns, reuse-gate,
-  essense-flow, essense-autopilot, session-lifecycle. Takes effect at the next session start.
-- `@PROJECT.md` is imported by CLAUDE.md, so this page loads natively every session and again
-  after compaction. `.steward/` stays on disk as history until the fleet decision below.
-- Last shipped (unpushed): kb 0.16.1, steward 0.7.1, turn-end 0.13.1 — hints off by default,
-  the garden, preamble stripped from injections, recall engine switch, steward on sonnet. All
-  gates green: test-all 36/36 (2213 checks), registry-check 0, repo-guard clean.
-- Measured this week (whole-life, four projects): push text 9–16 KB per prompt vs 2 KB on a
-  project without the toolkit; kb-hints followed 0–7.5%; the recall judge picked nothing on 81%
-  of fires after its timeout was raised; one steward pass cost 214k tokens for two notes. The
-  pull tool (`kb_query`) and the steward model were the only parts measured as used.
+- `main` is ahead of origin and NOT pushed (count: `git rev-list --count origin/main..HEAD`).
+  Tree clean after two commits this sitting (`git log --oneline -2`).
+- **Both measures now exist as gates** (plugin-toolkit 1.20.0):
+  - `harness-stats` source `context-composition`: context at the last call from the real usage
+    counters, ten buckets that telescope back to it exactly, ratio calibrated (2.49 chars/token
+    here), `--session <id>`; `--line` ends in `ctx.last · ctx.harness_pct`. Check: suite 122/122;
+    live `--session 4d5cb62c` → 612K, harness 6.2%, tool results 38%, writes 22%, thinking 10%.
+    The hand-run "13% harness" on the previous page was a double count. Whole-life here:
+    harness 6% pooled, 4.4–11.6% per session; tool results 22%; the model's own writes 21%.
+  - `plugin-eval`: one WITH / W/OUT / Δ / seconds table per plugin from `claude plugin eval
+    --ablation with-without` (suites: kb, steward, turn-end, thorough-mode; scaffold-seeded,
+    no Bash in cases). Check: suite 24/24; live run exit 0, four tables printed.
+- **First with/without numbers (sonnet, 3 runs/arm, 2026-09-18):**
+  - steward +33 — inbox capture 3/3 vs 0/3; decisions 3/3 both. 133 s vs 54 s.
+  - turn-end +33 — page rewritten 2/3 vs 0/3, verified-done 3/3 vs 2/3; one WITH run hit the
+    15-turn cap (the block loop). 88 s vs 35 s.
+  - kb +0 — decisions 3/3 both: sonnet found `src/dates.js` without the hint. Fixture too easy.
+  - thorough-mode +0 — verified-done 1/3 vs 1/3: `++` did not move it. 57 s vs 36 s.
+  - WITH is 2–2.5× slower in every suite. Cost of the four runs together: $6.
+- Running here (unchanged): turn-end with ONE duty (page), thorough-mode, prism, elicit,
+  plugin-toolkit, caveman, statusline, alert-sounds. Off here: kb, steward, lens, patterns,
+  reuse-gate, essense-flow, autopilot, session-lifecycle.
 
 ## Next (each with its check)
 
-1. **Measure context per session** (owner 2026-09-18: "530K tokens in messages looks
-   excessive"). Add `context-composition` to harness-stats: per session, context at the last
-   call from the transcript's real `usage` counters, split by tool results / writes / hook
-   injections / thinking / instructions, with `harness_share` and `tool_result_share`. This
-   session measured: 604K at the last call, harness 13%, Bash results 21%, WebFetch 11%,
-   my writes 17%, thinking 11%. Check: the source reproduces those figures for this session's
-   transcript within 5%; `--line` prints `ctx.last` + `ctx.harness_pct`.
-2. **With / without eval** (`claude plugin eval`, built in): hand-written suites for steward,
-   kb, turn-end (page, recall, self-check) and thorough-mode, each case with a fixture and a
-   grader for one of the three wants (progress captured · prior decisions honoured · verified
-   done); run with a sonnet judge, three runs per arm, a cost ceiling, `--no-publish`. Check:
-   one table per plugin, WITH / W/OUT / Δ / seconds, in the terminal. Windows: no Bash in
-   cases (no sandbox); Write/Edit granted.
-3. **Live with the subtraction for five sittings here.** Check: `PROJECT.md` rewritten each
-   sitting (git log); `ctx.harness_pct` under 3%; no "recap this for me" ask.
+1. **Harden the two flat suites.** kb: a decision NOT derivable from the code (e.g. "the
+   em dash, not a hyphen" with no example in the tree) so the hint is the only route.
+   thorough-mode: grade the ENUMERATE/EXIT-CHECK shape, not verified-done, which `++` never
+   promised. Check: kb Δ > 0 on rerun, or the honest finding that hints add nothing on sonnet.
+2. **Read the turn-end cap.** One WITH run reached 15 turns: page + self-check re-blocking.
+   Check: the kept trace names which duty re-fired; a fix or a ruling that the cap is the cost.
+3. **Live with the subtraction for five sittings here.** Check: this page rewritten each
+   sitting (git log); `ctx.harness_pct` under 3% (it reads 6.2% for the sitting before this
+   one, with kb + steward still on); no "recap this for me" ask.
 4. **Decide push + fleet.** If (3) holds: push, then the same subtraction on aithseis,
-   twin-game, ar-mystery-game-demo (their `.steward/` becomes each project's page). Check:
-   each repo has a `PROJECT.md` under 100 lines.
+   twin-game, ar-mystery-game-demo. Check: each repo has a `PROJECT.md` under 100 lines.
 5. **Ship turn-end with `page` as the default duty set**; the six others stay available by
    config. Check: a fresh install shows one Stop question.
 
@@ -72,4 +70,6 @@ first for the owner's own ~40 production codebases.
 - **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh` fire on every prompt):
   fold their four lines into the global CLAUDE.md and remove the hooks? Default: yes.
 - **The recall judge**: ranker-only, or off with the rest? Default: off — the page is the recall.
+- **thorough-mode after +0**: keep `++` as a habit the owner likes, or retire the injection and
+  keep the hints? Default: keep, re-measure with the right grader (Next 1).
 - **Design duty at `@ship`** (measured code-convergence gate): keep on the list, build after (1).
