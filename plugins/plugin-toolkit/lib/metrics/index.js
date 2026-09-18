@@ -57,6 +57,7 @@ const SOURCES = [
   require('./spawns'),
   require('./running-vs-installed'),
   require('./briefing-vs-log'),
+  require('./context-composition'),
 ];
 
 /* `notes` = the note BODIES the runner gathered (.claude/kb/captures, .claude/kb/extracted,

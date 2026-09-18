@@ -103,6 +103,62 @@ const NUDGE_FAMILY = 'turn-end-nudge';
 const BLOCK_FAMILY = 'turn-end-block';
 const GIVEUP_FAMILY = 'turn-end-giveup';
 
+/*
+ * CONTEXT MODEL (measured 2026-09-18 on CC 2.1.263 transcripts, session 4d5cb62c):
+ *   type=assistant   message.usage {input_tokens, cache_creation_input_tokens, cache_read_input_tokens,
+ *                    output_tokens, output_tokens_details.thinking_tokens}; one API call = one
+ *                    `requestId`, written as SEVERAL records (one per content block) that repeat
+ *                    the usage. Context at that call = input + cache_creation + cache_read.
+ *                    Prior-turn THINKING STAYS IN CONTEXT: over 140 consecutive-call intervals
+ *                    the context delta was never below the previous call's full output_tokens
+ *                    (0 violations); assuming it stripped gives 0.09 chars/token on the user side.
+ *   type=attachment  everything the platform appended besides hooks — reminders, listings,
+ *                    loaded tool schemas, CLAUDE.md files. Text sits under a per-type field
+ *                    (ATTACHMENT_TEXT below); a type outside that table is COUNTED, not measured
+ *                    (bash_output_audience_note stores no text at all).
+ *   type=attachment  prompt_snapshot {systemPrompt} — the system prompt itself, never appended.
+ * Chars are what the transcript holds; tokens are what the counters hold. The source converts
+ * one to the other with a ratio it CALIBRATES on intervals whose appended text is fully
+ * recorded — never an assumed chars-per-token.
+ */
+const asText = (v) => (typeof v === 'string' ? v : '');
+const joinText = (arr, pick = (x) => x) => (Array.isArray(arr) ? arr.map((x) => asText(pick(x))).join('\n') : '');
+const jsonText = (v) => (v && typeof v === 'object' ? JSON.stringify(v) : asText(v));
+/* Per attachment type: which bucket it fills and where its text lives. The extension surface —
+ * a new platform attachment is one row here. `instructions` = standing material the model
+ * works under (memory files, listings, tool schemas); `platform` = per-turn reminders and
+ * editor/diagnostic notes. */
+const ATTACHMENT_TEXT = {
+  instructions: ['instructions', (a) => joinText(a.files, (f) => f && f.content)],
+  nested_memory: ['instructions', (a) => asText(a.content && a.content.content)],
+  skill_listing: ['instructions', (a) => asText(a.content)],
+  agent_listing_delta: ['instructions', (a) => joinText(a.addedLines)],
+  deferred_tools_delta: ['instructions', (a) => joinText(a.addedLines)],
+  deferred_tools_record: ['instructions', (a) => jsonText(a.entries)],
+  mcp_instructions_delta: ['instructions', (a) => joinText(a.addedBlocks)],
+  output_style_instructions: ['instructions', (a) => asText(a.style && a.style.prompt)],
+  environment: ['instructions', (a) => jsonText(a.snapshot)],
+  session_context: ['instructions', (a) => jsonText(a.context)],
+  model: ['instructions', (a) => asText(a.text)],
+  date: ['instructions', (a) => asText(a.date)],
+  output_style: ['platform', (a) => asText(a.turnReminder)],
+  batching_reminder_sent: ['platform', (a) => asText(a.text)],
+  total_tokens_reminder: ['platform', (a) => asText(a.text)],
+  silent_turn_reminder: ['platform', (a) => asText(a.text)],
+  edited_text_file: ['platform', (a) => asText(a.snippet)],
+  diagnostics: ['platform', (a) => jsonText(a.files)],
+  queued_command: ['platform', (a) => asText(a.prompt)],
+  remote_session_change: ['platform', (a) => asText(a.commit) + asText(a.pr)],
+};
+const SYSTEM_PROMPT_ATTACHMENT = 'prompt_snapshot';
+const HOOK_ATTACHMENTS = new Set(['hook_success', 'hook_additional_context', 'hook_blocking_error']);
+
+/** What the user side appended to the context between two API calls, in chars, by bucket. */
+function newAppended() {
+  return { toolResults: {}, hooks: {}, instructions: {}, platform: {}, prompts: 0, machine: 0, untexted: {} };
+}
+const addTo = (obj, k, n) => { obj[k] = (obj[k] || 0) + n; };
+
 /* Which Stop hook a summary entry names — the audit's buckets. */
 const STOP_HOOK_KEYS = ['turn-end', 'verifiability', 'kb-scribe', 'autopilot', 'next-step', 'alert', 'serena'];
 function stopHookKey(command) {
@@ -161,9 +217,16 @@ const bump = (obj, k) => { obj[k] = (obj[k] || 0) + 1; };
  * @returns {{ kind: 'real'|'judge'|'unknown', prompts, judgePrompts, firstTs, lastTs, version, cwd, ssBytes, hasSsHook }}
  */
 function scanRecords(records) {
-  const session = { kind: 'unknown', prompts: [], judgePrompts: [], firstTs: null, lastTs: null, version: null, cwd: null, ssBytes: 0, hasSsHook: false };
+  const session = {
+    kind: 'unknown', prompts: [], judgePrompts: [], firstTs: null, lastTs: null, version: null, cwd: null, ssBytes: 0, hasSsHook: false,
+    calls: [],              // one per API call (requestId): { ts, ctx, out, think, textChars, inputChars, appended }
+    systemPromptChars: 0,   // largest prompt_snapshot seen — the system prompt, part of the floor
+  };
   let cur = null;
   let firstSeen = false;
+  let call = null;                 // the API call whose records are being read
+  let appended = newAppended();    // user-side chars appended since that call
+  const toolByUse = {};            // tool_use id -> tool name, so a result is charged to its tool
   (Array.isArray(records) ? records : []).forEach((rec, i) => {
     if (!rec || typeof rec !== 'object') return;
     const line = i + 1;
@@ -172,9 +235,22 @@ function scanRecords(records) {
     if (rec.cwd && !session.cwd) session.cwd = rec.cwd;
     if (rec.version) session.version = rec.version;
     const type = rec.type;
+    const sidechain = Boolean(rec.isSidechain);
 
     if (type === 'user') {
       const { text, hasToolResult } = textOfUser((rec.message || {}).content);
+      if (!sidechain) {
+        const content = (rec.message || {}).content;
+        const blocks = Array.isArray(content) ? content : [{ type: 'text', text: asText(content) }];
+        for (const b of blocks) {
+          if (!b || typeof b !== 'object') continue;
+          if (b.type === 'tool_result') addTo(appended.toolResults, toolByUse[b.tool_use_id] || 'unknown', jsonText(b.content).length);
+          else if (b.type === 'text') {
+            const t = asText(b.text);
+            if (isHumanPrompt(rec, t, false)) appended.prompts += t.length; else appended.machine += t.length;
+          }
+        }
+      }
       const isJudge = !hasToolResult && !rec.isSidechain && text.trimStart().startsWith(JUDGE_PROMPT_PREFIX);
       if (isJudge) {
         if (!firstSeen) { firstSeen = true; session.kind = 'judge'; }
@@ -192,6 +268,38 @@ function scanRecords(records) {
 
     if (type === 'assistant') {
       const content = (rec.message || {}).content;
+      const usage = (rec.message || {}).usage;
+      if (!sidechain && usage && typeof usage === 'object') {
+        // One API call arrives as several records sharing a requestId; the usage repeats on each.
+        const reqId = String(rec.requestId || (rec.message || {}).id || rec.uuid || line);
+        const out = Number(usage.output_tokens) || 0;
+        const think = Number(usage.output_tokens_details && usage.output_tokens_details.thinking_tokens) || 0;
+        const ctxTok = (Number(usage.input_tokens) || 0) + (Number(usage.cache_creation_input_tokens) || 0) + (Number(usage.cache_read_input_tokens) || 0);
+        // A `<synthetic>` record ("No response requested." after an interrupt) carries all-zero
+        // usage: no API call happened. Counted as one, it split the session at context 0 and made
+        // the next real call read as a 428K jump (measured 2026-09-18, session 163e8119).
+        if (ctxTok === 0 && out === 0) return;
+        if (call && call.requestId === reqId) {
+          call.out = Math.max(call.out, out);
+          call.think = Math.max(call.think, think);
+        } else {
+          call = {
+            ts, requestId: reqId, ctx: ctxTok,
+            out, think, textChars: 0, inputChars: 0,
+            appended,                        // what the user side added BEFORE this call
+          };
+          appended = newAppended();
+          session.calls.push(call);
+        }
+        for (const b of Array.isArray(content) ? content : []) {
+          if (!b || typeof b !== 'object') continue;
+          if (b.type === 'text') call.textChars += asText(b.text).length;
+          else if (b.type === 'tool_use') call.inputChars += jsonText(b.input).length;
+        }
+      }
+      for (const b of Array.isArray(content) ? content : []) {
+        if (b && typeof b === 'object' && b.type === 'tool_use' && typeof b.id === 'string') toolByUse[b.id] = String(b.name || '');
+      }
       if (!Array.isArray(content) || !cur) return;
       for (const b of content) {
         if (!b || typeof b !== 'object') continue;
@@ -215,6 +323,22 @@ function scanRecords(records) {
     if (type === 'attachment') {
       const a = rec.attachment || {};
       const at = a.type;
+      // Context model: every attachment is charged to a bucket, or counted as untexted.
+      if (!sidechain) {
+        if (at === SYSTEM_PROMPT_ATTACHMENT) {
+          session.systemPromptChars = Math.max(session.systemPromptChars, asText(a.systemPrompt).length);
+        } else if (HOOK_ATTACHMENTS.has(at)) {
+          const texts = at === 'hook_blocking_error'
+            ? [a.blockingError && typeof a.blockingError === 'object' ? asText(a.blockingError.blockingError) : asText(a.blockingError)]
+            : (Array.isArray(a.content) ? a.content.filter((c) => typeof c === 'string') : [asText(a.content)]);
+          for (const t of texts) if (t) addTo(appended.hooks, familiesIn(t)[0], t.length);
+        } else if (ATTACHMENT_TEXT[at]) {
+          const [bucket, pick] = ATTACHMENT_TEXT[at];
+          addTo(appended[bucket], at, pick(a).length);
+        } else {
+          addTo(appended.untexted, String(at), 1);
+        }
+      }
       let ev;
       let chunks;
       if (at === 'hook_success') {
@@ -314,7 +438,7 @@ const kbReadIdsOf = (p, w) => new Set(kbCallsIn(p, w).filter((c) => typeof c.id 
 module.exports = {
   scanRecords, parseJsonl, familiesIn, isHumanPrompt, textOfUser, stopHookKey, realPrompts,
   injectionsIn, summariesIn, kbCallsIn, agentsIn, upsRecordsIn, promptBytes, promptUpsBytes,
-  nudgesOf, blocksOf, giveupsOf, kbReadIdsOf, inWindow,
-  FAMILY_RULES, PERSISTED_SIZE_RX, KB_HINT_ID_RX, KB_TOOL_RX, DUTY_RX, GIVEUP_RX, JUDGE_PROMPT_PREFIX, LENS_AGENT_RX,
+  nudgesOf, blocksOf, giveupsOf, kbReadIdsOf, inWindow, newAppended,
+  ATTACHMENT_TEXT, SYSTEM_PROMPT_ATTACHMENT, HOOK_ATTACHMENTS, FAMILY_RULES, PERSISTED_SIZE_RX, KB_HINT_ID_RX, KB_TOOL_RX, DUTY_RX, GIVEUP_RX, JUDGE_PROMPT_PREFIX, LENS_AGENT_RX,
   NON_HUMAN_PREFIXES, INJECTION_EVENTS, STOP_HOOK_KEYS, NUDGE_FAMILY, BLOCK_FAMILY, GIVEUP_FAMILY,
 };

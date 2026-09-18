@@ -5,6 +5,18 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-09-18
+
+### Added
+- **`context-composition`, a 17th metric source — where a session's context went.** From the transcript's real API usage counters (input + cache creation + cache read at each call), it reports the context at the last call and splits it into ten named buckets: instructions (the floor the first call already carried: system prompt, CLAUDE.md, tool schemas, listings), tool results (by tool), hook injections (by family), the model's own writes (tool inputs), its replies, thinking, your prompts, per-turn platform reminders, machine text, and `unattributed`. Assistant-side tokens are real counters; thinking is the real counter and stays in context (measured: over 140 intervals the context never grew by less than the previous call's full output). Only the user side converts chars to tokens, and the ratio is **calibrated** on intervals whose appended text is fully recorded, never assumed — what the ratio cannot explain is named `unattributed` instead of being smeared into a bucket that would then argue for cutting it. Headline keys `ctx.last` and `ctx.harness_pct` join the shipped `--line` pick (owner 2026-09-18: "530K tokens in messages looks excessive").
+- `--session <id-prefix>` scopes every transcript source to one session — the mid-sitting question is about this session, not the project's whole life.
+
+### Fixed
+- A `<synthetic>` assistant record ("No response requested." after an interrupt) carries all-zero usage and is no longer counted as a call. Counted, it split the session at context 0 and the next real call read as a 428K jump with nothing to explain it (measured on one 2026-08-23 session; the calibrated ratio went from an impossible 1.37 to 2.49 chars/token once excluded).
+
+### Notes
+- The earlier hand-run answer (13% harness) double-counted every hook attachment — `JSON.stringify` of the record holds the text twice, as `content` and `stdout` — and assumed 3 chars/token. Measured properly the same session reads 6.2% harness, 38% tool results, 22% writes, 10% thinking. The Bash, WebFetch and thinking figures reproduce within ~1 point; harness and writes do not, because they were wrong.
+
 ## [1.18.0] - 2026-09-12
 
 ### Added

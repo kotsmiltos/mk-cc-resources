@@ -131,7 +131,7 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
                         #   definition, every event TIMESTAMPED + windowed — a whole-span model
                         #   cannot reproduce a mid-span snapshot); stats.js (the audit's
-                        #   nearest-rank percentile). 16 sources: hook-bytes,
+                        #   nearest-rank percentile). 17 sources: hook-bytes,
                         #   hint-followed, turn-end-fires, stop-durations, judge (agreement
                         #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
                         #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
@@ -146,7 +146,18 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   asset-value (1.16.0 - WHICH knowledge earns its place, ranked per kb
                         #   source and per asset, plus the surfaced-but-never-used keep/cut list;
                         #   `asset.origin_recorded` is false because .claude/kb/ is gitignored, so
-                        #   no reader can recover where an entry CAME from). 1.16.0 also fixed the
+                        #   no reader can recover where an entry CAME from), context-composition
+                        #   (1.19.0 - where a session's CONTEXT went, from the transcript's real
+                        #   usage counters: ctx at the last call, ten buckets that telescope back
+                        #   to it exactly — instructions floor / tool results / hooks / writes /
+                        #   replies / thinking / prompts / platform / machine / unattributed. Only
+                        #   the user side converts chars→tokens and the ratio is CALIBRATED on
+                        #   fully-recorded intervals (2.49 here), never assumed; thinking STAYS in
+                        #   context (measured, 0/140 violations); a `<synthetic>` all-zero record
+                        #   is not a call; a context drop is a segment boundary. `--session <id>`
+                        #   scopes the run. Headline: ctx.last + ctx.harness_pct in the line pick.
+                        #   The hand-run 13% harness figure of 09-18 was a double count — this
+                        #   reads 6.2% for the same session). 1.16.0 also fixed the
                         #   scorer both uptake sources sit on: term weights are now idf over the
                         #   note corpus, because the propagated preamble in every .steward/ file
                         #   was scoring as evidence of use (79% -> 64% on this repo). A source may declare
@@ -157,14 +168,14 @@ bin/harness-stats.js    # CLI adapter: reads .claude/*/trace.jsonl by shape, che
                         #   project's transcripts under <home>/.claude/projects/<slug>/ (slug =
                         #   root path with every non-alphanumeric char -> "-"), .steward/, the
                         #   install ledger + hook registrations. Never writes. --json / --line /
-                        #   --since / --until / --no-transcripts / --home / --projects-dir.
+                        #   --since / --until / --session / --no-transcripts / --home / --projects-dir.
                         #   MEASURED: --until <audit output mtime> reproduces all 25 audit-2
                         #   numbers at +0.0% (defaults/harness-baselines.json, provenance inside)
 references/trace-schema-v1.md  # the cross-plugin trace contract (task #30) — writers keep their
                         #   own lib/trace-line.js + examples(); tests/trace-schema.test.js
                         #   discovers them by shape and validates every example (the drift test)
 defaults/harness-baselines.json  # audit-2 mk-cc numbers + fleet numbers, with provenance
-tests/harness-stats.test.js   # 66 checks — registry, runner (crash / silent key / absent surface),
+tests/harness-stats.test.js   # 122 checks — registry, runner (crash / silent key / absent surface),
                         #   scanner over the REAL record shapes, every source, CLI E2E on a temp
                         #   root with a fake home + projects dir; never reads the host repo
 tests/trace-schema.test.js    # 74 checks — validator contract + the drift half over every

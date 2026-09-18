@@ -43,7 +43,9 @@ node plugins/plugin-toolkit/bin/harness-stats.js --root .  # is any of this doin
   repo against what is actually on disk. It checks; it never generates.
 - **harness-stats** — one scorecard over every trace, ledger and transcript the project left
   behind: hook bytes per prompt, whether surfaced notes were used, nudges and blocks, judge cost
-  and agreement, and whether the code you are running is the code you installed.
+  and agreement, whether the code you are running is the code you installed, and — since 1.19.0 —
+  where each session's context went (real usage counters: tool results, your writes, hook
+  injections, thinking, instructions), with `--session <id>` to ask about one session.
 
 ## Scope limit worth knowing
 

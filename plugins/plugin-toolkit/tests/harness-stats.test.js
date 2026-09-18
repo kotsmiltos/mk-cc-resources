@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------- registry contract
-check('registry loads 16 sources, every one valid, no duplicate ids or keys', registry.all().length === 16 && registry.all().every((s) => registry.validate(s).length === 0));
+check('registry loads 17 sources, every one valid, no duplicate ids or keys', registry.all().length === 17 && registry.all().every((s) => registry.validate(s).length === 0));
 check('key registry maps every declared key to exactly one source', Object.keys(registry.keyRegistry()).length === registry.all().reduce((n, s) => n + s.keys.length, 0));
 check('validate rejects a bad surface', registry.validate({ id: 'x', title: 't', surface: 'moon', keys: ['k'], run() {} }).length === 1);
 check('validate rejects empty keys (a source without keys measures nothing)', registry.validate({ id: 'x', title: 't', surface: 'traces', keys: [], run() {} }).length === 1);
@@ -365,6 +365,92 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   check('asset-value: no traces at all => 0 surfacings and a note, not a crash', bare.metrics['asset.surfacings'].value === 0 && bare.notes.some((n) => n.source === 'asset-value' && /nothing has been surfaced/.test(n.note)));
 }
 
+// ---------------------------------------------------------------- context-composition: real counters, calibrated ratio
+// The fixture is built so every number is hand-checkable: the user side appends chars at exactly
+// 2 chars/token on the clean intervals, so the calibrated ratio must come out 2.00 and the buckets
+// must telescope back to the context at the last call.
+const CTX_TS = (n) => `2026-09-06T10:00:${String(n).padStart(2, '0')}.000Z`;
+const usageRec = (requestId, blocks, usage, ts) => ({ type: 'assistant', timestamp: ts, requestId, message: { role: 'assistant', content: blocks, usage } });
+const use = (ctx, out, think) => ({ input_tokens: 10, cache_creation_input_tokens: ctx - 10, cache_read_input_tokens: 0, output_tokens: out, output_tokens_details: { thinking_tokens: think } });
+const att = (type, fields, ts) => ({ type: 'attachment', timestamp: ts || CTX_TS(0), attachment: { type, ...fields } });
+const toolResult = (id, text, ts) => ({ type: 'user', timestamp: ts, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: text }] } });
+const CTX_RECORDS = [
+  att('prompt_snapshot', { systemPrompt: 'S'.repeat(5000) }),
+  att('instructions', { files: [{ path: 'CLAUDE.md', content: 'X'.repeat(300) }] }),
+  att('hook_success', { hookEvent: 'SessionStart', hookName: 'SessionStart', content: `<steward-briefing>${'b'.repeat(82)}`, command: 'node s.js' }),
+  rec.user('first real ask', { promptId: 'p1', ts: CTX_TS(1) }),
+  att('hook_success', { hookEvent: 'UserPromptSubmit', hookName: 'UserPromptSubmit', content: `[verification-rules]${'v'.repeat(30)}`, command: 'node v.js' }, CTX_TS(1)),
+  // call A: ctx 1000 (the floor), out 100 of which 40 thinking; 5 text chars + 16 tool_use chars
+  usageRec('r1', [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'hello' }], use(1000, 60, 40), CTX_TS(2)),
+  usageRec('r1', [{ type: 'tool_use', id: 'tu1', name: 'Bash', input: { command: 'ls' } }], use(1000, 100, 40), CTX_TS(2)), // same call, later record carries the final usage
+  toolResult('tu1', 'A'.repeat(600), CTX_TS(3)),
+  att('output_style', { style: 'Concise', turnReminder: 'B'.repeat(100) }, CTX_TS(3)),
+  // call B: 1000 + 100 (A's output) + 350 user-side (700 chars at 2/token) = 1450; out 200, no thinking, text only
+  usageRec('r2', [{ type: 'text', text: 'x'.repeat(30) }], use(1450, 200, 0), CTX_TS(4)),
+  rec.user(`<system-reminder>${'m'.repeat(83)}`, { ts: CTX_TS(5) }),
+  att('hook_additional_context', { hookEvent: 'Stop', hookName: 'Stop:x', content: [`[turn-end] before yielding:${'n'.repeat(33)}`] }, CTX_TS(5)),
+  att('bash_output_audience_note', { toolUseID: 'tu1' }, CTX_TS(5)), // no text stored → this interval cannot calibrate
+  // call C: 1450 + 200 + 120 = 1770 (160 chars recorded, 40 tokens unattributed); out 50, all thinking
+  usageRec('r3', [{ type: 'thinking', thinking: '' }, { type: 'tool_use', id: 'tu2', name: 'Read', input: {} }], use(1770, 50, 50), CTX_TS(6)),
+  toolResult('tu2', 'C'.repeat(400), CTX_TS(7)),
+  // call D: 1770 + 50 + 200 = 2020; out 80: 60 tool_use chars + 20 text chars
+  usageRec('r4', [{ type: 'text', text: 't'.repeat(20) }, { type: 'tool_use', id: 'tu3', name: 'Write', input: { content: 'w'.repeat(46) } }], use(2020, 80, 0), CTX_TS(8)),
+  toolResult('tu3', 'D'.repeat(200), CTX_TS(9)),
+  // call E: 2020 + 80 + 100 = 2200 — the context at the last call; its own output is not in it
+  usageRec('r5', [{ type: 'text', text: 'done' }], use(2200, 500, 100), CTX_TS(10)),
+  { type: 'assistant', timestamp: CTX_TS(11), isSidechain: true, requestId: 'side', message: { role: 'assistant', content: [{ type: 'text', text: 'sidechain' }], usage: use(9999, 1, 0) } },
+];
+{
+  const s = T.scanRecords(CTX_RECORDS);
+  check('scanner: one call per requestId, context = input + cache_creation + cache_read, the later record\'s usage wins, a sidechain call is ignored', s.calls.length === 5 && s.calls[0].ctx === 1000 && s.calls[0].out === 100 && s.calls[0].think === 40 && s.calls[4].ctx === 2200);
+  check('scanner: a call keeps its own text + tool_use chars', s.calls[0].textChars === 5 && s.calls[0].inputChars === JSON.stringify({ command: 'ls' }).length && s.calls[3].inputChars === JSON.stringify({ content: 'w'.repeat(46) }).length);
+  const before = s.calls.map((c) => c.appended);
+  check('scanner: what the user side appended before each call — a tool result charged to ITS tool, a platform attachment through the table', before[1].toolResults.Bash === 600 && before[1].platform.output_style === 100 && before[3].toolResults.Read === 400 && before[4].toolResults.Write === 200);
+  check('scanner: hooks by family, machine text apart from prompts, an attachment without stored text counted as untexted', before[2].hooks['turn-end-nudge'] === 60 && before[2].machine === 100 && before[2].untexted.bash_output_audience_note === 1 && before[0].prompts === 'first real ask'.length);
+  check('scanner: the floor holds the SessionStart + first-prompt hooks and the memory files; the system prompt snapshot is measured apart', before[0].hooks['steward-briefing'] === 100 && before[0].hooks['verification-rules'] === 50 && before[0].instructions.instructions === 300 && s.systemPromptChars === 5000);
+  const src = registry.byId('context-composition');
+  const r = src.run({ transcripts: { sessions: [{ ...s, id: 'sess-ctx' }] } });
+  const m = r.metrics;
+  check('context: sessions / segments / calls / last / first from the counters', m['ctx.sessions'] === 1 && m['ctx.segments'] === 1 && m['ctx.calls'] === 5 && m['ctx.last'] === 2200 && m['ctx.first'] === 1000);
+  check('context: the ratio is CALIBRATED on the three clean intervals (700/350, 400/200, 200/100), the dirty one excluded', m['ctx.chars_per_token'] === 2 && m['ctx.calibration_intervals'] === 3);
+  check('context: thinking is the real counter over the calls whose output is in context (40+0+50+0), never the last call', m['ctx.tokens.thinking'] === 90);
+  check('context: writes / replies split each call\'s real non-thinking output by the chars it wrote (A 60→45.7/14.3, B 0/200, D 60/20)', m['ctx.tokens.writes'] === 106 && m['ctx.tokens.replies'] === 234);
+  check('context: tool results 1200 chars → 600 tokens; hooks = Stop tail + the floor\'s SessionStart/first-prompt hooks (210 chars → 105)', m['ctx.tokens.tool_results'] === 600 && m['ctx.tokens.hooks'] === 105 && eq(m['ctx.tool_results.top'], { Bash: 300, Read: 200, Write: 100 }));
+  check('context: instructions = floor minus the hooks moved out of it (1000 − 75)', m['ctx.tokens.instructions'] === 925);
+  check('context: platform / machine / prompts each from their own chars', m['ctx.tokens.platform'] === 50 && m['ctx.tokens.machine'] === 50 && m['ctx.tokens.prompts'] === 0);
+  check('context: unattributed = user-side tokens the recorded chars cannot explain (770 − 730 = 40), and the untexted attachment is named', m['ctx.tokens.unattributed'] === 40 && eq(m['ctx.untexted'], { bash_output_audience_note: 1 }) && r.notes.some((n) => /bash_output_audience_note×1/.test(n)));
+  const sum = ['instructions', 'tool_results', 'hooks', 'writes', 'replies', 'thinking', 'prompts', 'platform', 'machine', 'unattributed'].reduce((a, b) => a + m[`ctx.tokens.${b}`], 0);
+  check('context: the buckets telescope back to the context at the last call (±rounding), and no note says otherwise', Math.abs(sum - 2200) <= 1 && !r.notes.some((n) => /identity broke/.test(n)));
+  check('context: shares are over ctx.last; the two headline keys are the hooks and tool-result shares', m['ctx.harness_pct'] === S.round(10500 / 2200) && m['ctx.tool_result_pct'] === S.round(60000 / 2200) && m['ctx.share.hooks'] === m['ctx.harness_pct']);
+  check('context: per_session carries id, calls, last and both shares', m['ctx.per_session'][0].id === 'sess-ctx' && m['ctx.per_session'][0].last === 2200 && m['ctx.per_session'][0].harness_pct === m['ctx.harness_pct']);
+  // A `<synthetic>` record after an interrupt carries all-zero usage: not a call. Measured 2026-09-18
+  // (session 163e8119): counted as one, it split the session at context 0 and the next real call
+  // read as a +428K interval with nothing to explain it.
+  const synthetic = T.scanRecords([
+    rec.user('ask', { promptId: 'p', ts: CTX_TS(1) }),
+    usageRec('a', [{ type: 'tool_use', id: 'y1', name: 'Bash', input: {} }], use(500, 10, 0), CTX_TS(2)),
+    { type: 'assistant', timestamp: CTX_TS(3), requestId: 'syn', message: { role: 'assistant', model: '<synthetic>', content: [{ type: 'text', text: 'No response requested.' }], usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens_details: null } } },
+    toolResult('y1', 'G'.repeat(400), CTX_TS(4)),
+    usageRec('b', [{ type: 'text', text: 'end' }], use(710, 10, 0), CTX_TS(5)),
+  ]);
+  check('scanner: a synthetic all-zero-usage record is not a call, and what was appended around it reaches the next real call', synthetic.calls.length === 2 && synthetic.calls[1].ctx === 710 && synthetic.calls[1].appended.toolResults.Bash === 400);
+  // A drop in context between calls is a reset (compaction / clear): a new segment with its own floor.
+  const dropped = T.scanRecords([
+    rec.user('ask', { promptId: 'p', ts: CTX_TS(1) }),
+    usageRec('a', [{ type: 'tool_use', id: 'x1', name: 'Bash', input: {} }], use(500, 10, 0), CTX_TS(2)), toolResult('x1', 'E'.repeat(400), CTX_TS(3)),
+    usageRec('b', [{ type: 'tool_use', id: 'x2', name: 'Bash', input: {} }], use(710, 10, 0), CTX_TS(4)), toolResult('x2', 'E'.repeat(400), CTX_TS(5)),
+    usageRec('c', [{ type: 'tool_use', id: 'x3', name: 'Bash', input: {} }], use(300, 10, 0), CTX_TS(6)), toolResult('x3', 'E'.repeat(200), CTX_TS(7)),
+    usageRec('d', [{ type: 'text', text: 'end' }], use(410, 10, 0), CTX_TS(8)),
+  ]);
+  const d = src.run({ transcripts: { sessions: [{ ...dropped, id: 'drop' }] } }).metrics;
+  check('context: a context drop starts a new segment; shares pool over Σ ctx_last of both (710 + 410), floors 500 + 300', d['ctx.segments'] === 2 && d['ctx.last'] === 410 && d['ctx.tokens.instructions'] === 800 && d['ctx.tokens.tool_results'] === 300);
+  const both = src.run({ transcripts: { sessions: [{ ...s, id: 'a' }, { ...dropped, id: 'b' }, { ...T.scanRecords([rec.user(`${T.JUDGE_PROMPT_PREFIX} q`), usageRec('j', [], use(50, 1, 0), CTX_TS(2))]), id: 'judge' }] } }).metrics;
+  check('context: sessions pool; a judge child never counts; ctx.last is the per-session p50, ctx.last.max the largest', both['ctx.sessions'] === 2 && both['ctx.last.max'] === 2200 && both['ctx.per_session'].length === 2);
+  const windowed = src.run({ transcripts: { sessions: [{ ...s, id: 'a' }] }, until: CTX_TS(0) });
+  check('context: a window with no calls yields zero sessions, null buckets and a note', windowed.metrics['ctx.sessions'] === 0 && windowed.metrics['ctx.last'] === null && windowed.notes.length === 1);
+  check('context: a session without usage counters (older transcripts) measures nothing and says so', src.run({ transcripts: { sessions: [{ kind: 'real', calls: [], id: 'old' }] } }).metrics['ctx.sessions'] === 0);
+}
+
 // ---------------------------------------------------------------- CLI end to end (temp root, fake projects dir + home)
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-stats-'));
@@ -393,6 +479,7 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
     JSON.stringify(rec.assistant([{ type: 'tool_use', name: 'mcp__plugin_kb_kb__kb_read', input: { id: 'kb::a' } }])),
     JSON.stringify(rec.stopSummary([['node turn-end.js', 5]])),
   ].join('\n'));
+  fs.writeFileSync(path.join(slugDir, 'sess-ctx.jsonl'), CTX_RECORDS.map((r) => JSON.stringify(r)).join('\n'));
   fs.writeFileSync(path.join(slugDir, 'subagents', 'agent-x.jsonl'), JSON.stringify(rec.user('sidechain', { isSidechain: true })));
   fs.writeFileSync(path.join(slugDir, 'judge-1.jsonl'), JSON.stringify(rec.user(`${T.JUDGE_PROMPT_PREFIX} q`)));
   fs.mkdirSync(path.join(home, '.claude', 'plugins'), { recursive: true });
@@ -408,9 +495,9 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
   const run = (args) => execFileSync(process.execPath, [script, '--root', path.join(root, 'sub'), '--home', home, ...args], { encoding: 'utf8' });
   const out = JSON.parse(run(['--json']));
   const v = (k) => out.metrics[k].value;
-  check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 2 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 1);
+  check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 3 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 2);
   check('CLI: traces gathered by shape per plugin dir; malformed lines counted, not fatal', out.traces['turn-end'].legacy === 1 && out.traces['turn-end'].v1 === 1 && out.traces['turn-end'].malformed === 1 && out.traces.kb.v1 === 1);
-  check('CLI: every source ran, no key missing', out.ran.length === 16 && out.missingKeys.length === 0 && out.errored.length === 0);
+  check('CLI: every source ran, no key missing', out.ran.length === 17 && out.missingKeys.length === 0 && out.errored.length === 0);
   check('CLI: hints followed strict from the fake transcript', v('hints.followed_strict') === 1 && v('hints.prompts_with_hints') === 1);
   check('CLI: registered hooks = home settings + ENABLED plugins only (disabled plugin skipped)', v('spawns.registered.UserPromptSubmit') === 3 && v('spawns.registered.Stop') === 1);
   check('CLI: installed versions read from the ledger; checkout null outside a marketplace repo', v('running.installed').on === '1.0.0' && eq(v('running.installed_vs_checkout'), {}));
@@ -423,19 +510,25 @@ const BLOCK_TEXT = '[turn-end] still unmet after a prior nudge:\n  1. (self-chec
     // Revised 2026-09-11: the pick leads with QUALITY, and carries no byte count. The two keys
     // it dropped (hook_bytes p50/p95, hints.strict_pct) headlined cost and a false negative —
     // strict_pct asks whether a file was opened of a mechanism that injects the file's body.
-    check('shipped defaults carry the five delegated line keys, every one registered', eq(shipped.line.keys, ['uptake.used_pct', 'uptake.empty_fires', 'lens.refuted', 'turn_end.blocks_per_prompt', 'judge.ms.p95']) && shipped.line.keys.every((k) => k in registry.keyRegistry()));
+    check('shipped defaults carry the five delegated line keys plus the two context keys the page asked for (2026-09-18), every one registered', eq(shipped.line.keys, ['uptake.used_pct', 'uptake.empty_fires', 'lens.refuted', 'turn_end.blocks_per_prompt', 'judge.ms.p95', 'ctx.last', 'ctx.harness_pct']) && shipped.line.keys.every((k) => k in registry.keyRegistry()));
     check('the shipped line pick headlines no byte count', shipped.line.keys.every((k) => !/bytes|_kb$/.test(k)));
     const l = run(['--line']).trim();
     check('CLI: --line prints the shipped default keys when the project has no config', l.startsWith('[instr] harness: uptake.used_pct=') && /turn_end\.blocks_per_prompt=0/.test(l));
   }
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ line: { keys: ['hook_bytes.prompts', 'hints.strict_pct'] } }));
-  check('CLI: a project config replaces the line keys wholesale', /^\[instr\] harness: hook_bytes\.prompts=1 · hints\.strict_pct=100$/.test(run(['--line']).trim()));
+  check('CLI: a project config replaces the line keys wholesale', /^\[instr\] harness: hook_bytes\.prompts=2 · hints\.strict_pct=100$/.test(run(['--line']).trim()));
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), '{not json');
   check('CLI: a malformed project config is reported and the shipped defaults stand', run(['--line']).trim().startsWith('[instr] harness: uptake.used_pct='));
   fs.writeFileSync(path.join(root, '.claude', 'harness-stats.json'), JSON.stringify({ sources: { lens: { enabled: false } } }));
   check('CLI: project sources merge by id over the shipped defaults; line keys stay shipped when unstated', (() => { const j = JSON.parse(run(['--json'])); return j.skipped.includes('lens') && run(['--line']).trim().startsWith('[instr] harness: uptake.used_pct='); })());
   check('CLI: --no-transcripts skips the transcript sources and names their keys', (() => { const j = JSON.parse(run(['--json', '--no-transcripts'])); return j.skipped.includes('hook-bytes') && j.missingKeys.some((m) => m.key === 'hints.strict_pct'); })());
   check('CLI: --since / --until window the numbers', JSON.parse(run(['--json', '--since', '2026-09-07'])).metrics['hook_bytes.prompts'].value === 0);
+  {
+    const one = JSON.parse(run(['--json', '--session', 'sess-ctx']));
+    check('CLI: --session <prefix> scopes every transcript source to that one session', one.transcripts.files === 1 && one.metrics['ctx.sessions'].value === 1 && one.metrics['hook_bytes.prompts'].value === 1);
+    const all = JSON.parse(run(['--json']));
+    check('CLI: without --session both real sessions pool (ctx.last.max from the counters)', all.metrics['ctx.sessions'].value === 1 && all.metrics['ctx.last.max'].value === 2200 && all.metrics['hook_bytes.prompts'].value === 2);
+  }
   let bad = 0;
   try { execFileSync(process.execPath, [script, '--nope'], { encoding: 'utf8', stdio: 'pipe' }); } catch (err) { bad = err.status; }
   check('CLI: an unknown argument exits 2', bad === 2);
