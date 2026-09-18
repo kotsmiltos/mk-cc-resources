@@ -44,14 +44,26 @@ first for the owner's own ~40 production codebases.
 
 ## Next (each with its check)
 
-1. **Live with the subtraction for five sittings in this repo.** Check: `PROJECT.md` rewritten at
-   the end of each sitting (git log shows it); `harness-stats --root .` hook bytes per prompt
-   under 3 KB; no "recap this for me" ask.
-2. **Decide push + fleet.** If (1) holds: push, then apply the same subtraction to aithseis,
-   twin-game, ar-mystery-game-demo (their `.steward/` models become each project's page).
-   Check: each repo has a `PROJECT.md` under 100 lines and its old `.steward/` archived in git.
-3. **Ship turn-end with `page` as the default duty set** and retire the six others from the
-   defaults (they stay available by config). Check: a fresh install shows one Stop question.
+1. **Measure context per session** (owner 2026-09-18: "530K tokens in messages looks
+   excessive"). Add `context-composition` to harness-stats: per session, context at the last
+   call from the transcript's real `usage` counters, split by tool results / writes / hook
+   injections / thinking / instructions, with `harness_share` and `tool_result_share`. This
+   session measured: 604K at the last call, harness 13%, Bash results 21%, WebFetch 11%,
+   my writes 17%, thinking 11%. Check: the source reproduces those figures for this session's
+   transcript within 5%; `--line` prints `ctx.last` + `ctx.harness_pct`.
+2. **With / without eval** (`claude plugin eval`, built in): hand-written suites for steward,
+   kb, turn-end (page, recall, self-check) and thorough-mode, each case with a fixture and a
+   grader for one of the three wants (progress captured · prior decisions honoured · verified
+   done); run with a sonnet judge, three runs per arm, a cost ceiling, `--no-publish`. Check:
+   one table per plugin, WITH / W/OUT / Δ / seconds, in the terminal. Windows: no Bash in
+   cases (no sandbox); Write/Edit granted.
+3. **Live with the subtraction for five sittings here.** Check: `PROJECT.md` rewritten each
+   sitting (git log); `ctx.harness_pct` under 3%; no "recap this for me" ask.
+4. **Decide push + fleet.** If (3) holds: push, then the same subtraction on aithseis,
+   twin-game, ar-mystery-game-demo (their `.steward/` becomes each project's page). Check:
+   each repo has a `PROJECT.md` under 100 lines.
+5. **Ship turn-end with `page` as the default duty set**; the six others stay available by
+   config. Check: a fresh install shows one Stop question.
 
 ## Open decisions (default first)
 
