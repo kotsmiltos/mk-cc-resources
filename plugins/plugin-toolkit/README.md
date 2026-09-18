@@ -32,6 +32,7 @@ node plugins/plugin-toolkit/bin/repo-guard.js              # exit 1 = do not pus
 node plugins/plugin-toolkit/bin/test-all.js --root .       # every suite in every plugin
 node plugins/plugin-toolkit/bin/registry-check.js --root . # do the docs match disk?
 node plugins/plugin-toolkit/bin/harness-stats.js --root .  # is any of this doing anything?
+node plugins/plugin-toolkit/bin/plugin-eval.js --root .    # with vs without, per plugin (real runs, costs money)
 ```
 
 - **repo-guard** — leaked machine paths, shell whose failure is indistinguishable from success,
@@ -46,6 +47,10 @@ node plugins/plugin-toolkit/bin/harness-stats.js --root .  # is any of this doin
   and agreement, whether the code you are running is the code you installed, and — since 1.19.0 —
   where each session's context went (real usage counters: tool results, your writes, hook
   injections, thinking, instructions), with `--session <id>` to ask about one session.
+- **plugin-eval** — the with/without table: for every plugin that ships an `evals/` suite, runs
+  `claude plugin eval --ablation with-without` and prints WITH / W/OUT / Δ / seconds per case,
+  plus which of the three wants moved (progress captured · decisions honoured · verified done).
+  Real runs on your credential; `--dry-run` shows the argv, `--max-cost-usd` caps it.
 
 ## Scope limit worth knowing
 

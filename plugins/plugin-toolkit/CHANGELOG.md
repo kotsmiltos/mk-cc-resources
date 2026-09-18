@@ -5,6 +5,15 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-09-18
+
+### Added
+- **`plugin-eval`, a fifth repo-level gate — one WITH / W/OUT / Δ / seconds table per plugin.** It discovers every `plugins/<name>/evals/` suite by shape, runs `claude plugin eval --ablation with-without` on it (three runs per arm, sonnet on both sides, a cost ceiling, the HTML report kept local) and prints the table in the terminal, with a second line per case saying which of the three wants moved — progress captured, prior decisions honoured, verified done — because a case score hides that. `--dry-run` prints the exact argv per suite; `--plugin`, `--runs`, `--model`, `--judge-model`, `--max-cost-usd`, `--concurrency`, `--case`, `--json`.
+- Four suites, one case each, sharing one tiny fixture project (a report renderer with a house date rule): kb `decisions-honoured` (the rule lives only in `.claude/kb/extracted`, hints opted in), steward `decisions-and-capture` (the rule lives only in `.steward/briefing.md`, plus an owner wish to park in the inbox), turn-end `page-and-self-check` (PROJECT.md present, six other duties switched off), thorough-mode `verified-done` (a `++` prompt). Each case seeds its cwd through a scaffold script from its `fixtures/`, because on Windows the eval child has no sandbox and cases grant no Bash.
+
+### Notes
+- Measured while building it (2026-09-18): the WITHOUT arm runs with none of the plugin's hooks, the WITH arm fires UserPromptSubmit and Stop with `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PROJECT_DIR` set, the scaffold finds its case dir through `BASH_SOURCE`, and a relative plugin target is resolved against the eval's own cwd (so the runner passes absolute paths). The `trace` grader target is the stream output, not the transcript, so a hook firing is proven by a file it writes, never by its text.
+
 ## [1.19.0] - 2026-09-18
 
 ### Added

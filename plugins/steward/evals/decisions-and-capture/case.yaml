@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: decisions-and-capture
+context:
+  # Seeds the throwaway cwd from this case's fixtures/ (runs only under --scaffold; the runner passes it).
+  scaffold_script: setup.sh

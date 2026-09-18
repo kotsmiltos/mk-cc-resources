@@ -251,3 +251,6 @@ plugins/essense-flow/.claude/
 # (ignore CONTENTS not the dir — a dir-pattern ignore would kill the .gitkeep negation)
 .steward/inbox/*
 !.steward/inbox/.gitkeep
+
+# claude plugin eval writes per-run results + HTML reports here (plugin-toolkit bin/plugin-eval.js)
+plugins/*/evals/results/
