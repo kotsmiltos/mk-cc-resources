@@ -5,6 +5,17 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-09-20
+
+### Added
+- **`plugin-eval --keep-outputs` / `--show-full` / `--show-lines <n>`: read the difference, not only score it.** The runner keeps each run's temp dir, copies what the agent PRODUCED (new or changed files vs the case's `fixtures/`, plus the final message) to `<plugin>/evals/results/outputs/<case>/<arm>-<n>/`, prints the first run per arm in full and lists the rest, then removes the temp dirs. The plugin's own bookkeeping under `.claude/` is dropped; `.steward/inbox/` captures are kept because they are output.
+
+### Changed
+- **The four suites now run a task from the owner's own line of work** — a Unity/XR toolkit in the Zarmada house shape (sealed-lifecycle `CoreBehaviour`, quit-aware `Singleton<T>`, typed `EventID<T>` bus with dispatch-safe removal, `List<enum>` PauseManager, `AudioManager` as the reference manager) and the prompt "add a HapticsManager: pulse on GrabStarted/GrabEnded, never while paused, designer-tunable". Graders: three house rules on the produced manager (extends `Singleton<HapticsManager>`, unsubscribes in `OnDisable`, no `FindObjectOfType`), two decisions that live only outside the code (config asset under `Zarmada/Config/…`, the 0.6 amplitude cap), and per plugin the want it exists for (steward: an inbox capture of a parked wish; turn-end: the page rewritten + the check named; thorough-mode: verified done under `++`). The earlier one-line "add a date to the header" task is gone — sonnet solved it identically with and without help.
+
+### Fixed
+- `target: files` in a regex grader is the LIST of created paths, never their contents (doc, "what a grader can look at") — the first haptics graders scored 0/1 in both arms on files that plainly matched. Contents are graded through `{source: file, path}` on the path the prompt pins, and the two out-of-code decisions on the trace, with their literals scrubbed from the notes so a Read of the note cannot satisfy the grader.
+
 ## [1.20.0] - 2026-09-18
 
 ### Added

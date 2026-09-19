@@ -116,7 +116,80 @@ function argsFor(pluginDir, opts = {}) {
   if (opts.mocks) args.push('--mocks', opts.mocks);
   if (opts.caseGlob) args.push('--case', opts.caseGlob);
   if (Number.isInteger(opts.concurrency) && opts.concurrency > 1) args.push('--concurrency', String(opts.concurrency));
+  if (opts.keepTemp) args.push('--keep-temp');
   return args;
 }
 
-module.exports = { rows, format, argsFor, graderTally, EVALS_DIR, WANTS, ARMS };
+/*
+ * OUTPUTS — what each arm actually produced, so the owner can READ the difference, not only
+ * score it. A run's `tracePath` is `<tmp>/out/trace.jsonl` (measured 2026-09-18); the agent's
+ * cwd is `<tmp>/home/cwd`, seeded from the case's fixtures/. New or changed files = the run's
+ * output. The trace's final `result` record carries the last assistant message.
+ */
+const TRACE_OUT_DIR = 'out';
+const CWD_REL = ['home', 'cwd'];
+/** Per-run locations from a trace path; null when the shape is not the measured one. */
+function runLocations(tracePath, pathMod) {
+  if (typeof tracePath !== 'string' || !tracePath) return null;
+  const outDir = pathMod.dirname(tracePath);
+  if (pathMod.basename(outDir) !== TRACE_OUT_DIR) return null;
+  const root = pathMod.dirname(outDir);
+  return { root, cwd: pathMod.join(root, ...CWD_REL) };
+}
+
+/** The final assistant text from a stream-json trace (the `result` record, else the last assistant text). */
+function finalMessage(traceText) {
+  let last = '';
+  let result = null;
+  for (const raw of String(traceText || '').split('\n')) {
+    if (!raw.trim()) continue;
+    let e;
+    try { e = JSON.parse(raw); } catch (_e) { continue; }
+    if (e && e.type === 'result' && typeof e.result === 'string') result = e.result;
+    if (e && e.type === 'assistant' && e.message && Array.isArray(e.message.content)) {
+      for (const b of e.message.content) if (b && b.type === 'text' && typeof b.text === 'string' && b.text.trim()) last = b.text;
+    }
+  }
+  return result !== null ? result : last;
+}
+
+/**
+ * Which files a run produced: every file under the run cwd that is absent from, or differs
+ * from, the fixture tree. `read(rel)` returns the run's file text; `fixture(rel)` the seeded
+ * text or null. Pure over the two listings.
+ */
+/* The plugin under test's own bookkeeping in the run cwd (kb trace, turn-end ledger) is not the
+ * agent's output. `.steward/` stays: an inbox capture IS an output. */
+const BOOKKEEPING_PREFIXES = ['.claude/'];
+function producedFiles(runFiles, fixtureText, runText) {
+  const out = [];
+  for (const rel of runFiles) {
+    if (BOOKKEEPING_PREFIXES.some((p) => rel.startsWith(p))) continue;
+    const before = fixtureText(rel);
+    const after = runText(rel);
+    if (after === null) continue;
+    if (before === null) out.push({ rel, kind: 'new', text: after });
+    else if (before !== after) out.push({ rel, kind: 'changed', text: after });
+  }
+  return out;
+}
+
+const SHOW_MAX_LINES = 120;
+/** Terminal rendering of one run's output: final message, then each produced file (bounded). */
+function formatOutput(label, message, files, opts = {}) {
+  const max = Number.isInteger(opts.maxLines) ? opts.maxLines : SHOW_MAX_LINES;
+  const lines = [`── ${label} ──`];
+  lines.push('final message:');
+  for (const l of String(message || '(none)').split('\n')) lines.push(`  │ ${l}`);
+  if (!files.length) lines.push('produced files: none');
+  for (const f of files) {
+    const body = f.text.split('\n');
+    lines.push(`${f.kind} ${f.rel} (${body.length} lines)`);
+    if (opts.listOnly) continue;
+    for (const l of body.slice(0, max)) lines.push(`  ${l}`);
+    if (body.length > max) lines.push(`  … ${body.length - max} more lines`);
+  }
+  return lines.join('\n');
+}
+
+module.exports = { rows, format, argsFor, graderTally, runLocations, finalMessage, producedFiles, formatOutput, EVALS_DIR, WANTS, ARMS, SHOW_MAX_LINES };

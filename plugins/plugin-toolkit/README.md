@@ -1,6 +1,6 @@
 # plugin-toolkit
 
-Tools for working ON Claude Code plugins — and four gates for the repository that ships them.
+Tools for working ON Claude Code plugins — and five gates for the repository that ships them.
 
 ## Install
 
@@ -50,7 +50,8 @@ node plugins/plugin-toolkit/bin/plugin-eval.js --root .    # with vs without, pe
 - **plugin-eval** — the with/without table: for every plugin that ships an `evals/` suite, runs
   `claude plugin eval --ablation with-without` and prints WITH / W/OUT / Δ / seconds per case,
   plus which of the three wants moved (progress captured · decisions honoured · verified done).
-  Real runs on your credential; `--dry-run` shows the argv, `--max-cost-usd` caps it.
+  Real runs on your credential; `--dry-run` shows the argv, `--max-cost-usd` caps it;
+  `--keep-outputs` prints what each arm actually produced (files + final message).
 
 ## Scope limit worth knowing
 

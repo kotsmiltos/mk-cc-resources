@@ -22,7 +22,7 @@ first for the owner's own ~40 production codebases.
 7. Nothing personal in shipped files (repo-guard's `leaked-path` enforces it).
 8. Decoupled, open-for-extension code; measured per project, never across plugins.
 
-## Where we are (2026-09-18, second sitting)
+## Where we are (2026-09-20)
 
 - `main` is ahead of origin and NOT pushed (count: `git rev-list --count origin/main..HEAD`).
   Tree clean after two commits this sitting (`git log --oneline -2`).
@@ -36,25 +36,32 @@ first for the owner's own ~40 production codebases.
   - `plugin-eval`: one WITH / W/OUT / Δ / seconds table per plugin from `claude plugin eval
     --ablation with-without` (suites: kb, steward, turn-end, thorough-mode; scaffold-seeded,
     no Bash in cases). Check: suite 24/24; live run exit 0, four tables printed.
-- **First with/without numbers (sonnet, 3 runs/arm, 2026-09-18):**
-  - steward +33 — inbox capture 3/3 vs 0/3; decisions 3/3 both. 133 s vs 54 s.
-  - turn-end +33 — page rewritten 2/3 vs 0/3, verified-done 3/3 vs 2/3; one WITH run hit the
-    15-turn cap (the block loop). 88 s vs 35 s.
-  - kb +0 — decisions 3/3 both: sonnet found `src/dates.js` without the hint. Fixture too easy.
-  - thorough-mode +0 — verified-done 1/3 vs 1/3: `++` did not move it. 57 s vs 36 s.
-  - WITH is 2–2.5× slower in every suite. Cost of the four runs together: $6.
+- **With/without on the owner's own kind of work (2026-09-20, plugin-toolkit 1.21.0):** the
+  suites now run "add a HapticsManager" against a Zarmada-shape Unity toolkit fixture; the
+  runner keeps and prints what each arm PRODUCED (`--keep-outputs`). Sonnet, 3 runs/arm, $9.4:
+  - turn-end +38 — page rewritten 3/3 vs 0/3, verified-done 3/3 vs 0/3. 320 s vs 91 s.
+  - steward +33 — inbox capture 3/3 vs 0/3 (without: a TODO comment in the code), cap 3/3 vs
+    1/3. 150 s vs 116 s.
+  - kb +27 — config-asset decision 3/3 vs 0/3, cap 3/3 vs 2/3 (2 of 3 without arms guessed 0.6
+    as a default). 79 s vs 55 s.
+  - thorough-mode +0 — house rules 3/3 both; verified-done 0/3 vs 2/3: `++` produced a longer
+    feature list and dropped the check line. Decisions unreachable in either arm (no note).
+  - House rules (Singleton<T>, paired unsubscribe, no Find) held 3/3 in every arm: sonnet
+    reads AudioManager and copies its shape unaided. The plugins move what lives OUTSIDE the
+    code — decisions, the capture, the page, the named check.
+  - Earlier toy task (2026-09-18, "add a date to the header"): steward +33, turn-end +33, kb 0,
+    thorough 0; retired — solved identically with and without.
 - Running here (unchanged): turn-end with ONE duty (page), thorough-mode, prism, elicit,
   plugin-toolkit, caveman, statusline, alert-sounds. Off here: kb, steward, lens, patterns,
   reuse-gate, essense-flow, autopilot, session-lifecycle.
 
 ## Next (each with its check)
 
-1. **Harden the two flat suites.** kb: a decision NOT derivable from the code (e.g. "the
-   em dash, not a hyphen" with no example in the tree) so the hint is the only route.
-   thorough-mode: grade the ENUMERATE/EXIT-CHECK shape, not verified-done, which `++` never
-   promised. Check: kb Δ > 0 on rerun, or the honest finding that hints add nothing on sonnet.
-2. **Read the turn-end cap.** One WITH run reached 15 turns: page + self-check re-blocking.
-   Check: the kept trace names which duty re-fired; a fix or a ruling that the cap is the cost.
+1. **thorough-mode: grade what `++` promises.** ENUMERATE / EXIT-CHECK shape, not verified-done;
+   and read why the ++ arm dropped the check line 3/3 (outputs kept under evals/results).
+   Check: a rerun with the new grader, Δ read beside the produced code.
+2. **turn-end costs 3.5× the time** (320 s vs 91 s per run). Read the kept traces: how many
+   Stop fires per run, which duty re-asked. Check: fires per run named; a fix or a ruling.
 3. **Live with the subtraction for five sittings here.** Check: this page rewritten each
    sitting (git log); `ctx.harness_pct` under 3% (it reads 6.2% for the sitting before this
    one, with kb + steward still on); no "recap this for me" ask.

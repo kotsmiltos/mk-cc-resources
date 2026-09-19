@@ -72,8 +72,23 @@ const RESULT = {
 {
   const a = E.argsFor('/p/kb', { runs: 3, model: 'sonnet', judgeModel: 'sonnet', maxCostUsd: 5, allowTools: ['Read', 'Write'], jsonPath: '/p/kb/evals/results/x.json', mocks: 'off', caseGlob: 'page*' });
   check('argsFor: with-without, local report, trusted, threshold 0, scaffold, json path — then the options', a.slice(0, 12).join(' ') === 'plugin eval /p/kb --ablation with-without --no-publish --trust-plugin --threshold 0 --scaffold --json /p/kb/evals/results/x.json' && a.includes('--runs') && a[a.indexOf('--runs') + 1] === '3' && a.includes('--judge-model') && a[a.indexOf('--allow-tools') + 2] === 'Write' && a[a.indexOf('--mocks') + 1] === 'off' && a[a.indexOf('--case') + 1] === 'page*');
-  check('argsFor: no options adds nothing beyond the fixed flags', E.argsFor('/p/x').length === 12);
+  check('argsFor: no options adds nothing beyond the fixed flags; keepTemp adds --keep-temp', E.argsFor('/p/x').length === 12 && E.argsFor('/p/x', { keepTemp: true }).pop() === '--keep-temp');
   check('argsFor: concurrency above 1 is passed through, 1 is the eval default and omitted', E.argsFor('/p/x', { concurrency: 3 }).slice(-2).join(' ') === '--concurrency 3' && E.argsFor('/p/x', { concurrency: 1 }).length === 12);
+}
+
+// ---------------------------------------------------------------- outputs: what each arm produced
+{
+  const loc = E.runLocations('C:\\tmp\\claude-eval-abc\\out\\trace.jsonl', path.win32);
+  check('runLocations: <tmp>/out/trace.jsonl → root + home/cwd (the measured layout); other shapes → null', loc && loc.root === 'C:\\tmp\\claude-eval-abc' && loc.cwd === 'C:\\tmp\\claude-eval-abc\\home\\cwd' && E.runLocations('/x/y/trace.jsonl', path.posix) === null && E.runLocations(null, path) === null);
+  const trace = [JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'first' }] } }), 'not json', JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Write' }, { type: 'text', text: 'last text' }] } }), JSON.stringify({ type: 'result', result: 'the final answer' })].join('\n');
+  check('finalMessage: the result record wins; without it, the last assistant text; malformed lines skipped', E.finalMessage(trace) === 'the final answer' && E.finalMessage(trace.split('\n').slice(0, 3).join('\n')) === 'last text' && E.finalMessage('') === '');
+  const fixture = { 'src/a.cs': 'A', 'README.md': 'R' };
+  const run = { 'src/a.cs': 'A', 'README.md': 'R2', 'src/Haptics.cs': 'H', '.steward/inbox/x.md': 'wish', '.claude/kb/trace.jsonl': 'bookkeeping' };
+  const produced = E.producedFiles(Object.keys(run), (rel) => (rel in fixture ? fixture[rel] : null), (rel) => run[rel]);
+  check('producedFiles: new + changed only, unchanged skipped, .steward kept, .claude/ bookkeeping dropped', eq(produced.map((f) => `${f.kind}:${f.rel}`), ['changed:README.md', 'new:src/Haptics.cs', 'new:.steward/inbox/x.md']));
+  const text = E.formatOutput('kb / case / with #1', 'Done.\nCheck: read it back.', produced, { maxLines: 1 });
+  check('formatOutput: label, the final message quoted, each file with kind + line count, bodies bounded by maxLines', /── kb \/ case \/ with #1 ──/.test(text) && /│ Check: read it back\./.test(text) && /new src\/Haptics\.cs \(1 lines\)/.test(text) && /changed README\.md/.test(text));
+  check('formatOutput: listOnly prints names, not bodies; no files says so', !/\n  H\n/.test(E.formatOutput('l', 'm', produced, { listOnly: true })) && /produced files: none/.test(E.formatOutput('l', 'm', [])));
 }
 
 // ---------------------------------------------------------------- discovery by shape + CLI refusals (temp tree)

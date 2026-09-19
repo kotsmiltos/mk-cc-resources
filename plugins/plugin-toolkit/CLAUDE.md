@@ -196,7 +196,18 @@ bin/plugin-eval.js      # CLI adapter: discovers plugins/*/evals/<case>/{prompt.
                         #   Absolute target path REQUIRED (a relative one resolves against the
                         #   eval's own cwd → plugins/x/plugins/x, measured). --dry-run prints
                         #   the argv. Exit 0 report / 2 cannot run. Results land in
-                        #   <plugin>/evals/results/ (gitignored)
+                        #   <plugin>/evals/results/ (gitignored). 1.21.0: --keep-outputs /
+                        #   --show-full / --show-lines N keep each run's PRODUCED files + final
+                        #   message under results/outputs/<case>/<arm>-<n>/ and print them —
+                        #   the owner reads the difference, not only the score. GRADER FACTS
+                        #   (doc, measured 2026-09-20): `target: files` = the LIST of created
+                        #   paths, never contents → grade contents via {source:file,path} on a
+                        #   path the prompt pins; `trace` is JSON per line (quotes as \");
+                        #   file_exists sees only files CREATED in the run. Suites (all four):
+                        #   the Zarmada-shape Unity toolkit + "add a HapticsManager" — the
+                        #   owner's own line of work; house rules on the pinned file, the two
+                        #   out-of-code decisions on the trace with their literals scrubbed
+                        #   from every note
 tests/plugin-eval.test.js     # 24 checks — the live JSON shape, format, argv, discovery, refusals;
                         #   never runs claude
 tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since
