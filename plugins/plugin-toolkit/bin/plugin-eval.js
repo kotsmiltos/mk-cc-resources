@@ -34,7 +34,7 @@ const { format, rows, argsFor, runLocations, finalMessage, producedFiles, format
 const EXIT_OK = 0;
 const EXIT_CANNOT_RUN = 2;
 const CLAUDE_BIN = process.platform === 'win32' ? 'claude.cmd' : 'claude';
-const DEFAULTS = { runs: 3, model: 'sonnet', judgeModel: 'sonnet', maxCostUsd: 5, concurrency: 3, allowTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Skill'], mocks: 'record' };
+const DEFAULTS = { runs: 3, model: 'opus', judgeModel: 'sonnet', maxCostUsd: 5, concurrency: 3, allowTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Skill'], mocks: 'record' };
 const RESULT_FILE = 'with-without.json';
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
 

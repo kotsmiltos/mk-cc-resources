@@ -1,5 +1,6 @@
 # Decisions — one dated line each, with the why. A newer line names what it replaces.
 
+- 2026-09-20 · **Evals run on opus by default** (`plugin-eval` agent model; the judge stays sonnet). Why: owner — "we should be testing on opus mostly"; the sonnet numbers stand as the first face, opus is the model the work is done on. Next face: a whole build (postit-board) through every phase, visible at the end.
 - 2026-09-20 · **`++` / `@thorough` retired** (thorough-mode 1.13.0); the other eight modifiers stay. Why: measured twice on the owner's own kind of task with `plugin-eval` — "verified done" 0/3 with vs 2/3 without, then the enumerate-first shape it promised 0/3 vs 0/3; a mechanism measured to change nothing is text (law 3). turn-end and steward measured +38 / +33 on the same task and stay.
 
 - 2026-09-18 · **Subtract.** One page per project rewritten whole each sitting, one decisions list, one Stop question; kb / steward / lens / patterns / reuse-gate / essense-flow / autopilot off. Why: measured push 9–16 KB/prompt vs 2 KB without the toolkit, hints followed 0–7.5%, judge empty 81%, a 214k-token steward pass for two notes; "going in circles". Replaces the 09-18 garden law's machinery for this repo (the garden stays valid for a kept multi-file model).

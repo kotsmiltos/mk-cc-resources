@@ -111,7 +111,7 @@ const RESULT = {
   check('CLI: a plugin named without a suite exits 2 and names the ones that ship one', fail(['--dry-run', '--plugin', 'prism']) === 2);
   check('CLI: a bad --runs / --max-cost-usd / --concurrency / unknown flag exits 2', fail(['--runs', '0']) === 2 && fail(['--max-cost-usd', '-1']) === 2 && fail(['-j', '9']) === 2 && fail(['--nope']) === 2);
   check('CLI: a root without plugins/ exits 2', fail(['--root', path.join(tmp, 'nowhere')]) === 2);
-  check('CLI: the shipped defaults are three runs, sonnet on both sides, a $5 ceiling, no Bash in the tool grant', cli.DEFAULTS.runs === 3 && cli.DEFAULTS.model === 'sonnet' && cli.DEFAULTS.judgeModel === 'sonnet' && cli.DEFAULTS.maxCostUsd === 5 && !cli.DEFAULTS.allowTools.includes('Bash'));
+  check('CLI: the shipped defaults are three runs, OPUS agent (owner ruling 2026-09-20), sonnet judge, a $5 ceiling, no Bash in the tool grant', cli.DEFAULTS.runs === 3 && cli.DEFAULTS.model === 'opus' && cli.DEFAULTS.judgeModel === 'sonnet' && cli.DEFAULTS.maxCostUsd === 5 && !cli.DEFAULTS.allowTools.includes('Bash'));
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
