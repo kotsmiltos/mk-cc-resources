@@ -150,7 +150,51 @@ async function runnerChecks() {
   fs.rmSync(armDir, { recursive: true, force: true });
 }
 
-runnerChecks().then(() => {
+// ---------------------------------------------------------------- the module driver
+// A headless "sim" in the contract's shape: a counter with save/load, a call that throws, a
+// method that lies about its state.
+const SIM = `export function createGame({ seed }) { return wrap({ seed, tick: 0, items: [] }); }
+export function loadGame(json) { return wrap(JSON.parse(json)); }
+function wrap(st) { return {
+  state: () => ({ ...st }),
+  act: (a) => { if (a.type === 'boom') throw new Error('kaboom'); st.items.push(a.type); st.tick += 1; return { ok: true, n: st.items.length }; },
+  tick: (n) => { st.tick += n; },
+  save: () => JSON.stringify(st),
+}; }
+`;
+const MODULE_SPEC = {
+  driver: 'module', entry: 'sim/game.mjs', setup: { factory: 'createGame', args: [{ seed: 3 }] }, persist: { save: 'save', load: 'loadGame' },
+  steps: [
+    { name: 'fresh', call: 'state', expect: [{ path: 'result.tick', eq: 0 }, { path: 'result.seed', gte: 3 }, { path: 'result.seed', lte: 3 }] },
+    { name: 'act-x3', call: 'act', args: [{ type: 'dig' }], repeat: 3, expect: [{ path: 'result.n', eq: 3 }, { path: 'state.items', count_min: 3 }], pick: { tickBefore: { path: 'state.tick' } } },
+    { name: 'restart', restart: true, expect: [{ path: 'state.tick', eq: '{tickBefore}' }, { path: 'result.restarted', eq: true }] },
+    { name: 'throws', call: 'act', args: [{ type: 'boom' }], expect: [{ path: 'result.ok', eq: true }] },
+    { name: 'no-such-method', call: 'fly', expect: [{ path: 'result', eq: 1 }] },
+    { name: 'after-error', call: 'tick', args: [5], expect: [{ path: 'state.tick', eq: 8 }] },
+  ],
+};
+
+async function moduleChecks() {
+  const armDir = fs.mkdtempSync(path.join(os.tmpdir(), 'probe-sim-'));
+  fs.mkdirSync(path.join(armDir, 'sim'));
+  fs.writeFileSync(path.join(armDir, 'sim', 'game.mjs'), SIM);
+  const r = await P.runProbe(MODULE_SPEC, armDir);
+  check('module: loads an ES module entry, builds the subject, calls, repeats, picks', r.steps[0].ok && r.steps[1].ok, JSON.stringify(r.steps.slice(0, 2)));
+  check('module: restart = save → load, and a whole-string placeholder keeps its NUMBER type', r.steps[2].ok, r.steps[2].detail);
+  check('module: a call that throws is that step\'s failure with the message; the run goes on', r.steps[3].ok === false && r.steps[3].detail.includes('kaboom') && r.steps[5].ok, JSON.stringify(r.steps.slice(3)));
+  check('module: a missing method is named', r.steps[4].ok === false && r.steps[4].detail.includes('"fly()"'));
+  check('module: passed/total over every step', r.passed === 4 && r.total === 6);
+  const dead = await P.runProbe({ ...MODULE_SPEC, entry: 'sim/nope.mjs' }, armDir);
+  check('module: an entry that cannot load is ONE failed boot step', dead.total === 1 && dead.steps[0].name === 'boot' && !dead.steps[0].ok);
+  const specFile = path.join(armDir, 'probe.json');
+  fs.writeFileSync(specFile, JSON.stringify({ driver: 'module', entry: 'x', steps: [{ name: 'a' }] }));
+  let bad = null;
+  try { P.loadSpec(specFile); } catch (e) { bad = e.message; }
+  check('loadSpec: a module spec without setup names the missing key; an unknown driver is refused', bad !== null && bad.includes('missing "setup"') && (() => { fs.writeFileSync(specFile, JSON.stringify({ driver: 'carrier-pigeon', steps: [{ name: 'a' }] })); try { P.loadSpec(specFile); return false; } catch (e) { return e.message.includes('unknown driver'); } })());
+  fs.rmSync(armDir, { recursive: true, force: true });
+}
+
+runnerChecks().then(moduleChecks).then(() => {
   console.log(`\n${total - failures}/${total} checks passed`);
   process.exit(failures ? 1 : 0);
 }, (err) => { console.error(err.stack || err.message); process.exit(1); });

@@ -221,11 +221,19 @@ lib/behaviour-probe.js  # 1.22.0: BEHAVIOUR scoring — a case's probe.json (ent
                         #   ran its own code. Measured on the four kept arms (built BEFORE the
                         #   contract was in the prompt): 11/11, 2/11, 1/11, 2/11 where the regex
                         #   graders had said 0.75/0.75/0.80/1.00
+                        #   1.23.0: DRIVERS — `http` (above) and `module` (load the entry as a
+                        #   library in a killable child, lib/probe-drivers/module-harness.js;
+                        #   steps = method calls with repeat/pick; restart = persist.load(save()));
+                        #   ops gte/lte; a whole-string placeholder keeps its type
 bin/behaviour-probe.js  # CLI: --spec <case>/probe.json --dir <arm dir> [--json]; exit 0 all
                         #   passed / 1 some failed / 2 cannot run
-tests/behaviour-probe.test.js # 31 checks — every op, template/select, the oracle reader, and the
+lib/probe-drivers/module-harness.js  # the child half of the module driver: runs the steps,
+                        #   prints one JSON line of responses; judges NOTHING
+tests/behaviour-probe.test.js # 38 checks — every op, template/select, the oracle reader, the http
                         #   RUNNER end to end on a tiny node:http app in a temp dir (boot, drive,
                         #   restart, read back, a route that lies, a dead entry, the arm dir untouched)
+                        #   and the module driver on a tiny ESM sim (calls, repeat, pick, restart,
+                        #   a throwing call, a missing method, an entry that cannot load)
 tests/plugin-eval.test.js     # 29 checks — the live JSON shape, format, argv, discovery, refusals;
                         #   never runs claude
 tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since

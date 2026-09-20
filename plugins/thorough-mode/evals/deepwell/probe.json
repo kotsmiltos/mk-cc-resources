@@ -1,0 +1,32 @@
+{
+  "driver": "module",
+  "entry": "sim/game.mjs",
+  "setup": { "factory": "createGame", "args": [ { "seed": 7 } ] },
+  "state": "state",
+  "persist": { "save": "save", "load": "loadGame" },
+  "steps": [
+    { "name": "fresh-world", "call": "state",
+      "expect": [ { "path": "result.tick", "eq": 0 }, { "path": "result.alive", "eq": true },
+                  { "path": "result.needs.light", "gte": 1 }, { "path": "result.needs.air", "gte": 1 } ] },
+    { "name": "dig-shaft", "call": "act", "args": [ { "type": "dig", "dir": "down" } ], "repeat": 12,
+      "expect": [ { "path": "result.ok", "eq": true }, { "path": "state.inventory.stone", "gte": 12 }, { "path": "state.tick", "gte": 12 } ] },
+    { "name": "craft-pick", "call": "act", "args": [ { "type": "craft", "recipe": "pick" } ],
+      "expect": [ { "path": "result.ok", "eq": true }, { "path": "state.tools", "contains": "pick" } ] },
+    { "name": "refuse-unknown", "call": "act", "args": [ { "type": "craft", "recipe": "warp-drive" } ],
+      "expect": [ { "path": "result.ok", "eq": false }, { "path": "result.reason", "matches": "\\S" } ] },
+    { "name": "build-collector", "call": "act", "args": [ { "type": "build", "kind": "drip-collector", "dir": "left" } ],
+      "expect": [ { "path": "result.ok", "eq": true }, { "from": "state.structures", "where": { "kind": "drip-collector" }, "count_min": 1 } ] },
+    { "name": "idle-automation", "call": "tick", "args": [ 300 ],
+      "expect": [ { "path": "state.inventory.water", "gte": 1 }, { "path": "state.needs.light", "lte": 99 }, { "path": "state.alive", "eq": true } ] },
+    { "name": "research", "call": "act", "args": [ { "type": "research", "material": "stone" } ],
+      "expect": [ { "path": "result.ok", "eq": true }, { "path": "state.research.known", "count_min": 3 } ],
+      "pick": { "tickBefore": { "path": "state.tick" }, "waterBefore": { "path": "state.inventory.water" } } },
+    { "name": "restart", "restart": true,
+      "expect": [ { "path": "state.tick", "eq": "{tickBefore}" }, { "path": "state.inventory.water", "eq": "{waterBefore}" },
+                  { "path": "state.tools", "contains": "pick" }, { "from": "state.structures", "where": { "kind": "drip-collector" }, "count_min": 1 } ] },
+    { "name": "keeps-going", "call": "act", "args": [ { "type": "dig", "dir": "down" } ],
+      "expect": [ { "path": "result.ok", "eq": true }, { "path": "state.alive", "eq": true } ] },
+    { "name": "still-automating", "call": "tick", "args": [ 300 ],
+      "expect": [ { "path": "state.inventory.water", "gte": 2 } ] }
+  ]
+}

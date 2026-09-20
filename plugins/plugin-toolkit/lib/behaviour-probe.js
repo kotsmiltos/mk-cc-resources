@@ -44,6 +44,7 @@ const REQUEST_TIMEOUT_MS = 60000; // a pull over ~200 real transcripts is the sl
 const EXIT_WAIT_MS = 5000;
 const LOG_TAIL_CHARS = 1200;
 const PLACEHOLDER = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+const WHOLE_PLACEHOLDER = /^\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
 const JSON_CONTENT_TYPE = 'application/json';
 const SESSION_TITLE_TYPES = new Set(['ai-title', 'aiTitle']);
 const SCRATCH_PREFIX = 'behaviour-probe-';
@@ -53,6 +54,12 @@ const SCRATCH_PREFIX = 'behaviour-probe-';
 /** Fill `{name}` placeholders from `vars`; throws on an unknown name so a typo never passes as a literal. */
 function template(value, vars) {
   if (typeof value === 'string') {
+    // A string that IS one placeholder keeps the picked value's type (a tick count stays a number).
+    const whole = value.match(WHOLE_PLACEHOLDER);
+    if (whole) {
+      if (!(whole[1] in vars)) throw new Error(`probe: placeholder {${whole[1]}} was never picked`);
+      return vars[whole[1]];
+    }
     return value.replace(PLACEHOLDER, (_m, name) => {
       if (!(name in vars)) throw new Error(`probe: placeholder {${name}} was never picked`);
       return String(vars[name]);
@@ -97,6 +104,8 @@ const OPS = {
     return new RegExp(wanted).test(actual) ? null : `does not match /${wanted}/`;
   },
   count_min: (actual, wanted) => (Array.isArray(actual) && actual.length >= wanted ? null : `expected at least ${wanted} item(s), got ${Array.isArray(actual) ? actual.length : typeof actual}`),
+  gte: (actual, wanted) => (typeof actual === 'number' && actual >= wanted ? null : `expected a number >= ${wanted}, got ${JSON.stringify(actual)}`),
+  lte: (actual, wanted) => (typeof actual === 'number' && actual <= wanted ? null : `expected a number <= ${wanted}, got ${JSON.stringify(actual)}`),
   // `oracle`: the truth set comes from outside the app (e.g. the real session titles on disk);
   // passes when at least one actual value is in it.
   oracle: (actual, wanted, ctx) => {
@@ -266,9 +275,23 @@ async function stop(child) {
 // ---------------------------------------------------------------- the runner
 
 /** Load + validate the spec file; throws with the reason. */
+/**
+ * DRIVERS — how a spec reaches the app. `http` boots a server and speaks JSON over loopback;
+ * `module` loads the app's entry as a library in a child process and calls it (a headless sim,
+ * a CLI core). Each driver: (spec, copyDir, ctx) → step results. Add a driver here.
+ */
+const DRIVER_HTTP = 'http';
+const DRIVER_MODULE = 'module';
+const REQUIRED_KEYS = { [DRIVER_HTTP]: ['entry', 'port', 'ready', 'steps'], [DRIVER_MODULE]: ['entry', 'setup', 'steps'] };
+const MODULE_HARNESS = path.join(__dirname, 'probe-drivers', 'module-harness.js');
+const MODULE_TIMEOUT_MS = 120000; // a sim asked to tick thousands of times, in a child we can kill
+const MODULE_STDOUT_MAX_BYTES = 64 * 1024 * 1024; // the child prints every step's state snapshot
+
 function loadSpec(file) {
   const spec = JSON.parse(fs.readFileSync(file, 'utf8'));
-  for (const key of ['entry', 'port', 'ready', 'steps']) if (!(key in spec)) throw new Error(`probe spec ${file}: missing "${key}"`);
+  spec.driver = spec.driver || DRIVER_HTTP;
+  if (!(spec.driver in REQUIRED_KEYS)) throw new Error(`probe spec ${file}: unknown driver "${spec.driver}" (known: ${Object.keys(REQUIRED_KEYS).join(', ')})`);
+  for (const key of REQUIRED_KEYS[spec.driver]) if (!(key in spec)) throw new Error(`probe spec ${file}: missing "${key}"`);
   if (!Array.isArray(spec.steps) || !spec.steps.length) throw new Error(`probe spec ${file}: "steps" must be a non-empty array`);
   spec.steps.forEach((s, i) => { if (!s.name) throw new Error(`probe spec ${file}: step ${i} has no name`); });
   return spec;
@@ -287,6 +310,10 @@ async function runProbe(spec, armDir, opts = {}) {
   // config) are laid down first so the app sees the same tree the agent saw. Arm files win.
   for (const overlay of opts.overlays || []) if (fs.existsSync(overlay)) fs.cpSync(overlay, copyDir, { recursive: true });
   fs.cpSync(armDir, copyDir, { recursive: true });
+  if ((spec.driver || DRIVER_HTTP) === DRIVER_MODULE) {
+    try { return runModuleProbe(spec, copyDir, env); }
+    finally { try { fs.rmSync(scratch, { recursive: true, force: true }); } catch (_e) { /* a still-open handle on Windows: the OS temp cleaner takes it */ } }
+  }
   const port = await freePort();
   const results = [];
   const vars = {};
@@ -332,6 +359,40 @@ async function runProbe(spec, armDir, opts = {}) {
   return { steps: results, ...summarize(results), port, log: running ? running.log.tail() : '' };
 }
 
+/**
+ * The module driver: the harness child loads the entry, builds the object under test through
+ * `setup`, runs every step (calls, repeats, picks, `restart` = save → load) and prints one
+ * response per step; expectations are judged HERE, with the same evaluate() the http driver
+ * uses, over `{ result, state }`. A crashed or hung child is one failed `boot` step.
+ */
+function runModuleProbe(spec, copyDir, env) {
+  const proc = spawnSync(NODE_BIN, [MODULE_HARNESS, copyDir, JSON.stringify(spec)], { encoding: 'utf8', timeout: MODULE_TIMEOUT_MS, maxBuffer: MODULE_STDOUT_MAX_BYTES });
+  const log = String(proc.stderr || '').slice(-LOG_TAIL_CHARS);
+  let report = null;
+  try { report = JSON.parse(String(proc.stdout || '').trim().split('\n').pop()); } catch (_e) { report = null; }
+  if (!report || !Array.isArray(report.steps)) {
+    const why = proc.error ? proc.error.message : `harness exited ${proc.status}${proc.signal ? ` (${proc.signal})` : ''}`;
+    const results = [{ name: 'boot', ok: false, detail: `${why}${log ? `\n${log}` : ''}` }];
+    return { steps: results, ...summarize(results), port: null, log };
+  }
+  const oracles = {};
+  const results = [];
+  const byName = new Map(spec.steps.map((s) => [s.name, s]));
+  for (const ran of report.steps) {
+    const step = byName.get(ran.name) || {};
+    if (ran.error) { results.push({ name: ran.name, ok: false, detail: ran.error }); continue; }
+    for (const name of new Set((step.expect || []).filter((e) => 'oracle' in e).map((e) => e.oracle))) {
+      if (!(name in oracles)) oracles[name] = ORACLES[name] ? ORACLES[name](spec, env) : null;
+    }
+    let verdicts;
+    try { verdicts = (step.expect || []).map((e) => evaluate(template(e, ran.vars || {}), ran.response, { oracles })); }
+    catch (err) { results.push({ name: ran.name, ok: false, detail: err.message }); continue; }
+    const failed = verdicts.filter((v) => !v.ok);
+    results.push({ name: ran.name, ok: failed.length === 0, detail: failed.length ? failed.map((v) => v.detail).join('; ') : `${verdicts.length} expectation(s) ok` });
+  }
+  return { steps: results, ...summarize(results), port: null, log };
+}
+
 /** One text block for the terminal: `passed/total`, then one line per step. */
 function formatProbe(label, result) {
   const lines = [`${label}: probe ${result.passed}/${result.total}${result.failed.length ? ` — failed: ${result.failed.join(', ')}` : ''}`];
@@ -339,4 +400,4 @@ function formatProbe(label, result) {
   return lines.join('\n');
 }
 
-module.exports = { template, getPath, select, evaluate, summarize, loadSpec, runProbe, formatProbe, lastSessionTitle, OPS, ORACLES, SPEC_FILE };
+module.exports = { template, getPath, select, evaluate, summarize, loadSpec, runProbe, formatProbe, lastSessionTitle, OPS, ORACLES, SPEC_FILE, DRIVER_HTTP, DRIVER_MODULE };

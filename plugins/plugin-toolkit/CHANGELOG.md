@@ -5,6 +5,12 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2026-09-20
+
+### Added
+- **`behaviour-probe` drivers: `module` beside `http`.** A spec with `"driver": "module"` loads the arm's entry as a library (ESM or CommonJS) in a child process the parent can kill, builds the subject through `setup: { factory, args }`, and runs steps as method calls (`call`, `args`, `repeat`, `pick`); `restart` is `persist.load(subject.persist.save())`. Expectations are judged in the parent over `{ result, state }` with the same ops; `gte` / `lte` join them, and a placeholder that is the whole string keeps the picked value's type. This is how a headless sim or a CLI core is scored by behaviour without a server.
+- **The `deepwell` case** (steward, turn-end, kb, patterns, thorough-mode): the owner's own words for a survival-automation game with no quests, plus one concept (dig out of a collapsed mineshaft; light and air are the constraints; drip collectors, mushroom beds, rails, water wheel, drill, bellows are the automation; research unlocks recipes from materials you hold) and a headless sim contract the ten-step probe drives — fresh world → dig 12 → craft pick → refuse an unknown recipe → build a drip collector → 300 idle ticks produce water and drain light → research stone → save/load round-trip → keep digging → still automating. The contract was proven satisfiable against a reference stub (10/10) before any arm ran.
+
 ## [1.22.0] - 2026-09-20
 
 ### Added
