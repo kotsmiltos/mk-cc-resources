@@ -4,6 +4,11 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-09-20
+
+### Removed
+- **`++` / `@thorough`.** The enumerate-first injection is retired; the token now injects nothing, and the "add `++`" hint is gone with it. Why: measured twice on the same real task (a Unity manager in the owner's house style, sonnet, 3 runs per arm) and it changed nothing — graded on "named a verified check" it read 0/3 with vs 2/3 without; graded on the very shape it promised (an enumerated list before the first write, items closed one by one) it read 0/3 vs 0/3. The model went straight to code with or without it and closed items in bullets with or without it. A mechanism measured to change nothing is text. The other eight modifiers are untouched; `@prompt` now cites `@verify`/`@fc` as the working style to carry forward.
+
 ## [1.12.2] - 2026-09-14
 
 ### Changed

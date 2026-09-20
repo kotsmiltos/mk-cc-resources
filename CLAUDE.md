@@ -58,8 +58,8 @@ plugins/
 
   schema-scout/             # Data file schema exploration CLI (Python: typer + openpyxl + rich)
 
-  thorough-mode/            # Prompt modifiers (++/@thorough, @ship, @present, @debug, @verify,
-                            #   @fresh, @prompt, @build, @fc) — hooks-only, protocol-shaped
+  thorough-mode/            # Prompt modifiers (@ship, @present, @debug, @verify, @fresh,
+                            #   @prompt, @build, @fc; ++/@thorough RETIRED 2026-09-20 after two measured +0) — hooks-only, protocol-shaped
                             #   injections, machine-text guard; @prompt is steward-aware.
                             #   See plugins/thorough-mode/CLAUDE.md.
 

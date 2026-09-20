@@ -14,7 +14,7 @@
  * is skipped entirely (a genuine user message never begins with these).
  *
  * Modifiers:
- *   ++ / @thorough  — exhaustive processing, no skipping
+ *   ++ / @thorough  — RETIRED 2026-09-20 (measured no effect twice; see MODIFIERS)
  *   @ship           — pre-push documentation and versioning checklist
  *   @present        — use AskUserQuestion for all choices
  *   @debug          — root cause investigation before fixing
@@ -46,20 +46,15 @@ function isMachineText(prompt) {
   return MACHINE_TEXT_MARKERS.some((m) => head.startsWith(m));
 }
 
+/*
+ * RETIRED 2026-09-20 (owner ruling, after two measured +0 results): `++` / `@thorough`.
+ * The with/without eval (plugin-toolkit plugin-eval, sonnet, 3 runs/arm) graded it twice on
+ * the same task — once on "verified done" (0/3 with vs 2/3 without), once on the shape it
+ * promised, enumerate-before-writing then close each item (0/3 vs 0/3). With the injection the
+ * model went straight to code and closed items in bullets exactly as it did without it. A
+ * mechanism measured to change nothing is text (page law 3). `++` typed now injects nothing.
+ */
 const MODIFIERS = [
-  {
-    name: "thorough",
-    triggers: [
-      /(?:^|\s)\+\+(?:\s|$)/,       // ++ as standalone token
-      /(?:^|\s)@thorough(?:\s|$)/i,  // @thorough as standalone token
-    ],
-    injection: `[thorough-mode] Be thorough, not hasty. The failure this guards: satisficing — stopping at "looks addressed" instead of "each item verifiably addressed". Run this shape:
-1. ENUMERATE first — before acting, list every item, file, question, and constraint the request contains. The request IS the checklist; write it out.
-2. WORK THE LIST — handle each item fully, one at a time. Never batch, merge, or hand-wave. When in doubt, INCLUDE rather than exclude.
-3. RE-READ before ending — check the original request against your list; anything skimmed, assumed, dropped, or silently omitted goes back to step 2. If you realize you missed something, fix it rather than hoping it doesn't matter.
-ANTI-SIGNALS (stop; return to the list): about to write "the rest are similar"; sampling a few of many; paraphrasing an instruction you haven't re-read; ending the turn without running step 3.
-EXIT CHECK: for every enumerated item you can name what was done + the evidence. An item without evidence is not done.`,
-  },
   {
     name: "ship",
     triggers: [
@@ -157,7 +152,7 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
    - List open decisions / blockers the next session must resolve (or that need the user).
    - Point to durable artifacts instead of restating them (handoff.md, CHANGELOG.md, task specs) — reference, don't paste.
    - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
-   - Carry forward any working-style the work needs (e.g. \`++\`, \`@verify\`) so the next session starts in the right mode.
+   - Carry forward any working-style the work needs (e.g. \`@verify\`, \`@fc\`) so the next session starts in the right mode.
 2. VERIFY the draft against the substrate NOW (substrate-verify before prescribing): every file path, command, branch name, and artifact the prompt cites must be checked against current disk/git state — the cold session inherits your citations as ground truth, so one stale path poisons its first minutes. Fix or drop anything that fails the check; a citation you didn't check doesn't go in the prompt.
 3. COLD-READ the draft as its reader: a fresh context with zero memory — can it act from this alone, without re-deriving? A question surfacing on re-read means the prompt is NOT done; close the gap and re-read again.
 4. SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` in the shape "- \`<timestamp>\` · <one-line objective>  → prompts/prompt-<fs-ts>.md" (create the file with a \`# Prompt index\` header if absent). Never overwrite a prior prompt — this is an append-only history.
@@ -204,7 +199,7 @@ EXIT CHECK: everything still on the user is something only they can do, and each
 // model IS the verified state — a kickoff prompt renders from it instead of
 // re-deriving via the full DRAFT→VERIFY ritual. Same SAVE discipline.
 const PROMPT_STEWARD_INJECTION = `[prompt-mode/steward] This project carries a .steward/ living model — render the kickoff FROM the model instead of re-deriving state. Protocol — RENDER → SPOT-CHECK → SAVE → SHOW:
-1. RENDER one fenced code block from .steward/: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`++\`, \`@verify\`).
+1. RENDER one fenced code block from .steward/: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`@verify\`, \`@fc\`).
 1b. NAME THE END STATE, not only the first task: what "done" means for the whole sitting AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
 2. SPOT-CHECK only what the block cites beyond the model: any file path or branch named that is NOT already in the model gets disk-verified now; model-sourced content is already the maintained truth — if you doubt it, dispatch the steward agent (job: brief) rather than re-deriving inline.
 3. SAVE to \`.claude/prompts/prompt-<fs-ts>.md\` + prepend the INDEX.md line (same append-only history as always).
@@ -214,13 +209,6 @@ EXIT CHECK: block renders from the model, non-model citations disk-verified, pro
 // Patterns that suggest a modifier would help, but the user didn't use it.
 // Each hint only fires if the corresponding modifier was NOT already triggered.
 const HINTS = [
-  {
-    name: "thorough",
-    patterns: [
-      /\b(be thorough|don'?t skip|don'?t be lazy|take your time|carefully|don'?t drop|every single|each one|all of them|don'?t miss|don'?t forget any|don'?t leave out|exhaustive|make sure you get)\b/i,
-    ],
-    hint: `[hint] Tip: add \`++\` or \`@thorough\` to your message to auto-enforce exhaustive processing.`,
-  },
   {
     name: "ship",
     patterns: [

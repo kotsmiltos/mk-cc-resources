@@ -75,7 +75,7 @@
       "source": "./plugins/thorough-mode",
       "displayName": "Thorough Mode",
       "description": "Prompt modifiers that inject behavioral rules on a keyword: ++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only — no skill to remember.",
-      "version": "1.12.2",
+      "version": "1.13.0",
       "author": {
         "name": "kotsmiltos"
       },

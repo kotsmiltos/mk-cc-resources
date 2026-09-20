@@ -36,10 +36,9 @@ function runHook(promptText, cwd) {
 // the steward variant. Generic cases run from a neutral temp dir with no .steward ancestor.
 const neutralProj = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-neutral-'));
 
-// --- Genuine user keywords fire, per modifier (all 9) ---
+// --- Genuine user keywords fire, per modifier (all 8 live ones) ---
 const FIRE_CASES = [
-  ['++ do the thing', '[thorough-mode]'],
-  ['@thorough audit it', '[thorough-mode]'],
+  // ++ / @thorough RETIRED 2026-09-20 — asserted silent below
   ['@ship it', '[pre-ship checklist]'],
   ['@present the options', '[present-mode]'],
   ['@debug this crash', '[debug-mode]'],
@@ -66,6 +65,11 @@ const MACHINE_CASES = [
 for (const text of MACHINE_CASES) {
   check(`silent on machine text: "${text.slice(0, 40).replace(/\n/g, ' ')}..."`, runHook(text) === '');
 }
+
+// --- ++ / @thorough are RETIRED (2026-09-20): a genuine prompt carrying them injects nothing ---
+check('retired ++ injects nothing', runHook('++ do the thing carefully') === '');
+check('retired @thorough injects nothing', runHook('@thorough audit it') === '');
+check('no hint points at the retired modifier', !/\+\+|@thorough/.test(runHook("be thorough and don't skip anything")));
 
 // --- Hints also suppressed on machine text ---
 check('hint suppressed on machine text',

@@ -1,5 +1,7 @@
 # Decisions — one dated line each, with the why. A newer line names what it replaces.
 
+- 2026-09-20 · **`++` / `@thorough` retired** (thorough-mode 1.13.0); the other eight modifiers stay. Why: measured twice on the owner's own kind of task with `plugin-eval` — "verified done" 0/3 with vs 2/3 without, then the enumerate-first shape it promised 0/3 vs 0/3; a mechanism measured to change nothing is text (law 3). turn-end and steward measured +38 / +33 on the same task and stay.
+
 - 2026-09-18 · **Subtract.** One page per project rewritten whole each sitting, one decisions list, one Stop question; kb / steward / lens / patterns / reuse-gate / essense-flow / autopilot off. Why: measured push 9–16 KB/prompt vs 2 KB without the toolkit, hints followed 0–7.5%, judge empty 81%, a 214k-token steward pass for two notes; "going in circles". Replaces the 09-18 garden law's machinery for this repo (the garden stays valid for a kept multi-file model).
 - 2026-09-18 · Contradictions keep the LATEST input; the older is deleted; git is the archive. Why: "keeping everything still sounds wrong." Replaces the 09-08 status-lifecycle proposal (superseded-by / dormant tiers).
 - 2026-09-18 · The recall engine default STAYS the judge; `engine: ranker` is a project opt-in. Why: the 81%-empty measurement is cost, not quality (agreement 17%, n=8); quality over speed (08-23).

@@ -16,7 +16,6 @@ Hooks only — install it standalone, not through the bundle.
 
 | Keyword | What it does |
 |---|---|
-| `++` / `@thorough` | Enumerate everything the request contains, work the list item by item, re-read before finishing |
 | `@verify` | Prove every claim: run the tests, show the output, name the check that makes "done" checkable |
 | `@debug` | Root cause first — read the code, trace to the origin, propose the fix with its rationale before touching anything |
 | `@ship` | Pre-push checklist: README, CHANGELOG, version bumps, docs, and the repo guard |
@@ -26,7 +25,7 @@ Hooks only — install it standalone, not through the bundle.
 | `@build` | Reuse before building; check what already exists first |
 | `@fc` | Fewer clicks — everything doable gets done here, the result lands in the terminal instead of a path to open, and what is left is one keystroke |
 
-Put the keyword anywhere in the message. They stack — `++ @verify` fires both. Describe the
+Put the keyword anywhere in the message. They stack — `@debug @verify` fires both. Describe the
 intent without the keyword ("prove it", "root cause", "re-read the file") and you get a one-line
 hint naming the shorthand.
 

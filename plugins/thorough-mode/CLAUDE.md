@@ -8,13 +8,15 @@ An abstract imperative list ("be careful", "re-read") under-fires — it drifts 
 
 ## Available Modifiers
 
-### `++` / `@thorough` — Thorough Mode
-Guards against satisficing — stopping at "looks addressed" instead of "each item verifiably addressed":
-- ENUMERATE first: list every item/file/question/constraint the request contains — the request IS the checklist
-- WORK THE LIST: each item fully, one at a time — never batch, merge, or hand-wave; in doubt, include
-- RE-READ before ending: check the request against the list; anything skimmed/dropped goes back to the list
-- Anti-signals: "the rest are similar", sampling a few of many, paraphrasing an unre-read instruction
-- Exit check: every enumerated item has what-was-done + evidence — an item without evidence is not done
+### `++` / `@thorough` — RETIRED 2026-09-20
+Was the enumerate-first protocol (list every item, work the list, re-read before ending). Owner
+ruling after two measured +0 results in the with/without eval (plugin-toolkit `plugin-eval`,
+sonnet, 3 runs/arm, the Unity haptics task): graded on "verified done" it read 0/3 with vs 2/3
+without; graded on the very shape it promised (an enumerated list before the first write, items
+closed one by one) it read 0/3 vs 0/3 — the model went straight to code either way. The trigger
+regexes, the injection and the "add `++`" hint are gone; the token injects nothing. The global
+`verification-rules.js` hook in the owner's `~/.claude/hooks/` still carries its own `++`
+augment — outside this repo, the owner's to remove.
 
 ### `@ship` — Pre-Push Checklist
 Enforces documentation and versioning hygiene before pushing:
