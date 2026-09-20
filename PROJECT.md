@@ -57,8 +57,11 @@ first for the owner's own ~40 production codebases.
    pastes it into a fresh session). New repo `postit-board` in the owner's work dir; essense-flow
    `/init → … → /verify` on opus; one measured row per phase (produced · seconds · context ·
    what changed); the app run and shown with real post-its from `~/.claude/projects`; then
-   opus `plugin-eval` for turn-end + steward beside the sonnet numbers above. Check: the
-   phase table in the terminal, a screenshot or fetched HTML carrying the owner's sessions,
+   opus `plugin-eval` for turn-end + steward beside the sonnet numbers above. Owner answers
+   NOTHING: every fork takes the default, one dated DECISIONS line each. Check: the
+   phase table, an independent COMPLETION audit (opus agent given only the ask), a TESTING list
+   (end-to-end / unit-only / claimed-only), the toolkit-gap score (what review+verify caught vs
+   the audit); a screenshot or fetched HTML carrying the owner's sessions,
    a task surviving a server restart, both repos committed, nothing pushed.
 2. **Other faces still unmeasured**: time (two-session continuity via `history_file`),
    the negative face (a trivial ask must add zero turns/bytes/blocks), context per arm from
