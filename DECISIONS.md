@@ -19,3 +19,5 @@
 - 2026-08-23 · `.steward/` committed, `inbox/` gitignored. No CI workflows, on purpose (Q12 closed 09-18 to that default).
 - 2026-07-27 · One blocking Stop hook toolkit-wide; every other plugin ships a duty. Why: two blocking hooks re-armed each other.
 - 2026-07-21 · Patch-don't-re-derive was the root failure; recompute the whole deliverable and show the diff.
+- 2026-09-20 · **The postit-board measure is a SINGLE-SHOT plugin-eval case, not a pipeline run.** Why: owner — "one simple webapp build with without single shot"; the pasted kickoff over-scoped it and ran 2.5 h of pipeline before the owner stopped it. Result (opus, 1 run/arm): steward 0.75 vs 0.75 (inbox capture is the only mover), turn-end 0.80 vs 1.00 (WITH arm hit max_turns mid-fix). All four arms boot and serve the board; three pull real sessions.
+- 2026-09-20 · **Law 9: scope check before a long run.** A pasted kickoff is a proposal; when it is far heavier than the goal, say so and confirm before the first hour of dispatches. Why: today's run — the phrase "ask nothing" turned a with/without comparison into a ten-phase build.
