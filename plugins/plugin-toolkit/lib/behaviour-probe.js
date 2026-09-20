@@ -104,6 +104,7 @@ const OPS = {
     return new RegExp(wanted).test(actual) ? null : `does not match /${wanted}/`;
   },
   count_min: (actual, wanted) => (Array.isArray(actual) && actual.length >= wanted ? null : `expected at least ${wanted} item(s), got ${Array.isArray(actual) ? actual.length : typeof actual}`),
+  ne: (actual, wanted) => (JSON.stringify(actual) !== JSON.stringify(wanted) ? null : `expected anything but ${JSON.stringify(wanted)}`),
   gte: (actual, wanted) => (typeof actual === 'number' && actual >= wanted ? null : `expected a number >= ${wanted}, got ${JSON.stringify(actual)}`),
   lte: (actual, wanted) => (typeof actual === 'number' && actual <= wanted ? null : `expected a number <= ${wanted}, got ${JSON.stringify(actual)}`),
   // `oracle`: the truth set comes from outside the app (e.g. the real session titles on disk);

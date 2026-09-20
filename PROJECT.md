@@ -25,70 +25,70 @@ first for the owner's own ~40 production codebases.
    cost; it never grants itself "ask nothing"** (thorough-mode 1.14.0: the `@prompt` contract +
    the receiving-side `[kickoff-guard]`, one keystroke before the first sub-agent dispatch).
 
-## Where we are (2026-09-20, second sitting)
+## Where we are (2026-09-20, third sitting — the deepwell measure)
 
 - `main` is ahead of origin and NOT pushed (count: `git rev-list --count origin/main..HEAD`).
 - **The owner's ask:** test building a simple webapp from different angles, with and without the
-  plugins. The morning's pipeline detour (2h40m, ~50 opus agents, 6 of 32 modules, no app) is
-  recorded in the `postit-board` repo and fixed by law 9. The afternoon's one-shot measure
-  (steward 0.75 vs 0.75, turn-end 0.80 vs 1.00, n=1) was decided by regex graders.
-- **The instrument is fixed (plugin-toolkit 1.22.0, this sitting):** `behaviour-probe` boots
-  the app an arm produced in a scratch copy on a free port and drives it — create → drag → edit
-  → done → job → export (one fenced block) → restart → read back → pull → a REAL session title
-  (checked against the `ai-title` lines on disk). `plugin-eval --keep-outputs` runs it on every
-  arm and prints `probe <case>: WITH a/b · W/OUT c/d`; `--probe-outputs` re-scores kept arms
-  for free. The case prompt now pins the API contract the probe drives.
-- **The four kept arms, re-scored by behaviour** (built before the contract existed, so the
-  misses are contract misses, not verdicts):
+  plugins. postit-board (a CRUD app the prompt fully specifies) could not separate arms; the
+  owner asked for a survival-automation game without quests instead. **deepwell**: dig out of a
+  collapsed mineshaft, light and air as constraints, research unlocks recipes from held
+  materials, automation from drip collectors to a powered drill. Owner's words verbatim in the
+  prompt (law 9); one headless sim contract; a 14-step behaviour probe (module driver).
+- **The instrument** (plugin-toolkit 1.23.0): `behaviour-probe` drives the sim in a child process
+  and quotes what the app said on a failed step; `plugin-eval --keep-outputs` probes every arm;
+  `--probe-outputs` re-scores kept arms for free (used four times tonight to fix contract
+  ambiguities without a rerun). All 30 arms boot and pass 13–14 of 14.
+- **The measure** — opus, n=3 per arm, 30 sessions, $167, ~40 min per plugin in parallel:
 
-  | arm | regex score | probe |
-  |---|---|---|
-  | steward / without | 0.75 | 11/11 |
-  | steward / with | 0.75 | 2/11 |
-  | turn-end / with | 0.80 | 1/11 |
-  | turn-end / without | 1.00 | 2/11 |
+  | plugin | graders WITH | W/OUT | Δ | what moved | probe WITH · W/OUT |
+  |---|---|---|---|---|---|
+  | steward | 0.93 | 0.60 | +33 | inbox capture 3/3 vs 0/3; the briefing-only RNG decision 3/3 vs 0/3 | 14,13,14 · 14,14,14 |
+  | turn-end | 0.89 | 0.67 | +22 | page rewritten 3/3 vs 0/3 — with the page rule in the fixture and NO hook, nobody rewrote it | 14,14,14 · 14,14,14 |
+  | kb | 0.92 | 0.92 | 0 | the note is on disk for both arms; hints changed nothing | 14,13,14 · 14,14,14 |
+  | patterns | 0.80 | 0.80 | 0 | axis named 3/3 vs 3/3; zero kind-switches in all six — the prompt said "adding one is data" | 14 ×3 · 14 ×3 |
+  | thorough-mode | 0.73 | 0.80 | −7 | verified-done 3/3 vs 3/3 (the prompt asks "say what you checked"); one `@verify` arm used the global random | 14 ×3 · 14,12→14,12→14 |
 
-  The regex column ranked them backwards. That is finding (6) with numbers.
-- **All six angles are one command away:** `postit-board` cases now exist for kb (decisions in
-  `.claude/kb/extracted`, hints on), patterns (a growth axis: more pull sources), reuse-gate
-  (the atomic writer + the one guard shipped as fixtures; store pinned to `server/board.js`),
-  thorough-mode (`@verify`), steward, turn-end. turn-end's WITHOUT arm carries the page rule in
-  the fixture with the hook off, which is the test of finding (3). Nothing has been run yet.
-- **What the 09-20 measures told us stands:** (1) the WHAT did the work; (2) plugins move only
-  what lives outside the code; (3) a convention in the repo did turn-end's page duty for free;
-  (4) the pipeline is the wrong tool below one-agent size; (5) nothing RAN its own code —
-  the probe now does; (6) regex graders decided the Δ rows.
-- Six sonnet measures from 09-19 stand: turn-end +38, steward +33, kb +27, patterns +17,
-  `@verify` 3/3 vs 0/3, reuse-gate 0, `++` retired.
-- Gates this sitting: test-all 38/38 suites passed (2319 checks; the root CLAUDE.md baseline of
-  32/35 is stale), registry-check consistent, repo-guard clean.
+  Deterministic scan, 30 arms: ~2,050 lines and ~25 files each side, 0 silent catches, 0
+  kind-switches, 12–35 structure kinds in config, cost $3.6–8.9 and 15–27 min per arm; WITH arms
+  cost ~4% more and ran ~6% longer. Probe residue: two arms refuse to MOVE in the dark (the lamp
+  decision, honoured).
+- **What it tells us:** (1) a plugin moves exactly what lives outside the prompt and the repo —
+  steward and turn-end moved because their decisions and duties lived only in their own files;
+  kb did not because its note is a file both arms read; (2) postit-board's finding (3) is
+  refuted at n=3: a convention written in the repo did NOT do turn-end's page duty; the hook
+  did, 3/3 vs 0/3; (3) the WHAT did the code again — every arm satisfied the sim contract, so
+  the probe cannot rank arms on a prompt this explicit; (4) the prompt's own asks ("say what
+  you checked", "adding one is data") saturate `@verify` and patterns: to measure them the
+  prompt must NOT ask for it; (5) instrument bugs looked like arm defects until the failed step
+  quoted the app — four contract ambiguities (build target, craft-vs-place, stone budget, start
+  depth) were mine, not theirs.
+- Earlier measures stand: sonnet 09-19 (turn-end +38, steward +33, kb +27, patterns +17, `@verify`
+  3/3 vs 0/3, reuse-gate 0); postit-board opus n=1 (regex graders ranked arms backwards).
+- Gates: test-all 38/38 (2326 checks), registry-check consistent, repo-guard clean.
 - Running here: turn-end (page duty only), thorough-mode, prism, elicit, plugin-toolkit, caveman,
   statusline, alert-sounds. Off here: kb, steward, lens, patterns, reuse-gate, essense-flow,
   autopilot, session-lifecycle.
 
 ## Next (each with its check)
 
-1. **Run the six angles, same case, one shot, opus** — owner's keystroke first (cost below).
-   Check: one `probe` row per plugin on this page, n=3, from `--keep-outputs --json`.
-   ```
-   node plugins/plugin-toolkit/bin/plugin-eval.js --root . --case postit-board --runs 3 --max-cost-usd 40 --keep-outputs --json <out>.json
-   ```
-   Cost: ~$5–6 and ~20 min per run at opus; 6 plugins × 2 arms × 3 runs ≈ $200, ~4 h at `-j 3`.
-   n=1 first ≈ $65, ~1.5 h (`--runs 1 --max-cost-usd 15`).
-2. **Decide essense-flow's place.** Check: one dated DECISIONS line (default: park it below
-   the size where one agent holds the app in context).
-3. **Live with the subtraction for five sittings here.** Check: this page rewritten each sitting.
-4. **Decide push + fleet.** Check: each fleet repo has a `PROJECT.md` under 100 lines.
+1. **Measure `@verify` and patterns without the prompt asking for them** (drop "say what you
+   checked" and "adding one is data" from a copy of the deepwell prompt). Check: rows on this page.
+2. **Play one arm** — `node server.js` in `plugins/patterns/evals/results/outputs/deepwell/with-1`
+   (35 files, 19 structure kinds, 14/14) — and record what the game FEELS like, since no
+   instrument here measures fun. Check: one dated line in DECISIONS.md.
+3. **Decide essense-flow's place.** Check: one dated DECISIONS line (default: park it below the
+   size where one agent holds the app in context — every deepwell arm was held by one agent).
+4. **Live with the subtraction for five sittings here.** Check: this page rewritten each sitting.
+5. **Decide push + fleet.** Check: each fleet repo has a `PROJECT.md` under 100 lines.
 
 ## Open decisions (default first)
 
-- **Run size for Next 1:** n=1 across six now, then n=3 on the movers (default) · n=3 now ·
-  hold.
 - **essense-flow:** park below one-agent size (default) · name a module count where it earns
   its coordination cost.
-- **Q17 — the five dead hooks** (essense-flow, essense-autopilot, reuse-gate, patterns, serena
-  read-guard): disabled here now; disable globally? Default: yes for reuse-gate (measured +0);
-  patterns measured +17 — keep it available per project.
-- **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh` fire on every prompt):
-  fold their lines into the global CLAUDE.md and remove the hooks? Default: yes.
+- **kb's place:** its note moved nothing when it was on disk for both arms — measure it with
+  the note OUTSIDE the repo (fleet caste) next, or park it? Default: measure once more.
+- **Q17 — the five dead hooks:** disable globally? Default: yes for reuse-gate; patterns +17 on
+  sonnet but 0 here — keep available per project.
+- **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh`): fold into the global
+  CLAUDE.md and remove? Default: yes.
 - **The recall judge**: ranker-only, or off with the rest? Default: off — the page is the recall.

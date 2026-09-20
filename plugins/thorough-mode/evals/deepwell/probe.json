@@ -92,7 +92,12 @@
           "path": "state.alive",
           "eq": true
         }
-      ]
+      ],
+      "pick": {
+        "yShaft": {
+          "path": "state.pos.y"
+        }
+      }
     },
     {
       "name": "research",
@@ -186,9 +191,14 @@
         },
         {
           "path": "state.pos.y",
-          "lte": 11
+          "ne": "{yShaft}"
         }
-      ]
+      ],
+      "pick": {
+        "yLedge": {
+          "path": "state.pos.y"
+        }
+      }
     },
     {
       "name": "build-collector",
@@ -284,7 +294,7 @@
         },
         {
           "path": "state.pos.y",
-          "lte": 10
+          "ne": "{yLedge}"
         },
         {
           "path": "state.alive",
