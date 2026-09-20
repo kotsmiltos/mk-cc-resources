@@ -144,6 +144,19 @@ function evaluate(expectation, response, ctx) {
   return reason === null ? { ok: true, detail: `${label} ${opKey} ok` } : { ok: false, detail: `${label}: ${reason}` };
 }
 
+/**
+ * What the app SAID when a step failed: the http body or the module call's `result`, cut short.
+ * A refusal reason ("too dark to dig") turns a bare `ok: false` into a diagnosis.
+ */
+const EXCERPT_MAX_CHARS = 200;
+function excerpt(response) {
+  const said = response && ('result' in response ? response.result : response.body);
+  if (said === undefined) return '';
+  let text;
+  try { text = typeof said === 'string' ? said : JSON.stringify(said); } catch (_e) { text = String(said); }
+  return ` · app said: ${text.length > EXCERPT_MAX_CHARS ? `${text.slice(0, EXCERPT_MAX_CHARS)}…` : text}`;
+}
+
 /** passed / total over the step results, plus the failed step names — the one line a table wants. */
 function summarize(steps) {
   const passed = steps.filter((s) => s.ok).length;
@@ -345,7 +358,7 @@ async function runProbe(spec, armDir, opts = {}) {
         }
         const verdicts = (step.expect || []).map((e) => evaluate(template(e, vars), response, { oracles }));
         const failed = verdicts.filter((v) => !v.ok);
-        results.push({ name: step.name, ok: failed.length === 0, detail: failed.length ? failed.map((v) => v.detail).join('; ') : `${response.status} · ${verdicts.length} expectation(s) ok` });
+        results.push({ name: step.name, ok: failed.length === 0, detail: failed.length ? `${failed.map((v) => v.detail).join('; ')}${excerpt(response)}` : `${response.status} · ${verdicts.length} expectation(s) ok` });
       } catch (err) {
         results.push({ name: step.name, ok: false, detail: err.message });
       }
@@ -388,7 +401,7 @@ function runModuleProbe(spec, copyDir, env) {
     try { verdicts = (step.expect || []).map((e) => evaluate(template(e, ran.vars || {}), ran.response, { oracles })); }
     catch (err) { results.push({ name: ran.name, ok: false, detail: err.message }); continue; }
     const failed = verdicts.filter((v) => !v.ok);
-    results.push({ name: ran.name, ok: failed.length === 0, detail: failed.length ? failed.map((v) => v.detail).join('; ') : `${verdicts.length} expectation(s) ok` });
+    results.push({ name: ran.name, ok: failed.length === 0, detail: failed.length ? `${failed.map((v) => v.detail).join('; ')}${excerpt(ran.response)}` : `${verdicts.length} expectation(s) ok` });
   }
   return { steps: results, ...summarize(results), port: null, log };
 }
