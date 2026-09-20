@@ -121,6 +121,16 @@ function collectOutputs(target, result, args) {
         fs.mkdirSync(dest, { recursive: true });
         for (const f of files) { fs.mkdirSync(path.dirname(path.join(dest, f.rel)), { recursive: true }); fs.writeFileSync(path.join(dest, f.rel), f.text); }
         fs.writeFileSync(path.join(dest, 'FINAL-MESSAGE.md'), `${message}\n`);
+        // The evidence for WHY: the stream trace, and every hook trace the plugin wrote into its
+        // cwd (turn-end's names each Stop fire and the duty that asked). Kept, not printed.
+        const stream = readOrNull(path.join(loc.root, 'out', 'trace.jsonl'));
+        if (stream !== null) fs.writeFileSync(path.join(dest, 'TRACE.jsonl'), stream);
+        for (const rel of listFiles(loc.cwd).filter((r) => r.startsWith('.claude/') && r.endsWith('/trace.jsonl'))) {
+          const text = readOrNull(path.join(loc.cwd, rel));
+          if (text === null) continue;
+          fs.mkdirSync(path.join(dest, 'hook-traces'), { recursive: true });
+          fs.writeFileSync(path.join(dest, 'hook-traces', `${rel.split('/')[1]}.jsonl`), text);
+        }
         blocks.push(formatOutput(label, message, files, { listOnly: args.showFull ? false : i > 0, maxLines: args.showLines }));
         fs.rmSync(loc.root, { recursive: true, force: true });
       });

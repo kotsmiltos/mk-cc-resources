@@ -88,7 +88,12 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   named-check FLOOR — the claim must carry a ratio, a touched basename or
                         #   a command the turn ran ("Check: none" / "verified by inspection" /
                         #   bare "exit 0" satisfy nothing); MODALITIES registry shapes the ask
-                        #   (prose re-read / scene look / code run). Zero tokens; the EVIDENCE registry is
+                        #   (prose re-read / scene look / code run). 0.14.1: the code ask
+                        #   names the NO-SHELL path (re-read vs what it must satisfy, trace a
+                        #   non-happy path, name it) — measured in the eval: one run in three
+                        #   read "RUN" literally and spent 900 s + 3 agents hunting for Bash,
+                        #   while the hatch had existed in the detector since 0.4.0.
+                        #   Zero tokens; the EVIDENCE registry is
                         #   the extension surface (new modality = new detector). Excludes
                         #   .claude/.steward/.pipeline + tmp writes — mandated bookkeeping is
                         #   not fresh work. Needs ctx.turn.toolCalls, the ORDERED snapshot;

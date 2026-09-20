@@ -44,8 +44,14 @@ first for the owner's own ~40 production codebases.
     1/3. 150 s vs 116 s.
   - kb +27 — config-asset decision 3/3 vs 0/3, cap 3/3 vs 2/3 (2 of 3 without arms guessed 0.6
     as a default). 79 s vs 55 s.
-  - thorough-mode +0 — house rules 3/3 both; verified-done 0/3 vs 2/3: `++` produced a longer
-    feature list and dropped the check line. Decisions unreachable in either arm (no note).
+  - thorough-mode +0 on BOTH graders — verified-done 0/3 vs 2/3, then a grader for what `++`
+    promises (enumerate before writing, close each item) 0/3 vs 0/3: with `++` sonnet went
+    straight to code exactly as without. Two tasks, two graders, no behaviour change.
+  - turn-end's 3.5× time, read from the kept Stop traces: two runs in three = ONE advise fire,
+    then the compliance work itself (config file, page rewrite, DECISIONS line, named check:
+    22 turns vs 12) — that is the value, at ~2.5×. The third run read self-check's "RUN the
+    check" literally with no shell, searched for Bash 11×, dispatched 3 agents, blocked twice,
+    timed out at 900 s. turn-end 0.14.1 names the no-shell path in the ask.
   - House rules (Singleton<T>, paired unsubscribe, no Find) held 3/3 in every arm: sonnet
     reads AudioManager and copies its shape unaided. The plugins move what lives OUTSIDE the
     code — decisions, the capture, the page, the named check.
@@ -57,11 +63,10 @@ first for the owner's own ~40 production codebases.
 
 ## Next (each with its check)
 
-1. **thorough-mode: grade what `++` promises.** ENUMERATE / EXIT-CHECK shape, not verified-done;
-   and read why the ++ arm dropped the check line 3/3 (outputs kept under evals/results).
-   Check: a rerun with the new grader, Δ read beside the produced code.
-2. **turn-end costs 3.5× the time** (320 s vs 91 s per run). Read the kept traces: how many
-   Stop fires per run, which duty re-asked. Check: fires per run named; a fix or a ruling.
+1. **Rule on `++`** (open decision below): measured no effect twice; keep as a habit or retire
+   the injection and keep the hints. Check: one dated line in DECISIONS.md.
+2. **Confirm turn-end 0.14.1 on the eval**: no run past 3 Stop fires, none timing out.
+   Check: `plugin-eval --plugin turn-end --keep-outputs`, fires per run from hook-traces.
 3. **Live with the subtraction for five sittings here.** Check: this page rewritten each
    sitting (git log); `ctx.harness_pct` under 3% (it reads 6.2% for the sitting before this
    one, with kb + steward still on); no "recap this for me" ask.
@@ -77,6 +82,7 @@ first for the owner's own ~40 production codebases.
 - **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh` fire on every prompt):
   fold their four lines into the global CLAUDE.md and remove the hooks? Default: yes.
 - **The recall judge**: ranker-only, or off with the rest? Default: off — the page is the recall.
-- **thorough-mode after +0**: keep `++` as a habit the owner likes, or retire the injection and
-  keep the hints? Default: keep, re-measure with the right grader (Next 1).
+- **`++` after two +0 results** (verified-done AND the enumerate-first shape it promises):
+  retire the injection, keep the hints? Default: retire — a mechanism measured to change
+  nothing is text (law 3).
 - **Design duty at `@ship`** (measured code-convergence gate): keep on the list, build after (1).

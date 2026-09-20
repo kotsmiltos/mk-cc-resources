@@ -4,6 +4,11 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-09-20
+
+### Fixed
+- **self-check's ask now says what to do when nothing can run.** Measured in the with/without eval (no shell granted, Unity code, sonnet): two runs in three complied on the first nudge — re-read the files, named the check, done — but the third read "RUN the check… execute what you wrote" literally, searched the tool list for a Bash tool eleven times, dispatched three agents to compile C# for it, and hit the 900 s timeout, blocked twice on the way. The named-check escape hatch (`Check: re-read <file> vs <what>; result: …`) had existed in the detector since 0.4.0; the ask never offered it. It does now, for the no-shell case only: re-read what you changed against what it must satisfy, trace one non-happy path by hand, name that.
+
 ## [0.14.0] - 2026-09-18
 
 ### Added

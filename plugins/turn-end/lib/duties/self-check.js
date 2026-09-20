@@ -185,7 +185,14 @@ const MODALITIES = [
       'non-happy path, not only the happy one. Then end your reply naming check + observed ' +
       'result, e.g. "Check: node tests/x.test.js → 110/110; break: malformed input → clean ' +
       'error". "Should work" is not a check, and a check that ran before your last edit does ' +
-      'not cover the edit.',
+      'not cover the edit. ' +
+      // Measured 2026-09-20 (eval, no shell granted): without this sentence one run in three
+      // spent 900 s and three agent dispatches hunting for a Bash tool, because the ask only
+      // said RUN. The named-check hatch existed in the detector; the ask never offered it.
+      'If NOTHING can run here (no shell, no compiler, no runtime), do not go looking for one: ' +
+      're-read every file you changed against what it must satisfy (signatures, pairing, the ' +
+      'ask), trace one non-happy path by hand, and name THAT as the check with what you found — ' +
+      '"Check: re-read <file> vs <what>; result: …" satisfies this.',
   },
 ];
 
