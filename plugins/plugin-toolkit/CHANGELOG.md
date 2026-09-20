@@ -5,6 +5,16 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-09-20
+
+### Added
+- **`behaviour-probe` — the arm is scored by what it DOES, not by what its source text contains.** A case may ship a `probe.json` beside its `graders/`: the entry file, where the app reads its port, a readiness route, and a list of steps (a request, expectations over the JSON response, values picked for later steps, or `restart`). `lib/behaviour-probe.js` copies the arm to scratch, boots it on a free port, drives it step by step, kills and restarts it, and returns `passed/total` with one line per step. Expectation ops: `eq`, `contains`, `matches`, `count_min`, `oracle` (a truth set computed outside the app — `session-titles` reads the last `ai-title` line of every real transcript, so "the pull shows a real title" is checked against disk). Ops and oracles are one-entry extension surfaces. `node bin/behaviour-probe.js --spec <case>/probe.json --dir <arm dir>` runs one arm; exit 0 all passed, 1 some failed, 2 cannot run.
+- **`plugin-eval --keep-outputs` runs the probe on every kept arm** and prints a `probe <case>: WITH a/b · W/OUT c/d` line per case; the numbers ride in `--json` as `probes`. **`--probe-outputs`** re-scores the arms already under `results/outputs/` without running `claude`, so a new or fixed probe applies to yesterday's arms for free.
+- The `postit-board` case (steward, turn-end) ships an eleven-step probe — create → drag → edit → done → job → add-to-job → export (one fenced block) → restart → read back → pull → a real session title — and its prompt now pins the API contract the probe drives (routes, bodies, the `{ board: {groups, tasks, jobs} }` shape). Measured 2026-09-20 on the four arms kept the day before, none of which had seen the contract: steward/without 11/11, steward/with 2/11, turn-end/with 1/11, turn-end/without 2/11 — the regex graders had scored those same four 0.75 / 0.75 / 0.80 / 1.00.
+
+### Why
+- Both Δ rows of 2026-09-20 were decided by regex graders (`node:http` present, `4321` absent, `resolveInside` named), not by the plugins, and nothing in any arm ever RAN its own code (page, "what it tells us" 5–6). A probe is the cheapest substrate that answers "does it work": deterministic, no judge, no tokens.
+
 ## [1.21.0] - 2026-09-20
 
 ### Added

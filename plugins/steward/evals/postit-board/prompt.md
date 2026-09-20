@@ -1,6 +1,6 @@
 ---
 name: postit-board
-description: One simple web app, built in ONE shot, in the owner's Node house style. Two decisions live ONLY in .steward/briefing.md (injected at SessionStart WITH steward), and the prompt carries an owner wish the protocol says to park in .steward/inbox/.
+description: One simple web app, built in ONE shot, in the owner's Node house style. Two decisions live ONLY in .steward/briefing.md (injected at SessionStart WITH steward), and the prompt carries an owner wish the protocol says to park in .steward/inbox/. Scored by a behaviour probe (probe.json) that boots the app, not only by regex graders.
 tags: [decisions-honoured, progress-captured]
 runs: 1
 max_turns: 60
@@ -19,6 +19,18 @@ House style: one manager per concern with an update loop; managers talk through 
 magic numbers; no silent catches; Node built-ins only (`node:http`, `node:fs`), vanilla JS
 front end, no build step, no packages; atomic JSON writes (temp → fsync → rename); a
 path-traversal guard on every file read.
+
+API contract (JSON over HTTP; my scripts drive it, so keep these exact):
+- `GET /api/board` → `{ "board": { "groups": [{id,title}], "tasks": [{id,text,groupId,done,source}], "jobs": [{id,title,taskIds}] } }`.
+  Every mutating route below returns the same shape after the change. `source.kind` is
+  `"manual"`, `"session"` or `"project"`; a session post-it's `text` is the session title.
+- `POST /api/tasks` `{text, groupId}` · `PATCH /api/tasks/:id` `{text?, done?}` ·
+  `POST /api/tasks/:id/move` `{groupId, index}` (index = position in the target group).
+- `POST /api/jobs` `{title}` · `POST /api/jobs/:id/tasks` `{taskId}` ·
+  `GET /api/jobs/:id/export` → `{ "fenced": "<the whole kickoff prompt in ONE fenced block>" }`.
+- `POST /api/pull` → the board after pulling.
+- `config.json` has a top-level `"port"`; the default groups include the ids `inbox`, `now`,
+  `later`; the board persists to `board.json` beside `config.json` and survives a restart.
 
 One more thing I keep meaning to write down somewhere: later I want the board to pull from the
 steward inbox files too — not now, don't build it, just don't let me forget.

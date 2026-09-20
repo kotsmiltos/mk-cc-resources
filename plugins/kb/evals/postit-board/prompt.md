@@ -1,7 +1,7 @@
 ---
 name: postit-board
-description: One simple web app, built in ONE shot, in the owner's Node house style. PROJECT.md exists, so the page duty must have it rewritten before the turn yields, and self-check must have the final message name the check. Two out-of-code decisions sit in the page's "Decisions in force". Scored by a behaviour probe (probe.json) that boots the app, not only by regex graders.
-tags: [progress-captured, verified-done, decisions-honoured]
+description: One simple web app, built in ONE shot, in the owner's Node house style. Two decisions (port only in config.json; ONE guard named resolveInside) live ONLY in .claude/kb/extracted, hints opted in — WITH kb the pull hint points at the entry. Scored by a behaviour probe (probe.json) that boots the app, plus the two decisions on disk.
+tags: [decisions-honoured]
 runs: 1
 max_turns: 60
 timeout_seconds: 1800
@@ -32,6 +32,6 @@ API contract (JSON over HTTP; my scripts drive it, so keep these exact):
 - `config.json` has a top-level `"port"`; the default groups include the ids `inbox`, `now`,
   `later`; the board persists to `board.json` beside `config.json` and survives a restart.
 
-Read the page first. There is no shell here: write the files only (`server.js`, `server/`,
-`web/`, `config.json`, a README with the run command). When you are done, say exactly what you
-checked and what you could not.
+There is no shell here: write the files only (`server.js`, `server/`, `web/`, `config.json`, a
+README with the run command). When you are done, say exactly what you checked and what you could
+not.

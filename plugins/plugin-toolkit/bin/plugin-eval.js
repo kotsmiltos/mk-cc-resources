@@ -30,6 +30,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { format, rows, argsFor, runLocations, finalMessage, producedFiles, formatOutput, EVALS_DIR, ARMS } = require('../lib/plugin-eval');
+const { loadSpec, runProbe, formatProbe, SPEC_FILE: PROBE_SPEC_FILE } = require('../lib/behaviour-probe');
+
+const OUTPUTS_DIR = ['results', 'outputs'];
+const ARM_DIR_PATTERN = /^(with|without)-(\d+)$/;
 
 const EXIT_OK = 0;
 const EXIT_CANNOT_RUN = 2;
@@ -39,7 +43,7 @@ const RESULT_FILE = 'with-without.json';
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
 
 function parseArgs(argv) {
-  const args = { root: process.cwd(), plugins: null, dryRun: false, json: null, caseGlob: null, keepOutputs: false, showFull: false, showLines: null, ...DEFAULTS };
+  const args = { root: process.cwd(), plugins: null, dryRun: false, json: null, caseGlob: null, keepOutputs: false, showFull: false, showLines: null, probeOutputs: false, ...DEFAULTS };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--root') args.root = argv[++i];
@@ -57,6 +61,7 @@ function parseArgs(argv) {
     else if (a === '--show-full') { args.keepOutputs = true; args.showFull = true; }
     else if (a === '--show-lines') { args.keepOutputs = true; args.showLines = Number(argv[++i]); }
     else if (a === '--json') args.json = argv[++i];
+    else if (a === '--probe-outputs') args.probeOutputs = true;
     else if (a === '--help' || a === '-h') args.help = true;
     else throw new Error(`unknown argument: ${a}`);
   }
@@ -104,16 +109,19 @@ const readOrNull = (file) => { try { return fs.readFileSync(file, 'utf8'); } cat
  * <plugin>/evals/results/outputs/<case>/<arm>-<n>/ and printed. The kept temp dirs are removed
  * afterwards — the eval itself refuses to seal them on Windows and says so on every run.
  */
-function collectOutputs(target, result, args) {
+async function collectOutputs(target, result, args) {
   const blocks = [];
-  const outRoot = path.join(target.dir, EVALS_DIR, 'results', 'outputs');
+  const probes = {};
+  const outRoot = path.join(target.dir, EVALS_DIR, ...OUTPUTS_DIR);
   for (const c of Array.isArray(result.cases) ? result.cases : []) {
     const fixtures = path.join(target.dir, EVALS_DIR, c.name, 'fixtures');
     for (const arm of ARMS) {
-      (c.arms && Array.isArray(c.arms[arm]) ? c.arms[arm] : []).forEach((run, i) => {
+      const runs = c.arms && Array.isArray(c.arms[arm]) ? c.arms[arm] : [];
+      for (let i = 0; i < runs.length; i += 1) {
+        const run = runs[i];
         const label = `${target.name} / ${c.name} / ${arm} #${i + 1}${run.error ? ` (ERROR ${run.error})` : ''}`;
         const loc = runLocations(run.tracePath, path);
-        if (!loc || !fs.existsSync(loc.cwd)) { blocks.push(`── ${label} ──\n  (no kept run dir at ${run.tracePath || 'n/a'} — was --keep-temp honoured?)`); return; }
+        if (!loc || !fs.existsSync(loc.cwd)) { blocks.push(`── ${label} ──\n  (no kept run dir at ${run.tracePath || 'n/a'} — was --keep-temp honoured?)`); continue; }
         const files = producedFiles(listFiles(loc.cwd), (rel) => readOrNull(path.join(fixtures, rel)), (rel) => readOrNull(path.join(loc.cwd, rel)));
         const message = finalMessage(readOrNull(path.join(loc.root, 'out', 'trace.jsonl')));
         const dest = path.join(outRoot, c.name, `${arm}-${i + 1}`);
@@ -133,21 +141,76 @@ function collectOutputs(target, result, args) {
         }
         blocks.push(formatOutput(label, message, files, { listOnly: args.showFull ? false : i > 0, maxLines: args.showLines }));
         fs.rmSync(loc.root, { recursive: true, force: true });
-      });
+        const probe = await probeArm(target, c.name, dest, label);
+        if (probe) { blocks.push(probe.text); recordProbe(probes, c.name, arm, probe.result); }
+      }
     }
   }
   blocks.push(`outputs kept under ${path.relative(args.root, outRoot).split(path.sep).join('/')}/<case>/<arm>-<n>/ (first run per arm printed in full, the rest listed; --show-full prints every run)`);
-  return blocks;
+  blocks.push(...probeSummary(probes));
+  return { blocks, probes };
+}
+
+/**
+ * The BEHAVIOUR score of one kept arm: when the case ships a probe.json, boot the app it
+ * produced and drive it (lib/behaviour-probe). Null when the case has no probe. An app that
+ * cannot boot is a 0/N with the reason, never a crash of the table.
+ */
+async function probeArm(target, caseName, armDir, label) {
+  const specFile = path.join(target.dir, EVALS_DIR, caseName, PROBE_SPEC_FILE);
+  if (!fs.existsSync(specFile)) return null;
+  let spec;
+  try { spec = loadSpec(specFile); } catch (err) { return { text: `── ${label} ── probe spec unusable: ${err.message}`, result: { passed: 0, total: 0, failed: ['spec'] } }; }
+  const fixtures = path.join(target.dir, EVALS_DIR, caseName, 'fixtures');
+  const result = await runProbe(spec, armDir, { overlays: [fixtures] });
+  return { text: formatProbe(label, result), result: { passed: result.passed, total: result.total, failed: result.failed } };
+}
+
+function recordProbe(probes, caseName, arm, result) {
+  probes[caseName] = probes[caseName] || { with: [], without: [] };
+  probes[caseName][arm].push(result);
+}
+
+/** One line per case: `probe  WITH 11/11, 9/11 · W/OUT 11/11` — the behaviour column beside the grader score. */
+function probeSummary(probes) {
+  const fmt = (list) => (list.length ? list.map((r) => `${r.passed}/${r.total}`).join(', ') : '—');
+  return Object.entries(probes).map(([caseName, arms]) => `probe ${caseName}: WITH ${fmt(arms.with)} · W/OUT ${fmt(arms.without)}`);
+}
+
+/**
+ * --probe-outputs: re-score the arms ALREADY kept under results/outputs/ without running claude
+ * — a new or fixed probe.json is applied to yesterday's arms for free.
+ */
+async function probeKeptOutputs(target, args) {
+  const outRoot = path.join(target.dir, EVALS_DIR, ...OUTPUTS_DIR);
+  const probes = {};
+  const blocks = [];
+  let cases = [];
+  try { cases = fs.readdirSync(outRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); } catch (_e) { return { blocks: [`  no kept outputs under ${path.relative(args.root, outRoot).split(path.sep).join('/')}`], probes }; }
+  for (const caseName of cases) {
+    if (args.caseGlob && caseName !== args.caseGlob) continue;
+    const arms = fs.readdirSync(path.join(outRoot, caseName), { withFileTypes: true }).filter((e) => e.isDirectory() && ARM_DIR_PATTERN.test(e.name)).map((e) => e.name).sort();
+    for (const armDir of arms) {
+      const [, arm] = armDir.match(ARM_DIR_PATTERN);
+      const probe = await probeArm(target, caseName, path.join(outRoot, caseName, armDir), `${target.name} / ${caseName} / ${armDir}`);
+      if (!probe) { blocks.push(`  ${caseName}: no ${PROBE_SPEC_FILE} in the case`); break; }
+      blocks.push(probe.text);
+      recordProbe(probes, caseName, arm, probe.result);
+    }
+  }
+  blocks.push(...probeSummary(probes));
+  return { blocks, probes };
 }
 
 function usage() {
   return 'plugin-eval — one WITH / W/OUT / Δ / seconds table per plugin, from `claude plugin eval --ablation with-without`\n' +
     '  node bin/plugin-eval.js --root <repo> [--plugin a,b] [--runs 3] [--model sonnet] [--judge-model sonnet]\n' +
     '                          [--max-cost-usd 5] [--allow-tools Read,Write,Edit,Glob,Grep,Skill] [--mocks record|off] [--case <glob>] [--concurrency 3] [--dry-run] [--json <path>]\n' +
-    '                          [--keep-outputs | --show-full | --show-lines <n>]  keep + print the files and final message each arm produced';
+    '                          [--keep-outputs | --show-full | --show-lines <n>]  keep + print the files and final message each arm produced\n' +
+    '                          [--probe-outputs]  re-score the arms already kept under results/outputs/ with each case\'s probe.json, without running claude';
 }
 
-function main() {
+async function main() {
   let args;
   try { args = parseArgs(process.argv.slice(2)); } catch (err) { console.error(err.message); return EXIT_CANNOT_RUN; }
   if (args.help) { console.log(usage()); return EXIT_OK; }
@@ -165,6 +228,13 @@ function main() {
     const argv = argsFor(t.dir, { ...args, jsonPath, keepTemp: args.keepOutputs });
     console.log(`${t.name}: ${t.cases.length} case(s) — ${t.cases.join(', ')}`);
     if (args.dryRun) { console.log(`  ${CLAUDE_BIN} ${argv.join(' ')}`); continue; }
+    if (args.probeOutputs) {
+      const kept = await probeKeptOutputs(t, args);
+      for (const block of kept.blocks) console.log(block);
+      console.log('');
+      all[t.name] = { probes: kept.probes };
+      continue;
+    }
     fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
     const started = Date.now();
     const proc = spawnSync(CLAUDE_BIN, argv, { cwd: t.dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: RUN_TIMEOUT_MS, shell: process.platform === 'win32' });
@@ -181,14 +251,16 @@ function main() {
     console.log(`  wall ${Math.round((Date.now() - started) / 1000)}s · result ${path.relative(args.root, jsonPath).split(path.sep).join('/')}`);
     console.log('');
     if (args.keepOutputs) {
-      for (const block of collectOutputs(t, result, args)) console.log(block);
+      const kept = await collectOutputs(t, result, args);
+      for (const block of kept.blocks) console.log(block);
       console.log('');
+      result.probes = kept.probes;
     }
   }
-  if (args.json) fs.writeFileSync(args.json, JSON.stringify({ root: args.root, options: args, plugins: Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.error ? v : { rows: rows(v), aggregates: v.aggregates, costUsd: v.costUsd, durationSeconds: v.durationSeconds, partial: v.partial }])) }, null, 2));
+  if (args.json) fs.writeFileSync(args.json, JSON.stringify({ root: args.root, options: args, plugins: Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.error || !v.cases ? v : { rows: rows(v), aggregates: v.aggregates, costUsd: v.costUsd, durationSeconds: v.durationSeconds, partial: v.partial, probes: v.probes || null }])) }, null, 2));
   return EXIT_OK;
 }
 
-if (require.main === module) process.exit(main());
+if (require.main === module) main().then((code) => process.exit(code), (err) => { console.error(err.stack || err.message); process.exit(EXIT_CANNOT_RUN); });
 
-module.exports = { parseArgs, discover, DEFAULTS, RESULT_FILE, CLAUDE_BIN };
+module.exports = { parseArgs, discover, probeSummary, recordProbe, DEFAULTS, RESULT_FILE, CLAUDE_BIN };

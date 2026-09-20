@@ -51,7 +51,11 @@ node plugins/plugin-toolkit/bin/plugin-eval.js --root .    # with vs without, pe
   `claude plugin eval --ablation with-without` and prints WITH / W/OUT / Δ / seconds per case,
   plus which of the three wants moved (progress captured · decisions honoured · verified done).
   Real runs on your credential; `--dry-run` shows the argv, `--max-cost-usd` caps it;
-  `--keep-outputs` prints what each arm actually produced (files + final message).
+  `--keep-outputs` prints what each arm actually produced (files + final message) and, when the
+  case ships a `probe.json`, BOOTS each arm's app and drives it step by step (create → edit →
+  restart → read back → …), printing `probe <case>: WITH a/b · W/OUT c/d` — scored by what the
+  app does, not by what its source text matches. `--probe-outputs` re-scores arms already kept,
+  no `claude` run. One arm by hand: `node bin/behaviour-probe.js --spec <case>/probe.json --dir <arm dir>`.
 
 ## Scope limit worth knowing
 

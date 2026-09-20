@@ -108,7 +108,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.21.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus four repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats` |
+| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.22.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus five repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats`, `plugin-eval` (with a behaviour probe per case) |
 
 Bundle: **mk-cc-all 2.28.0**.
 

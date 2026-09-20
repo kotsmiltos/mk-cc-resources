@@ -208,7 +208,25 @@ bin/plugin-eval.js      # CLI adapter: discovers plugins/*/evals/<case>/{prompt.
                         #   owner's own line of work; house rules on the pinned file, the two
                         #   out-of-code decisions on the trace with their literals scrubbed
                         #   from every note
-tests/plugin-eval.test.js     # 24 checks — the live JSON shape, format, argv, discovery, refusals;
+                        #   1.22.0: every kept arm is also PROBED (below) and the table gets a
+                        #   `probe <case>: WITH a/b · W/OUT c/d` line; --probe-outputs re-scores
+                        #   the arms already kept without running claude
+lib/behaviour-probe.js  # 1.22.0: BEHAVIOUR scoring — a case's probe.json (entry, port location,
+                        #   ready route, steps) is driven against the app an arm produced: copy to
+                        #   scratch, free port, boot, request → expect/pick, `restart`, kill.
+                        #   Every failure inside a step is THAT step's verdict, the run goes on.
+                        #   OPS (eq/contains/matches/count_min/oracle) + ORACLES (session-titles =
+                        #   last ai-title per real transcript) are one-entry extension surfaces.
+                        #   Why: both Δ rows of 09-20 were decided by regex graders; no arm ever
+                        #   ran its own code. Measured on the four kept arms (built BEFORE the
+                        #   contract was in the prompt): 11/11, 2/11, 1/11, 2/11 where the regex
+                        #   graders had said 0.75/0.75/0.80/1.00
+bin/behaviour-probe.js  # CLI: --spec <case>/probe.json --dir <arm dir> [--json]; exit 0 all
+                        #   passed / 1 some failed / 2 cannot run
+tests/behaviour-probe.test.js # 31 checks — every op, template/select, the oracle reader, and the
+                        #   RUNNER end to end on a tiny node:http app in a temp dir (boot, drive,
+                        #   restart, read back, a route that lies, a dead entry, the arm dir untouched)
+tests/plugin-eval.test.js     # 29 checks — the live JSON shape, format, argv, discovery, refusals;
                         #   never runs claude
 tests/registry-check.test.js  # 25 checks — EVERY claim source has a negative control, since
                         #   a checker only ever run on a consistent repo has proved nothing

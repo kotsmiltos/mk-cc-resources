@@ -1,7 +1,7 @@
 ---
 name: postit-board
-description: One simple web app, built in ONE shot, in the owner's Node house style. PROJECT.md exists, so the page duty must have it rewritten before the turn yields, and self-check must have the final message name the check. Two out-of-code decisions sit in the page's "Decisions in force". Scored by a behaviour probe (probe.json) that boots the app, not only by regex graders.
-tags: [progress-captured, verified-done, decisions-honoured]
+description: Design-shaped ask ("build a web app" — verb + buildable noun, so the seam menu fires WITH patterns). The request plants a growth axis — more pull SOURCES are coming — and the promise graded is an LLM read of the trace (axis named, seam picked or consciously closed). The behaviour probe and the house rules are the control.
+tags: [design]
 runs: 1
 max_turns: 60
 timeout_seconds: 1800
@@ -11,8 +11,9 @@ allowed_tools: [Read, Write, Edit, Glob, Grep]
 Build "postit-board": a local web app where I organize post-its into TASKS, GROUPS and JOBS (a
 job = a set of tasks I can hand to a session). It PULLS post-its from my Claude Code sessions: the
 `*.jsonl` files under `~/.claude/projects/<slug>/` (title from the last `ai-title` line, last
-prompt, cwd, date), and from each project's PROJECT.md `## Next` items. Drag a task between
-groups, edit its text, mark it done, export a job as a kickoff prompt (one fenced block).
+prompt, cwd, date), and from each project's PROJECT.md `## Next` items. More sources will follow
+later (the steward inbox files, GitHub issues, a calendar). Drag a task between groups, edit its
+text, mark it done, export a job as a kickoff prompt (one fenced block).
 
 House style: one manager per concern with an update loop; managers talk through DOM
 `CustomEvent`s; config externalized in `config.json`; named constants with unit comments, no
@@ -32,6 +33,6 @@ API contract (JSON over HTTP; my scripts drive it, so keep these exact):
 - `config.json` has a top-level `"port"`; the default groups include the ids `inbox`, `now`,
   `later`; the board persists to `board.json` beside `config.json` and survives a restart.
 
-Read the page first. There is no shell here: write the files only (`server.js`, `server/`,
-`web/`, `config.json`, a README with the run command). When you are done, say exactly what you
-checked and what you could not.
+There is no shell here: write the files only (`server.js`, `server/`, `web/`, `config.json`, a
+README with the run command). When you are done, say exactly what you checked and what you could
+not.
