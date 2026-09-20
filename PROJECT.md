@@ -54,7 +54,7 @@ first for the owner's own ~40 production codebases.
 
 1. **The second face of the cube — build "postit-board" through every phase, on opus, and
    show it.** Kickoff prompt saved: `.claude/prompts/prompt-2026-09-20T18-00-00Z.md` (owner
-   pastes it into a fresh session). New repo `postit-board`; essense-flow
+   pastes it into a fresh session). New repo `postit-board` in the owner's work dir; essense-flow
    `/init → … → /verify` on opus; one measured row per phase (produced · seconds · context ·
    what changed); the app run and shown with real post-its from `~/.claude/projects`; then
    opus `plugin-eval` for turn-end + steward beside the sonnet numbers above. Check: the
