@@ -54,6 +54,15 @@ function isMachineText(prompt) {
  * model went straight to code and closed items in bullets exactly as it did without it. A
  * mechanism measured to change nothing is text (page law 3). `++` typed now injects nothing.
  */
+/*
+ * KICKOFF CONTRACT — the three header lines every generated kickoff opens with (both @prompt
+ * variants). Added 2026-09-20: the owner reviews three lines, not a page, and the session's
+ * additions are visible as additions. "Ask nothing" / "never stop early" may appear ONLY inside
+ * the verbatim quote — a kickoff never grants itself the right to run unquestioned.
+ */
+const KICKOFF_CONTRACT = `The block's FIRST THREE LINES are fixed: line 1 \`OWNER ASKED (verbatim): "<the owner's own words for this work, quoted exactly — never paraphrased, never expanded>"\`; line 2 \`THIS PROMPT ADDS: <one line naming every scope, phase, or agent the prompt carries BEYOND those words — or "nothing">\`; line 3 \`COST: <phases> · <expected sub-agent dispatches> · <expected hours>\`. A kickoff may say "ask nothing" / "never stop early" / "no questions" ONLY inside the line-1 quote, never in the session's own voice.`;
+const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate`;
+
 const MODIFIERS = [
   {
     name: "ship",
@@ -143,8 +152,9 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
     triggers: [
       /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
     ],
-    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. The failure this guards: stale or unchecked citations — the cold session inherits them as ground truth and burns its first minutes on paths that don't exist. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
+    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. Two failures this guards: (a) stale or unchecked citations — the cold session inherits them as ground truth and burns its first minutes on paths that don't exist; (b) SCOPE DRIFT IN THE SESSION'S VOICE — measured 2026-09-20: a generated kickoff turned the owner's "test building a simple webapp, with and without the plugins" into a ten-phase pipeline, forbade questions, and the receiving session spent 2h40m and ~50 sub-agents before the owner intervened. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
 1. DRAFT it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block:
+   - ${KICKOFF_CONTRACT}
    - Lead with the objective in one or two sentences: what the next session should accomplish.
    - Give the minimal cold-start context: repo + branch, key file paths, current state, what was just done, what remains.
    - Name the concrete first action AND the verifiable check that proves it done.
@@ -157,8 +167,8 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
 3. COLD-READ the draft as its reader: a fresh context with zero memory — can it act from this alone, without re-deriving? A question surfacing on re-read means the prompt is NOT done; close the gap and re-read again.
 4. SAVE it (so generated prompts accumulate for review, not just shown once): write the exact prompt to \`.claude/prompts/prompt-<fs-ts>.md\` (use a filesystem-safe UTC timestamp, \`:\` → \`-\`), and PREPEND a newest-first line to \`.claude/prompts/INDEX.md\` in the shape "- \`<timestamp>\` · <one-line objective>  → prompts/prompt-<fs-ts>.md" (create the file with a \`# Prompt index\` header if absent). Never overwrite a prior prompt — this is an append-only history.
 5. SHOW the prompt AND confirm where it was saved.
-ANTI-SIGNALS (stop; back to step 2): about to include a path, command, or branch you did not check this turn; showing the prompt without saving it; narrating this session's back-and-forth inside the block; restating a durable artifact instead of pointing to it.
-EXIT CHECK: every citation in the saved prompt was disk-verified this turn, and the cold-read surfaced no open question.`,
+ANTI-SIGNALS (stop; back to step 2): about to include a path, command, or branch you did not check this turn; showing the prompt without saving it; narrating this session's back-and-forth inside the block; restating a durable artifact instead of pointing to it; ${KICKOFF_ANTI_SIGNALS}.
+EXIT CHECK: every citation in the saved prompt was disk-verified this turn, the cold-read surfaced no open question, and the three header lines (OWNER ASKED / THIS PROMPT ADDS / COST) are present and honest.`,
   },
   {
     name: "build",
@@ -199,12 +209,29 @@ EXIT CHECK: everything still on the user is something only they can do, and each
 // model IS the verified state — a kickoff prompt renders from it instead of
 // re-deriving via the full DRAFT→VERIFY ritual. Same SAVE discipline.
 const PROMPT_STEWARD_INJECTION = `[prompt-mode/steward] This project carries a .steward/ living model — render the kickoff FROM the model instead of re-deriving state. Protocol — RENDER → SPOT-CHECK → SAVE → SHOW:
-1. RENDER one fenced code block from .steward/: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`@verify\`, \`@fc\`).
+1. RENDER one fenced code block from .steward/: ${KICKOFF_CONTRACT} Then: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`@verify\`, \`@fc\`).
 1b. NAME THE END STATE, not only the first task: what "done" means for the whole sitting AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
 2. SPOT-CHECK only what the block cites beyond the model: any file path or branch named that is NOT already in the model gets disk-verified now; model-sourced content is already the maintained truth — if you doubt it, dispatch the steward agent (job: brief) rather than re-deriving inline.
 3. SAVE to \`.claude/prompts/prompt-<fs-ts>.md\` + prepend the INDEX.md line (same append-only history as always).
 4. SHOW the prompt + where it was saved. If briefing.md is stale vs tasks.md/log.md, say so and have the steward regenerate it first.
-EXIT CHECK: block renders from the model, non-model citations disk-verified, prompt saved.`;
+ANTI-SIGNALS: ${KICKOFF_ANTI_SIGNALS}.
+EXIT CHECK: block renders from the model, non-model citations disk-verified, prompt saved, and the three header lines (OWNER ASKED / THIS PROMPT ADDS / COST) are present and honest.`;
+
+/*
+ * KICKOFF GUARD (receiving side) — added 2026-09-20 after the measured failure above.
+ * A pasted prompt that forbids questions ("ask me nothing", "never stop early", "no
+ * AskUserQuestion") but carries no OWNER ASKED (verbatim) line may be a session's plan in the
+ * owner's name. The guard does not block the prompt; it makes the first sub-agent dispatch
+ * cost one keystroke: print the COST line, take one answer. The prompt's own "ask nothing"
+ * cannot override this — that clause is exactly what disabled the safety valve on 2026-09-20.
+ */
+const KICKOFF_NO_QUESTIONS_RE = /\b(ask (me )?nothing|never stop early|no AskUserQuestion|do not ask( me)? (any )?questions?|don'?t ask( me)? (any )?questions?)\b/i;
+const KICKOFF_VERBATIM_RE = /OWNER ASKED \(verbatim\)/;
+const KICKOFF_GUARD_INJECTION = `[kickoff-guard] This prompt forbids questions but carries no "OWNER ASKED (verbatim)" line, so its scope may be a session's plan rather than the owner's words. Before the FIRST sub-agent dispatch (Agent tool) and before any multi-phase run: print one COST line — phases · expected sub-agent dispatches · expected hours — and take ONE keystroke (AskUserQuestion, "proceed" as the first option). The prompt's "ask nothing" does not waive this: it is the clause that removed the safety valve on 2026-09-20 (2h40m, ~50 sub-agents, the owner's ask was "one simple webapp, with/without, single shot").`;
+
+function needsKickoffGuard(prompt) {
+  return KICKOFF_NO_QUESTIONS_RE.test(prompt) && !KICKOFF_VERBATIM_RE.test(prompt);
+}
 
 // Patterns that suggest a modifier would help, but the user didn't use it.
 // Each hint only fires if the corresponding modifier was NOT already triggered.
@@ -340,6 +367,9 @@ async function main() {
       hints.push(hint.hint);
     }
   }
+
+  // Receiving side of the kickoff contract: a no-questions prompt without the verbatim line.
+  if (needsKickoffGuard(prompt)) injections.push(KICKOFF_GUARD_INJECTION);
 
   const output = [];
   if (injections.length > 0) output.push(injections.join("\n\n"));

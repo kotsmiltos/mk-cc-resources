@@ -4,6 +4,12 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-09-20
+
+### Added
+- **Kickoff contract on `@prompt` (both variants).** A generated kickoff now opens with three fixed lines: `OWNER ASKED (verbatim): "…"` (the owner's own words, quoted, never paraphrased), `THIS PROMPT ADDS: …` (every scope, phase or agent the prompt carries beyond those words, or "nothing") and `COST: <phases> · <expected sub-agent dispatches> · <expected hours>`. "Ask nothing" / "never stop early" may appear only inside the verbatim quote — a kickoff never grants itself the right to run unquestioned. Why: on 2026-09-20 a generated kickoff turned the owner's "test building a simple webapp, with and without the plugins" into a ten-phase pipeline in the session's voice, forbade questions, and the receiving session spent 2h40m and ~50 opus sub-agents before the owner intervened. The owner reviews three lines, not a page.
+- **`[kickoff-guard]` (receiving side).** When a prompt forbids questions ("ask me nothing", "never stop early", "no AskUserQuestion", "don't ask me questions") and carries no `OWNER ASKED (verbatim)` line, the hook injects a guard: before the first sub-agent dispatch or any multi-phase run, print the COST line and take ONE keystroke. The prompt's own "ask nothing" does not waive it. Stands down on machine-authored text like every other injection. 12 new test checks (49 total).
+
 ## [1.13.0] - 2026-09-20
 
 ### Removed

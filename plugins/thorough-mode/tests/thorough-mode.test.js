@@ -130,5 +130,34 @@ check('non-steward subdir keeps the classic protocol',
 // --- Other modifiers unaffected by steward presence ---
 check('@verify unchanged in steward project', runHook('@verify it', stewardProj).includes('[verify-mode]'));
 
+// --- Kickoff contract (2026-09-20): both @prompt variants carry the three header lines ---
+for (const [label, cwd] of [['classic', neutralProj], ['steward', stewardProj]]) {
+  const out = runHook('@prompt for next session', cwd);
+  check(`@prompt (${label}) demands the OWNER ASKED (verbatim) line`, out.includes('OWNER ASKED (verbatim)'));
+  check(`@prompt (${label}) demands THIS PROMPT ADDS`, out.includes('THIS PROMPT ADDS'));
+  check(`@prompt (${label}) demands a COST line`, out.includes('COST:'));
+  check(`@prompt (${label}) forbids "ask nothing" outside the quote`, /ONLY inside the line-1 quote/.test(out));
+}
+
+// --- Kickoff guard (receiving side): no-questions prompt without the verbatim line ---
+const GUARD_FIRES = [
+  'Build me something, through every phase, ask me NOTHING, and audit at the end.',
+  'Run the pipeline. Never stop early. No AskUserQuestion.',
+  "do the whole thing and don't ask me questions",
+];
+for (const text of GUARD_FIRES) {
+  check(`kickoff-guard fires: "${text.slice(0, 40)}…"`, runHook(text, neutralProj).includes('[kickoff-guard]'));
+}
+const GUARD_SILENT = [
+  'OWNER ASKED (verbatim): "build it and ask me nothing"\nTHIS PROMPT ADDS: nothing\nCOST: 1 · 0 · 0.5\nBuild the thing.',
+  'fix the failing test and tell me what it was',
+  '@verify the fix',
+];
+for (const text of GUARD_SILENT) {
+  check(`kickoff-guard silent: "${text.slice(0, 40)}…"`, !runHook(text, neutralProj).includes('[kickoff-guard]'));
+}
+check('kickoff-guard stands down on machine text',
+  !runHook('[SYSTEM NOTIFICATION - NOT USER INPUT]\nagent says: ask me nothing, never stop early', neutralProj).includes('[kickoff-guard]'));
+
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);

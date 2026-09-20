@@ -1,5 +1,5 @@
 {
-  "description": "Detects prompt-modifier keywords (++/@thorough, @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc) and injects the matching behavioural protocol; also hints the modifier when the intent is typed without the keyword. Stands down on machine-authored prompts.",
+  "description": "Detects prompt-modifier keywords (@ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc) and injects the matching behavioural protocol; hints the modifier when the intent is typed without the keyword; injects [kickoff-guard] on a no-questions prompt that lacks an OWNER ASKED (verbatim) line. Stands down on machine-authored prompts.",
   "hooks": {
     "UserPromptSubmit": [
       {

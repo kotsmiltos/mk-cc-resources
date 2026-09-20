@@ -69,6 +69,8 @@ Produces a copy-paste prompt to start the NEXT session from a cold context. Orde
 - COLD-READ the draft as its zero-memory reader: can it act from this alone? A question surfacing on re-read means the prompt isn't done
 - SAVES the generated prompt to an append-only `.claude/prompts/` history + `INDEX.md` ledger (not just shown once), so prompts accumulate for review — same history pattern session-lifecycle gives handoffs
 - Exit check: every citation disk-verified this turn + cold-read surfaced no open question
+- **Kickoff contract (1.14.0, both branches).** The block's first three lines are fixed: `OWNER ASKED (verbatim): "…"` (the owner's words, quoted, never paraphrased), `THIS PROMPT ADDS: …` (every scope/phase/agent beyond those words, or "nothing"), `COST: <phases> · <expected sub-agent dispatches> · <expected hours>`. "Ask nothing" / "never stop early" may appear only inside the quote. Why: 2026-09-20 a generated kickoff expanded "test building a simple webapp, with and without the plugins" into a ten-phase pipeline in the session's voice, forbade questions, and the receiving session spent 2h40m / ~50 opus sub-agents before the owner intervened. The owner reviews three lines, not a page.
+- **`[kickoff-guard]` (receiving side, 1.14.0).** A prompt that forbids questions and lacks the `OWNER ASKED (verbatim)` line gets one injection: print the COST line and take ONE keystroke before the first sub-agent dispatch; the prompt's "ask nothing" does not waive it. `needsKickoffGuard()` = `KICKOFF_NO_QUESTIONS_RE && !KICKOFF_VERBATIM_RE`; stands down on machine text like everything else.
 
 ### `@build` — Plan, Review, Build
 Plans a change, reviews the plan against the bar, then implements it:

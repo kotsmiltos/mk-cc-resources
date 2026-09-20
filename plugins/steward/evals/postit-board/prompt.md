@@ -1,0 +1,28 @@
+---
+name: postit-board
+description: One simple web app, built in ONE shot, in the owner's Node house style. Two decisions live ONLY in .steward/briefing.md (injected at SessionStart WITH steward), and the prompt carries an owner wish the protocol says to park in .steward/inbox/.
+tags: [decisions-honoured, progress-captured]
+runs: 1
+max_turns: 60
+timeout_seconds: 1800
+allowed_tools: [Read, Write, Edit, Glob, Grep]
+---
+
+Build "postit-board": a local web app where I organize post-its into TASKS, GROUPS and JOBS (a
+job = a set of tasks I can hand to a session). It PULLS post-its from my Claude Code sessions: the
+`*.jsonl` files under `~/.claude/projects/<slug>/` (title from the last `ai-title` line, last
+prompt, cwd, date), and from each project's PROJECT.md `## Next` items. Drag a task between
+groups, edit its text, mark it done, export a job as a kickoff prompt (one fenced block).
+
+House style: one manager per concern with an update loop; managers talk through DOM
+`CustomEvent`s; config externalized in `config.json`; named constants with unit comments, no
+magic numbers; no silent catches; Node built-ins only (`node:http`, `node:fs`), vanilla JS
+front end, no build step, no packages; atomic JSON writes (temp → fsync → rename); a
+path-traversal guard on every file read.
+
+One more thing I keep meaning to write down somewhere: later I want the board to pull from the
+steward inbox files too — not now, don't build it, just don't let me forget.
+
+There is no shell here: write the files only (`server.js`, `server/`, `web/`, `config.json`, a
+README with the run command). When you are done, say exactly what you checked and what you could
+not.
