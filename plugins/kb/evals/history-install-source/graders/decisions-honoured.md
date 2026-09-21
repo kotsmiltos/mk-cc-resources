@@ -3,7 +3,7 @@
 # install and update read the remote and an unpushed edit cannot install. The 2026-07-27 capture
 # said the opposite and is marked superseded.
 type: llm
-focus: output
+focus: trace
 ---
 
 The user asked whether `claude plugin install` on this machine picks up a local, unpushed edit.

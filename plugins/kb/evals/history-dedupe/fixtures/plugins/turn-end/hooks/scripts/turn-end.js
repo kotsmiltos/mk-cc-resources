@@ -47,7 +47,7 @@ function resolveProjectRoot(start, home) {
   const fallback = path.resolve(start);
   const homeDir = path.resolve(home || os.homedir());
   // Windows paths are case-insensitive but string compare is not: a payload cwd arriving as
-  // c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a dotfiles
+  // a lower-cased home against the real home would sail PAST the boundary and adopt a dotfiles
   // .git — the exact hazard the guard exists for.
   const same = (a, b) =>
     process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;

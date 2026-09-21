@@ -62,6 +62,15 @@ first for the owner's own ~40 production codebases.
   prompt must NOT ask for it; (5) instrument bugs looked like arm defects until the failed step
   quoted the app — four contract ambiguities (build target, craft-vs-place, stone budget, start
   depth) were mine, not theirs.
+- **kb on REAL history (09-21, opus n=3, $15):** three questions whose answer sits in a capture
+  the prompt never names, over the live `.claude/kb` (26 captures). Every session, both arms,
+  found the capture and honoured it: 9/9 vs 9/9 (one judge miscall on a within-plugin
+  extraction that was in fact the ruling). WITH kb the pointer was followed as the FIRST tool
+  call in 9/9 sessions and saved one to two tool calls; WITHOUT, one `**/*` glob listed the
+  38-file sandbox including the captures' telling file names. kb's edge is exploration cost,
+  and that is proportional to repo size; the honest measure needs a repo where a tree listing
+  does not fit and the note's words are not the prompt's words. In-repo, on-topic, it is a
+  wash; the 7.5% follow rate from real sessions is the number that matters.
 - Earlier measures stand: sonnet 09-19 (turn-end +38, steward +33, kb +27, patterns +17, `@verify`
   3/3 vs 0/3, reuse-gate 0); postit-board opus n=1 (regex graders ranked arms backwards).
 - Gates: test-all 38/38 (2326 checks), registry-check consistent, repo-guard clean.
@@ -85,8 +94,10 @@ first for the owner's own ~40 production codebases.
 
 - **essense-flow:** park below one-agent size (default) · name a module count where it earns
   its coordination cost.
-- **kb's place:** its note moved nothing when it was on disk for both arms — measure it with
-  the note OUTSIDE the repo (fleet caste) next, or park it? Default: measure once more.
+- **kb's place:** measured twice now (fresh note, real history): the pointer is followed and
+  correct, and unaided opus finds the same note in a small repo. Keep the pull surface (MCP +
+  `/kb`), keep hints OFF by default, measure once on a large fleet repo where listing the tree
+  is not an option? Default: yes, one large-repo case; no more small-repo measures.
 - **Q17 — the five dead hooks:** disable globally? Default: yes for reuse-gate; patterns +17 on
   sonnet but 0 here — keep available per project.
 - **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh`): fold into the global

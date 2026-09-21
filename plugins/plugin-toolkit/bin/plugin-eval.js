@@ -239,6 +239,11 @@ async function main() {
     const started = Date.now();
     const proc = spawnSync(CLAUDE_BIN, argv, { cwd: t.dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: RUN_TIMEOUT_MS, shell: process.platform === 'win32' });
     if (proc.error) { console.error(`  could not run ${CLAUDE_BIN}: ${proc.error.message}`); return EXIT_CANNOT_RUN; }
+    // A case the eval refused to LOAD (a bad grader field, a malformed case.yaml) is reported on
+    // stderr and then silently absent from the table — measured 2026-09-21: one of three cases
+    // vanished behind two green rows. Name every such line here so the table cannot hide it.
+    const refused = String(proc.stderr || '').split(/\r?\n/).filter((l) => /failed to load|invalid case\.yaml|✗/.test(l));
+    for (const l of refused) console.error(`  CASE NOT RUN: ${l.trim()}`);
     let result = null;
     try { result = JSON.parse(fs.readFileSync(jsonPath, 'utf8')); } catch (_e) { result = null; }
     if (!result) {
