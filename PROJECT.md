@@ -62,17 +62,13 @@ first for the owner's own ~40 production codebases.
   prompt must NOT ask for it; (5) instrument bugs looked like arm defects until the failed step
   quoted the app — four contract ambiguities (build target, craft-vs-place, stone budget, start
   depth) were mine, not theirs.
-- **kb on REAL history (09-21, opus n=3, $15):** three questions whose answer sits in a capture
-  the prompt never names, over the live `.claude/kb` (26 captures). Every session, both arms,
-  found the capture and honoured it: 9/9 vs 9/9 (one judge miscall on a within-plugin
-  extraction that was in fact the ruling). WITH kb the pointer was followed as the FIRST tool
-  call in 9/9 sessions and saved one to two tool calls; WITHOUT, one `**/*` glob listed the
-  38-file sandbox including the captures' telling file names. kb's edge is exploration cost,
-  and that is proportional to repo size; the honest measure needs a repo where a tree listing
-  does not fit and the note's words are not the prompt's words. In-repo, on-topic, it is a
-  wash; the 7.5% follow rate from real sessions is the number that matters.
-- Earlier measures stand: sonnet 09-19 (turn-end +38, steward +33, kb +27, patterns +17, `@verify`
-  3/3 vs 0/3, reuse-gate 0); postit-board opus n=1 (regex graders ranked arms backwards).
+- **kb on REAL history (09-21, opus n=3, $15):** three questions answered only by an old capture,
+  over the live `.claude/kb`. 9/9 vs 9/9: WITH kb the pointer was the FIRST tool call every
+  time and saved one to two calls; WITHOUT, one `**/*` glob listed the 38-file sandbox and its
+  telling file names. kb's edge is exploration cost, proportional to repo size; a small-repo
+  measure cannot show it. The 7.5% follow rate from real sessions is the number that matters.
+- Earlier measures stand: sonnet 09-19 (turn-end +38, steward +33, kb +27, patterns +17,
+  `@verify` 3/3 vs 0/3, reuse-gate 0); postit-board opus n=1 (regex graders ranked arms backwards).
 - Gates: test-all 38/38 (2326 checks), registry-check consistent, repo-guard clean.
 - Running here: turn-end (page duty only), thorough-mode, prism, elicit, plugin-toolkit, caveman,
   statusline, alert-sounds. Off here: kb, steward, lens, patterns, reuse-gate, essense-flow,
