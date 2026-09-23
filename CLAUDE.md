@@ -4,9 +4,12 @@
 
 @PROJECT.md
 
-The page above is the project's ONE live record (owner ruling 2026-09-18, `subtract`): where we
-are, next three with their checks, open decisions. Rewrite it WHOLE at the end of every sitting;
-a decision with its why is one dated line in `DECISIONS.md`. Answer "where are we" from it.
+The page above is the project's ONE live record (the owner's `subtract`, 2026-09-18): where we
+are, what is next with each item's check and whose it is, open decisions. Rewrite it WHOLE at the
+end of a sitting, after the answer to him, in words he can read: his words quoted where he gave
+them, anything Claude proposes marked as Claude's. When he corrects what one of his words meant,
+the page says so in his words and drops what it contradicted. A decision with its why is one dated
+line in `DECISIONS.md`. Answer "where are we" from it.
 
 Deep per-plugin notes live in `plugins/<name>/CLAUDE.md` — loaded automatically when working
 under that plugin's directory. This root file is orientation + the rules that apply repo-wide.
@@ -196,29 +199,6 @@ plugins/
 ```
 
 Benched plugins (miltiaze, ladder-build, architect, mk-flow, safe-commit, project-structure, repo-audit) preserved on `archive/benched-plugins` branch.
-
-## essense-flow Pipeline
-
-```
-/init → /elicit → /research → /triage → /architect → [/organize] → /build → [/glossary] → /review → /verify → complete
-```
-
-Per-phase commands, outputs, and hook details: `plugins/essense-flow/CLAUDE.md`. `/organize`
-and `/glossary` require plugin-toolkit (the code-glossary engine) — hard stop with install hint
-when absent; both phases are autopilot human gates.
-
-**Two elicits, and they are not interchangeable.** `/essense-flow:elicit` is this phase — it
-closes a build-ready `SPEC.md`, calls `essense-flow-tools init elicit`, writes a cursor and
-enforces phase predicates, so it cannot run without `.pipeline/`. `/elicit:elicit` (the `elicit`
-plugin) is the same gap-recursion engine retargeted at a project's DIRECTION in the steward model,
-with no state machine and no preconditions. Route a pipeline run to the first, a "help me think
-this through" to the second.
-
-State is artifacts-authoritative: `.pipeline/state.yaml` is a derived cache. `state-reconcile`
-(CLI op) compares cache vs artifact inference (`lib/infer-phase.cjs`) — report-only by default,
-`--apply` rebuilds from disk; a missing cache auto-rebuilds inside ordinary ops. Producer agents
-follow the librarian protocol (`references/librarian.md`): research first, declare structured
-`unknowns[]` in every return, masters surface them at phase gates via AskUserQuestion.
 
 ## Session Lifecycle
 

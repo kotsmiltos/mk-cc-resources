@@ -48,3 +48,12 @@ copy stays where it is, unchanged, for pipeline runs.
 | `essense-flow` | Irrelevant — nothing here touches the pipeline |
 
 Bundle-safe (skills-only, no hooks) — shipped in `mk-cc-all`.
+
+## Two elicits
+
+**Two elicits, and they are not interchangeable.** `/essense-flow:elicit` is essense-flow's elicit phase — it
+closes a build-ready `SPEC.md`, calls `essense-flow-tools init elicit`, writes a cursor and
+enforces phase predicates, so it cannot run without `.pipeline/`. `/elicit:elicit` (this plugin) is the
+same gap-recursion engine retargeted at a project's DIRECTION in the steward model, with no state
+machine and no preconditions. Route a pipeline run to the first, a "help me think this through" to
+the second.
