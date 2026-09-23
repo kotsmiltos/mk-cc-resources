@@ -55,18 +55,6 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
 - Capture acknowledgments fold INTO the reply ("→ inbox"), never a separate ceremony; relayed
   diffs and steward status stay terse — the owner reads outcomes, not process narration.
 
-## Garden — the nightly validity pass (0.7.0)
-> Owner ruling 2026-09-18: "keeping everything still sounds wrong … if we have contradictions we
-> keep the latest input." ONE live copy; contradictions → latest wins, older deleted; inbox / log /
-> digests are consumed, not kept; git history is the archive.
-- The SessionStart briefing prints `garden: DUE` with the exact apply command once per
-  `dueAfterHours` (default 24). Run it (deterministic deletes by date), then dispatch the
-  `steward` agent (job: garden, **model: sonnet** — a bookkeeping pass, Claude's choice) in the
-  background with the printed report; proceed with the owner's ask meanwhile.
-- Show the returned diff: `kept N · replaced M · deleted K`, one line per change, `⚠ owner
-  statement replaced` wherever a newer Claude note overrode an older owner statement.
-- `/steward:garden` runs it on demand. Thresholds and caps: `.steward/garden.json`.
-
 ## While the owner talks (capture — the inbox)
 - Owner messages that are **ideas, wishes, doubts, complaints, or direction** — not an immediate
   work instruction — get captured: write the message text verbatim to
@@ -82,9 +70,8 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
   below.
 - **"let's discuss X"** → discuss with the model as shared context; conclusions → inbox.
 - **"sync" / "wrap up" / end-of-session signals** → dispatch `steward` (integrate), show the diff.
-- **"garden" / "clean up the model"** → the garden pass (below), diff shown.
-- /steward:seed, /steward:brief, /steward:sync, /steward:next, /steward:garden are aliases for the
-  above — optional, never taught as prerequisites.
+- /steward:seed, /steward:brief, /steward:sync, /steward:next are aliases for the above — optional,
+  never taught as prerequisites.
 
 ## Executor discipline (when work runs)
 - Small step → run the project's fast test suite → show result + the named check that proves it.
@@ -115,5 +102,4 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
 | Owner says do/work/next | Execute per discipline above |
 | Mid-sitting capture / task landing | Accumulate (inbox/ + log.md) — no dispatch |
 | Owner signals wrap-up, or says "sync" | steward agent, job: integrate — the sitting's ONE batch point; show diff |
-| Briefing says `garden: DUE`, or owner says "garden" / "clean up the model" | run the printed `bin/steward-garden.js --apply` line, then steward agent, job: garden, model: sonnet — background; show the kept/replaced/deleted diff |
 </routing>

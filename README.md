@@ -91,7 +91,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [steward](plugins/steward/README.md) | | 0.7.1 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
+| [steward](plugins/steward/README.md) | | 0.6.2 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
 | [kb](plugins/kb/README.md) | B | 0.16.1 | The project's queryable knowledge base: decisions and their why, dead ends, conventions. Ask before re-deriving |
 | [session-lifecycle](plugins/session-lifecycle/README.md) | B | 1.3.1 | `/handoff`, `/resume`, `/claude-md-sync`, `/retro`, `/meta-review` — an append-only handoff history |
 

@@ -216,7 +216,7 @@
       "source": "./plugins/steward",
       "displayName": "Steward",
       "description": "A living model per project (.steward/: vision, state, parts, questions, tasks). Stray thoughts land in an inbox; the steward agent recomputes the whole model and shows you the diff.",
-      "version": "0.7.1",
+      "version": "0.6.2",
       "author": {
         "name": "kotsmiltos"
       },

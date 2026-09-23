@@ -86,11 +86,7 @@ plugins/
   reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
                             #   once per user message; never blocks, opt-in OFF, fail-open)
 
-  steward/                  # (0.7.0: the GARDEN — owner ruling 2026-09-18: ONE live copy,
-                            #   contradiction → LATEST input wins, older deleted, nothing kept
-                            #   forever; bin/steward-garden.js deletes by date + reports, the
-                            #   agent job `garden` (sonnet) judges; briefing prints `garden: DUE`
-                            #   once a day.) Living-model keeper — per-project .steward/ model the steward
+  steward/                  # Living-model keeper — per-project .steward/ model the steward
                             #   agent RECOMPUTES on every input (cascade pivots) and diffs
                             #   visibly; SessionStart briefing hook; owner-present work only.
                             #   Budgeted since 0.3.0: ONE background integration pass per
