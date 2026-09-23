@@ -2809,9 +2809,12 @@ check('page: registered in the duty registry', () => {
   assert.strictEqual(duties.byId('page').severity, 'block');
 });
 
-check('page: never applies where there is no PROJECT.md (presence is the on-switch)', () => {
+// 0.14.2: the duty runs only where the project's .claude/turn-end.json turns it on.
+const PAGE_ON = Object.freeze({ enabled: true });
+
+check('page: never applies where there is no PROJECT.md, even when turned on', () => {
   const ctx = fakeCtx({ turn: { toolNames: ['Edit'], toolTargets: ['src/a.js'], toolCalls: [{ name: 'Edit', target: 'src/a.js' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(ctx), false);
+  assert.strictEqual(pageDuty.applies(ctx, PAGE_ON), false);
 });
 
 function pageProject(name) {
@@ -2821,24 +2824,71 @@ function pageProject(name) {
   return dir;
 }
 
+check('page: OFF unless the project config turns it on — a PROJECT.md alone asks nothing (0.14.2)', () => {
+  const dir = pageProject('page-opt-in');
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Edit'], toolTargets: ['src/a.js'], toolCalls: [{ name: 'Edit', target: 'src/a.js' }], text: 'x' } });
+  assert.strictEqual(pageDuty.applies(ctx), false, 'no options at all: off');
+  assert.strictEqual(pageDuty.applies(ctx, {}), false, 'no page block in the config: off');
+  assert.strictEqual(pageDuty.applies(ctx, { path: 'PROJECT.md' }), false, 'naming the file is not turning it on');
+  assert.strictEqual(pageDuty.applies(ctx, { enabled: 'true' }), false, 'only a literal true turns it on');
+  assert.strictEqual(pageDuty.applies(ctx, PAGE_ON), true);
+  // Through the runner, exactly as the hook calls it: no config -> the turn ends silently.
+  const quiet = decide({ ...ctx, stopHookActive: true, ledger: { promptId: 'p', fires: 1, asked: ['page'] } }, [pageDuty], {});
+  assert.strictEqual(quiet.action, 'allow', 'a project that did not ask for the page is never stopped for it');
+  const asked = decide(ctx, [pageDuty], { duties: { page: PAGE_ON } });
+  assert.strictEqual(asked.action, 'advise', 'turned on, the first fire nudges');
+});
+
 check('page: applies after a real file changed; not when only the page or DECISIONS.md changed', () => {
   const dir = pageProject('page-applies');
   const real = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Edit'], toolTargets: ['src/a.js'], toolCalls: [{ name: 'Edit', target: 'src/a.js' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(real), true);
+  assert.strictEqual(pageDuty.applies(real, PAGE_ON), true);
   const onlyPage = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Write'], toolTargets: ['PROJECT.md'], toolCalls: [{ name: 'Write', target: 'PROJECT.md' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(onlyPage), false, 'rewriting the page is not fresh work');
+  assert.strictEqual(pageDuty.applies(onlyPage, PAGE_ON), false, 'rewriting the page is not fresh work');
   const onlyDecisions = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Edit'], toolTargets: [path.join(dir, 'DECISIONS.md')], toolCalls: [{ name: 'Edit', target: path.join(dir, 'DECISIONS.md') }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(onlyDecisions), false);
+  assert.strictEqual(pageDuty.applies(onlyDecisions, PAGE_ON), false);
   const readOnly = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Read', 'Grep'], toolTargets: ['src/a.js'], toolCalls: [{ name: 'Read', target: 'src/a.js' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(readOnly), false, 'reading is not work');
+  assert.strictEqual(pageDuty.applies(readOnly, PAGE_ON), false, 'reading is not work');
 });
 
 check('page: Bash mutations count (file-touch), internal dirs do not', () => {
   const dir = pageProject('page-bash');
   const viaBash = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Bash'], toolTargets: [], toolCalls: [{ name: 'Bash', command: 'sed -i "s/a/b/" src/a.js' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(viaBash), true);
+  assert.strictEqual(pageDuty.applies(viaBash, PAGE_ON), true);
   const internal = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Write'], toolTargets: ['.claude/kb/session-digest.md'], toolCalls: [{ name: 'Write', target: '.claude/kb/session-digest.md' }], text: 'x' } });
-  assert.strictEqual(pageDuty.applies(internal), false, 'bookkeeping under .claude is not fresh work');
+  assert.strictEqual(pageDuty.applies(internal, PAGE_ON), false, 'bookkeeping under .claude is not fresh work');
+});
+
+check('self-check: a page or decisions rewrite AFTER a green test is not an unchecked change (0.14.2)', () => {
+  const calls = [
+    eCall('/proj/src/app.js'),
+    bCall('node tests/app.test.js'),
+    wCall('/proj/PROJECT.md'),
+    { name: 'Bash', command: 'sed -i "s/old/new/" DECISIONS.md' },
+  ];
+  assert.strictEqual(selfCheck.satisfied(selfCheckCtx(calls)), true, 'the test ran after the last REAL change');
+  assert.strictEqual(selfCheck.applies(selfCheckCtx([wCall('/proj/PROJECT.md'), eCall('C:\\proj\\DECISIONS.md')])), false,
+    'a turn that only rewrote the record has nothing to check');
+  assert.strictEqual(selfCheck.applies(selfCheckCtx([eCall('/proj/src/PROJECT.mdx')])), true, 'only the exact names are record files');
+});
+
+check('page + self-check together: tested, then page rewritten -> the turn ends, no block (0.14.2)', () => {
+  const dir = pageProject('page-with-self-check');
+  const calls = [
+    { name: 'Edit', target: 'src/a.js' },
+    { name: 'Bash', command: 'node tests/a.test.js' },
+    { name: 'Write', target: 'PROJECT.md' },
+  ];
+  const ctx = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
+    stopHookActive: true,
+    lastAssistantMessage: 'done',
+    ledger: { promptId: 'p', fires: 1, asked: ['page', 'self-check'] },
+    turn: { text: 'x', toolNames: calls.map((c) => c.name), toolTargets: ['src/a.js', 'PROJECT.md'], toolCalls: calls },
+  });
+  const r = decide(ctx, [pageDuty, selfCheck], { duties: { page: PAGE_ON } });
+  assert.strictEqual(r.action, 'allow', `expected allow, got ${r.action} (unsatisfied: ${r.unsatisfied})`);
 });
 
 check('page: satisfied when the page was written this turn by any means (mtime), not by an old page', () => {
@@ -2865,11 +2915,11 @@ check('page: the ask names what changed, demands a WHOLE rewrite, the check, the
 check('page: a project may name its page file', () => {
   const dir = tmpdir('page-custom');
   fs.writeFileSync(path.join(dir, 'STATUS.md'), '# custom\n');
-  const opts = { path: 'STATUS.md' };
+  const opts = { enabled: true, path: 'STATUS.md' };
   const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { toolNames: ['Edit'], toolTargets: ['src/a.js'], toolCalls: [{ name: 'Edit', target: 'src/a.js' }], text: 'x' } });
   assert.strictEqual(pageDuty.applies(ctx, opts), true);
   assert.ok(/REWRITE STATUS\.md WHOLE/.test(pageDuty.ask(ctx, opts)));
-  assert.strictEqual(pageDuty.applies(ctx, {}), false, 'without the option, PROJECT.md is absent here');
+  assert.strictEqual(pageDuty.applies(ctx, PAGE_ON), false, 'without the path option, PROJECT.md is absent here');
 });
 
 Promise.all(pending).then(() => {

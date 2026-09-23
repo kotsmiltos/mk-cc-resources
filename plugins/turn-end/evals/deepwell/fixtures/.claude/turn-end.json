@@ -1,0 +1,6 @@
+{
+  "_why": "eval fixture: since turn-end 0.14.2 the page duty is opt-in; this case measures it, so the seeded project turns it on",
+  "duties": {
+    "page": { "enabled": true }
+  }
+}

@@ -49,6 +49,7 @@ const path = require('path');
 const os = require('os');
 const { dispatchedLens } = require('./quality-lens');
 const fileTouch = require('../file-touch');
+const record = require('../record-files');
 
 /*
  * Tools whose targets are the turn's own artifacts. Since 0.8.0 (task #28) a Bash-driven
@@ -136,6 +137,11 @@ function isInternal(target) {
   const norm = target.replace(/\\/g, '/');
   const tmp = os.tmpdir().replace(/\\/g, '/').toLowerCase();
   if (norm.toLowerCase().startsWith(tmp)) return true;
+  // The page and the decisions list are mandated output too: the page duty (or the project's
+  // own CLAUDE.md) asks for them AFTER the work. Counting them made a page rewrite that followed
+  // a green test look like an unchecked change, and self-check blocked the turn (found in the
+  // 2026-09-23 review by simulating the two duties together).
+  if (record.isRecordFile(norm)) return true;
   return norm.split('/').some((seg) => INTERNAL_SEGMENTS.has(seg));
 }
 

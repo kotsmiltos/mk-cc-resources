@@ -111,12 +111,14 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   Satisfied = asked-once-per-prompt from the ledger; advise,
                         #   zero tokens, no judge).
                         #   Add one = one require, no runner change
-                        #   page (0.14.0, owner `subtract` ruling 2026-09-18 — the ONE question of
-                        #   a subtracted project: a turn that changed real files may not yield
-                        #   until PROJECT.md is REWRITTEN WHOLE; presence-gated on the file;
-                        #   satisfied by its mtime vs the request start or a tool target; folds
-                        #   session-digest + steward-sync + self-check into one demand; shipped
-                        #   defaults unchanged — this repo's .claude/turn-end.json runs page-only)
+                        #   page (0.14.0, owner `subtract` ruling 2026-09-18: a turn that changed
+                        #   real files may not yield until PROJECT.md is REWRITTEN WHOLE;
+                        #   satisfied by its mtime vs the request start or a tool target.
+                        #   0.14.2: OPT-IN — runs only with duties.page.enabled: true in the
+                        #   project's .claude/turn-end.json (presence-gating blocked every
+                        #   file-changing turn anywhere a PROJECT.md existed). self-check is NOT
+                        #   folded in: it keeps running, and lib/record-files.js makes both
+                        #   duties treat PROJECT.md / DECISIONS.md writes as bookkeeping)
 lib/sources/            # WHERE recallable knowledge lives — the second extension surface.
                         #   Contract {id,title,available(ctx),index(ctx),fetch(ctx,ids)}.
                         #   TWO-PHASE and the split is load-bearing: index() emits titles+
@@ -205,7 +207,7 @@ hooks/                  # the one Stop registration + (0.8.0) the exec-result RE
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 205 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
+tests/turn-end.test.js  # 243 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;

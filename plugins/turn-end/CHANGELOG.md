@@ -4,6 +4,15 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-09-23
+
+### Changed
+- **The `page` duty runs only where a project asks for it**: `.claude/turn-end.json` → `{"duties":{"page":{"enabled":true}}}`. A `PROJECT.md` alone no longer stops anything. In 0.14.0 the file's presence was the on-switch, so every turn that changed a file in any project holding a `PROJECT.md` was blocked until the page was rewritten — after every message, not once a sitting. The 2026-09-23 review found the page in this repo was rewritten 18 times 09-18..21 with no page check installed.
+
+### Fixed
+- **Rewriting `PROJECT.md` or `DECISIONS.md` is no longer a change `self-check` asks you to test.** Before, a page rewrite that came after a green test counted as the turn's last change, and `self-check` blocked the turn again. Both duties now read the same definition of the project's written record (`lib/record-files.js`).
+- 0.14.0 said the page folds `self-check` into one demand. It does not: `self-check` stays its own duty and keeps running.
+
 ## [0.14.1] - 2026-09-20
 
 ### Fixed

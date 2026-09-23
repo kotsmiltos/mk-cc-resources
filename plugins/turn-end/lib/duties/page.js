@@ -1,6 +1,7 @@
 'use strict';
 /*
- * Duty: the page. A turn that changed real files may not yield until PROJECT.md is rewritten.
+ * Duty: the page (opt-in). A turn that changed real files may not yield until PROJECT.md is
+ * rewritten.
  *
  * Read this before doing anything:
  * - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.
@@ -14,21 +15,26 @@
  * checks, open decisions with defaults; under 100 lines), REWRITTEN WHOLE at the end of every
  * sitting — a rewritten page cannot accumulate, so it cannot contradict itself, so it needs no
  * garden, ledger, inbox or status contract. ONE decisions list (`DECISIONS.md`, dated one-liners
- * with the why; a newer line names what it replaces). ONE Stop question: this duty. It folds
- * session-digest (the page IS the recap), steward-sync (the page IS the model) and self-check
- * (the page carries the check that proved the turn) into one demand.
+ * with the why; a newer line names what it replaces). A project that runs this duty can turn
+ * session-digest and steward-sync off in its config (the page is the recap and the model).
+ * self-check stays a separate duty: it still runs, and it never counts a page or decisions
+ * rewrite as a change (lib/record-files.js).
  *
- * ON-SWITCH is presence: a project without a PROJECT.md is never asked. Creating the file is the
- * whole setup. Satisfaction is a DISK fact (the page's mtime against this request's start, or a
- * tool target naming it), never a counter — the same lesson session-digest learned when a Bash
- * write carried no file_path.
+ * ON-SWITCH is the project's own config, `.claude/turn-end.json` → duties.page.enabled: true
+ * (0.14.2). A PROJECT.md alone asks nothing. The 2026-09-23 review found the page was rewritten
+ * 18 times 09-18..21 in this repo with no page check installed, and that presence-gating would
+ * have blocked every file-changing turn in any project that holds a PROJECT.md, so the duty
+ * waits to be asked for. Satisfaction is a DISK fact (the page's mtime against this request's
+ * start, or a tool target naming it), never a counter — the same lesson session-digest learned
+ * when a Bash write carried no file_path.
  */
 const path = require('path');
 const { whileWritesForbidden, whileAgentsRun, firstReason } = require('../deferral');
 const selfCheck = require('./self-check');
+const record = require('../record-files');
 
-const DEFAULT_PAGE = 'PROJECT.md';
-const DEFAULT_DECISIONS = 'DECISIONS.md';
+const DEFAULT_PAGE = record.PAGE_FILE;
+const DEFAULT_DECISIONS = record.DECISIONS_FILE;
 const MAX_LINES = 100;
 // Tools that produce work; Agent/Task deliberately excluded (a dispatch is not fresh work —
 // the re-arm chain turn-end exists to close).
@@ -40,11 +46,11 @@ function pageRel(options) {
   return (p || DEFAULT_PAGE).replace(/\\/g, '/');
 }
 
-function isFile(target, rel) {
-  if (typeof target !== 'string' || !target) return false;
-  const norm = target.replace(/\\/g, '/').toLowerCase();
-  const want = rel.toLowerCase();
-  return norm === want || norm.endsWith(`/${want}`);
+const { isFile } = record;
+
+/** Only an explicit `enabled: true` in the project's config turns the duty on. */
+function turnedOn(options) {
+  return Boolean(options) && options.enabled === true;
 }
 
 /** Real-work mutations this turn, minus the page and the decisions list themselves. */
@@ -71,6 +77,7 @@ module.exports = {
   priority: 10,
 
   applies(ctx, options) {
+    if (!turnedOn(options)) return false;
     const rel = pageRel(options);
     if (!ctx.disk || typeof ctx.disk.exists !== 'function' || !ctx.disk.exists(rel)) return false;
     return deliverableMutations(ctx, options).length > 0;
@@ -106,5 +113,5 @@ module.exports = {
     );
   },
 
-  DEFAULT_PAGE, DEFAULT_DECISIONS, MAX_LINES, pageRel, deliverableMutations,
+  DEFAULT_PAGE, DEFAULT_DECISIONS, MAX_LINES, pageRel, deliverableMutations, turnedOn,
 };
