@@ -1,101 +1,89 @@
 # mk-cc-resources — the page
 
-Rewritten whole at the end of every sitting. States only what IS. History lives in git and
-`DECISIONS.md`. Under 100 lines. (Owner ruling 2026-09-18: subtract — one page, one decisions
-list, one Stop question.)
+Rewritten whole at the end of a sitting, after the answer to him, in words he can read. His words
+are quoted; anything Claude proposes is marked as Claude's. History lives in git and `DECISIONS.md`.
 
 ## What this is
 
-The owner's Claude Code plugin marketplace: the toolkit that lets them chat freely with Claude,
-have a vision built into well-made software, and have progress captured. Public repo; built
-first for the owner's own ~40 production codebases.
+His Claude Code plugins. His words (2026-09-17): "i just want a good way to chat into claude freely
+and have my vision made and progress captured." Public repo; built first for his own projects.
 
-## Laws (must stay true)
+## His rules (his words; the newer one wins)
 
-1. No work in the owner's absence.
-2. Quality over speed. A mechanism that silently delivers nothing is a quality failure.
-3. Mechanisms, not text. Deterministic before LLM. Fold before add. Fire conditionally.
-4. Recompute, never accrete. This page is rewritten, never appended.
-5. Never an unverified "done": every work turn names the check that proved it.
-6. In-environment delivery, fewest clicks: content in the terminal, decisions as one-keystroke
-   choices with the default first, never a file to read.
-7. Nothing personal in shipped files (repo-guard's `leaked-path` enforces it).
-8. Decoupled, open-for-extension code; measured per project, never across plugins.
-9. **A kickoff prompt carries the owner's words verbatim, names what it adds, and states its
-   cost; it never grants itself "ask nothing"** (thorough-mode 1.14.0: the `@prompt` contract +
-   the receiving-side `[kickoff-guard]`, one keystroke before the first sub-agent dispatch).
+- "keeping everything still sounds wrong. I think if we have contradictions we keep the latest input on them." (09-17)
+- "if you just add the line somewhere, you're not gonna respect it." (07-21) and "trying to gate this is a lost cause" (09-21). Claude's reading: mechanisms go on plumbing (installs, settings, file writes), never on understanding him.
+- "we go for quality, not necessarily speed" (08-23, said when a 46-second wait was proposed to be cut).
+- "The engine works through the inbox without me — that is totally false. This can never happen." (07-21) For test runs he sets up: "the sessions don't come back, you don't interfere, we just let them ahve a go" (09-20).
+- "this cannot be poitning me to files. it needs to be giving me eveyrhting i need in a digestible manner within this environment" (09-08)
+- "not just numbers but in general not speaking and doing things in my voice" (07-27)
+- Nothing personal in shipped files (his global rule; `repo-guard` checks it).
 
-## Where we are (2026-09-20, third sitting — the deepwell measure)
+## Where we are (2026-09-23, end of the clean-up sitting)
 
-- `main` is ahead of origin and NOT pushed (count: `git rev-list --count origin/main..HEAD`).
-- **The owner's ask:** test building a simple webapp from different angles, with and without the
-  plugins. postit-board (a CRUD app the prompt fully specifies) could not separate arms; the
-  owner asked for a survival-automation game without quests instead. **deepwell**: dig out of a
-  collapsed mineshaft, light and air as constraints, research unlocks recipes from held
-  materials, automation from drip collectors to a powered drill. Owner's words verbatim in the
-  prompt (law 9); one headless sim contract; a 14-step behaviour probe (module driver).
-- **The instrument** (plugin-toolkit 1.23.0): `behaviour-probe` drives the sim in a child process
-  and quotes what the app said on a failed step; `plugin-eval --keep-outputs` probes every arm;
-  `--probe-outputs` re-scores kept arms for free (used four times tonight to fix contract
-  ambiguities without a rerun). All 30 arms boot and pass 13–14 of 14.
-- **The measure** — opus, n=3 per arm, 30 sessions, $167, ~40 min per plugin in parallel:
+- **Nothing committed here since 09-14 runs in his sessions.** Plugins install from GitHub and the
+  last push was 09-14. Waiting: 31 commits on `main` (every one carries a Co-Authored-By line) plus
+  this sitting's work on the local branch `cleanup-2026-09-23` (count:
+  `git rev-list --count origin/main..cleanup-2026-09-23`). Pushing is his call.
+- **What a push would install on every machine** (installed → here): thorough-mode 1.12.2 → 1.15.0,
+  turn-end 0.13.0 → 0.14.2, kb 0.15.0 → 0.16.1, steward 0.6.1 → 0.6.2, plugin-toolkit 1.18.0 →
+  1.23.0, and the new `plain`. What it no longer would, taken out this sitting: steward's nightly
+  clean-up that deleted notes without asking; turn-end's page check on by default (it now runs only
+  where a project turns it on); thorough-mode's check that stopped a pasted plan for a keystroke
+  (never installed; it would have fired on his own "it should ask me nothing, just go").
+- **`plain`, his "what we discussed", for his other machines** ("i wanna add it to my other machines
+  at least", 09-23): the tested reply style, switched on wherever the plugin is on, plus "check my
+  setup", which looks at a machine, fixes what it can after one yes (backing each file up), and
+  gives the exact step for the rest. It runs only when he asks. Tested here: loaded from this
+  folder, the session's instructions carried the style and not Concise; its own tests pass.
+- **The check, run on this machine (read only, nothing changed):** caveman is on; commits still get
+  the Co-Authored-By line; the generalize-first hook runs on his messages; his verification hook
+  still reacts to `++` and speaks when a helper agent hands work back; his personal CLAUDE.md still
+  offers `++`; the rejected "six classes" note still loads. Claude can fix all six after his yes.
+  Not fixable here: `plain` is not published yet, and this folder's fixes are not pushed.
+- **In this folder:** on — thorough-mode, prism, plugin-toolkit, statusline, alert-sounds, caveman,
+  turn-end (the installed 0.13.0 does nothing here: this folder turns off every duty it knows).
+  Off — kb, steward, verifiability-lens, patterns, reuse-gate, essense-flow, essense-autopilot.
+  session-lifecycle is off for him everywhere; elicit is installed nowhere. Reply style here:
+  Concise (this folder's own setting).
+- **His question is still open: do these plugins make Claude better at what he builds?**
+  - Every test gave each build a fully written spec, so builds with and without a plugin came out
+    alike: all 30 games worked. What moved was set by the test. steward's builds used a decision
+    that existed only in steward's notes (the lamp burns 137 ticks per unit of fuel) 3 of 3 against
+    0 of 3. The builds without steward kept the day/night wish too, in their README (a wish the
+    test prompt planted, not his). The builds without turn-end never opened the page file.
+  - His own look (09-20): "they all are very basic as far as visual goes, none added good tooltips,
+    none went the extra mile". His two favourites were one built with turn-end and one with no plugin,
+    the two most expensive of the 30 runs (about $8.9 each against a $5.4 average).
+  - Real use in three of his other projects since 09-01 (read 09-23): notes turn-end brings back
+    from earlier sessions show up in the answer 47%, 74% and 60% of the time. kb's pointer lines were
+    followed on fewer than 1 prompt in 10, and they were the largest text added to his prompts.
+    turn-end's end-of-turn step takes under a second on most turns and up to about a minute when it
+    picks notes.
+  - Spent on tests so far: about $220. The with/without runner now runs only when he asks, after
+    being told how many sessions and what it costs (a full run: 30 sessions, about $167).
+- **Records corrected this sitting:** DECISIONS lines that quoted words he never typed or recorded
+  Claude's readings as his decisions now say what he said and what happened; one is withdrawn.
+- **Checks at the end of this sitting:** the repo's test sweep 39/39 suites (2411 checks) on its
+  second run; the first run had essense-flow's known timing test red (nothing here touches
+  essense-flow). Registry check consistent; repo-guard clean.
 
-  | plugin | graders WITH | W/OUT | Δ | what moved | probe WITH · W/OUT |
-  |---|---|---|---|---|---|
-  | steward | 0.93 | 0.60 | +33 | inbox capture 3/3 vs 0/3; the briefing-only RNG decision 3/3 vs 0/3 | 14,13,14 · 14,14,14 |
-  | turn-end | 0.89 | 0.67 | +22 | page rewritten 3/3 vs 0/3 — with the page rule in the fixture and NO hook, nobody rewrote it | 14,14,14 · 14,14,14 |
-  | kb | 0.92 | 0.92 | 0 | the note is on disk for both arms; hints changed nothing | 14,13,14 · 14,14,14 |
-  | patterns | 0.80 | 0.80 | 0 | axis named 3/3 vs 3/3; zero kind-switches in all six — the prompt said "adding one is data" | 14 ×3 · 14 ×3 |
-  | thorough-mode | 0.73 | 0.80 | −7 | verified-done 3/3 vs 3/3 (the prompt asks "say what you checked"); one `@verify` arm used the global random | 14 ×3 · 14,12→14,12→14 |
+## Next (whose each is)
 
-  Deterministic scan, 30 arms: ~2,050 lines and ~25 files each side, 0 silent catches, 0
-  kind-switches, 12–35 structure kinds in config, cost $3.6–8.9 and 15–27 min per arm; WITH arms
-  cost ~4% more and ran ~6% longer. Probe residue: two arms refuse to MOVE in the dark (the lamp
-  decision, honoured).
-- **What it tells us:** (1) a plugin moves exactly what lives outside the prompt and the repo —
-  steward and turn-end moved because their decisions and duties lived only in their own files;
-  kb did not because its note is a file both arms read; (2) postit-board's finding (3) is
-  refuted at n=3: a convention written in the repo did NOT do turn-end's page duty; the hook
-  did, 3/3 vs 0/3; (3) the WHAT did the code again — every arm satisfied the sim contract, so
-  the probe cannot rank arms on a prompt this explicit; (4) the prompt's own asks ("say what
-  you checked", "adding one is data") saturate `@verify` and patterns: to measure them the
-  prompt must NOT ask for it; (5) instrument bugs looked like arm defects until the failed step
-  quoted the app — four contract ambiguities (build target, craft-vs-place, stone budget, start
-  depth) were mine, not theirs.
-- **kb on REAL history (09-21, opus n=3, $15):** three questions answered only by an old capture,
-  over the live `.claude/kb`. 9/9 vs 9/9: WITH kb the pointer was the FIRST tool call every
-  time and saved one to two calls; WITHOUT, one `**/*` glob listed the 38-file sandbox and its
-  telling file names. kb's edge is exploration cost, proportional to repo size; a small-repo
-  measure cannot show it. The 7.5% follow rate from real sessions is the number that matters.
-- Earlier measures stand: sonnet 09-19 (turn-end +38, steward +33, kb +27, patterns +17,
-  `@verify` 3/3 vs 0/3, reuse-gate 0); postit-board opus n=1 (regex graders ranked arms backwards).
-- Gates: test-all 38/38 (2326 checks), registry-check consistent, repo-guard clean.
-- Running here: turn-end (page duty only), thorough-mode, prism, elicit, plugin-toolkit, caveman,
-  statusline, alert-sounds. Off here: kb, steward, lens, patterns, reuse-gate, essense-flow,
-  autopilot, session-lifecycle.
+1. **Push or not** (his call), and first whether to take the Co-Authored-By line off the 31 commits
+   on `main` (his rule; a local rewrite, nothing is public yet). Check:
+   `git rev-list --count origin/main..HEAD` is 0 and `~/.claude/plugins/installed_plugins.json`
+   matches each plugin's `plugin.json`.
+2. **Run "check my setup" on each machine** after the push (his: "i wanna add it to my other machines
+   at least"). Check: every line fine, or the ones left are the ones he chose to keep.
+3. **"which is worth keeping and which not"** (his ask, 09-20). Claude gave a provisional answer on
+   09-23 from real use. Check: repeat the same read after some sittings on the pushed versions and
+   tell him the result in plain words; no new test runs unless he asks for one.
 
-## Next (each with its check)
+Nothing else is queued. essense-flow stays parked (Claude's proposal): every test build was done by
+one agent without it, and its one full run took 2h40m and produced no app.
 
-1. **Measure `@verify` and patterns without the prompt asking for them** (drop "say what you
-   checked" and "adding one is data" from a copy of the deepwell prompt). Check: rows on this page.
-2. **Play one arm** — `node server.js` in `plugins/patterns/evals/results/outputs/deepwell/with-1`
-   (35 files, 19 structure kinds, 14/14) — and record what the game FEELS like, since no
-   instrument here measures fun. Check: one dated line in DECISIONS.md.
-3. **Decide essense-flow's place.** Check: one dated DECISIONS line (default: park it below the
-   size where one agent holds the app in context — every deepwell arm was held by one agent).
-4. **Live with the subtraction for five sittings here.** Check: this page rewritten each sitting.
-5. **Decide push + fleet.** Check: each fleet repo has a `PROJECT.md` under 100 lines.
+## Open decisions (Claude's proposal first)
 
-## Open decisions (default first)
-
-- **essense-flow:** park below one-agent size (default) · name a module count where it earns
-  its coordination cost.
-- **kb's place:** measured twice now (fresh note, real history): the pointer is followed and
-  correct, and unaided opus finds the same note in a small repo. Keep the pull surface (MCP +
-  `/kb`), keep hints OFF by default, measure once on a large fleet repo where listing the tree
-  is not an option? Default: yes, one large-repo case; no more small-repo measures.
-- **Q17 — the five dead hooks:** disable globally? Default: yes for reuse-gate; patterns +17 on
-  sonnet but 0 here — keep available per project.
-- **Global prompt hooks** (`verification-rules.js`, `generalize-first.sh`): fold into the global
-  CLAUDE.md and remove? Default: yes.
-- **The recall judge**: ranker-only, or off with the rest? Default: off — the page is the recall.
+- **The page check in this folder after a push:** this folder's own turn-end setting turns it on, so
+  the pushed turn-end would ask for a page rewrite after every turn that changes a file here.
+  Claude's proposal: switch it off here with the push; the page was kept up 18 times without it.
