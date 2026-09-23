@@ -1,7 +1,7 @@
 'use strict';
 /*
  * Check 3: caveman is off. It makes Claude write in clipped fragments and explain fully only
- * when asked, which works against the plain style's "say it so he can read it".
+ * when asked, which works against the plain style's short, plain answers.
  *
  * Read this before doing anything:
  * - Limits-awareness: Claude drifts, loses context, finishes prematurely, defers, takes shortcuts. Re-read when uncertain. Preserve specifics.

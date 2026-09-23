@@ -70,8 +70,8 @@ Produces a copy-paste prompt to start the NEXT session from a cold context. Orde
 - SAVES the generated prompt to an append-only `.claude/prompts/` history + `INDEX.md` ledger (not just shown once), so prompts accumulate for review — same history pattern session-lifecycle gives handoffs
 - Exit check: every citation disk-verified this turn + cold-read surfaced no open question
 - **Kickoff contract (1.14.0, both branches).** The block's first three lines are fixed: `OWNER ASKED (verbatim): "…"` (the owner's words, quoted, never paraphrased), `THIS PROMPT ADDS: …` (every scope/phase/agent beyond those words, or "nothing"), `COST: <phases> · <expected sub-agent dispatches> · <expected hours>`. "Ask nothing" / "never stop early" may appear only inside the quote. Why: 2026-09-20 a kickoff written by hand in the session's voice read the owner's "test for all the phases making that" as a ten-phase build pipeline and his "it should ask me nothing, just go" as never stop; the receiving session spent 2h40m / 37 sub-agent dispatches before the owner intervened. The owner reviews three lines, not a page.
-- **Honest escape (1.15.0).** When the owner's words for the work are not in the conversation, line 1 reads `OWNER ASKED: not in this conversation — the ask came from <where>`; "verbatim" labels only text copied from this conversation. The first real use (09-20, same evening) wrote a paraphrase under the label.
-- **No receiving-side guard (removed 1.15.0).** 1.14.0's `[kickoff-guard]` injected a cost line + one-keystroke menu on any prompt saying "ask me nothing" without the verbatim line. It fired on the owner's own typing ("it should ask me nothing, just go") and a paraphrase under the label silenced it; the 2026-09-23 clean-up dropped it. Do not re-add a check on every prompt for this — the contract is on the writing side.
+- **Honest escape (1.15.0).** When the owner's words for the work are not in the conversation, line 1 reads `OWNER ASKED: not in this conversation — the ask came from <where>`; "verbatim" labels only text copied from this conversation. The first real use (09-20, same evening) wrote a cleaned-up paraphrase of words that were in the conversation under the label.
+- **No receiving-side guard (removed 1.15.0).** 1.14.0's `[kickoff-guard]` injected a cost line + one-keystroke menu on any prompt saying "ask me nothing" without the verbatim line. 1.14.0 was never installed; it would have fired on the owner's own typing ("it should ask me nothing, just go"), and a paraphrase under the label would have silenced it. The 2026-09-23 clean-up dropped it. Do not re-add a check on every prompt for this — the contract is on the writing side.
 
 ### `@build` — Plan, Review, Build
 Plans a change, reviews the plan against the bar, then implements it:
@@ -93,7 +93,7 @@ Provenance: owner law, verbatim 2026-09-09 — "this cannot be pointing me to fi
 
 ## Smart Hints
 
-When you describe the intent without using the keyword (e.g., "don't skip anything", "push it", "show me choices with arrows"), the hook shows a one-line hint suggesting the relevant modifier. Hints are suppressed when the modifier is already active — no nagging.
+When you describe the intent without using the keyword (e.g., "find the root cause", "push it", "show me choices with arrows"), the hook shows a one-line hint suggesting the relevant modifier. Hints are suppressed when the modifier is already active — no nagging.
 
 ## Sub-agent Propagation
 

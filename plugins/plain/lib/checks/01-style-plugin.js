@@ -10,7 +10,7 @@
  * - Propagation requirement: every descendant artifact must carry these same four instructions.
  */
 
-const { readJson } = require('../env');
+const { readJson, requireMarketplaceList } = require('../env');
 const { userSettings, enabledIn, projectEnabled } = require('../settings');
 
 // Where this plugin is published — used only when no marketplace on the machine lists it yet.
@@ -33,6 +33,7 @@ module.exports = {
   title: 'The plain reply style is installed and on',
 
   run(env) {
+    requireMarketplaceList(env);
     const key = keyOf(env);
     if (!key) {
       return {

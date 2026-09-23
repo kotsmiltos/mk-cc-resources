@@ -20,6 +20,17 @@ function userSettings(env) {
   return r.value || {};
 }
 
+/** Every project settings file that exists: [{ file, value }]. Malformed throws. */
+function projectSettings(env) {
+  const out = [];
+  for (const file of env.paths.projectSettings) {
+    const r = readJson(file);
+    if (r.error) throw new Error(`cannot read project settings: ${r.error}`);
+    if (r.value) out.push({ file, value: r.value });
+  }
+  return out;
+}
+
 /** The value a settings object gives `enabledPlugins[key]` (undefined when unset). */
 function enabledIn(settings, key) {
   const map = settings && settings.enabledPlugins;
@@ -28,34 +39,38 @@ function enabledIn(settings, key) {
 
 /** Project settings files that set `enabledPlugins[key]`: [{ file, value }]. */
 function projectEnabled(env, key) {
-  const out = [];
-  for (const file of env.paths.projectSettings) {
-    const r = readJson(file);
-    if (r.error) throw new Error(`cannot read project settings: ${r.error}`);
-    const v = enabledIn(r.value, key);
-    if (v !== undefined) out.push({ file, value: v });
-  }
-  return out;
+  return projectSettings(env)
+    .map(({ file, value }) => ({ file, value: enabledIn(value, key) }))
+    .filter((e) => e.value !== undefined);
 }
 
-/** Every registered UserPromptSubmit hook command: [{ group, index, command }]. */
+/**
+ * The full text a hook entry runs: its command plus, in the exec form ({ command, args }), its
+ * arguments — so a script named only in `args` is still found.
+ */
+function hookText(h) {
+  return [h.command, ...(Array.isArray(h.args) ? h.args : [])].join(' ');
+}
+
+/** Every registered UserPromptSubmit hook: [{ group, index, command, args, shell, text }]. */
 function userPromptHooks(settings) {
   const groups = (settings.hooks && settings.hooks[USER_PROMPT_EVENT]) || [];
   const out = [];
   groups.forEach((g, group) => {
     ((g && g.hooks) || []).forEach((h, index) => {
-      if (h && typeof h.command === 'string') out.push({ group, index, command: h.command });
+      if (!h || typeof h.command !== 'string') return;
+      out.push({ group, index, command: h.command, args: Array.isArray(h.args) ? h.args : null, shell: h.shell || null, text: hookText(h) });
     });
   });
   return out;
 }
 
-/** Remove the UserPromptSubmit hook entries whose command matches `rx`; drops emptied groups. */
+/** Remove the UserPromptSubmit hook entries whose text matches `rx`; drops emptied groups. */
 function withoutUserPromptHooks(settings, rx) {
   const next = JSON.parse(JSON.stringify(settings));
   const groups = (next.hooks && next.hooks[USER_PROMPT_EVENT]) || [];
   const kept = groups
-    .map((g) => ({ ...g, hooks: ((g && g.hooks) || []).filter((h) => !(h && rx.test(String(h.command || '')))) }))
+    .map((g) => ({ ...g, hooks: ((g && g.hooks) || []).filter((h) => !(h && typeof h.command === 'string' && rx.test(hookText(h)))) }))
     .filter((g) => g.hooks.length > 0);
   if (next.hooks) {
     if (kept.length) next.hooks[USER_PROMPT_EVENT] = kept;
@@ -64,4 +79,6 @@ function withoutUserPromptHooks(settings, rx) {
   return next;
 }
 
-module.exports = { userSettings, enabledIn, projectEnabled, userPromptHooks, withoutUserPromptHooks, USER_PROMPT_EVENT };
+module.exports = {
+  userSettings, projectSettings, enabledIn, projectEnabled, userPromptHooks, withoutUserPromptHooks, hookText, USER_PROMPT_EVENT,
+};

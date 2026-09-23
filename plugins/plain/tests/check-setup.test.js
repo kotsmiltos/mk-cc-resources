@@ -236,7 +236,7 @@ check('bad: a check run changed nothing on disk', readJson(path.join(badM.home, 
   write(odd.hookFile, hook);
   const r = byId(cli(odd).lines);
   check('CLAUDE.md worded differently: not fixable, exact manual step given',
-    r['global-claude-md'].ok === false && r['global-claude-md'].canFix === false && /remove every mention/.test(r['global-claude-md'].guidance));
+    r['global-claude-md'].ok === false && r['global-claude-md'].canFix === false && /remove every line that offers/.test(r['global-claude-md'].guidance));
   check('hook without the marker anchor: not fixable, exact manual step given',
     r['verification-rules-hook'].ok === false && r['verification-rules-hook'].canFix === false && /MACHINE_TEXT_MARKERS/.test(r['verification-rules-hook'].guidance));
   const broken = makeMachine('broken', 'good');
@@ -244,6 +244,100 @@ check('bad: a check run changed nothing on disk', readJson(path.join(badM.home, 
   const b = byId(cli(broken).lines);
   check('malformed user settings: named as "could not check", nothing passes silently',
     b['caveman-off'].ok === null && /could not check/.test(b['caveman-off'].found));
+}
+
+// ---------------------------------------------------------------- review fixes (2026-09-23)
+{
+  // Every install is compared, switched on or not.
+  const m = makeMachine('all-installs', 'good');
+  const inst = path.join(m.home, '.claude', 'plugins', 'installed_plugins.json');
+  const list = readJson(inst);
+  list.plugins[`turn-end@${MK}`] = [{ scope: 'user', version: '0.10.0' }];
+  writeJson(inst, list);
+  const s = readJson(path.join(m.home, '.claude', 'settings.json'));
+  s.enabledPlugins[`turn-end@${MK}`] = false;
+  writeJson(path.join(m.home, '.claude', 'settings.json'), s);
+  const r = byId(cli(m).lines)['marketplace-current'];
+  check('marketplace: a switched-off install that is behind is still reported', r.ok === false && /turn-end 0\.10\.0 → 0\.14\.2 \(switched off\)/.test(r.found), r.found);
+}
+{
+  // Exec-form hooks ({ command, args }) are seen and run.
+  const m = makeMachine('exec-form', 'bad');
+  const settingsFile = path.join(m.home, '.claude', 'settings.json');
+  const s = readJson(settingsFile);
+  s.hooks.UserPromptSubmit = [
+    { hooks: [{ type: 'command', command: process.execPath, args: [m.hookFile] }] },
+    { hooks: [{ type: 'command', command: 'bash', args: [m.genFirst] }] },
+  ];
+  writeJson(settingsFile, s);
+  const r = byId(cli(m).lines);
+  check('exec form: the generalize-first hook named only in args is found', r['no-generalize-first-hook'].ok === false);
+  check('exec form: the verification hook is run as program + args and judged', r['verification-rules-hook'].ok === false && r['verification-rules-hook'].canFix, r['verification-rules-hook'].found);
+  const a = cli(m, ['--apply', 'no-generalize-first-hook']);
+  const after = readJson(settingsFile).hooks.UserPromptSubmit;
+  check('exec form: removing it keeps the other hook', a.lines[0].applied && after.length === 1 && after[0].hooks[0].args[0] === m.hookFile);
+}
+{
+  // The older includeCoAuthoredBy: false already hides the trailer; a project can turn it back on.
+  const m = makeMachine('old-trailer-key', 'good');
+  const settingsFile = path.join(m.home, '.claude', 'settings.json');
+  const s = readJson(settingsFile);
+  delete s.attribution;
+  s.includeCoAuthoredBy = false;
+  writeJson(settingsFile, s);
+  check('trailer: includeCoAuthoredBy false alone counts as off', byId(cli(m).lines)['commit-trailer-off'].ok === true);
+  writeJson(path.join(m.project, '.claude', 'settings.json'), { attribution: { commit: 'Co-Authored-By: someone' } });
+  const r = byId(cli(m).lines)['commit-trailer-off'];
+  check('trailer: a project that sets its own trailer is reported and fixable', r.ok === false && r.canFix && /this project turns it back on/.test(r.found));
+  const a = cli(m, ['--apply', 'commit-trailer-off']);
+  check('trailer: the project is fixed and the user file is left alone', a.lines[0].nowOk === true &&
+    readJson(path.join(m.project, '.claude', 'settings.json')).attribution.commit === '' && !('attribution' in readJson(settingsFile)));
+  // A machine relying on the old key: adding attribution must keep the PR text hidden too.
+  const m2 = makeMachine('old-key-custom', 'good');
+  const f2 = path.join(m2.home, '.claude', 'settings.json');
+  const s2 = readJson(f2);
+  s2.attribution = { commit: 'custom' };
+  s2.includeCoAuthoredBy = false;
+  writeJson(f2, s2);
+  cli(m2, ['--apply', 'commit-trailer-off']);
+  const after2 = readJson(f2).attribution;
+  check('trailer: an existing attribution keeps its own pr setting (none added)', after2.commit === '' && !('pr' in after2));
+}
+{
+  // The fix text says exactly what --apply will change.
+  const r = before['global-claude-md'];
+  check('CLAUDE.md fix lists each exact change', /change "ONE INSTANCE of a category \("add a X"" to/.test(r.fix) &&
+    /replace the line "\*\*RESPONSE\*\* — the `generalize-first`/.test(r.fix) && /delete the line "\*\*Thorough-mode augment/.test(r.fix), r.fix);
+  // A caveman line worded differently does not block the ++ / Generalize-First edits.
+  const m = makeMachine('odd-caveman', 'bad');
+  const md = path.join(m.home, '.claude', 'CLAUDE.md');
+  write(md, fs.readFileSync(md, 'utf8').replace('Caveman mode — rules injected every session by the caveman plugin; not restated here.', 'Caveman mode, my own wording.'));
+  const s = readJson(path.join(m.home, '.claude', 'settings.json'));
+  s.enabledPlugins[CAVEMAN] = false;
+  writeJson(path.join(m.home, '.claude', 'settings.json'), s);
+  const r2 = byId(cli(m).lines)['global-claude-md'];
+  check('odd caveman line: the other edits stay fixable, the caveman step is left for him', r2.canFix && /still for you after that: delete the line that says caveman mode is on/.test(r2.fix), r2.fix);
+}
+{
+  // "Could not tell" is never a pass.
+  const m = makeMachine('unreadable', 'good');
+  const md = path.join(m.home, '.claude', 'CLAUDE.md');
+  fs.rmSync(md);
+  fs.mkdirSync(md);
+  check('an unreadable CLAUDE.md is "could not check", not "no file"', byId(cli(m).lines)['global-claude-md'].ok === null);
+  write(path.join(m.home, '.claude', 'plugins', 'known_marketplaces.json'), '{ broken');
+  const r = byId(cli(m).lines);
+  check('a malformed marketplace list is named in checks 1 and 2', r['style-plugin'].ok === null && r['marketplace-current'].ok === null &&
+    /cannot read the marketplace list/.test(r['style-plugin'].found));
+}
+{
+  // A fix that creates a settings file records "created" and no phantom backup folder.
+  const m = makeMachine('no-settings', 'good');
+  fs.rmSync(path.join(m.home, '.claude', 'settings.json'));
+  const a = cli(m, ['--apply', 'commit-trailer-off']);
+  const tail = a.lines[a.lines.length - 1];
+  check('creating a file: recorded as created, backupDir null', a.lines[0].applied && tail.backupDir === null &&
+    tail.changed.length === 1 && tail.changed[0].action === 'created', JSON.stringify(tail));
 }
 
 // ---------------------------------------------------------------- the anchored edits, alone
@@ -276,6 +370,18 @@ check('bad: a check run changed nothing on disk', readJson(path.join(badM.home, 
     check('source folder with an unpushed commit: says the fixes are live nowhere until pushed',
       r.ok === false && /1 commit\(s\) not pushed/.test(r.found) && /live on no machine/.test(r.found) && /git push/.test(r.guidance), r.found);
     check('source folder: names what differs from the published copy', /turn-end 0\.14\.2 → 0\.15\.0/.test(r.found));
+
+    // No remote at all: "could not tell" is null, and false once the versions show a difference.
+    const lone = path.join(TMP, 'source', 'lone');
+    git(TMP, ['init', '-q', lone]);
+    writeJson(path.join(lone, '.claude-plugin', 'marketplace.json'), { name: MK, plugins: [{ name: 'plain', version: '0.1.0' }, { name: 'turn-end', version: '0.14.2' }] });
+    git(lone, ['add', '-A']);
+    git(lone, ['commit', '-q', '-m', 'one']);
+    const same = byId(cli({ home: machine.home, project: lone }).lines)['marketplace-current'];
+    check('source folder with no upstream and nothing different: could not tell (null), never a pass', same.ok === null && /could not tell whether it is pushed/.test(same.found), same.found);
+    writeJson(path.join(lone, '.claude-plugin', 'marketplace.json'), { name: MK, plugins: [{ name: 'plain', version: '0.2.0' }, { name: 'turn-end', version: '0.14.2' }] });
+    const diff = byId(cli({ home: machine.home, project: lone }).lines)['marketplace-current'];
+    check('source folder with no upstream but a version difference: not fine', diff.ok === false && /plain 0\.1\.0 → 0\.2\.0/.test(diff.found));
   }
 }
 

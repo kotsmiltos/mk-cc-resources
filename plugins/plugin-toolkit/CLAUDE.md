@@ -191,7 +191,8 @@ lib/plugin-eval.js      # 1.20.0: PURE half of the with/without gate — rows() 
 bin/plugin-eval.js      # CLI adapter: discovers plugins/*/evals/<case>/{prompt.md|case.yaml} by
                         #   SHAPE, runs `claude plugin eval <abs dir> --ablation with-without
                         #   --no-publish --trust-plugin --threshold 0 --scaffold` per plugin
-                        #   (defaults: 3 runs/arm, sonnet + sonnet judge, $5 ceiling, -j 3, tools
+                        #   (defaults: 3 runs/arm, opus agent + sonnet judge, $5 per-run ceiling
+                        #   (checked before each run starts, not a total cap), -j 3, tools
                         #   Read/Write/Edit/Glob/Grep/Skill — NO Bash: Windows has no sandbox).
                         #   Absolute target path REQUIRED (a relative one resolves against the
                         #   eval's own cwd → plugins/x/plugins/x, measured). --dry-run prints
@@ -203,11 +204,11 @@ bin/plugin-eval.js      # CLI adapter: discovers plugins/*/evals/<case>/{prompt.
                         #   (doc, measured 2026-09-20): `target: files` = the LIST of created
                         #   paths, never contents → grade contents via {source:file,path} on a
                         #   path the prompt pins; `trace` is JSON per line (quotes as \");
-                        #   file_exists sees only files CREATED in the run. Suites (all four):
-                        #   the Zarmada-shape Unity toolkit + "add a HapticsManager" — the
-                        #   owner's own line of work; house rules on the pinned file, the two
-                        #   out-of-code decisions on the trace with their literals scrubbed
-                        #   from every note
+                        #   file_exists sees only files CREATED in the run. Cases (2026-09-23):
+                        #   one `deepwell` case each in kb, patterns, steward, thorough-mode and
+                        #   turn-end (the survival-sim with a probe.json); a bare call starts 30
+                        #   opus sessions. Run only when the owner asks, after stating the
+                        #   session count and cost (root CLAUDE.md gate row)
                         #   1.22.0: every kept arm is also PROBED (below) and the table gets a
                         #   `probe <case>: WITH a/b · W/OUT c/d` line; --probe-outputs re-scores
                         #   the arms already kept without running claude

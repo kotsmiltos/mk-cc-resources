@@ -2891,6 +2891,40 @@ check('page + self-check together: tested, then page rewritten -> the turn ends,
   assert.strictEqual(r.action, 'allow', `expected allow, got ${r.action} (unsatisfied: ${r.unsatisfied})`);
 });
 
+check('page + self-check: a page file RENAMED in the project config is bookkeeping too (0.14.2)', () => {
+  const dir = tmpdir('page-renamed-with-self-check');
+  const pageOpts = { enabled: true, path: 'STATUS.md' };
+  fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'turn-end.json'), JSON.stringify({ duties: { page: pageOpts } }));
+  fs.writeFileSync(path.join(dir, 'STATUS.md'), '# status\n');
+  const calls = [
+    { name: 'Edit', target: 'src/a.js' },
+    { name: 'Bash', command: 'node tests/a.test.js' },
+    { name: 'Write', target: 'STATUS.md' },
+  ];
+  const ctx = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
+    stopHookActive: true,
+    lastAssistantMessage: 'done',
+    ledger: { promptId: 'p', fires: 1, asked: ['page', 'self-check'] },
+    turn: { text: 'x', toolNames: calls.map((c) => c.name), toolTargets: ['src/a.js', 'STATUS.md'], toolCalls: calls },
+  });
+  assert.strictEqual(selfCheck.satisfied(ctx), true, 'the test ran after the last REAL change');
+  const r = decide(ctx, [pageDuty, selfCheck], { duties: { page: pageOpts } });
+  assert.strictEqual(r.action, 'allow', `expected allow, got ${r.action} (unsatisfied: ${r.unsatisfied})`);
+  // Without the config file, STATUS.md is an ordinary deliverable and the rule is unchanged.
+  const bare = tmpdir('page-renamed-no-config');
+  const noConfig = fakeCtx({ ...ctx, cwd: bare, disk: makeDisk(bare) });
+  assert.strictEqual(selfCheck.satisfied(noConfig), false, 'a write after the test still needs a check when nothing names it the page');
+});
+
+check('record-files: its config path is the one the hook reads', () => {
+  const recordFiles = require('../lib/record-files');
+  const hook = require('../hooks/scripts/turn-end');
+  assert.strictEqual(path.normalize(recordFiles.TURN_END_CONFIG_REL), path.normalize(hook.CONFIG_REL));
+});
+
 check('page: satisfied when the page was written this turn by any means (mtime), not by an old page', () => {
   const dir = pageProject('page-satisfied');
   const started = Date.now() - 5000;

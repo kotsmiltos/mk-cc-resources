@@ -10,10 +10,12 @@
  * - Quality ownership: this work matters. Take ownership.
  * - Propagation requirement: every descendant artifact must carry these same four instructions.
  *
- * Judged by BEHAVIOUR, not by reading the source: the registered command is run exactly as
- * Claude Code runs it, with three sample messages on stdin. It is his own hook, which already
- * runs on every message he sends; it only prints. A fix is offered only when the edited copy,
- * run the same way from a temp folder, passes the same samples.
+ * Judged by BEHAVIOUR, not by reading the source: the registered hook is run the way Claude Code
+ * runs it (exec form as program + args; a `shell: "powershell"` hook through PowerShell; any
+ * other command through Git Bash on Windows and sh elsewhere; the project folder as the working
+ * folder), with sample messages on stdin. It is his own hook, which already runs on every
+ * message he sends; it only prints. A fix is offered only when the edited copy, run from a temp
+ * folder, passes the same samples.
  */
 
 const fs = require('fs');
@@ -24,6 +26,8 @@ const { userSettings, userPromptHooks, USER_PROMPT_EVENT } = require('../setting
 
 const HOOK_RX = /verification-rules/i;
 const HOOK_TIMEOUT_MS = 15000;
+const IS_WINDOWS = process.platform === 'win32';
+const POWERSHELL_SHELL = 'powershell';
 // No trailing colon on purpose: hand-backs arrive both as "...sent a message:" and as "...sent a
 // message while you were working:" (seen 2026-09-23, and the hook spoke on it). The markers are
 // matched with startsWith, so this one prefix covers both.
@@ -46,12 +50,28 @@ function payload(prompt) {
   return JSON.stringify({ prompt, hook_event_name: USER_PROMPT_EVENT });
 }
 
-/** Run a hook command with a sample message; { out } or { error }. */
-function runCommand(command, prompt, cwd) {
-  const r = spawnSync(command, { shell: true, input: payload(prompt), encoding: 'utf8', timeout: HOOK_TIMEOUT_MS, cwd });
-  if (r.error) return { error: r.error.message };
+function spawnResult(r) {
+  if (r.error) return { error: r.error.message, missing: r.error.code === 'ENOENT' };
   if (r.status !== 0) return { error: `exit ${r.status}: ${String(r.stderr || '').trim().slice(0, 200)}` };
   return { out: String(r.stdout || '') };
+}
+
+/** Run one registered hook with a sample message; { out } or { error }. */
+function runHook(h, prompt, cwd) {
+  const opts = { input: payload(prompt), encoding: 'utf8', timeout: HOOK_TIMEOUT_MS, cwd };
+  if (h.args) return spawnResult(spawnSync(h.command, h.args, { ...opts, shell: false }));
+  if (h.shell === POWERSHELL_SHELL) {
+    return spawnResult(spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', h.command], opts));
+  }
+  if (IS_WINDOWS) {
+    const bash = process.env.CLAUDE_CODE_GIT_BASH_PATH || 'bash';
+    const viaBash = spawnResult(spawnSync(bash, ['-c', h.command], opts));
+    if (!viaBash.missing) return viaBash;
+    // No Git Bash on PATH: the platform shell is the closest stand-in, and says so on failure.
+    const viaCmd = spawnResult(spawnSync(h.command, { ...opts, shell: true }));
+    return viaCmd.error ? { error: `${viaCmd.error} (Git Bash not found; tried cmd)` } : viaCmd;
+  }
+  return spawnResult(spawnSync(h.command, { ...opts, shell: true }));
 }
 
 function judge(run) {
@@ -63,9 +83,9 @@ function judge(run) {
   return { armsRetired: retired.out !== plain.out, speaksOnHandback: handbacks.some((h) => h.out.trim() !== '') };
 }
 
-/** The script path inside a hook command: the token naming a verification-rules .js file. */
-function scriptPathOf(command, home) {
-  const tokens = command.match(/"[^"]+"|'[^']+'|\S+/g) || [];
+/** The script a hook runs: the token (or exec-form arg) naming a verification-rules .js file. */
+function scriptPathOf(h, home) {
+  const tokens = [...(h.args || []), ...(h.command.match(/"[^"]+"|'[^']+'|\S+/g) || [])];
   for (const raw of tokens) {
     const t = raw.replace(/^["']|["']$/g, '');
     if (!/verification-rules[^\\/]*\.js$/i.test(t)) continue;
@@ -88,13 +108,13 @@ function fixedText(src, verdict) {
   return t;
 }
 
-/** Does the edited script pass every sample? Run from a temp copy, never in place. */
+/** Does the edited script pass every sample? Run from a temp copy with node, never in place. */
 function fixPasses(text) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'plain-vr-'));
   try {
     const file = path.join(dir, 'verification-rules.js');
     fs.writeFileSync(file, text);
-    const v = judge((prompt) => runCommand(`"${process.execPath}" "${file}"`, prompt, dir));
+    const v = judge((prompt) => runHook({ command: process.execPath, args: [file] }, prompt, dir));
     return !v.error && !v.armsRetired && !v.speaksOnHandback;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -102,16 +122,16 @@ function fixPasses(text) {
 }
 
 function inspect(env) {
-  const hooks = userPromptHooks(userSettings(env)).filter((h) => HOOK_RX.test(h.command));
+  const hooks = userPromptHooks(userSettings(env)).filter((h) => HOOK_RX.test(h.text));
   return hooks.map((h) => {
-    const verdict = judge((prompt) => runCommand(h.command, prompt, env.home));
-    const file = scriptPathOf(h.command, env.home);
+    const verdict = judge((prompt) => runHook(h, prompt, env.projectRoot));
+    const file = scriptPathOf(h, env.home);
     let fixed = null;
     if (!verdict.error && (verdict.armsRetired || verdict.speaksOnHandback) && file && fs.existsSync(file)) {
       const t = fixedText(fs.readFileSync(file, 'utf8'), verdict);
       fixed = t && fixPasses(t) ? t : null;
     }
-    return { command: h.command, file, verdict, fixed };
+    return { text: h.text, file, verdict, fixed };
   });
 }
 
@@ -125,7 +145,13 @@ module.exports = {
     if (!hooks.length) return { ok: true, found: 'no verification-rules hook registered', canFix: false, fix: null, guidance: null };
     const errors = hooks.filter((h) => h.verdict.error);
     if (errors.length) {
-      return { ok: null, found: `the hook did not run: ${errors.map((h) => h.verdict.error).join('; ')}`, canFix: false, fix: null, guidance: 'Run the hook command from your user settings by hand to see why it fails.' };
+      return {
+        ok: null,
+        found: `the hook did not run when I tried it: ${errors.map((h) => h.verdict.error).join('; ')}`,
+        canFix: false,
+        fix: null,
+        guidance: `Nothing was changed. If your messages work normally, the hook runs fine inside Claude Code and only my test run failed; the command is: ${errors.map((h) => h.text).join(' | ')}`,
+      };
     }
     const bad = hooks.filter((h) => h.verdict.armsRetired || h.verdict.speaksOnHandback);
     if (!bad.length) return { ok: true, found: 'registered; ignores ++ and stays silent on hand-backs', canFix: false, fix: null, guidance: null };

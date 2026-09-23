@@ -7,7 +7,7 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.15.0] - 2026-09-23
 
 ### Removed
-- **`[kickoff-guard]`.** 1.14.0 added a check on every prompt: a message that said "ask me nothing" (or similar) without an `OWNER ASKED (verbatim)` line got a cost line and a one-keystroke menu before the first helper agent. It fired on your own typing ("it should ask me nothing, just go"), and a kickoff that wrote a paraphrase under the "verbatim" label switched it off. Nothing is injected on such a prompt now.
+- **`[kickoff-guard]`.** 1.14.0 added a check on every prompt: a message that said "ask me nothing" (or similar) without an `OWNER ASKED (verbatim)` line got a cost line and a one-keystroke menu before the first helper agent. 1.14.0 was never installed, but it would have fired on your own typing ("it should ask me nothing, just go"), and a kickoff that wrote a paraphrase under the "verbatim" label would have switched it off. Nothing is injected on such a prompt now.
 
 ### Changed
 - **`@prompt` never labels a paraphrase "verbatim".** When your words for the work are not in the conversation, line 1 of the kickoff says so and names where the ask came from: `OWNER ASKED: not in this conversation — the ask came from <where>`. The three-line header (your words · what the prompt adds · cost) stays.

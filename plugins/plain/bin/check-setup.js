@@ -14,6 +14,7 @@
  *   node bin/check-setup.js --apply <id,id,...> [--home] [--cwd]   make those fixes; one JSON line per id:
  *                                                                   {id, applied, nowOk?, found?, reason?, guidance?}
  *                                                                   then one {backupDir, changed} line
+ *                                                                   (changed: [{file, action: edited|created|deleted}])
  *
  * Reads the home folder (default: this user's), the project folder (default: the current one)
  * and this plugin's own folder — nothing else. Changes files ONLY with --apply, each one backed
@@ -64,7 +65,7 @@ function main() {
   if (args.apply) {
     const editor = makeEditor(env.home, new Date());
     for (const r of applyAll(env, args.apply, editor)) lines.push(r);
-    lines.push({ backupDir: editor.changed.length ? editor.backupDir : null, changed: editor.changed });
+    lines.push({ backupDir: editor.usedBackupDir(), changed: editor.changed });
   } else {
     for (const r of runAll(env)) lines.push(r);
   }

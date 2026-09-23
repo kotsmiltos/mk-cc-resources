@@ -11,8 +11,10 @@
  * - Propagation requirement: every descendant artifact must carry these same four instructions.
  *
  * The fix is a list of anchored text edits (the ones used on 2026-09-23). Each edit applies only
- * where its exact anchor is present, and a fix is offered only when the edited text passes this
- * same check — so a file worded differently gets exact manual steps instead of a guess.
+ * where its exact anchor is present, and each one that applies is listed word for word in `fix`
+ * (what he approves) and in `guidance` (what he would do by hand), so both describe exactly what
+ * --apply does. A fix is offered only when the edited text clears the ++ and Generalize-First
+ * problems; a caveman line worded differently is reported on its own and never blocks the rest.
  */
 
 const { readText } = require('../env');
@@ -38,10 +40,15 @@ const CAVEMAN_EDITS = [
   { kind: 'dropLine', startsWith: '### Tone', onlyIfEmptySection: true },
 ];
 
+function lineIndex(lines, e) {
+  return lines.findIndex((l) => l.startsWith(e.startsWith));
+}
+
+/** Would this edit change `text`? (The heading drop depends on the text at that moment.) */
 function applyEdit(text, e) {
   if (e.kind === 'replace') return text.includes(e.from) ? text.split(e.from).join(e.to) : text;
   const lines = text.split('\n');
-  const i = lines.findIndex((l) => l.startsWith(e.startsWith));
+  const i = lineIndex(lines, e);
   if (i < 0) return text;
   if (e.kind === 'replaceLine') { lines[i] = e.to; return lines.join('\n'); }
   // dropLine. A heading goes only when nothing but blank lines remain before the next heading.
@@ -52,6 +59,26 @@ function applyEdit(text, e) {
   }
   lines.splice(i, lines[i + 1] === '' ? 2 : 1);
   return lines.join('\n');
+}
+
+/** The exact change an edit makes, in words he can follow by hand. */
+function describe(e, text) {
+  if (e.kind === 'replace') return `change "${e.from}" to "${e.to}"`;
+  const line = text.split('\n')[lineIndex(text.split('\n'), e)] || e.startsWith;
+  if (e.kind === 'replaceLine') return `replace the line "${line}" with "${e.to}"`;
+  return `delete the line "${line}"`;
+}
+
+/** Apply edits in order; return the final text and the description of each edit that changed it. */
+function applyAll(text, edits) {
+  const steps = [];
+  let t = text;
+  for (const e of edits) {
+    const next = applyEdit(t, e);
+    if (next !== t) steps.push(describe(e, t));
+    t = next;
+  }
+  return { text: t, steps };
 }
 
 function problemsIn(text, cavemanOff) {
@@ -69,10 +96,21 @@ function inspect(env) {
   const text = raw.replace(/\r\n/g, '\n');
   const cavemanOff = enabledIn(userSettings(env), CAVEMAN_KEY) !== true;
   const problems = problemsIn(text, cavemanOff);
-  let fixed = EDITS.reduce(applyEdit, text);
-  if (cavemanOff) fixed = CAVEMAN_EDITS.reduce(applyEdit, fixed);
-  const fixable = problems.length > 0 && fixed !== text && problemsIn(fixed, cavemanOff).length === 0;
-  return { file, exists: true, problems, fixed: fixable ? fixed : null };
+  const result = applyAll(text, cavemanOff ? [...EDITS, ...CAVEMAN_EDITS] : EDITS);
+  // Fixable when the edits clear the ++ / Generalize-First problems; the caveman line alone
+  // never blocks them (a differently worded one stays a reported problem with its own step).
+  const fixable = problems.length > 0 && result.steps.length > 0 && problemsIn(result.text, false).length === 0;
+  const leftover = fixable ? problemsIn(result.text, cavemanOff) : problems;
+  return { file, exists: true, problems, fixed: fixable ? result.text : null, steps: fixable ? result.steps : [], leftover };
+}
+
+/** Manual steps for problems no anchored edit covers. */
+function manualSteps(leftover) {
+  const out = [];
+  if (leftover.some((p) => p.includes('++'))) out.push('remove every line that offers `++` or @thorough');
+  if (leftover.some((p) => p.includes('Generalize-First'))) out.push(`under the Generalize-First heading add the line "${SCOPE_SENTENCE}"`);
+  if (leftover.some((p) => p.includes('caveman'))) out.push('delete the line that says caveman mode is on');
+  return out;
 }
 
 module.exports = {
@@ -84,12 +122,13 @@ module.exports = {
     const r = inspect(env);
     if (!r.exists) return { ok: true, found: 'no personal CLAUDE.md on this machine', canFix: false, fix: null, guidance: null };
     if (!r.problems.length) return { ok: true, found: 'offers no ++, and nothing in it shapes how his words are read', canFix: false, fix: null, guidance: null };
+    const byHand = [...r.steps, ...manualSteps(r.leftover)];
     return {
       ok: false,
       found: `${r.problems.join('; ')} (${r.file})`,
       canFix: Boolean(r.fixed),
-      fix: r.fixed ? 'drop the ++ / @thorough lines, add "in code" and the line "' + SCOPE_SENTENCE + '" to the Generalize-First section, and drop the caveman line if caveman is off' : null,
-      guidance: `In ${r.file}: remove every mention of \`++\` / @thorough; under the Generalize-First heading add the line "${SCOPE_SENTENCE}"; if caveman is off, delete the "Caveman mode" line.`,
+      fix: r.fixed ? `in ${r.file}: ${r.steps.join('; ')}${r.leftover.length ? ` (still for you after that: ${manualSteps(r.leftover).join('; ')})` : ''}` : null,
+      guidance: `In ${r.file}: ${byHand.join('; ')}.`,
     };
   },
 

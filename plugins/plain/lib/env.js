@@ -33,8 +33,20 @@ function readJson(file) {
   }
 }
 
+/** A file's text, or null only when it does not exist. Any other read error is thrown, so a
+ *  check reports "could not check" instead of treating an unreadable file as absent. */
 function readText(file) {
-  try { return fs.readFileSync(file, 'utf8'); } catch (_e) { return null; }
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+/** Throw when the marketplace list could not be read: the checks that need it must say so. */
+function requireMarketplaceList(env) {
+  if (env.marketplace.error) throw new Error(`cannot read the marketplace list: ${env.marketplace.error}`);
 }
 
 /**
@@ -64,8 +76,12 @@ function findOwnMarketplace(home, pluginName, pluginRoot) {
   const known = readJson(path.join(home, KNOWN_MARKETPLACES_REL));
   if (!known.value) return { name: null, location: null, listsPlugin: false, error: known.error };
   const entries = Object.entries(known.value).filter(([, e]) => e && e.installLocation);
+  // An unreadable manifest of some OTHER marketplace must not hide ours; it matters only when
+  // ours was not found, and then it is reported instead of a wrong "not listed" diagnosis.
+  const unreadable = [];
   for (const [name, entry] of entries) {
     const manifest = readJson(path.join(entry.installLocation, MARKETPLACE_MANIFEST_REL));
+    if (manifest.error) { unreadable.push(manifest.error); continue; }
     const plugins = (manifest.value && manifest.value.plugins) || [];
     if (plugins.some((p) => p && p.name === pluginName)) return { name, location: entry.installLocation, listsPlugin: true, error: null };
   }
@@ -74,7 +90,7 @@ function findOwnMarketplace(home, pluginName, pluginRoot) {
   const source = readJson(path.join(pluginRoot, '..', '..', MARKETPLACE_MANIFEST_REL)).value;
   const match = source && entries.find(([name]) => name === source.name);
   if (match) return { name: match[0], location: match[1].installLocation, listsPlugin: false, error: null };
-  return { name: null, location: null, listsPlugin: false, error: null };
+  return { name: null, location: null, listsPlugin: false, error: unreadable.length ? unreadable.join('; ') : null };
 }
 
 /**
@@ -108,6 +124,6 @@ function gather(opts) {
 }
 
 module.exports = {
-  gather, readJson, readText, projectRootOf, findOwnMarketplace,
+  gather, readJson, readText, requireMarketplaceList, projectRootOf, findOwnMarketplace,
   MARKETPLACE_MANIFEST_REL, PLUGIN_MANIFEST_REL, CLAUDE_DIR,
 };

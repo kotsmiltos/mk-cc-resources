@@ -48,13 +48,16 @@ function makeEditor(home, date) {
   }
 
   // Keep the file's own line endings: a CRLF file edited as LF would show as a whole-file change.
+  // A file that did not exist has no backup: undoing that change means deleting it, so it is
+  // recorded as "created", never as "edited".
   function writeText(file, lfText) {
-    const original = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    const existed = fs.existsSync(file);
+    const original = existed ? fs.readFileSync(file, 'utf8') : '';
     const crlf = /\r\n/.test(original);
     backup(file);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, crlf ? lfText.replace(/\r?\n/g, '\r\n') : lfText);
-    changed.push({ file, action: 'edited' });
+    if (!changed.some((c) => c.file === file)) changed.push({ file, action: existed ? 'edited' : 'created' });
   }
 
   function writeJson(file, value) {
@@ -68,7 +71,12 @@ function makeEditor(home, date) {
     changed.push({ file, action: 'deleted' });
   }
 
-  return { backupDir, changed, writeText, writeJson, remove };
+  /** The backup folder, or null when nothing needed backing up (only new files were created). */
+  function usedBackupDir() {
+    return fs.existsSync(backupDir) ? backupDir : null;
+  }
+
+  return { backupDir, changed, writeText, writeJson, remove, usedBackupDir };
 }
 
 module.exports = { makeEditor, stampOf, BACKUP_REL };

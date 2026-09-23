@@ -145,9 +145,18 @@ function isInternal(target) {
   return norm.split('/').some((seg) => INTERNAL_SEGMENTS.has(seg));
 }
 
-/** Deliverable mutations, in turn order: [{index, target, via}] — tool targets AND Bash argv. */
-function mutations(calls) {
-  return fileTouch.touches(calls).mutations.filter((m) => !isInternal(m.target));
+/**
+ * Deliverable mutations, in turn order: [{index, target, via}] — tool targets AND Bash argv.
+ * `extraRecords` names a page file the project renamed (see ctxMutations).
+ */
+function mutations(calls, extraRecords = []) {
+  return fileTouch.touches(calls).mutations
+    .filter((m) => !isInternal(m.target) && !record.isRecordFile(m.target, extraRecords));
+}
+
+/** This turn's deliverable mutations, also skipping a page file the project's config renamed. */
+function ctxMutations(ctx) {
+  return mutations(orderedCalls(ctx) || [], record.configuredRecordFiles(ctx));
 }
 
 /*
@@ -221,7 +230,7 @@ const MIN_ANCHOR_LENGTH = 4;
 function anchorsOf(ctx) {
   const calls = orderedCalls(ctx) || [];
   const out = new Set();
-  for (const m of mutations(calls)) {
+  for (const m of ctxMutations(ctx)) {
     const b = path.basename(m.target);
     if (b.length >= MIN_ANCHOR_LENGTH) out.add(b.toLowerCase());
   }
@@ -292,7 +301,7 @@ const EVIDENCE = [
     id: 'check-command-after-last-change',
     detect(ctx) {
       const calls = orderedCalls(ctx) || [];
-      const muts = mutations(calls);
+      const muts = ctxMutations(ctx);
       if (!muts.length) return false;
       return execsAfter(calls, muts[muts.length - 1].index).some((c) => CHECK_COMMAND_RX.test(c.command));
     },
@@ -310,7 +319,7 @@ const EVIDENCE = [
     id: 'ran-and-looked',
     detect(ctx) {
       const calls = orderedCalls(ctx) || [];
-      const muts = mutations(calls);
+      const muts = ctxMutations(ctx);
       if (!muts.length) return false;
       const names = muts
         .map((m) => path.basename(m.target))
@@ -360,7 +369,7 @@ module.exports = {
   applies(ctx) {
     const calls = orderedCalls(ctx);
     if (!calls) return false;
-    return mutations(calls).length > 0;
+    return ctxMutations(ctx).length > 0;
   },
 
   /*
@@ -384,7 +393,7 @@ module.exports = {
   },
 
   ask(ctx) {
-    const muts = mutations(orderedCalls(ctx) || []);
+    const muts = ctxMutations(ctx);
     const names = [...new Set(muts.map((m) => path.basename(m.target)))];
     const shown =
       names.slice(0, MAX_NAMED_FILES).join(', ') + (names.length > MAX_NAMED_FILES ? ', …' : '');

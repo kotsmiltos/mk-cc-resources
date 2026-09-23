@@ -58,8 +58,8 @@ const requestClosure = require('./request-closure');
 const fewerClicks = require('./fewer-clicks');
 const page = require('./page');
 
-// `page` (0.14.0, owner's `subtract` ruling 2026-09-18) is the ONE question a subtracted project
-// keeps; presence-gated on PROJECT.md, so projects without the page never see it.
+// `page` (0.14.0, owner's `subtract` ruling 2026-09-18; opt-in since 0.14.2): runs only when the
+// project's .claude/turn-end.json sets duties.page.enabled: true.
 const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure, fewerClicks, page];
 
 function all() {

@@ -59,10 +59,10 @@ function isMachineText(prompt) {
  * variants). Added 2026-09-20: the owner reviews three lines, not a page, and the session's
  * additions are visible as additions. "Ask nothing" / "never stop early" may appear ONLY inside
  * the verbatim quote — a kickoff never grants itself the right to run unquestioned.
- * 1.15.0: the honest escape. The first real use (2026-09-20, same evening) wrote a paraphrase
- * under the "verbatim" label, because the owner's words for that work were not in the
- * conversation. When they are not, line 1 says so and names where the ask came from; the label
- * "verbatim" is reserved for text copied from this conversation.
+ * 1.15.0: the honest escape. The first real use (2026-09-20, same evening) wrote a cleaned-up
+ * paraphrase of words that WERE in the conversation under the "verbatim" label. The label is now
+ * reserved for text copied from this conversation, and when his words are not in it, line 1 says
+ * so and names where the ask came from.
  */
 const KICKOFF_CONTRACT = `The block's FIRST THREE LINES are fixed: line 1 \`OWNER ASKED (verbatim): "<the owner's own words for this work, copied exactly from this conversation — never paraphrased, never expanded>"\`; line 2 \`THIS PROMPT ADDS: <one line naming every scope, phase, or agent the prompt carries BEYOND those words — or "nothing">\`; line 3 \`COST: <phases> · <expected sub-agent dispatches> · <expected hours>\`. If the owner's words for this work are NOT in this conversation, line 1 instead reads \`OWNER ASKED: not in this conversation — the ask came from <where: an earlier kickoff, the project page, a file, a summary>\`; never label anything "verbatim" that you did not copy from this conversation. A kickoff may say "ask nothing" / "never stop early" / "no questions" ONLY inside the line-1 quote, never in the session's own voice.`;
 const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a "verbatim" line holding words you did not copy from this conversation (a paraphrase, a summary, a quote from memory); a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate`;
@@ -224,11 +224,13 @@ EXIT CHECK: block renders from the model, non-model citations disk-verified, pro
 /*
  * No receiving-side kickoff guard (removed 1.15.0, the 2026-09-23 clean-up). 1.14.0 injected a
  * cost line + one-keystroke menu on every prompt that said "ask me nothing" without an OWNER
- * ASKED (verbatim) line. At 16:14 on 09-20 the owner refused a proposal whose receiving-side hook
- * "refuses a pasted kickoff missing the verbatim line" ("WHAT IS THIS GOING TO DO? SPEND MORE FOR
- * SOMTEHING THAT I DIDN"T ASK FOR?"); at 16:16 he approved "do it, delete the kickoff and fix
- * @prompt" on a two-text-edit proposal. What shipped was a new check on every prompt: it fired on
- * his own typed "it should ask me nothing, just go", and a paraphrase under the label switched it
+ * ASKED (verbatim) line. At 16:14 UTC on 09-20 the owner refused a proposal whose receiving-side
+ * hook "refuses a pasted kickoff missing the verbatim line" ("WHAT IS THIS GOING TO DO? SPEND MORE
+ * FOR SOMTEHING THAT I DIDN"T ASK FOR?"); at 16:16 UTC he approved "do it, delete the kickoff and
+ * fix @prompt" on a proposal that did include a one-keystroke check before the first dispatch,
+ * enforced by the hook on every prompt. 1.14.0 was never installed. The 2026-09-23 clean-up
+ * (Claude's proposal, carried by that sitting's kickoff) removed the check: it would fire on his
+ * own typed "it should ask me nothing, just go", and a paraphrase under the label would switch it
  * off. The kickoff contract above is what stays.
  */
 

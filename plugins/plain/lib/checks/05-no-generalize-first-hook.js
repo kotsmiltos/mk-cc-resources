@@ -20,11 +20,11 @@ module.exports = {
   title: 'No "generalize-first" hook on your messages',
 
   run(env) {
-    const hits = userPromptHooks(userSettings(env)).filter((h) => HOOK_RX.test(h.command));
+    const hits = userPromptHooks(userSettings(env)).filter((h) => HOOK_RX.test(h.text));
     const ok = hits.length === 0;
     return {
       ok,
-      found: ok ? 'not registered' : `registered on every message you send: ${hits.map((h) => h.command).join(' | ')}`,
+      found: ok ? 'not registered' : `registered on every message you send: ${hits.map((h) => h.text).join(' | ')}`,
       canFix: !ok,
       fix: ok ? null : 'remove that hook line from your user settings (the script file itself is kept)',
       guidance: ok ? null : 'In your user settings file, under "hooks" → "UserPromptSubmit", delete the entry whose command runs generalize-first.',
