@@ -4,10 +4,22 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-09-23
+
+### Removed
+- **`[kickoff-guard]`.** 1.14.0 added a check on every prompt: a message that said "ask me nothing" (or similar) without an `OWNER ASKED (verbatim)` line got a cost line and a one-keystroke menu before the first helper agent. It fired on your own typing ("it should ask me nothing, just go"), and a kickoff that wrote a paraphrase under the "verbatim" label switched it off. Nothing is injected on such a prompt now.
+
+### Changed
+- **`@prompt` never labels a paraphrase "verbatim".** When your words for the work are not in the conversation, line 1 of the kickoff says so and names where the ask came from: `OWNER ASKED: not in this conversation — the ask came from <where>`. The three-line header (your words · what the prompt adds · cost) stays.
+
+### Fixed
+- The `@prompt` text put words in your mouth (a line about testing a simple webapp with and without the plugins, which you never typed), blamed `@prompt` for a kickoff written by hand, and said "~50 sub-agents" (it was 37 dispatches and 7 resumes). It now says what happened.
+- No shipped description offers the retired `++` / `@thorough` any more (plugin description, marketplace row, root README row).
+
 ## [1.14.0] - 2026-09-20
 
 ### Added
-- **Kickoff contract on `@prompt` (both variants).** A generated kickoff now opens with three fixed lines: `OWNER ASKED (verbatim): "…"` (the owner's own words, quoted, never paraphrased), `THIS PROMPT ADDS: …` (every scope, phase or agent the prompt carries beyond those words, or "nothing") and `COST: <phases> · <expected sub-agent dispatches> · <expected hours>`. "Ask nothing" / "never stop early" may appear only inside the verbatim quote — a kickoff never grants itself the right to run unquestioned. Why: on 2026-09-20 a generated kickoff turned the owner's "test building a simple webapp, with and without the plugins" into a ten-phase pipeline in the session's voice, forbade questions, and the receiving session spent 2h40m and ~50 opus sub-agents before the owner intervened. The owner reviews three lines, not a page.
+- **Kickoff contract on `@prompt` (both variants).** A generated kickoff now opens with three fixed lines: `OWNER ASKED (verbatim): "…"` (the owner's own words, quoted, never paraphrased), `THIS PROMPT ADDS: …` (every scope, phase or agent the prompt carries beyond those words, or "nothing") and `COST: <phases> · <expected sub-agent dispatches> · <expected hours>`. "Ask nothing" / "never stop early" may appear only inside the verbatim quote — a kickoff never grants itself the right to run unquestioned. Why: on 2026-09-20 a kickoff written by hand in the session's voice read the owner's "test for all the phases making that" as a ten-phase build pipeline and his "it should ask me nothing, just go" as never stop, and the receiving session spent 2h40m and 37 sub-agent dispatches before the owner intervened. The owner reviews three lines, not a page.
 - **`[kickoff-guard]` (receiving side).** When a prompt forbids questions ("ask me nothing", "never stop early", "no AskUserQuestion", "don't ask me questions") and carries no `OWNER ASKED (verbatim)` line, the hook injects a guard: before the first sub-agent dispatch or any multi-phase run, print the COST line and take ONE keystroke. The prompt's own "ask nothing" does not waive it. Stands down on machine-authored text like every other injection. 12 new test checks (49 total).
 
 ## [1.13.0] - 2026-09-20

@@ -84,7 +84,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 |---|---|---|---|
 | [turn-end](plugins/turn-end/README.md) | | 0.14.2 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
 | [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.7.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
-| [thorough-mode](plugins/thorough-mode/README.md) | | 1.14.0 | Keyword modifiers — `++`, `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) |
+| [thorough-mode](plugins/thorough-mode/README.md) | | 1.15.0 | Keyword modifiers — `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) |
 | [reuse-gate](plugins/reuse-gate/README.md) | | 0.2.0 | One reuse-first reminder per message, at the moment code is first written |
 
 ### Remember across sessions

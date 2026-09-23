@@ -59,9 +59,13 @@ function isMachineText(prompt) {
  * variants). Added 2026-09-20: the owner reviews three lines, not a page, and the session's
  * additions are visible as additions. "Ask nothing" / "never stop early" may appear ONLY inside
  * the verbatim quote — a kickoff never grants itself the right to run unquestioned.
+ * 1.15.0: the honest escape. The first real use (2026-09-20, same evening) wrote a paraphrase
+ * under the "verbatim" label, because the owner's words for that work were not in the
+ * conversation. When they are not, line 1 says so and names where the ask came from; the label
+ * "verbatim" is reserved for text copied from this conversation.
  */
-const KICKOFF_CONTRACT = `The block's FIRST THREE LINES are fixed: line 1 \`OWNER ASKED (verbatim): "<the owner's own words for this work, quoted exactly — never paraphrased, never expanded>"\`; line 2 \`THIS PROMPT ADDS: <one line naming every scope, phase, or agent the prompt carries BEYOND those words — or "nothing">\`; line 3 \`COST: <phases> · <expected sub-agent dispatches> · <expected hours>\`. A kickoff may say "ask nothing" / "never stop early" / "no questions" ONLY inside the line-1 quote, never in the session's own voice.`;
-const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate`;
+const KICKOFF_CONTRACT = `The block's FIRST THREE LINES are fixed: line 1 \`OWNER ASKED (verbatim): "<the owner's own words for this work, copied exactly from this conversation — never paraphrased, never expanded>"\`; line 2 \`THIS PROMPT ADDS: <one line naming every scope, phase, or agent the prompt carries BEYOND those words — or "nothing">\`; line 3 \`COST: <phases> · <expected sub-agent dispatches> · <expected hours>\`. If the owner's words for this work are NOT in this conversation, line 1 instead reads \`OWNER ASKED: not in this conversation — the ask came from <where: an earlier kickoff, the project page, a file, a summary>\`; never label anything "verbatim" that you did not copy from this conversation. A kickoff may say "ask nothing" / "never stop early" / "no questions" ONLY inside the line-1 quote, never in the session's own voice.`;
+const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a "verbatim" line holding words you did not copy from this conversation (a paraphrase, a summary, a quote from memory); a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate`;
 
 const MODIFIERS = [
   {
@@ -152,7 +156,7 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
     triggers: [
       /(?:^|\s)@prompt(?:\s|$)/i,  // @prompt as standalone token
     ],
-    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. Two failures this guards: (a) stale or unchecked citations — the cold session inherits them as ground truth and burns its first minutes on paths that don't exist; (b) SCOPE DRIFT IN THE SESSION'S VOICE — measured 2026-09-20: a generated kickoff turned the owner's "test building a simple webapp, with and without the plugins" into a ten-phase pipeline, forbade questions, and the receiving session spent 2h40m and ~50 sub-agents before the owner intervened. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
+    injection: `[prompt-mode] Produce a copy-paste prompt to kick off the NEXT session. Assume a fresh context with NO memory of this conversation. Two failures this guards: (a) stale or unchecked citations — the cold session inherits them as ground truth and burns its first minutes on paths that don't exist; (b) SCOPE DRIFT IN THE SESSION'S VOICE — measured 2026-09-20: a kickoff a session wrote by hand read the owner's "test for all the phases making that" as a ten-phase build pipeline and his "it should ask me nothing, just go" as never stop; the receiving session spent 2h40m and 37 sub-agent dispatches before the owner intervened. Ordered protocol — DRAFT → VERIFY → COLD-READ → SAVE → SHOW:
 1. DRAFT it as ONE fenced code block the user can copy verbatim — nothing mixed in, no preamble inside the block:
    - ${KICKOFF_CONTRACT}
    - Lead with the objective in one or two sentences: what the next session should accomplish.
@@ -218,20 +222,15 @@ ANTI-SIGNALS: ${KICKOFF_ANTI_SIGNALS}.
 EXIT CHECK: block renders from the model, non-model citations disk-verified, prompt saved, and the three header lines (OWNER ASKED / THIS PROMPT ADDS / COST) are present and honest.`;
 
 /*
- * KICKOFF GUARD (receiving side) — added 2026-09-20 after the measured failure above.
- * A pasted prompt that forbids questions ("ask me nothing", "never stop early", "no
- * AskUserQuestion") but carries no OWNER ASKED (verbatim) line may be a session's plan in the
- * owner's name. The guard does not block the prompt; it makes the first sub-agent dispatch
- * cost one keystroke: print the COST line, take one answer. The prompt's own "ask nothing"
- * cannot override this — that clause is exactly what disabled the safety valve on 2026-09-20.
+ * No receiving-side kickoff guard (removed 1.15.0, the 2026-09-23 clean-up). 1.14.0 injected a
+ * cost line + one-keystroke menu on every prompt that said "ask me nothing" without an OWNER
+ * ASKED (verbatim) line. At 16:14 on 09-20 the owner refused a proposal whose receiving-side hook
+ * "refuses a pasted kickoff missing the verbatim line" ("WHAT IS THIS GOING TO DO? SPEND MORE FOR
+ * SOMTEHING THAT I DIDN"T ASK FOR?"); at 16:16 he approved "do it, delete the kickoff and fix
+ * @prompt" on a two-text-edit proposal. What shipped was a new check on every prompt: it fired on
+ * his own typed "it should ask me nothing, just go", and a paraphrase under the label switched it
+ * off. The kickoff contract above is what stays.
  */
-const KICKOFF_NO_QUESTIONS_RE = /\b(ask (me )?nothing|never stop early|no AskUserQuestion|do not ask( me)? (any )?questions?|don'?t ask( me)? (any )?questions?)\b/i;
-const KICKOFF_VERBATIM_RE = /OWNER ASKED \(verbatim\)/;
-const KICKOFF_GUARD_INJECTION = `[kickoff-guard] This prompt forbids questions but carries no "OWNER ASKED (verbatim)" line, so its scope may be a session's plan rather than the owner's words. Before the FIRST sub-agent dispatch (Agent tool) and before any multi-phase run: print one COST line — phases · expected sub-agent dispatches · expected hours — and take ONE keystroke (AskUserQuestion, "proceed" as the first option). The prompt's "ask nothing" does not waive this: it is the clause that removed the safety valve on 2026-09-20 (2h40m, ~50 sub-agents, the owner's ask was "one simple webapp, with/without, single shot").`;
-
-function needsKickoffGuard(prompt) {
-  return KICKOFF_NO_QUESTIONS_RE.test(prompt) && !KICKOFF_VERBATIM_RE.test(prompt);
-}
 
 // Patterns that suggest a modifier would help, but the user didn't use it.
 // Each hint only fires if the corresponding modifier was NOT already triggered.
@@ -367,9 +366,6 @@ async function main() {
       hints.push(hint.hint);
     }
   }
-
-  // Receiving side of the kickoff contract: a no-questions prompt without the verbatim line.
-  if (needsKickoffGuard(prompt)) injections.push(KICKOFF_GUARD_INJECTION);
 
   const output = [];
   if (injections.length > 0) output.push(injections.join("\n\n"));

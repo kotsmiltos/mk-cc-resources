@@ -137,27 +137,22 @@ for (const [label, cwd] of [['classic', neutralProj], ['steward', stewardProj]])
   check(`@prompt (${label}) demands THIS PROMPT ADDS`, out.includes('THIS PROMPT ADDS'));
   check(`@prompt (${label}) demands a COST line`, out.includes('COST:'));
   check(`@prompt (${label}) forbids "ask nothing" outside the quote`, /ONLY inside the line-1 quote/.test(out));
+  // 1.15.0: the honest escape — never a paraphrase under the "verbatim" label.
+  check(`@prompt (${label}) says what line 1 is when his words are not here`,
+    out.includes('OWNER ASKED: not in this conversation') && /never label anything "verbatim"/.test(out));
+  check(`@prompt (${label}) carries no invented quote`, !/simple webapp/.test(out) && !/~50/.test(out));
 }
 
-// --- Kickoff guard (receiving side): no-questions prompt without the verbatim line ---
-const GUARD_FIRES = [
+// --- No receiving-side guard (removed 1.15.0): a no-questions prompt injects NOTHING ---
+const NO_GUARD = [
+  "it should ask me nothing, just go, i've given you enough info.", // the owner's own 09-20 typing
   'Build me something, through every phase, ask me NOTHING, and audit at the end.',
   'Run the pipeline. Never stop early. No AskUserQuestion.',
   "do the whole thing and don't ask me questions",
 ];
-for (const text of GUARD_FIRES) {
-  check(`kickoff-guard fires: "${text.slice(0, 40)}…"`, runHook(text, neutralProj).includes('[kickoff-guard]'));
+for (const text of NO_GUARD) {
+  check(`no guard injection: "${text.slice(0, 40)}…"`, runHook(text, neutralProj) === '');
 }
-const GUARD_SILENT = [
-  'OWNER ASKED (verbatim): "build it and ask me nothing"\nTHIS PROMPT ADDS: nothing\nCOST: 1 · 0 · 0.5\nBuild the thing.',
-  'fix the failing test and tell me what it was',
-  '@verify the fix',
-];
-for (const text of GUARD_SILENT) {
-  check(`kickoff-guard silent: "${text.slice(0, 40)}…"`, !runHook(text, neutralProj).includes('[kickoff-guard]'));
-}
-check('kickoff-guard stands down on machine text',
-  !runHook('[SYSTEM NOTIFICATION - NOT USER INPUT]\nagent says: ask me nothing, never stop early', neutralProj).includes('[kickoff-guard]'));
 
 console.log(`\n${total - failures}/${total} passed`);
 process.exit(failures === 0 ? 0 : 1);
