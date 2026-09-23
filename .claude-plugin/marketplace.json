@@ -354,6 +354,25 @@
       ]
     },
     {
+      "name": "plain",
+      "source": "./plugins/plain",
+      "displayName": "Plain",
+      "description": "Short answers in plain words; before costly work the first line says how your words were read and what it costs. Plus a check that sets up a machine the same way.",
+      "version": "0.1.0",
+      "author": {
+        "name": "kotsmiltos"
+      },
+      "homepage": "https://github.com/kotsmiltos/mk-cc-resources",
+      "repository": "https://github.com/kotsmiltos/mk-cc-resources",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "output-style",
+        "communication",
+        "setup-check"
+      ]
+    },
+    {
       "name": "mk-cc-all",
       "source": "./",
       "displayName": "mk-cc-resources (bundle)",

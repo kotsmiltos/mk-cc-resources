@@ -89,6 +89,13 @@ plugins/
   reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
                             #   once per user message; never blocks, opt-in OFF, fail-open)
 
+  plain/                    # (0.1.0, 2026-09-23) The owner's reply style for every machine: an
+                            #   output style (the measured text, force-for-plugin) + the
+                            #   /plain:check-setup skill — bin/check-setup.js runs one file per
+                            #   check in lib/checks/ (drop-in), fixes after one yes with backups,
+                            #   exact manual steps otherwise. No hook. Standalone, not in mk-cc-all.
+                            #   See plugins/plain/CLAUDE.md.
+
   steward/                  # Living-model keeper — per-project .steward/ model the steward
                             #   agent RECOMPUTES on every input (cascade pivots) and diffs
                             #   visibly; SessionStart briefing hook; owner-present work only.

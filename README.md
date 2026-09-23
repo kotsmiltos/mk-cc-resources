@@ -99,6 +99,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
+| [plain](plugins/plain/README.md) | | 0.1.0 | Short answers in plain words, the same on every machine; before costly work the first line says how your words were read and what it costs. Plus "check my setup" |
 | [statusline](plugins/statusline/README.md) | | 0.2.0 | Model · task · directory · steward anchor · a normalized context-usage bar |
 | [alert-sounds](plugins/alert-sounds/README.md) | | 1.1.1 | Sound, notification, taskbar flash when Claude finishes or needs permission |
 | [schema-scout](plugins/schema-scout/README.md) | B | 1.2.1 | Explore any XLSX / CSV / JSON file's real schema from the CLI |

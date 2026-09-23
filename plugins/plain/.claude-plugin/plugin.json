@@ -1,0 +1,8 @@
+{
+  "name": "plain",
+  "version": "0.1.0",
+  "description": "The owner's reply style for every machine: short answers in plain words; before long or costly work, the first line says how his words were read and what it costs. Ships as an output style with force-for-plugin, so enabling the plugin switches it on (overriding a local Concise setting). Plus /plain:check-setup: checks whether this machine has the rest of his setup (plugins up to date, caveman off, no commit trailer, no generalize-first hook, the verification hook quiet on ++ and hand-backs, personal CLAUDE.md and memory clean), fixes what it can after one yes with every file backed up, and gives the exact step for the rest. No hooks, no standing text beyond the style.",
+  "author": {
+    "name": "kotsmiltos"
+  }
+}
