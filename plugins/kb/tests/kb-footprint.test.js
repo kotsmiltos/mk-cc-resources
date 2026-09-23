@@ -87,10 +87,15 @@ const FS_IMPORTERS = {
   'lib/presence.js': 'stats marker paths — reads only',
 };
 
+// evals/ holds with/without test cases and the git-ignored outputs runs keep: data kb never
+// executes. Walking it made this audit's verdict depend on what a local run left on disk
+// (2026-09-23: 30/32 from copied hook scripts in one case's fixtures and kept outputs).
+const NOT_KB_CODE = new Set(['tests', 'node_modules', 'evals']);
+
 function sourceFiles(dir) {
   const out = [];
   for (const dirent of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (dirent.name === 'tests' || dirent.name === 'node_modules') continue;
+    if (NOT_KB_CODE.has(dirent.name)) continue;
     const full = path.join(dir, dirent.name);
     if (dirent.isDirectory()) out.push(...sourceFiles(full));
     else if (dirent.name.endsWith('.js')) out.push(full);
