@@ -18,33 +18,30 @@ and have my vision made and progress captured." Public repo; built first for his
 - "not just numbers but in general not speaking and doing things in my voice" (07-27)
 - Nothing personal in shipped files (his global rule; `repo-guard` checks it).
 
-## Where we are (2026-09-23, end of the clean-up sitting)
+## Where we are (2026-09-24)
 
-- **Nothing committed here since 09-14 runs in his sessions.** Plugins install from GitHub and the
-  last push was 09-14. Waiting: 31 commits on `main` (every one carries a Co-Authored-By line) plus
-  this sitting's work on the local branch `cleanup-2026-09-23` (count:
-  `git rev-list --count origin/main..cleanup-2026-09-23`). Pushing is his call.
-- **What a push would install on every machine** (installed → here): thorough-mode 1.12.2 → 1.15.0,
-  turn-end 0.13.0 → 0.14.2, kb 0.15.0 → 0.16.1, steward 0.6.1 → 0.6.2, plugin-toolkit 1.18.0 →
-  1.23.0, and the new `plain`. What it no longer would, taken out this sitting: steward's nightly
-  clean-up that deleted notes without asking; turn-end's page check on by default (it now runs only
-  where a project turns it on); thorough-mode's check that stopped a pasted plan for a keystroke
-  (never installed; it would have fired on his own "it should ask me nothing, just go").
-- **`plain`, his "what we discussed", for his other machines** ("i wanna add it to my other machines
-  at least", 09-23): the tested reply style, switched on wherever the plugin is on, plus "check my
-  setup", which looks at a machine, fixes what it can after one yes (backing each file up), and
-  gives the exact step for the rest. It runs only when he asks. Tested here: loaded from this
-  folder, the session's instructions carried the style and not Concise; its own tests pass.
-- **The check, run on this machine (read only, nothing changed):** caveman is on; commits still get
-  the Co-Authored-By line; the generalize-first hook runs on his messages; his verification hook
-  still reacts to `++` and speaks when a helper agent hands work back; his personal CLAUDE.md still
-  offers `++`; the rejected "six classes" note still loads. Claude can fix all six after his yes.
-  Not fixable here: `plain` is not published yet, and this folder's fixes are not pushed.
-- **In this folder:** on — thorough-mode, prism, plugin-toolkit, statusline, alert-sounds, caveman,
-  turn-end (the installed 0.13.0 does nothing here: this folder turns off every duty it knows).
-  Off — kb, steward, verifiability-lens, patterns, reuse-gate, essense-flow, essense-autopilot.
-  session-lifecycle is off for him everywhere; elicit is installed nowhere. Reply style here:
-  Concise (this folder's own setting).
+- **Pushed.** Everything is on GitHub; every machine picks it up at its next session start (the
+  marketplace updates itself). Before the push the Co-Authored-By lines came out of the 31 older
+  commits and a machine path out of four old page versions. Check:
+  `git rev-list --count origin/main..main` is 0.
+- **What that changed for him:** gone — steward's nightly clean-up that deleted notes without
+  asking; turn-end's page check on in every project (now only where a project turns it on);
+  thorough-mode's keystroke stop on pasted plans (never installed). New — `plain`: his tested reply
+  style (before big or costly work, the first line says how his words were read and what it costs;
+  one plain question, never a menu), on wherever the plugin is on, plus "check my setup".
+- **This machine is set up** (the setup check, all eight fine, 09-24): `plain` installed and on;
+  thorough-mode, steward, kb, turn-end and plugin-toolkit updated; caveman off; no Co-Authored-By
+  line on commits; the generalize-first hook no longer runs on his messages (its file is kept);
+  his verification hook ignores `++` and helper hand-backs; his personal CLAUDE.md no longer offers
+  `++` and says "build it generically" is for code; the rejected "six classes" note is deleted.
+  Every changed file is backed up under `~/.claude/backups/plain-check-setup/`. It takes effect in
+  the next session.
+- **In this folder:** on — thorough-mode, prism, plugin-toolkit, statusline, alert-sounds, plain,
+  turn-end (which does nothing here: every duty is off, the page check too since 09-24). Off —
+  kb, steward, verifiability-lens, patterns, reuse-gate, essense-flow, essense-autopilot; caveman
+  and session-lifecycle are off everywhere; elicit is installed nowhere. The plain style replaces
+  this folder's Concise setting (tested when loaded from this folder; the installed copy shows
+  in the next session).
 - **His question is still open: do these plugins make Claude better at what he builds?**
   - Every test gave each build a fully written spec, so builds with and without a plugin came out
     alike: all 30 games worked. What moved was set by the test. steward's builds used a decision
@@ -59,22 +56,19 @@ and have my vision made and progress captured." Public repo; built first for his
     followed on fewer than 1 prompt in 10, and they were the largest text added to his prompts.
     turn-end's end-of-turn step takes under a second on most turns and up to about a minute when it
     picks notes.
-  - Spent on tests so far: about $220. The with/without runner now runs only when he asks, after
+  - Spent on tests so far: about $220. The with/without runner runs only when he asks, after
     being told how many sessions and what it costs (a full run: 30 sessions, about $167).
-- **Records corrected this sitting:** DECISIONS lines that quoted words he never typed or recorded
-  Claude's readings as his decisions now say what he said and what happened; one is withdrawn.
-- **Checks at the end of this sitting:** the repo's test sweep 39/39 suites (2411 checks) on its
-  second run; the first run had essense-flow's known timing test red (nothing here touches
-  essense-flow). Registry check consistent; repo-guard clean.
+- **Checks at the end of this sitting:** the repo's test sweep 39/39 suites (2411 checks);
+  registry check consistent; repo-guard clean on the rewritten history; the setup check 8 of 8
+  on this machine.
 
 ## Next (whose each is)
 
-1. **Push or not** (his call), and first whether to take the Co-Authored-By line off the 31 commits
-   on `main` (his rule; a local rewrite, nothing is public yet). Check:
-   `git rev-list --count origin/main..HEAD` is 0 and `~/.claude/plugins/installed_plugins.json`
-   matches each plugin's `plugin.json`.
-2. **Run "check my setup" on each machine** after the push (his: "i wanna add it to my other machines
-   at least"). Check: every line fine, or the ones left are the ones he chose to keep.
+1. **See the new way of talking in his next session here** (his). Check: before any big or costly
+   work, the reply's first line says how his words were read and what it costs; "check my setup"
+   ends with the line saying the plain style is loaded.
+2. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
+   machines at least"). Check: every line fine, or the ones left are the ones he chose to keep.
 3. **"which is worth keeping and which not"** (his ask, 09-20). Claude gave a provisional answer on
    09-23 from real use. Check: repeat the same read after some sittings on the pushed versions and
    tell him the result in plain words; no new test runs unless he asks for one.
@@ -82,8 +76,6 @@ and have my vision made and progress captured." Public repo; built first for his
 Nothing else is queued. essense-flow stays parked (Claude's proposal): every test build was done by
 one agent without it, and its one full run took 2h40m and produced no app.
 
-## Open decisions (Claude's proposal first)
+## Open decisions
 
-- **The page check in this folder after a push:** this folder's own turn-end setting turns it on, so
-  the pushed turn-end would ask for a page rewrite after every turn that changes a file here.
-  Claude's proposal: switch it off here with the push; the page was kept up 18 times without it.
+None.
