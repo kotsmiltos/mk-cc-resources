@@ -65,7 +65,20 @@ function isMachineText(prompt) {
  * so and names where the ask came from.
  */
 const KICKOFF_CONTRACT = `The block's FIRST THREE LINES are fixed: line 1 \`OWNER ASKED (verbatim): "<the owner's own words for this work, copied exactly from this conversation — never paraphrased, never expanded>"\`; line 2 \`THIS PROMPT ADDS: <one line naming every scope, phase, or agent the prompt carries BEYOND those words — or "nothing">\`; line 3 \`COST: <phases> · <expected sub-agent dispatches> · <expected hours>\`. If the owner's words for this work are NOT in this conversation, line 1 instead reads \`OWNER ASKED: not in this conversation — the ask came from <where: an earlier kickoff, the project page, a file, a summary>\`; never label anything "verbatim" that you did not copy from this conversation. A kickoff may say "ask nothing" / "never stop early" / "no questions" ONLY inside the line-1 quote, never in the session's own voice.`;
-const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a "verbatim" line holding words you did not copy from this conversation (a paraphrase, a summary, a quote from memory); a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate`;
+const KICKOFF_ANTI_SIGNALS = `writing "ask nothing", "never stop early" or "no questions" outside the OWNER ASKED quote; a "verbatim" line holding words you did not copy from this conversation (a paraphrase, a summary, a quote from memory); a THIS PROMPT ADDS line that says "nothing" while the block names phases, agents, or audits the owner did not; a COST line you did not estimate; a standing ruling the previous kickoff carried, dropped without the owner saying so; an owner ruling paraphrased instead of quoted; a read list without section anchors`;
+/*
+ * CONTINUITY SECTIONS — added 2026-09-28 after the owner asked for @prompt to "produce something
+ * similar" to a kickoff written by hand for a continuing, part-by-part build (the ΦΠ-ενήλικος
+ * rebuild, slice 4b), then: "i want to jsut write @prompt and this to happen no matter what project
+ * i am wokroing on" — so it is unconditional, in both variants. What that kickoff carried and @prompt did not: the previous kickoff of the
+ * same line of work as the template; the owner's standing rulings quoted and dated EVERY cycle
+ * (not only this session's ask), the session's readings labelled as its own; an ordered opening;
+ * a read list of exact sections with verified line anchors instead of "read the repo"; a
+ * settled list so decisions are not reopened; the working know-how the sitting learned. The
+ * owner's rulings are the one thing pasted rather than pointed to: they are the contract, and the
+ * next session must see them in his words.
+ */
+const KICKOFF_CARRY = `EVERY kickoff, whatever the project, carries these sections, so the next session goes off with what was discussed — start FROM the previous kickoff of the same line of work when one exists (newest in \`.claude/prompts/\`, or the project's handoff folder), keeping its sections so the owner reviews a diff, not a new shape; when none exists, write them fresh: "How we work" — the owner's standing rulings in HIS words, quoted and dated, every time, your reading of any of them labelled "Claude's reading:" (his words are the one thing you paste instead of point to); his new rulings from this session in their own dated section, quoted, with what they answered; "Before anything else" — the ordered opening checks (state freshness, any fix that must come first, any one-line question he must answer, e.g. whether he tried the last delivered part); "Read only these parts" — the exact files and sections, each with a line anchor you verified now, so the next session reads targeted sections instead of sweeping the repo or dispatching agents; "Settled (don't reopen)" — the decisions already made; the working know-how this sitting learned that the next would otherwise rediscover (how to run and test without disturbing what the owner has running, the traps hit, what found the defects).`;
 
 const MODIFIERS = [
   {
@@ -164,7 +177,8 @@ EXIT CHECK: you can list what was re-read + the drift found (or "none" per sourc
    - Name the concrete first action AND the verifiable check that proves it done.
    - Name the sitting's END STATE, not only its first step: what "done" means for the whole session AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
    - List open decisions / blockers the next session must resolve (or that need the user).
-   - Point to durable artifacts instead of restating them (handoff.md, CHANGELOG.md, task specs) — reference, don't paste.
+   - Point to durable artifacts instead of restating them (handoff.md, CHANGELOG.md, task specs) — reference, don't paste. (The owner's own rulings are the exception: quote them.)
+   - ${KICKOFF_CARRY}
    - Keep it tight: enough to act without re-deriving, zero narration of this session's back-and-forth.
    - Carry forward any working-style the work needs (e.g. \`@verify\`, \`@fc\`) so the next session starts in the right mode.
 2. VERIFY the draft against the substrate NOW (substrate-verify before prescribing): every file path, command, branch name, and artifact the prompt cites must be checked against current disk/git state — the cold session inherits your citations as ground truth, so one stale path poisons its first minutes. Fix or drop anything that fails the check; a citation you didn't check doesn't go in the prompt.
@@ -214,6 +228,7 @@ EXIT CHECK: everything still on the user is something only they can do, and each
 // re-deriving via the full DRAFT→VERIFY ritual. Same SAVE discipline.
 const PROMPT_STEWARD_INJECTION = `[prompt-mode/steward] This project carries a .steward/ living model — render the kickoff FROM the model instead of re-deriving state. Protocol — RENDER → SPOT-CHECK → SAVE → SHOW:
 1. RENDER one fenced code block from .steward/: ${KICKOFF_CONTRACT} Then: objective = top task(s) from tasks.md (with their done-checks); state = briefing.md content; open decisions = questions.md open items; point to .steward/ files as the durable source — do not restate their bodies. Carry forward working-style the work needs (\`@verify\`, \`@fc\`).
+1a. ${KICKOFF_CARRY} The owner's rulings live in the model's inbox and state: quote them from there.
 1b. NAME THE END STATE, not only the first task: what "done" means for the whole sitting AND where the work must LAND — committed, pushed, or explicitly "stays local because X". An unnamed landing is how finished work ends up on one disk only.
 2. SPOT-CHECK only what the block cites beyond the model: any file path or branch named that is NOT already in the model gets disk-verified now; model-sourced content is already the maintained truth — if you doubt it, dispatch the steward agent (job: brief) rather than re-deriving inline.
 3. SAVE to \`.claude/prompts/prompt-<fs-ts>.md\` + prepend the INDEX.md line (same append-only history as always).

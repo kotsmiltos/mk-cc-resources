@@ -4,6 +4,19 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-09-28
+
+### Added
+- **Every `@prompt` carries what the next session needs to go off with what was discussed (both variants, any
+  project).** The kickoff starts from the previous kickoff of the same work when there is one (keeping its sections, so
+  you review a diff), and carries: your standing rulings in your own words, quoted and dated every time, with the session's reading
+  of any of them labelled as its own; your new rulings in their own dated section; an ordered "before anything else"
+  opening; "read only these parts" with verified line anchors; a "settled — don't reopen" list; and the working
+  know-how the sitting learned. Your rulings are the one thing it pastes instead of pointing to. Three new anti-signals:
+  a standing ruling dropped without your say-so, a ruling paraphrased, a read list without anchors. Why: on
+  2026-09-28 you asked for `@prompt` to produce something like a kickoff written by hand for the slice-by-slice
+  onboarding rebuild, "no matter what project i am wokroing on". 10 new test checks (60 total).
+
 ## [1.15.0] - 2026-09-23
 
 ### Removed

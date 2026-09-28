@@ -141,6 +141,12 @@ for (const [label, cwd] of [['classic', neutralProj], ['steward', stewardProj]])
   check(`@prompt (${label}) says what line 1 is when his words are not here`,
     out.includes('OWNER ASKED: not in this conversation') && /never label anything "verbatim"/.test(out));
   check(`@prompt (${label}) carries no invented quote`, !/simple webapp/.test(out) && !/~50/.test(out));
+  // 2026-09-28: the continuity sections of a part-by-part build.
+  check(`@prompt (${label}) starts from the previous kickoff of the same work`, out.includes('start FROM the previous kickoff'));
+  check(`@prompt (${label}) carries the sections on every kickoff, any project`, out.includes('EVERY kickoff, whatever the project') && !out.includes('For work that CONTINUES'));
+  check(`@prompt (${label}) quotes the standing rulings every cycle`, out.includes('How we work') && out.includes('quoted and dated, every time'));
+  check(`@prompt (${label}) asks for anchored read sections and a settled list`, out.includes('Read only these parts') && out.includes("Settled (don't reopen)"));
+  check(`@prompt (${label}) flags a dropped standing ruling`, out.includes('a standing ruling the previous kickoff carried, dropped'));
 }
 
 // --- No receiving-side guard (removed 1.15.0): a no-questions prompt injects NOTHING ---

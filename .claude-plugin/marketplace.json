@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), a living-model steward loop, /elicit for brainstorming a vision to completion, a queryable project knowledge base (kb), one blocking turn-end hook the others hang duties on, design-pattern and reuse gates, data exploration, prompt modifiers, question tracking, and cross-platform alerts.",
-    "version": "2.51.0"
+    "version": "2.52.0"
   },
   "plugins": [
     {
@@ -75,7 +75,7 @@
       "source": "./plugins/thorough-mode",
       "displayName": "Thorough Mode",
       "description": "Prompt modifiers that inject behavioral rules on a keyword: @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only — no skill to remember.",
-      "version": "1.15.0",
+      "version": "1.16.0",
       "author": {
         "name": "kotsmiltos"
       },
