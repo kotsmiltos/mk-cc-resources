@@ -34,7 +34,8 @@ hooks/hooks.json             # UserPromptSubmit (no matcher) + PreToolUse
 hooks/scripts/pattern-menu.js  # design-moment menu. Gates in order: prompt parsed from
                              #   stdin JSON (never grep the raw payload — generalize-first's
                              #   measured cwd-noun misfire), machine-text guard (start-anchored,
-                             #   thorough-mode's canonical list), MK_TURN_END_DEPTH stand-down
+                             #   the repo-wide canonical nine — helper hand-backs and peer
+                             #   messages included since 0.1.2), MK_TURN_END_DEPTH stand-down
                              #   (kb 0.10.2 — judge children), MIN_PROMPT_CHARS=15, enabled,
                              #   verb∧noun regex (generalize-first's lists + ambient noun
                              #   broadening — provenance in header). Fires → tier-1 menu
@@ -63,6 +64,9 @@ tests/patterns.test.js       # 37 checks, no framework (reuse-gate counter style
                              #   root walk + e2e spawns incl. corrupt/absent-catalog
                              #   fail-open (PATTERNS_STATE_DIR + PATTERNS_CATALOG_PATH test
                              #   seams keep e2e out of the real home state/catalog)
+tests/pattern-menu-handback.test.js  # 9 checks (0.1.2): the menu stays silent on the REAL bytes
+                             #   of a helper's hand-back and a peer-session message, and
+                             #   still fires for the owner (fixtures/handback-fixture.json)
 ```
 
 ## Design decisions that are NOT obvious from the code

@@ -22,8 +22,8 @@
  *   1. stdin parses and carries a .prompt — the prompt is extracted from the JSON payload,
  *      NEVER grepped from the raw payload (the generalize-first hook misfired for a month
  *      because the payload's cwd contained category nouns; root-caused 2026-07-25).
- *   2. not machine text — markers matched at the START of the prompt only (canonical list
- *      from thorough-mode's guard; mid-text mentions must not fire).
+ *   2. not machine text — markers matched at the START of the prompt only (the repo-wide
+ *      canonical nine-marker list; mid-text mentions must not fire).
  *   3. no MK_TURN_END_DEPTH — spawned judge/child sessions stand down (kb 0.10.2
  *      precedent), else the menu injects into every turn-end judge call.
  *   4. prompt length >= MIN_PROMPT_CHARS (kb-pull precedent: acks and commands are never
@@ -59,12 +59,18 @@ const CATALOG_PATH =
 const PROJECT_CONFIG_REL = path.join('.claude', 'patterns.json');
 const GLOBAL_CONFIG = path.join(os.homedir(), '.claude', 'patterns.json');
 
-// Canonical machine-text list (thorough-mode's guard — the fullest in-repo copy).
 // Matched at the START of the trimmed prompt only.
 // CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook
 // in this repo (plugins install standalone, so each carries its own copy); repo-guard's
 // `machine-guard-drift` detector fails the push when any copy diverges. `<local-command` is a
 // PREFIX on purpose: it covers `<local-command-caveat>` and `<local-command-stdout>` alike.
+// The last three (added 2026-10-01): since Claude Code 2.1.271+ (first seen 2026-09-17) a
+// finished background helper's report reaches a UserPromptSubmit hook as text starting
+// `<agent-message from=…>` (the queued value), while the transcript saves it starting
+// `Another Claude session sent a message:`; `<cross-session-message` is the queued form of a
+// message from another Claude session (seen in 13 transcripts). The 24 Sep fix keyed only on the
+// saved form and never matched what hooks receive (the owner's rules hook still fired on 133 of
+// 133 helper reports). tests/pattern-menu-handback.test.js feeds this hook the real bytes.
 const MACHINE_TEXT_MARKERS = [
   '[SYSTEM NOTIFICATION',
   '<task-notification>',
@@ -72,6 +78,9 @@ const MACHINE_TEXT_MARKERS = [
   '<local-command',
   '<command-name>',
   '<system-reminder>',
+  '<agent-message',
+  '<cross-session-message',
+  'Another Claude session sent a message',
 ];
 
 // Prompts shorter than this are acks/commands — never worth a menu (kb-pull precedent).

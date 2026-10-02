@@ -4,6 +4,11 @@ All notable changes to **patterns** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-10-02
+
+### Fixed
+- **The design menu no longer fires on a finished helper's report or on a message from another Claude session.** Since Claude Code 2.1.271 such a report reaches the prompt hook as text starting `<agent-message` (another session's message: `<cross-session-message`), which the guard did not know, so a report worded like a design request could draw the whole menu. The guard now carries the repo's canonical nine markers, including those two and the transcript's "Another Claude session sent a message" form; a new test feeds the hook the real bytes.
+
 ## [0.1.1] - 2026-09-06
 
 ### Fixed
