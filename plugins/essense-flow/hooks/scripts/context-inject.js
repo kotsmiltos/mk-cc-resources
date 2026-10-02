@@ -31,6 +31,38 @@ const STATE_LIB_URL = pathToFileURL(join(PLUGIN_ROOT, "lib/state.js")).href;
 // The one event allowed to print a degraded banner (see INJECTION ECONOMICS above).
 const SESSION_START_EVENT = "SessionStart";
 
+// CANONICAL machine-text guard — one list, copied verbatim into every UserPromptSubmit hook in
+// this repo (plugins install standalone, so each carries its own copy); plugin-toolkit's
+// repo-guard `machine-guard-drift` detector fails the push when a copy diverges. Matched at the
+// START of the prompt only, so the owner pasting such text mid-message is still the owner.
+// Added 2026-10-01: this hook carried NO guard, so the phase block was re-injected on every
+// background-task wake, Stop-hook continuation and helper hand-back — found by plugin-toolkit's
+// tests/prompt-hooks-behaviour.test.js, which runs every prompt hook on the real hand-back bytes.
+// The last three: since Claude Code 2.1.271+ (first seen 2026-09-17) a finished background
+// helper's report reaches a UserPromptSubmit hook as text starting `<agent-message from=…>` (the
+// queued value), while the transcript saves it starting `Another Claude session sent a
+// message:`; `<cross-session-message` is the queued form of a message from another Claude session
+// (seen in 13 transcripts).
+const MACHINE_TEXT_MARKERS = [
+  "[SYSTEM NOTIFICATION",
+  "<task-notification>",
+  "Stop hook feedback:",
+  "<local-command",
+  "<command-name>",
+  "<system-reminder>",
+  "<agent-message",
+  "<cross-session-message",
+  "Another Claude session sent a message",
+];
+// An envelope is written at the very start; reading further would only invite mid-text matches.
+const MACHINE_TEXT_HEAD_CHARS = 200;
+
+/** True when the prompt OPENS with a machine envelope — not the owner speaking. */
+function isMachineText(prompt) {
+  const head = String(prompt || "").replace(/^\s+/, "").slice(0, MACHINE_TEXT_HEAD_CHARS);
+  return MACHINE_TEXT_MARKERS.some((m) => head.startsWith(m));
+}
+
 /**
  * The platform's hook payload, or {} when there is none (hand-run, TTY, unparseable).
  * Never throws and never hangs: a TTY stdin resolves immediately, since a hook that waits
@@ -59,6 +91,8 @@ main().catch((err) => {
 async function main() {
   const payload = await readPayload();
   const event = String(payload.hook_event_name || "");
+  // Machine text is not the owner speaking: no phase block for it (SessionStart carries no prompt).
+  if (isMachineText(payload.prompt)) process.exit(0);
   // Nearest .git ancestor, not the shell's position: a subdirectory shell used to read (and
   // banner about) a DIFFERENT project's .pipeline/. payload.cwd is the platform's own answer
   // for where the session is; process.cwd() is the fallback for a hand-run.

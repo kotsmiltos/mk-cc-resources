@@ -43,7 +43,7 @@ return, masters surface them at phase gates via AskUserQuestion (`register-add -
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths on both events. The DEGRADED banner is **SessionStart-only since 0.27.0** — gated on `payload.hook_event_name`, no counter; an unknown event stays quiet (measured: 535 identical banners over 196 sessions). Silent in repos that never ran the pipeline (no `.pipeline/`) — and since 0.26.2 exits BEFORE importing lib/state.js + js-yaml there (~150 → ~100 ms per fire) |
+| context-inject.js | UserPromptSubmit + SessionStart | Surfaces phase, sprint, canonical paths on both events. The DEGRADED banner is **SessionStart-only since 0.27.0** — gated on `payload.hook_event_name`, no counter; an unknown event stays quiet (measured: 535 identical banners over 196 sessions). Silent in repos that never ran the pipeline (no `.pipeline/`) — and since 0.26.2 exits BEFORE importing lib/state.js + js-yaml there (~150 → ~100 ms per fire). 0.27.1: the canonical nine-marker MACHINE_TEXT_MARKERS guard (start-anchored) exits before any output on a helper hand-back, peer message, task wake or hook continuation — plugin-toolkit's machine-guard-drift keeps the copy identical to the others |
 | next-step.js | Stop | Suggests recommended next slash command from phase-command-map.yaml; same pre-import stand-down since 0.26.2. **Silent on a degraded state since 0.27.0** — it used to push `/heal` at every turn's end at a pipeline nobody was running |
 
 Both hooks anchor to the nearest `.git` ancestor via `lib/project-root.js` (0.27.0) — essense-flow's

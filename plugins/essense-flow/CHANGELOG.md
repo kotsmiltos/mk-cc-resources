@@ -4,6 +4,11 @@ All notable changes to **essense-flow** are recorded here, newest first, in the 
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.1] - 2026-10-02
+
+### Fixed
+- **The phase block is no longer injected into machine text.** The prompt hook had no machine-text guard, so the pipeline block was re-sent on every background-task wake, Stop-hook continuation, finished helper's report and message from another Claude session. It now carries the repo's canonical nine-marker guard (matched at the start of the prompt only, so your own message that merely mentions such text still gets the block). Found by plugin-toolkit's sweep that runs every prompt hook on a real helper report.
+
 ## [0.27.0] - 2026-09-11
 
 ### Changed
