@@ -73,7 +73,10 @@ const COUNT_PATTERNS = [
  */
 const SKIP_PATTERNS = [
   /[#\u2139]\s*skipped\s+(\d+)/gi,   // node:test summary — `#` to node 20, `\u2139` from node 22
-  /(\d+)\s+skipped/gi                 // pytest
+  // pytest's summary line only: "N skipped" with the run time on the same line ("… in 0.31s").
+  // A bare "N skipped" anywhere matched a CHECK NAME (2026-10-02: "2 judged + 3 skipped → 2
+  // fires" in judge-recall-quiet.test.js) and reported 3 skips for a suite that skipped nothing.
+  /(\d+)\s+skipped\b(?=[^\n]*\bin\s+\d+(?:\.\d+)?s\b)/gi
 ];
 
 const OK = 'ok';

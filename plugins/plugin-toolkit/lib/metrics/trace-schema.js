@@ -35,6 +35,16 @@
  *
  * LEGACY. Lines written before v1 carry no `plugin` key. Readers count them as legacy, never as
  * malformed: a trace that predates the contract is data, not a defect.
+ *
+ * WRITER FIELDS (2026-10-01). Writer-specific keys still ride along freely — until a reader
+ * depends on one. Then it gets a TYPE here, scoped to its writer (keyed by the line's `plugin`),
+ * and OPTIONAL: a line written before the field existed is still valid, because an old trace is
+ * data. The drift test then checks the writer's examples() carry every field it declares, so a
+ * writer and its readers cannot quietly disagree. First entry and why: the lens's
+ * `rollup_source`. From Claude Code 2.1.274 (first seen 2026-09-17) its review is delivered
+ * through a SubagentHandback tool call and the final text is an undelivered afterword; 22 of 22
+ * dispatches were recorded `unparsed` and no field on the line could say why. To add one: an
+ * entry under the writer's plugin name — no validator change.
  */
 
 const SCHEMA_VERSION = 1;
@@ -66,6 +76,21 @@ const OPTIONAL = {
   acted_on: { test: (v) => typeof v === 'boolean' || (v && typeof v === 'object'), expects: 'boolean or object' },
 };
 
+const isCountOrNull = (v) => v === null || isCount(v);
+const LENS_ROLLUP_SOURCES = ['handback', 'final_text'];
+
+/** Plugin name -> { field -> { test, expects } }. Checked only when present (see header). */
+const WRITER_FIELDS = {
+  'verifiability-lens': {
+    rollup_source: {
+      test: (v) => v === null || LENS_ROLLUP_SOURCES.includes(v),
+      expects: `${LENS_ROLLUP_SOURCES.map((s) => `'${s}'`).join(' | ')} | null (which text the rollup was read from; null = none yielded one)`,
+    },
+    handback_bytes: { test: isCountOrNull, expects: 'non-negative integer or null (bytes of every SubagentHandback message, summed — each is delivered; null = the agent made none)' },
+    for_him: { test: (v) => typeof v === 'boolean', expects: 'boolean (the delivered report carries the plain FOR HIM: section)' },
+  },
+};
+
 /** A pre-v1 line: no `plugin` key. Data, not a defect. */
 function isLegacy(obj) {
   return Boolean(obj) && typeof obj === 'object' && !('plugin' in obj);
@@ -91,6 +116,12 @@ function validateLine(obj) {
   for (const [key, rule] of Object.entries(OPTIONAL)) {
     if (key in obj && obj[key] !== undefined && !rule.test(obj[key])) {
       problems.push(`"${key}" must be ${rule.expects}, got ${JSON.stringify(obj[key])}`);
+    }
+  }
+  const writerFields = Object.prototype.hasOwnProperty.call(WRITER_FIELDS, obj.plugin) ? WRITER_FIELDS[obj.plugin] : {};
+  for (const [key, rule] of Object.entries(writerFields)) {
+    if (key in obj && obj[key] !== undefined && !rule.test(obj[key])) {
+      problems.push(`${obj.plugin} "${key}" must be ${rule.expects}, got ${JSON.stringify(obj[key])}`);
     }
   }
   return problems;
@@ -122,4 +153,4 @@ function parseTraceText(text) {
   return out;
 }
 
-module.exports = { SCHEMA_VERSION, KIND_KEYS, REQUIRED, OPTIONAL, validateLine, isLegacy, kindOf, parseTraceText };
+module.exports = { SCHEMA_VERSION, KIND_KEYS, REQUIRED, OPTIONAL, WRITER_FIELDS, validateLine, isLegacy, kindOf, parseTraceText };

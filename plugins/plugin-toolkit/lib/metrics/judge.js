@@ -14,13 +14,31 @@
 const { percentile, sum, round, tally, pct } = require('./stats');
 
 const RECALL = 'context-recall';
+/*
+ * turn-end (2026-10-02): a recall fire whose index was empty — every note already held by the
+ * session or written this request — spawns NO judge and writes engine `skipped`. It is not a judge
+ * run, so it must not move the judge's fire count, wall-clock, cost or empty-pick share; a note
+ * says how many there were.
+ */
+const SKIPPED = 'skipped';
 const inWindow = (l, ctx) => (!ctx.since || l.t >= ctx.since) && (!ctx.until || l.t < ctx.until);
+
+function skippedFires(lines, ctx) {
+  return lines.filter((l) => l.duty === RECALL && l.engine === SKIPPED && inWindow(l, ctx)).length;
+}
+
+/*
+ * What the ENGINE picked. Since turn-end serves nothing the session already holds, `surfaced` can
+ * be empty while the judge did pick; an empty pick is the judge's own empty list (judge_chosen)
+ * wherever a line carries it. Lines without it (pre-v1, ranker engines) read `surfaced` as before.
+ */
+const picksOf = (l) => (Array.isArray(l.judge_chosen) ? l.judge_chosen : (l.surfaced || []));
 
 function fires(lines, ctx) {
   const out = [];
   for (const l of lines) {
-    if (l.duty === RECALL && inWindow(l, ctx)) {
-      out.push({ ms: l.ms, engine: l.engine || 'unknown', cost: l.cost_usd, lean: l.lean, chosen: l.surfaced || [], judge: l.judge_chosen, ranker: l.ranker_top });
+    if (l.duty === RECALL && l.engine !== SKIPPED && inWindow(l, ctx)) {
+      out.push({ ms: l.ms, engine: l.engine || 'unknown', cost: l.cost_usd, lean: l.lean, chosen: picksOf(l), judge: l.judge_chosen, ranker: l.ranker_top });
     }
   }
   for (const l of lines) {
@@ -57,6 +75,8 @@ module.exports = {
      * engine on every recall return, so an unknown can only be a pre-0.9.0 hook line that
      * predates the field. Said here because the bare count reads like a live defect and sent
      * one audit hunting a bug that did not exist (2026-09-11). */
+    const skipped = skippedFires(te.lines, ctx);
+    if (skipped) notes.push(`${skipped} recall fire(s) had nothing left to judge (every note already held or written this request) — no judge spawned, not counted above`);
     const unknownEngines = f.filter((x) => x.engine === 'unknown').length;
     if (unknownEngines) notes.push(`${unknownEngines} of ${f.length} fire(s) predate the engine field (pre-0.9.0 lines) — not a writer fault; the share falls as new lines land`);
     return {

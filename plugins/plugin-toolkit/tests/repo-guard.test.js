@@ -19,12 +19,22 @@ const leakedPath = require('../lib/detectors/leaked-path');
 const silencedFailure = require('../lib/detectors/silenced-failure');
 const revertChain = require('../lib/detectors/revert-chain');
 
+const assert = require('assert');
+
 let failures = 0;
 let total = 0;
+// A function is RUN and passes only if it does not throw. Before 2026-10-01 a function was read
+// as a truthy verdict, so the three control-char checks below printed "ok" without ever running
+// (and `assert` was never imported, so running them would have thrown).
 function check(name, cond) {
   total += 1;
-  if (cond) console.log(`ok - ${name}`);
-  else { failures += 1; console.error(`FAIL - ${name}`); }
+  let ok = cond;
+  let why = '';
+  if (typeof cond === 'function') {
+    try { cond(); ok = true; } catch (err) { ok = false; why = ` — ${err.message}`; }
+  }
+  if (ok) console.log(`ok - ${name}`);
+  else { failures += 1; console.error(`FAIL - ${name}${why}`); }
 }
 
 const MINUTE = 60 * 1000;
@@ -321,10 +331,19 @@ check('drift: the five-marker copy is reported against the first copy by path', 
 check('drift: a same-list copy with comments and one-per-line literals is NOT reported', !wheres(driftFindings).some((w) => w.startsWith('plugins/c/')));
 check('drift: markdown is not a copy', !wheres(driftFindings).some((w) => w.startsWith('docs/')));
 check('drift: evidence names the missing marker', driftFindings.some((f) => f.evidence.includes('missing ["<system-reminder>"]')));
-check('drift: a lone copy is never a finding', machineGuardDrift.run(ctxOf([{ path: 'x.js', text: `const MACHINE_TEXT_MARKERS = ${FIVE};` }])).length === 0);
+// 2026-10-01 (declared expectation change): the floor. A guard without '<agent-message' is a
+// finding even as the ONLY copy, and even when every copy agrees ("all equal and all wrong" is
+// what passed on 2026-09-24). tests/prompt-hooks-guard-drift.test.js covers the floor in full.
+const NINE = "['[SYSTEM NOTIFICATION', '<task-notification>', 'Stop hook feedback:', '<local-command', '<command-name>', '<system-reminder>', '<agent-message', '<cross-session-message', 'Another Claude session sent a message']";
+const loneFive = machineGuardDrift.run(ctxOf([{ path: 'x.js', text: `const MACHINE_TEXT_MARKERS = ${FIVE};` }]));
+check('drift: a lone copy is never a DRIFT finding — only the floor fires on it', loneFive.length === 1 && loneFive[0].evidence.includes('lacks ["<agent-message"]'));
+check('drift: a lone canonical copy is clean', machineGuardDrift.run(ctxOf([{ path: 'x.js', text: `const MACHINE_TEXT_MARKERS = ${NINE};` }])).length === 0);
 check('drift: identical copies are clean', machineGuardDrift.run(ctxOf([
-  { path: 'a.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }, { path: 'b.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }
+  { path: 'a.js', text: `const MACHINE_TEXT_MARKERS = ${NINE};` }, { path: 'b.js', text: `const MACHINE_TEXT_MARKERS = ${NINE};` }
 ])).length === 0);
+check('drift: identical copies that ALL lack the hand-back prefix are one floor finding, not clean', machineGuardDrift.run(ctxOf([
+  { path: 'a.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }, { path: 'b.js', text: `const MACHINE_TEXT_MARKERS = ${SIX};` }
+])).length === 1);
 check('drift: findings block', driftFindings.every((f) => f.severity === 'block'));
 
 // ---------------------------------------------------------------- format

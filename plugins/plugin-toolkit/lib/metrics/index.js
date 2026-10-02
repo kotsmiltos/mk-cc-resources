@@ -58,6 +58,7 @@ const SOURCES = [
   require('./running-vs-installed'),
   require('./briefing-vs-log'),
   require('./context-composition'),
+  require('./test-integrity'),
 ];
 
 /* `notes` = the note BODIES the runner gathered (.claude/kb/captures, .claude/kb/extracted,

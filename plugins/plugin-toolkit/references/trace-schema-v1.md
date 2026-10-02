@@ -76,15 +76,18 @@ there is covered the day it lands.
 ## `decision` vocabularies
 
 - turn-end hook: `allow` \| `advise` \| `block` (the runner's action).
-- turn-end duty: `chosen:<n>` \| `none` \| `error` (context-recall); `derived` (acted-on).
+- turn-end duty: `chosen:<n>` \| `none` \| `error` (context-recall); `derived` (acted-on);
+  `measured` (test-integrity, turn-end 0.15.0: one line per fire whose owner span changed code
+  or tests, CUMULATIVE over the span — a request's record is its latest line).
+- thorough-mode kickoff-check (1.17.0): `full` \| `short` \| `compliant` \| `earlier-kickoff`.
 - kb-pull: `hints:<n>+digest:<full|cut|pointer|none>`; `silent` is never written (a silent
   fire leaves no line — silence has no bytes to account for).
 - kb-session-start: `rotated` \| `kept`.
 - kb MCP tool: `hits:<n>` \| `read` \| `overview` \| `error`.
-- lens agent: `parsed` \| `unparsed` \| `aborted` \| `crashed` — plus the rollup counts.
-  `parsed` a rollup was read; `unparsed` the lens answered and the parser could not read it (a
-  PARSER problem); `aborted` the lens never did the work (a LOST GATE); `crashed` no final
-  message at all. `aborted` is separate because conflating it with `unparsed` made a vanished
+- lens agent: `parsed` \| `unparsed` \| `aborted` \| `crashed` — plus the rollup counts and
+  `rollup_source`. `parsed` = a rollup was read from a hand-back or the final text; `unparsed`
+  the lens answered and the parser could not read it (a PARSER problem); `aborted` the lens never
+  did the work (a LOST GATE); `crashed` = neither a hand-back nor a final text. `aborted` is separate because conflating it with `unparsed` made a vanished
   quality gate indistinguishable from a clean one — measured 2026-09-11, 1 of 13 dispatches
   returned 61 characters of rate-limit text and that turn went unchecked. It is decided on
   substrate (no rollup AND too little work to have produced one: text under 400 chars with
@@ -96,6 +99,23 @@ there is covered the day it lands.
 from the agent's final `rollup:` YAML block (`counts: { a, b, u }`, `escalations:` items,
 `suppressed_count`, `verification: { verified, refuted }`, `completeness_verdict`). Missing
 counts are `null`, never 0 — a zero is a claim.
+
+## Writer fields
+
+A writer-specific key a reader depends on gets a TYPE in `lib/metrics/trace-schema.js`
+`WRITER_FIELDS`. The type is scoped to its writer's plugin name and OPTIONAL, so a line written
+before the field existed stays valid. `tests/trace-writer-fields.test.js` checks that every
+declaring writer's examples() carry and validate each field. The lens declares:
+
+- `rollup_source` ('handback' | 'final_text' | null): which text the rollup was read from. From
+  Claude Code 2.1.274 (first seen 2026-09-17) the report is delivered through a SubagentHandback
+  tool call, and the final text is an undelivered afterword. Hand-backs are parsed newest first.
+- `handback_bytes` (int | null): the bytes of every SubagentHandback message, summed (each is
+  delivered); null = none made.
+- `for_him` (bool): the delivered report has a line starting with `FOR HIM:`.
+
+`bytes` on a lens line = the bytes delivered to the caller: the hand-backs when any were made,
+else the final text.
 
 ## `acted_on` — derived at the NEXT owner prompt
 

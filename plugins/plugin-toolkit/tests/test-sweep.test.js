@@ -195,6 +195,14 @@ check('skippedTests does not collide with the disabled-runners list', () => {
   assert.strictEqual(s.skippedTests, 2, 'test count intact');
 });
 
+check('a CHECK NAME that says "N skipped" is not a skip (only a runner summary is)', () => {
+  // Measured 2026-10-02: judge-recall-quiet.test.js names a check "(2 judged + 3 skipped → 2
+  // fires)" and the sweep reported "3 skipped" for a suite that skipped nothing.
+  assert.strictEqual(sweep.parseSkips('ok - a skipped fire is not a judge fire (2 judged + 3 skipped → 2 fires)\n8/8 checks passed\n'), 0);
+  assert.strictEqual(sweep.parseSkips('ok - x\n========= 5 passed, 2 skipped in 0.31s =========\n'), 2);
+  assert.strictEqual(sweep.parseSkips('1 skipped in 0.01s'), 1);
+});
+
 check('parseSkips reads every harness spelling, last match wins', () => {
   assert.strictEqual(sweep.parseSkips('# skipped 0\n# skipped 4\n'), 4);
   assert.strictEqual(sweep.parseSkips('3 passed, 2 skipped in 1.2s'), 2);

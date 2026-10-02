@@ -35,7 +35,7 @@ function check(name, cond, detail) {
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ---------------------------------------------------------------- registry contract
-check('registry loads 17 sources, every one valid, no duplicate ids or keys', registry.all().length === 17 && registry.all().every((s) => registry.validate(s).length === 0));
+check('registry loads 18 sources, every one valid, no duplicate ids or keys', registry.all().length === 18 && registry.all().every((s) => registry.validate(s).length === 0));
 check('key registry maps every declared key to exactly one source', Object.keys(registry.keyRegistry()).length === registry.all().reduce((n, s) => n + s.keys.length, 0));
 check('validate rejects a bad surface', registry.validate({ id: 'x', title: 't', surface: 'moon', keys: ['k'], run() {} }).length === 1);
 check('validate rejects empty keys (a source without keys measures nothing)', registry.validate({ id: 'x', title: 't', surface: 'traces', keys: [], run() {} }).length === 1);
@@ -497,7 +497,7 @@ const CTX_RECORDS = [
   const v = (k) => out.metrics[k].value;
   check('CLI: resolves the project root from a subdir and finds the transcripts by slug (judge session excluded, subagents/ ignored)', out.root === root && out.transcripts.files === 3 && out.transcripts.judgeSessions === 1 && v('hook_bytes.prompts') === 2);
   check('CLI: traces gathered by shape per plugin dir; malformed lines counted, not fatal', out.traces['turn-end'].legacy === 1 && out.traces['turn-end'].v1 === 1 && out.traces['turn-end'].malformed === 1 && out.traces.kb.v1 === 1);
-  check('CLI: every source ran, no key missing', out.ran.length === 17 && out.missingKeys.length === 0 && out.errored.length === 0);
+  check('CLI: every source ran, no key missing', out.ran.length === 18 && out.missingKeys.length === 0 && out.errored.length === 0);
   check('CLI: hints followed strict from the fake transcript', v('hints.followed_strict') === 1 && v('hints.prompts_with_hints') === 1);
   check('CLI: registered hooks = home settings + ENABLED plugins only (disabled plugin skipped)', v('spawns.registered.UserPromptSubmit') === 3 && v('spawns.registered.Stop') === 1);
   check('CLI: installed versions read from the ledger; checkout null outside a marketplace repo', v('running.installed').on === '1.0.0' && eq(v('running.installed_vs_checkout'), {}));

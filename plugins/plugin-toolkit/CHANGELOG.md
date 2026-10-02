@@ -5,6 +5,23 @@ matter to someone who installs it. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-10-02
+
+### Added
+- **A sweep over every prompt hook in the repo** (`tests/prompt-hooks-behaviour.test.js`): each UserPromptSubmit hook is run on a real helper report and a message from another Claude session and must print nothing there, while still answering the owner. It finds hooks wherever a plugin can declare them (`hooks/hooks.json`, plugin.json `hooks`, a marketplace entry) and in either command form; a hook type it cannot run fails by name, a missing interpreter is reported as skipped. One declared exception: kb's session digest still rides those prompts (Claude's decision, 1 Oct 2026).
+- **New scorecard source `test-integrity` (18 sources)**: per owner request, whether tests changed before the code and how tests were bent (`tests.requests`, `tests.requests_with_code_changes`, `tests.first_pct`, `tests.first_null`, `tests.changes_per_request`, `tests.inversions_skips`, `tests.locked_changed`, `tests.bend_mix`), read from turn-end 0.15.0's test-integrity lines — with an older turn-end the numbers stay empty and a note says why, never "0 tests bent". Plus whose words each turn-end fire answered (`whose_words.*`: fires, requests, wake fires, wakes and owner messages per request, helpers given up on, unattributed fires, errors).
+- `trace-schema.js` `WRITER_FIELDS`: typed, writer-scoped, optional writer keys (the lens's `rollup_source`, `handback_bytes`, `for_him` first); `references/trace-schema-v1.md` documents them. New key `lens.rollup_source_mix`.
+
+### Changed
+- **`machine-guard-drift` requires the helper-report marker.** A copy of the machine-text guard without `<agent-message` (how a helper's report reaches a prompt hook) is a blocking finding — even when every copy agrees, and for a lone copy. The reference copy is the best-ranked one (has the required marker, then most markers, then the list most copies share), so during a partial rollout the stale copies are told what they are missing and the up-to-date ones are never told to delete markers. Allowlisted paths leave every check of this detector; a malformed `required` setting stops the run with a named error.
+- The recall-judge numbers leave out fires where no judge ran (nothing left to judge) and say how many there were; a pick of a note the session already had no longer counts as an empty pick.
+- The lens source counts each dispatch once (a guard for a backfilled or merged trace; no real number changes today).
+- The checks ledger's `kind` is now judged per command segment and per executed script (turn-end 0.15.0), so `checks.checks` may read lower for the same work: an install, a grep or an editor naming a test runner is no longer a check.
+
+### Fixed
+- `tests/repo-guard.test.js` runs a function-shaped check instead of reading it as a passing value: the three control-char checks had printed "ok" without ever running.
+- `test-all` no longer counts a check NAME that says "N skipped" as skipped tests; only a pytest summary line (with its run time) or a node:test skip marker counts. It had reported "3 skipped" for a suite that skipped nothing.
+
 ## [1.23.0] - 2026-09-20
 
 ### Added

@@ -51,10 +51,18 @@ lib/detectors/          # the extension surface: index.js registry + one module 
                         #   ubiquityRatio 0.20 are measured, windowMinutes 60 is flagged in
                         #   source as an extrapolation), machine-guard-drift (1.11.0: every
                         #   MACHINE_TEXT_MARKERS / _PREFIXES declaration in tracked .js must
-                        #   be the SAME list; reference = first copy by path, evidence names
-                        #   missing/extra markers; holds no canonical of its own — the
-                        #   invariant is sameness; a test fixture must not spell the constant
-                        #   name literally or the live scan reads it as a copy).
+                        #   be the SAME list, AND (1.24.0) carry ONE required marker
+                        #   ('<agent-message', exported as REQUIRED_MARKERS; config
+                        #   `required` replaces it, a malformed one THROWS -> a named
+                        #   blocking finding) — "all equal and all wrong" is what passed on
+                        #   2026-09-24 while a rules hook spoke on every helper report. The
+                        #   reference copy is RANKED: has the required marker, then most
+                        #   markers, then the list most copies share, then path order (the
+                        #   list only ever grew 5 -> 6 -> 9); allowlisted paths leave every
+                        #   check; evidence names missing/extra markers; a test fixture must
+                        #   not spell the constant name literally or the live scan reads it
+                        #   as a copy. Five copies today: essense-flow context-inject, kb
+                        #   kb-pull, patterns pattern-menu, plain check 06, thorough-mode).
                         #   control-char (1.18.0: a RAW control byte in tracked source —
                         #   a word-boundary escape arriving as literal 0x08 via a heredoc
                         #   compiles, loads and greps clean while the regex means something
@@ -72,8 +80,10 @@ bin/repo-guard.js       # CLI adapter: gathers tracked files + git history, prin
                         #   0 clean / 1 blocking / 2 cannot-run. Skips vendored trees.
                         #   Config .claude/repo-guard.json merges BY DETECTOR ID over
                         #   defaults/repo-guard.json; malformed config THROWS
-tests/repo-guard.test.js # 104 checks, in-memory fixtures only — a guard whose tests read the
-                        #   tree it guards passes for the wrong reason the day it changes
+tests/repo-guard.test.js # 106 checks, in-memory fixtures only — a guard whose tests read the
+                        #   tree it guards passes for the wrong reason the day it changes.
+                        #   1.24.0: check() RUNS a function-shaped check (the three control-char
+                        #   checks had been read as truthy and never ran)
 lib/test-sweep.js       # PURE plan + classify + summarise; execution is INJECTED, which is
                         #   what lets the whole policy be tested without running a suite.
                         #   Exit code is the verdict (measured: all three harness styles here
@@ -131,7 +141,15 @@ lib/metrics/            # the extension surface + shared readers. index.js regis
                         #   transcripts.js (audit 2's usage_scan.py in-repo, definition for
                         #   definition, every event TIMESTAMPED + windowed — a whole-span model
                         #   cannot reproduce a mid-span snapshot); stats.js (the audit's
-                        #   nearest-rank percentile). 17 sources: hook-bytes,
+                        #   nearest-rank percentile). 18 sources (1.24.0 adds test-integrity:
+                        #   tests-first + bent tests per owner request from turn-end's
+                        #   `duty: test-integrity` lines, DUTY_WRITER_SINCE 0.15.0, tested on the
+                        #   writer's own examples(); the whose-words half reads the owner-span
+                        #   facts on turn-end hook lines, pinned by a LIVE run of turn-end's hook;
+                        #   judge leaves out engine `skipped` fires and reads judge_chosen;
+                        #   lens dedupes by agent_id as a backfill/merge guard and adds
+                        #   lens.rollup_source_mix; trace-schema.js gains WRITER_FIELDS — typed,
+                        #   writer-scoped, optional writer keys, the lens first): hook-bytes,
                         #   hint-followed, turn-end-fires, stop-durations, judge (agreement
                         #   from v1 duty lines — Q20), tail-bytes, kb-pull, acted-on, lens
                         #   (trace.lines_per_dispatch), checks, spawns, running-vs-installed,
@@ -178,9 +196,24 @@ defaults/harness-baselines.json  # audit-2 mk-cc numbers + fleet numbers, with p
 tests/harness-stats.test.js   # 122 checks — registry, runner (crash / silent key / absent surface),
                         #   scanner over the REAL record shapes, every source, CLI E2E on a temp
                         #   root with a fake home + projects dir; never reads the host repo
-tests/trace-schema.test.js    # 74 checks — validator contract + the drift half over every
-                        #   sibling writer
-tests/test-sweep.test.js      # 27 checks, synthetic units only
+tests/trace-schema.test.js    # validator contract + the drift half over every sibling writer
+                        #   (its count grows with the writers it discovers)
+tests/trace-writer-fields.test.js  # 1.24.0: every WRITER_FIELDS declaration carried + valid
+tests/lens-metric.test.js     # 1.24.0: the lens source (dedupe, rollup_source_mix)
+tests/judge-recall-quiet.test.js   # 1.24.0: skipped recall fires leave the judge numbers
+tests/prompt-hooks-behaviour.test.js  # 1.24.0: EVERY UserPromptSubmit hook in the repo is spawned on
+                        #   a REAL helper hand-back + a peer-session message: it must print
+                        #   nothing there and still speak for the owner. ONE declared exception:
+                        #   kb-pull --channel=digest (Claude's decision, 1 Oct 2026). Hooks are
+                        #   found wherever a plugin can declare them (hooks/hooks.json, plugin.json
+                        #   `hooks`, a marketplace entry), in either command form; an unrunnable
+                        #   handler type fails by name, a missing interpreter is a counted skip.
+                        #   Discovery lives in tests/prompt-hooks-discovery.js (helper, not a
+                        #   suite) with its own prompt-hooks-discovery.test.js
+tests/prompt-hooks-guard-drift.test.js     # the drift detector over the real copies + fixtures
+tests/prompt-hooks-metric-test-integrity.test.js  # the test-integrity source on real line shapes
+tests/test-sweep.test.js      # 37 checks, synthetic units only (1.24.0: a check NAME saying
+                        #   "N skipped" is not a skip — pytest's summary line needs its run time)
 lib/plugin-eval.js      # 1.20.0: PURE half of the with/without gate — rows() + format() over
                         #   the eval's --json shape (schemaVersion 1, measured live 2026-09-18),
                         #   one table per plugin: WITH / W/OUT / Δ / s·with / s·w/out / cost, and
