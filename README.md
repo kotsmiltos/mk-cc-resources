@@ -67,40 +67,40 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [elicit](plugins/elicit/README.md) | B | 0.1.0 | Brainstorm a vision to completion — it questions the gaps you leave and teaches the processes you have not worked with |
+| [elicit](plugins/elicit/README.md) | B | 0.1.1 | Brainstorm a vision to completion — it questions the gaps you leave and teaches the processes you have not worked with |
 | [prism](plugins/prism/README.md) | B | 0.1.0 | Panel a question across sole-focus agents, one lens each, then get one compiled plan with the conflicts ruled |
-| [patterns](plugins/patterns/README.md) | | 0.1.1 | The named-pattern menu at the design moment — 41 patterns with the trigger that should make you reach for each |
+| [patterns](plugins/patterns/README.md) | | 0.1.2 | The named-pattern menu at the design moment — 41 patterns with the trigger that should make you reach for each |
 
 ### Build
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [essense-flow](plugins/essense-flow/README.md) | B | 0.27.0 | A multi-phase pipeline from pitch to shipped code: elicit → research → triage → architect → build → review → verify, with every agent claim re-checked against disk |
+| [essense-flow](plugins/essense-flow/README.md) | B | 0.27.1 | A multi-phase pipeline from pitch to shipped code: elicit → research → triage → architect → build → review → verify, with every agent claim re-checked against disk |
 | [essense-autopilot](plugins/essense-autopilot/README.md) | | 0.5.0 | Advances that pipeline between phases without you typing, and halts loudly at the human gates |
 
 ### Keep the work honest
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [turn-end](plugins/turn-end/README.md) | | 0.14.2 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
-| [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.7.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
-| [thorough-mode](plugins/thorough-mode/README.md) | | 1.16.0 | Keyword modifiers — `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) |
+| [turn-end](plugins/turn-end/README.md) | | 0.15.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
+| [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.8.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
+| [thorough-mode](plugins/thorough-mode/README.md) | | 1.17.0 | Keyword modifiers — `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) — and a check that kickoffs saved this sitting carry the `@prompt` header lines |
 | [reuse-gate](plugins/reuse-gate/README.md) | | 0.2.0 | One reuse-first reminder per message, at the moment code is first written |
 
 ### Remember across sessions
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [steward](plugins/steward/README.md) | | 0.6.2 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
-| [kb](plugins/kb/README.md) | B | 0.16.1 | The project's queryable knowledge base: decisions and their why, dead ends, conventions. Ask before re-deriving |
-| [session-lifecycle](plugins/session-lifecycle/README.md) | B | 1.3.1 | `/handoff`, `/resume`, `/claude-md-sync`, `/retro`, `/meta-review` — an append-only handoff history |
+| [steward](plugins/steward/README.md) | | 0.8.0 | A living model per project — vision, state, parts, open questions, next tasks — recomputed on every input, with the diff shown |
+| [kb](plugins/kb/README.md) | B | 0.17.0 | The project's queryable knowledge base: decisions and their why, dead ends, conventions. Ask before re-deriving |
+| [session-lifecycle](plugins/session-lifecycle/README.md) | B | 1.3.2 | `/handoff`, `/resume`, `/claude-md-sync`, `/retro`, `/meta-review` — an append-only handoff history |
 
 ### Everyday
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [plain](plugins/plain/README.md) | | 0.1.0 | Short answers in plain words, the same on every machine; before costly work the first line says how your words were read and what it costs. Plus "check my setup" |
-| [statusline](plugins/statusline/README.md) | | 0.2.0 | Model · task · directory · steward anchor · a normalized context-usage bar |
+| [plain](plugins/plain/README.md) | | 0.2.0 | Short answers in plain words, the same on every machine; before costly work the first line says how your words were read and what it costs. Plus "check my setup" |
+| [statusline](plugins/statusline/README.md) | | 0.3.0 | Model · task · directory · steward anchor · a normalized context-usage bar · a "reopen this window" hint when plugins updated |
 | [alert-sounds](plugins/alert-sounds/README.md) | | 1.1.1 | Sound, notification, taskbar flash when Claude finishes or needs permission |
 | [schema-scout](plugins/schema-scout/README.md) | B | 1.2.1 | Explore any XLSX / CSV / JSON file's real schema from the CLI |
 | [project-note-tracker](plugins/project-note-tracker/README.md) | B | 1.8.0 | Track questions per handler in an Excel tracker; generate the meeting agenda |
@@ -109,7 +109,7 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.23.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus five repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats`, `plugin-eval` (with a behaviour probe per case) |
+| [plugin-toolkit](plugins/plugin-toolkit/README.md) | B | 1.24.0 | Build and maintain plugins — scaffold, version-bump, docs-audit, skill-heal, code-glossary, dry-refactor — plus five repository gates: `repo-guard`, `test-all`, `registry-check`, `harness-stats`, `plugin-eval` (with a behaviour probe per case) |
 
 Bundle: **mk-cc-all 2.28.0**.
 

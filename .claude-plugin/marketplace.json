@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Custom Claude Code plugins — multi-phase AI development pipeline (essense-flow + autopilot), a living-model steward loop, /elicit for brainstorming a vision to completion, a queryable project knowledge base (kb), one blocking turn-end hook the others hang duties on, design-pattern and reuse gates, data exploration, prompt modifiers, question tracking, and cross-platform alerts.",
-    "version": "2.52.0"
+    "version": "2.53.0"
   },
   "plugins": [
     {
@@ -13,7 +13,7 @@
       "source": "./plugins/essense-flow",
       "displayName": "Essense Flow",
       "description": "Multi-phase development pipeline: elicit, research, triage, architect, build, review, verify. Closed task specs, evidence-bound review, and every agent self-report re-checked against disk.",
-      "version": "0.27.0",
+      "version": "0.27.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -74,8 +74,8 @@
       "name": "thorough-mode",
       "source": "./plugins/thorough-mode",
       "displayName": "Thorough Mode",
-      "description": "Prompt modifiers that inject behavioral rules on a keyword: @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only — no skill to remember.",
-      "version": "1.16.0",
+      "description": "Keyword prompt modifiers: @ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc. Hooks only. Also checks that kickoffs this sitting saves carry the @prompt header lines.",
+      "version": "1.17.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -135,7 +135,7 @@
       "source": "./plugins/session-lifecycle",
       "displayName": "Session Lifecycle",
       "description": "Session continuity: /handoff writes an append-only history, /resume restores it, /claude-md-sync proposes doc updates, /retro and /meta-review look back at how it went.",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "author": {
         "name": "kotsmiltos"
       },
@@ -155,7 +155,7 @@
       "source": "./plugins/plugin-toolkit",
       "displayName": "Plugin Toolkit",
       "description": "Build and maintain Claude Code plugins: skill-heal, plugin-scaffold, version-bump, docs-audit, code-glossary, dry-refactor, plus repo-guard, test-all, registry-check and harness-stats gates.",
-      "version": "1.23.0",
+      "version": "1.24.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -176,7 +176,7 @@
       "source": "./plugins/verifiability-lens",
       "displayName": "Verifiability Lens",
       "description": "A strict work-quality guardian: sorts every claim into verified, unverifiable or cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue.",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -216,7 +216,7 @@
       "source": "./plugins/steward",
       "displayName": "Steward",
       "description": "A living model per project (.steward/: vision, state, parts, questions, tasks). Stray thoughts land in an inbox; the steward agent recomputes the whole model and shows you the diff.",
-      "version": "0.6.2",
+      "version": "0.8.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -235,8 +235,8 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "displayName": "Statusline",
-      "description": "Segment-based statusline: model, current task, directory, steward anchor, and a normalized context-usage bar. Each segment fails soft; extend it by adding one function.",
-      "version": "0.2.0",
+      "description": "Segment-based statusline: a reopen-the-window hint when plugins updated, model, task, directory, steward anchor, a normalized context bar. Each segment fails soft; extend it with one function.",
+      "version": "0.3.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -256,7 +256,7 @@
       "source": "./plugins/kb",
       "displayName": "Knowledge Base",
       "description": "The project's queryable knowledge base — decisions and their why, dead ends, conventions — indexed by kind (episodic/semantic/procedural) and scope. Ask it before re-deriving.",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.14.2",
+      "version": "0.15.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -297,7 +297,7 @@
       "source": "./plugins/patterns",
       "displayName": "Patterns",
       "description": "The named-pattern menu at the design moment, plus a pre-code check: 41 patterns from GoF, Fowler, POSA, Nystrom and Head First, each with its trigger, seam and drop-in test.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "kotsmiltos"
       },
@@ -337,7 +337,7 @@
       "source": "./plugins/elicit",
       "displayName": "Elicit",
       "description": "Brainstorm a vision to completion: it questions the gaps you leave, teaches the processes you have not worked with, panels genuine forks, and lands the conclusions in your project model.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "kotsmiltos"
       },
@@ -358,7 +358,7 @@
       "source": "./plugins/plain",
       "displayName": "Plain",
       "description": "Short answers in plain words; before costly work the first line says how your words were read and what it costs. Plus a check that sets up a machine the same way.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "kotsmiltos"
       },

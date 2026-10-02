@@ -18,64 +18,77 @@ and have my vision made and progress captured." Public repo; built first for his
 - "not just numbers but in general not speaking and doing things in my voice" (07-27)
 - Nothing personal in shipped files (his global rule; `repo-guard` checks it).
 
-## Where we are (2026-09-24)
+## Where we are (2026-09-30)
 
-- **Pushed.** Everything is on GitHub; every machine picks it up at its next session start (the
-  marketplace updates itself). Before the push the Co-Authored-By lines came out of the 31 older
-  commits and a machine path out of four old page versions. Check:
-  `git rev-list --count origin/main..main` is 0.
-- **What that changed for him:** gone — steward's nightly clean-up that deleted notes without
-  asking; turn-end's page check on in every project (now only where a project turns it on);
-  thorough-mode's keystroke stop on pasted plans (never installed). New — `plain`: his tested reply
-  style (before big or costly work, the first line says how his words were read and what it costs;
-  one plain question, never a menu), on wherever the plugin is on, plus "check my setup".
-- **This machine is set up** (the setup check, all eight fine, 09-24): `plain` installed and on;
-  thorough-mode, steward, kb, turn-end and plugin-toolkit updated; caveman off; no Co-Authored-By
-  line on commits; the generalize-first hook no longer runs on his messages (its file is kept);
-  his verification hook ignores `++` and helper hand-backs; his personal CLAUDE.md no longer offers
-  `++` and says "build it generically" is for code; the rejected "six classes" note is deleted.
-  Every changed file is backed up under `~/.claude/backups/plain-check-setup/`. It takes effect in
-  the next session.
-- **In this folder:** on — thorough-mode, prism, plugin-toolkit, statusline, alert-sounds, plain,
-  turn-end (which does nothing here: every duty is off, the page check too since 09-24). Off —
-  kb, steward, verifiability-lens, patterns, reuse-gate, essense-flow, essense-autopilot; caveman
-  and session-lifecycle are off everywhere; elicit is installed nowhere. The plain style replaces
-  this folder's Concise setting (tested when loaded from this folder; the installed copy shows
-  in the next session).
-- **His question is still open: do these plugins make Claude better at what he builds?**
-  - Every test gave each build a fully written spec, so builds with and without a plugin came out
-    alike: all 30 games worked. What moved was set by the test. steward's builds used a decision
-    that existed only in steward's notes (the lamp burns 137 ticks per unit of fuel) 3 of 3 against
-    0 of 3. The builds without steward kept the day/night wish too, in their README (a wish the
-    test prompt planted, not his). The builds without turn-end never opened the page file.
-  - His own look (09-20): "they all are very basic as far as visual goes, none added good tooltips,
-    none went the extra mile". His two favourites were one built with turn-end and one with no plugin,
-    the two most expensive of the 30 runs (about $8.9 each against a $5.4 average).
-  - Real use in three of his other projects since 09-01 (read 09-23): notes turn-end brings back
-    from earlier sessions show up in the answer 47%, 74% and 60% of the time. kb's pointer lines were
-    followed on fewer than 1 prompt in 10, and they were the largest text added to his prompts.
-    turn-end's end-of-turn step takes under a second on most turns and up to about a minute when it
-    picks notes.
-  - Spent on tests so far: about $220. The with/without runner runs only when he asks, after
-    being told how many sessions and what it costs (a full run: 30 sessions, about $167).
-- **Checks at the end of this sitting:** the repo's test sweep 39/39 suites (2411 checks);
-  registry check consistent; repo-guard clean on the rewritten history; the setup check 8 of 8
-  on this machine.
+- **The review he asked for is done** (his words: "I want a very thorough evaluation … i am
+  looking for inefficiences and points to add structure to and support"). It read all 18 sessions
+  on the new model (19–29 Sep) and 18 from before, plus every plugin's numbers, and every finding
+  was challenged by three checkers. It ran 6¾ hours with 347 helpers and hit his plan limit
+  (04:35–06:11). He was told "roughly 30–60 minutes": Claude's estimate was wrong by 7 times.
+- **What it found (Claude's summary):**
+  - The new model overstates results less (43 overstated "done" claims against 78 before, same
+    number of sessions), and where plain loaded it offered no menus. The same old failure shapes
+    remain.
+  - Worst single cost: twin-game round 1 (29 Sep) flipped the tests that guarded wheelies and
+    stoppies so they would pass; the report said everything passed; his next ride had none. His
+    words: "this is unacceptable. we try fix something and break somethign else".
+  - twin-game is 134 commits ahead of GitHub (last push 12 Aug, blocked by oversized files).
+    Checked 30 Sep.
+  - 8 of 18 sessions ran the old plugins after the 24 Sep setup, because `/clear` does not reload
+    plugins (caveman was still injected in all 8). Checked 30 Sep.
+  - His plugins read helper reports as if he typed them; his verification hook fired on 15 of 15
+    helper reports in one Whobe session (checked 30 Sep). The 24 Sep line "his verification hook
+    ignores ++ and helper hand-backs" was wrong on the second half.
+  - Three provider keys pasted in chat on 28 Sep were copied into logs on this machine.
+  - turn-end: its self-check blocked 57 times since 19 Sep and found 1 real code defect; the recall
+    judge now runs about 3 times per message because each finished helper counts as a request.
+    The quality check (helper second opinion) caught real errors in 13 of 18 sessions.
+- **Still true from 24 Sep:** everything pushed; plain installed on this machine; caveman off.
+  Correction: setup changes take effect in a newly opened window or after `/reload-plugins`, not
+  after `/clear`.
+- **Claude's notes fixed this sitting:** the two stale lines (driving with `++`; rulings as
+  one-keystroke menus) now match the plain style. This was the clean-up approved 22 Sep that never
+  ran.
+- **1 Oct:** patterns and reuse-gate are off everywhere (his: "feel free to turn them off"; takes
+  effect in newly opened windows). twin-game: a verified full backup is on D: (C: has 3.9 GB free),
+  and a separate copy with the 13 oversized files out of its never-pushed history is ready. The
+  push and the move of his folder onto that history were blocked by the safety check for Claude,
+  so they wait on him.
+- **1 Oct, his ask:** "How can we make my plugins … be a judge of work and a judge of if we did
+  what we said we'd do". Seven checked investigations found (Claude's summary): his tests-first
+  words (10 Sep, AR game only: "while we create this we will need to be creating unit tests before
+  we write the code") never reached twin-game; the flipped wheelie/stoppie tests came from Claude's
+  own design, landed through a shell copy no edit-watcher sees, and the reviewer accepted them
+  because it judged against that design; twin-game's Unity test script reports success even when
+  tests fail. Helper reports reach his hooks with a different first line than the saved one, which
+  is why the 24 Sep fix and the setup check missed them (his rules hook fired on 133 of 133). The
+  reviewer works (22 of 23 reports since 17 Sep led to a correction, by Claude's reading); only its
+  score recorder reads the wrong field since 17 Sep. Thorough-mode tips never reach him (0 of 62).
+  Knowledge-base notes are never corrected.
 
 ## Next (whose each is)
 
-1. **See the new way of talking in his next session here** (his). Check: before any big or costly
-   work, the reply's first line says how his words were read and what it costs; "check my setup"
-   ends with the line saying the plain style is loaded.
-2. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
+1. **twin-game push** (his, one command, given to him in the chat): push the cleaned copy's two
+   branches to GitHub; then his folder moves onto the cleaned history (about six git commands,
+   walked through with him). Check: `git rev-list --count origin/spinoff-toy..spinoff-toy` is 0.
+2. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
+   at each provider.
+3. **Plugin fixes, in this order** (Claude's proposal, told to him 1 Oct): one shared "is this
+   him?" test built from a real helper report; test protection (tests tied to his typed words,
+   newest first, locked at commit time; every flipped/switched-off test shown to him in one line by
+   the hook) plus twin-game's test script reporting failure; his tests-first sentence loaded
+   everywhere; the reviewer's recorder reading the hand-back, and the reviewer run once per request
+   fed his words; self-check judging what ran; bookkeeping out of his answers; tips removed;
+   knowledge-base notes corrected by the steward pass. Check: each fix tested first, then a replay
+   over his real sessions shows the number dropping.
+4. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
    machines at least"). Check: every line fine, or the ones left are the ones he chose to keep.
-3. **"which is worth keeping and which not"** (his ask, 09-20). Claude gave a provisional answer on
-   09-23 from real use. Check: repeat the same read after some sittings on the pushed versions and
-   tell him the result in plain words; no new test runs unless he asks for one.
-
-Nothing else is queued. essense-flow stays parked (Claude's proposal): every test build was done by
-one agent without it, and its one full run took 2h40m and produced no app.
+5. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
+   charge). His certificate settled 24% VAT on 29 Sep.
 
 ## Open decisions
 
-None.
+- Whether the reviewer runs on every request where Claude changed something (a few minutes' wait
+  each time, roughly 7 times today's reviews by Claude's estimate; the plan limit was hit on
+  26–27 Sep and during the 30 Sep review). Asked 1 Oct.
+- Claude's remaining proposed removal: the Serena "too many reads" guard. Needs his yes.

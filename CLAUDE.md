@@ -24,6 +24,7 @@ under that plugin's directory. This root file is orientation + the rules that ap
 
 plugins/
   essense-flow/             # Multi-phase AI development pipeline (headline plugin).
+                            #   0.27.1: context-inject carries the canonical machine-text guard.
                             #   bin/ = essense-flow-tools.cjs, the single gateway for state ops;
                             #   lib/ = 19 Node modules; agents/ = 12 sub-agent defs (librarian
                             #   protocol — producer returns carry required unknowns[]);
@@ -46,7 +47,10 @@ plugins/
   session-lifecycle/        # Session continuity: handoff / resume / claude-md-sync / retro /
                             #   meta-review (table below)
 
-  plugin-toolkit/           # (1.12.0: harness-stats — the SCORECARD gate over drop-in metric
+  plugin-toolkit/           # (1.24.0: prompt-hooks behaviour sweep — every prompt hook silent on a
+                            #   real hand-back; machine-guard-drift REQUIRES '<agent-message';
+                            #   test-integrity scorecard source, 18 sources; WRITER_FIELDS.)
+                            #   (1.12.0: harness-stats — the SCORECARD gate over drop-in metric
                             #   sources, reproduces audit 2 to the digit; trace schema v1 +
                             #   drift suite over every sibling writer.)
                             #   Plugin dev + maintenance: skill-heal, plugin-scaffold,
@@ -61,7 +65,10 @@ plugins/
 
   schema-scout/             # Data file schema exploration CLI (Python: typer + openpyxl + rich)
 
-  thorough-mode/            # Prompt modifiers (@ship, @present, @debug, @verify, @fresh,
+  thorough-mode/            # (1.17.0: kickoff save-check — PreToolUse probe + PostToolUse check on
+                            #   writes into .claude/prompts/, this sitting's kickoffs only, trace in
+                            #   .claude/thorough-mode/; tips removed 2026-10-01; canonical 9 markers.)
+                            #   Prompt modifiers (@ship, @present, @debug, @verify, @fresh,
                             #   @prompt, @build, @fc; ++/@thorough RETIRED 2026-09-20 after two measured +0) — hooks-only, protocol-shaped
                             #   injections, machine-text guard; @prompt is steward-aware.
                             #   See plugins/thorough-mode/CLAUDE.md.
@@ -71,12 +78,16 @@ plugins/
   alert-sounds/             # Cross-platform audio + visual alerts (Stop / Notification /
                             #   UserPromptSubmit hooks; per-event config.json toggles)
 
-  statusline/               # Segment-based statusline — settings-level wiring, fail-soft per
+  statusline/               # (0.3.0: stale-plugins hint from turn-end's running/<session>.json;
+                            #   SESSION_NOTICES is the drop-in.) Segment-based statusline — settings-level wiring, fail-soft per
                             #   segment, extend = drop a function into SEGMENTS. 0.2.0:
                             #   segSteward v2 — ⚓N✱ ▲M from the status contract, root-anchored.
                             #   See plugins/statusline/CLAUDE.md.
 
-  verifiability-lens/       # (0.6.0: a SubagentStop RECORDER — one trace-schema-v1 line per
+  verifiability-lens/       # (0.8.0: the recorder reads the report from SubagentHandback calls —
+                            #   22/22 reviews parse again; reviewer judges against OWNER WORDS, every
+                            #   weakened test escalated, report ends rollup then FOR HIM:.)
+                            #   (0.6.0: a SubagentStop RECORDER — one trace-schema-v1 line per
                             #   dispatch: a/b/u, escalations, verified/refuted, ms, tokens; never a
                             #   Stop hook.) Work-quality guardian: A/B/U verifiability + completeness +
                             #   quality-bar checks, actively verified; surfacing triage tuned
@@ -89,14 +100,20 @@ plugins/
   reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
                             #   once per user message; never blocks, opt-in OFF, fail-open)
 
-  plain/                    # (0.1.0, 2026-09-23) The owner's reply style for every machine: an
+  plain/                    # (0.2.0: 14 checks — tests-first, patterns/reuse-gate off, reviewer for
+                            #   him and in this project, helper-report count, Windows Terminal;
+                            #   check 06 on the real prompt shapes.)
+                            #   (0.1.0, 2026-09-23) The owner's reply style for every machine: an
                             #   output style (the measured text, force-for-plugin) + the
                             #   /plain:check-setup skill — bin/check-setup.js runs one file per
                             #   check in lib/checks/ (drop-in), fixes after one yes with backups,
                             #   exact manual steps otherwise. No hook. Standalone, not in mk-cc-all.
                             #   See plugins/plain/CLAUDE.md.
 
-  steward/                  # Living-model keeper — per-project .steward/ model the steward
+  steward/                  # (0.8.0: claim finder — every store kb serves, history annotated never
+                            #   rewritten, 0 open hits is the check; captures silent; diffs name
+                            #   notes in words, never paths.)
+                            #   Living-model keeper — per-project .steward/ model the steward
                             #   agent RECOMPUTES on every input (cascade pivots) and diffs
                             #   visibly; SessionStart briefing hook; owner-present work only.
                             #   Budgeted since 0.3.0: ONE background integration pass per
@@ -115,7 +132,12 @@ plugins/
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
-  turn-end/                 # (0.9.0: TRACE SCHEMA v1 — hook / duty / acted-on lines via the
+  turn-end/                 # (0.15.0: request = the OWNER's message — helper wakes never re-arm or
+                            #   stand in for it; per-window ledger; self-check judges what RAN (lib/
+                            #   evidence.js); reviewer per message that changed something, handed
+                            #   OWNER WORDS…TEST CHANGES; request-closure nag deleted; test-integrity
+                            #   + locked-tests duties; running record for statusline.)
+                            #   (0.9.0: TRACE SCHEMA v1 — hook / duty / acted-on lines via the
                             #   pure lib/trace-line.js; judge-vs-ranker agreement inputs; acted-on
                             #   derived per closed span at the next owner prompt.
                             #   0.8.0: ground truth — Bash-aware file-touch, named-check floor,
@@ -166,7 +188,8 @@ plugins/
                             #   every dependency degrades to a named line. Bundle-safe.
                             #   See plugins/elicit/CLAUDE.md.
 
-  patterns/                 # Named-seam menu + pre-code pattern check — HFDP's trigger→shape
+  patterns/                 # (0.1.2: menu silent on helper hand-backs / peer messages.)
+                            #   Named-seam menu + pre-code pattern check — HFDP's trigger→shape
                             #   device mechanized ambient (owner directive 2026-08-27: "Claude
                             #   overall abides"; essense-flow is NOT the home). catalog/
                             #   patterns.json = single source, 41 entries (GoF/Fowler/POSA/
@@ -180,7 +203,10 @@ plugins/
                             #   Standalone, not in mk-cc-all (bundle would strip catalog/).
                             #   See plugins/patterns/CLAUDE.md.
 
-  kb/                       # (0.16.0: kb-hints OFF BY DEFAULT — opt in per project via
+  kb/                       # (0.17.0: hints silent on any non-owner prompt; the digest still rides
+                            #   hand-backs — Claude's call; per-session pull state; kb_query
+                            #   `withdrawn` field read from steward's dated withdrawal notes.)
+                            #   (0.16.0: kb-hints OFF BY DEFAULT — opt in per project via
                             #   .claude/kb.json {"pull":{"hints":true}}; measured 2026-09-17 the
                             #   pointer was followed 7.5/0/0/0% across four ships while the
                             #   largest hook-text family everywhere; slice 1 of the memory
@@ -225,7 +251,7 @@ Skills for working ON plugins (one-liners in the tree above; detail in
 | Gate | When | One verdict |
 |------|------|-------------|
 | `node plugins/plugin-toolkit/bin/repo-guard.js` **from the REPO ROOT** | Before a push, or when a defect class keeps coming back | Every registered detector over tracked files + git history in ONE snapshot: leaked machine paths, silenced shell failures, fix-the-fix commit chains. Exit 1 on blocking findings. **Root cwd REQUIRED** (measured 2026-08-27: run from the toolkit dir it scans ONLY plugin-toolkit — 8 findings elsewhere sat invisible since 08-23 — and the allowlist's repo-relative paths stop matching). Read the exit code directly, never after a pipe. |
-| `node bin/test-all.js --root <REPO ROOT>` | Before a push, or when "is the repo green?" is answerable only from memory | Every suite in every plugin, discovery by shape (a new suite is covered the day it lands); names units shipping no suite; a suite that exits 0 while printing failures is SUSPECT, never green. Exit 1 on any red/suspect/could-not-run. **`--root` is REQUIRED from the toolkit dir** — without it discovery defaults to cwd and silently sweeps ONLY plugin-toolkit (measured 2026-08-23: 764 checks reported vs 1723 real; the historical "764 green" gate records were toolkit-scoped, not repo-wide). **1.14.0 fixed the counter itself**: it matched node:test's old `# pass N` marker, so on node 22+ (`ℹ pass N`) every node-file suite counted ZERO — the total could not move when tests were added OR removed. Current honest baseline: **32/35 suites, 1452 checks, 1 skipped**, exit 1 on three named non-green — `essense-flow:test/run-all.cjs` and code-glossary's pytest (both pre-existing, fixtures/deps outside the repo) plus `essense-flow:tests/ledger-compaction.test.js`, which RUNS AND CHECKS NOTHING (same vanished workspace; it read as a pass until the skip marker was parsed). |
+| `node bin/test-all.js --root <REPO ROOT>` | Before a push, or when "is the repo green?" is answerable only from memory | Every suite in every plugin, discovery by shape (a new suite is covered the day it lands); names units shipping no suite; a suite that exits 0 while printing failures is SUSPECT, never green. Exit 1 on any red/suspect/could-not-run. **`--root` is REQUIRED from the toolkit dir** — without it discovery defaults to cwd and silently sweeps ONLY plugin-toolkit (measured 2026-08-23: 764 checks reported vs 1723 real; the historical "764 green" gate records were toolkit-scoped, not repo-wide). **1.14.0 fixed the counter itself**: it matched node:test's old `# pass N` marker, so on node 22+ (`ℹ pass N`) every node-file suite counted ZERO — the total could not move when tests were added OR removed. Current honest baseline (2026-10-02): **112 suites, 3953 checks, 0 skipped** — all green except, intermittently, `essense-flow:test/run-all.cjs`, whose `AC-3 100 tight-loop invocations yield 100 distinct names` is a random-name collision its own comment estimates at ~7.6% per run (red in 2 of 3 full sweeps that day, green alone). 1.24.0 stopped a check NAME reading "N skipped" from counting as skips. |
 | `node bin/registry-check.js --root <REPO ROOT>` | Before a push, or after any version change | Verifies the CLAIMS marketplace/bundle/doc tables make about the repo against disk — checks, never generates. Exit 1 on drift. **8 claim sources since 1.14.0**: `plugin-docs` is new — every plugin must have a README, a CHANGELOG whose NEWEST entry is the shipped version (the doc half of the version-pin law), and a marketplace description ≤200 chars (that text is what `/plugin` prints at install; turn-end's was 9,879). `doc-version` now reads a LINKED plugin name and a version in any cell, and sweeps `plugins/*/README.md` + `CHANGELOG.md` as well as the root docs. (`--root` required from the toolkit dir — without it the marketplace read fails loudly.) |
 | `node plugins/plugin-toolkit/bin/harness-stats.js --root .` (1.12.0) | "Does it do anything?" — after a ship, before retiring a mechanism, on every model release (harness §5 strip rule) | The SCORECARD: 14 drop-in metric sources over `.claude/*/trace.jsonl`, `checks.jsonl`, the project's transcripts, the install ledger — hook bytes per prompt, hints followed, nudges/blocks, judge cost + agreement, tail bytes, acted-on (per surfacing KIND since 0.10.0), note-uptake (notes SUPPLIED vs notes the answer USED - content-scored, because the file-open question read 0% where real uptake was 68%), lens lines per dispatch, spawns, running≠installed. A source declaring `writer` + `vintage` makes the runner name the install date, so a zero from an uninstalled writer is not mistaken for a dead mechanism. Prints IN the session with drift vs the audit-2 baselines; a declared key that comes back absent is NAMED. `--until <audit mtime>` reproduces audit 2 at +0.0%. `--line` prints the five-key `[instr]` form (owner delegated the pick 2026-09-10; re-picked 2026-09-11 to lead with `uptake.used_pct` and carry NO byte count, per the quality-over-cost ruling → shipped default in `defaults/harness-stats.json`; a project overrides it in `.claude/harness-stats.json`). Exit 0 always (a report), 2 cannot run. |
 
