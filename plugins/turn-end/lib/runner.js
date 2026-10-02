@@ -52,6 +52,21 @@ const HEADER = '[turn-end]';
  */
 const MAX_TAIL_CHARS = 9000;
 
+/*
+ * WORDS FOR HIM (2026-10-01, the test-integrity workstream). A duty may offer
+ * `notice(ctx, options) -> string | null`: lines meant for the OWNER, not for Claude. They ride
+ * the emission as `systemMessage` — the hooks reference (read 2026-10-02): "Warning message shown
+ * to the user", a field every event accepts, with no Stop-specific exception named. What he
+ * actually SEES on screen for a Stop hook has NOT been probed yet; the trace and the transcript's
+ * hook_success record carry the emitted JSON, so it can be checked from disk. Whether Claude
+ * also receives it is not stated by the reference either — so a duty that wants Claude to repeat
+ * the lines puts them in its ask too, never relying on this channel for that.
+ * Only a duty unmet THIS fire contributes (a satisfied duty has nothing to tell him); the give-up
+ * note carries none. Bounded like the tail: the platform caps systemMessage at 10,000 characters.
+ */
+const MAX_NOTICE_CHARS = 4000;
+const NOTICE_CUT = '… [cut: the rest did not fit]';
+
 /** Material may arrive as a plain string or as { material, brief } — both are honoured. */
 function materialText(m) {
   if (!m) return null;
@@ -61,6 +76,28 @@ function materialText(m) {
 function briefText(m) {
   if (!m || typeof m === 'string') return null;
   return typeof m.brief === 'string' ? m.brief : null;
+}
+
+/**
+ * A duty's words for him, isolated: a notice that throws costs only itself — the duty's demand
+ * stands, and the failure is reported (`noticeErrors`), never swallowed.
+ */
+function noticeOf(duty, ctx, options) {
+  if (typeof duty.notice !== 'function') return {};
+  try {
+    const text = duty.notice(ctx, options);
+    return typeof text === 'string' && text.trim() ? { notice: text.trim() } : {};
+  } catch (err) {
+    return { noticeError: err && err.message ? err.message : String(err) };
+  }
+}
+
+/** The ONE systemMessage for this fire: every unmet duty's notice, in priority order, bounded. */
+function renderNotice(unsatisfied) {
+  const text = unsatisfied.filter((d) => d.notice).map((d) => d.notice).join('\n');
+  if (!text) return null;
+  if (text.length <= MAX_NOTICE_CHARS) return text;
+  return `${text.slice(0, MAX_NOTICE_CHARS - NOTICE_CUT.length).trimEnd()}${NOTICE_CUT}`;
 }
 
 /**
@@ -110,6 +147,7 @@ function evaluate(duty, ctx, options) {
       // demote or promote it by config — enforcement strength is the owner's call, not ours.
       severity: options.severity || duty.severity || SEVERITY_ADVISE,
       priority: typeof duty.priority === 'number' ? duty.priority : 100,
+      ...noticeOf(duty, ctx, options),
     };
   } catch (err) {
     return {
@@ -234,6 +272,7 @@ function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
     satisfiedBy: results.filter((r) => r.satisfiedBy).map((r) => ({ id: r.id, by: r.satisfiedBy })),
     supplyDue,
     ran: results.filter((r) => r.state !== 'disabled').map((r) => r.id),
+    noticeErrors: results.filter((r) => r.noticeError).map((r) => ({ id: r.id, error: r.noticeError })),
   };
 
   if (!unsatisfied.length && !hasMaterial && !errored.length) {
@@ -278,14 +317,17 @@ function decide(ctx, duties = registry.all(), config = {}, materials = {}) {
   // once the soft nudge has already been seen and ignored.
   const hard = ctx.stopHookActive && unsatisfied.some((d) => d.severity === SEVERITY_BLOCK);
   const message = renderMessage(unsatisfied, errored, hard, materials);
+  // Words for HIM ride beside the words for Claude, never inside them (see MAX_NOTICE_CHARS).
+  const notice = renderNotice(unsatisfied);
+  const forHim = notice ? { systemMessage: notice } : {};
 
   if (hard) {
-    return { ...base, action: 'block', emission: { decision: 'block', reason: message }, reason: 'unmet blocking duty after prior nudge' };
+    return { ...base, action: 'block', emission: { decision: 'block', reason: message, ...forHim }, reason: 'unmet blocking duty after prior nudge' };
   }
   return {
     ...base,
     action: 'advise',
-    emission: { hookSpecificOutput: { hookEventName: 'Stop', additionalContext: message } },
+    emission: { hookSpecificOutput: { hookEventName: 'Stop', additionalContext: message }, ...forHim },
     reason: ctx.stopHookActive ? 'unmet advisory duties' : 'first nudge this request',
   };
 }
@@ -298,6 +340,8 @@ module.exports = {
   MAX_FIRES_PER_PROMPT,
   PLATFORM_CONSECUTIVE_BLOCK_CAP,
   MAX_TAIL_CHARS,
+  MAX_NOTICE_CHARS,
+  renderNotice,
   SEVERITY_BLOCK,
   SEVERITY_ADVISE,
   HEADER,

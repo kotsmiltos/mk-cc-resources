@@ -21,12 +21,15 @@ const path = require('path');
 
 const { decide } = require('../../lib/runner');
 const duties = require('../../lib/duties');
-const { buildContext } = require('../../lib/context');
+const { buildContext, extractTurn, ownerPromptIdOf } = require('../../lib/context');
 const ledgerStore = require('../../lib/ledger');
 const claudeP = require('../../lib/judges/claude-p');
 const installed = require('../../lib/installed');
 const traceLine = require('../../lib/trace-line');
 const actedOn = require('../../lib/acted-on');
+const runningState = require('../../lib/running-state');
+const { fireFacts, inFlightCount } = require('../../lib/fire-facts');
+const testIntegrity = require('../../lib/duties/test-integrity');
 
 const CONFIG_REL = path.join('.claude', 'turn-end.json');
 const PLUGIN_ROOT = path.join(__dirname, '..', '..');
@@ -107,23 +110,15 @@ function writeTrace(cwd, record) {
   } catch (_e) { /* telemetry never blocks the decision */ }
 }
 
-/**
- * 0.7.1 — a stale process says so in the tail it already emits, the one surface the owner
- * reads at turn end. Measured 2026-09-08: this repo ran 0.6.0 for two days after 0.7.0 was
- * installed (`/clear` does not reload plugins) and nothing on screen could show it.
- * PREPENDED, never appended — a note past the inline bound is a note nobody reads. Pure;
- * a fresh process or no emission returns the emission untouched.
+/*
+ * RUNNING ≠ INSTALLED (0.7.1, moved 2026-10-01). A process that predates an install runs the
+ * old code (`/clear` does not reload plugins; measured 2026-09-08: two days of 0.6.0). 0.7.1
+ * PREPENDED that note to every emission; Claude then talked to the owner about hook versions
+ * (~13 replies, measured 2026-10-01) — machinery in his conversation. The note is no longer in
+ * anything Claude receives: it rides the trace (lib/fire-facts.js) and this window's
+ * running/<session_id>.json record, which the statusline turns into a one-line "reopen this
+ * window" hint for him (lib/running-state.js).
  */
-function withStaleNote(emission, live) {
-  if (!emission || !live || !live.stale || !live.note) return emission;
-  const line = `[turn-end] ${live.note}`;
-  if (typeof emission.reason === 'string') return { ...emission, reason: `${line}\n${emission.reason}` };
-  const hso = emission.hookSpecificOutput;
-  if (hso && typeof hso.additionalContext === 'string') {
-    return { ...emission, hookSpecificOutput: { ...hso, additionalContext: `${line}\n${hso.additionalContext}` } };
-  }
-  return emission;
-}
 
 async function main() {
   // Guard first: inside a judgment child, this hook must do nothing at all. The child is a
@@ -142,8 +137,12 @@ async function main() {
 
   const promptId = payload.prompt_id || null;
   const sessionId = payload.session_id || null;
-  const ledger = ledgerStore.readLedger(cwd, promptId, sessionId);
-  const ctx = buildContext(payload, cwd, ledger);
+  // The span is the OWNER's message, not this prompt: read the transcript first so the ledger
+  // is keyed on the owner record that opened the span (lib/ledger.js), then hand the same turn
+  // to the context — one parse per fire.
+  const turn = extractTurn(payload.transcript_path);
+  const ledger = ledgerStore.readLedger(cwd, promptId, sessionId, ownerPromptIdOf(turn, payload));
+  const ctx = buildContext(payload, cwd, ledger, turn);
 
   // PASS 1 — pure. Which demands are unmet, and which supply duties are due?
   const planned = decide(ctx, undefined, config);
@@ -223,22 +222,75 @@ async function main() {
     writeTrace(cwd, traceLine.hookLine({
       now, version: live.running, stale: live.stale, sessionId, promptId,
       ms: Date.now() - fireStartedMs, result, supplyNotes, fires: ledger.fires, emittedText,
-      agentsInFlight: (ctx.turn.agentsInFlight || []).length,
+      // What the span is actually waiting for — the bounded count, presumed-gone excluded.
+      agentsInFlight: inFlightCount(ctx),
       // Substrate record: which fields the platform actually sent. Two audit claims (a
       // `background_tasks` field, a `permission_mode` field) rested on docs, not on a fire.
       payloadKeys: Object.keys(payload), permissionMode: ctx.permissionMode, stopHookActive: ctx.stopHookActive,
+      // Owner span, wakes, presumed-gone helpers, sanitized background tasks, running≠installed.
+      facts: fireFacts(ctx, live),
+      // What went to HIM: the emission's systemMessage, passed through untouched (lib/runner.js).
+      systemMessageChars: result.emission && typeof result.emission.systemMessage === 'string' ? result.emission.systemMessage.length : 0,
     }));
     for (const ran of supplyRuns) {
       writeTrace(cwd, traceLine.dutyLine({ now, version: live.running, sessionId, promptId, id: ran.id, ms: ran.ms, produced: ran.produced }));
     }
   }
+  writeTestIntegrityLine(cwd, ctx, live, sessionId, promptId);
+  keepLockedTestReferences(ctx);
   if (derived) {
     nextLedger = { ...nextLedger, actedOnUpTo: derived.upTo };
     writeTrace(cwd, derived.line);
   }
   if (nextLedger !== ledger) ledgerStore.writeLedger(cwd, nextLedger);
-  if (result.emission) process.stdout.write(JSON.stringify(withStaleNote(result.emission, live)));
+  // This window's running ≠ installed record for the statusline, refreshed every fire but only
+  // where turn-end keeps state — AFTER this fire's own writes, so the fire on which a duty first
+  // acts here records it too (lib/running-state.js). Fail-soft, never the decision.
+  runningState.writeRunningState(cwd, sessionId, live, Date.now());
+  if (result.emission) process.stdout.write(JSON.stringify(result.emission));
   process.exit(0);
+}
+
+/*
+ * TEST INTEGRITY, MEASURED (2026-10-01). The owner's rule (2026-09-10): "while we create this we
+ * will need to be creating unit tests before we write the code. the code is then tested on them
+ * to see if we hit our targets." — and (2026-10-01) "tests were bent to pass. This is
+ * unacceptable." One line per fire whose owner span changed code or tests, written even when the
+ * duty asked nothing: a span that changed code with no test at all is exactly what the
+ * tests-first number must count. Only where turn-end already keeps state (checked after this
+ * fire's own hook line, so a fire that spoke has it) — never a new footprint in another repo.
+ * The analysis is the one the duty computed this fire (memoized on ctx); a duty switched off in
+ * config is not measured. Telemetry: a failure here never touches the decision.
+ */
+function writeTestIntegrityLine(cwd, ctx, live, sessionId, promptId) {
+  try {
+    if (!fs.existsSync(path.join(cwd, path.dirname(TRACE_REL)))) return;
+    const ti = testIntegrity.of(ctx);
+    if (!ti || !(ti.testFiles || ti.codeFiles || ti.changes.length)) return;
+    writeTrace(cwd, traceLine.testIntegrityLine({
+      now: new Date(), version: live.running, sessionId, promptId,
+      ownerPromptId: ctx.turn && ctx.turn.ownerPromptId, ms: ti.ms, fields: testIntegrity.traceFields(ti),
+    }));
+  } catch (err) {
+    process.stderr.write(`[turn-end] test-integrity trace line not written: ${err.message}\n`);
+  }
+}
+
+/*
+ * LOCKED TESTS, KEPT (2026-10-02, review fix). A locked test is judged against a reference on disk
+ * (lib/test-patterns/locks.js) — the body the lock first saw, or the one his typed yes approved —
+ * because the request's base moves with every commit: judged against the base, a bend committed in
+ * one request vanished at his next message. This plumbing step records the reference AFTER the
+ * fire; the pure duties only read it. Writes only where the project configured locked tests
+ * (duties["test-integrity"].locked). Fail-soft: a failure is named on stderr, never the decision.
+ */
+function keepLockedTestReferences(ctx) {
+  try {
+    const kept = testIntegrity.persist(ctx);
+    if (kept && kept.error) process.stderr.write(`[turn-end] locked-test references not kept: ${kept.error}\n`);
+  } catch (err) {
+    process.stderr.write(`[turn-end] locked-test references not kept: ${err.message}\n`);
+  }
 }
 
 /**
@@ -282,4 +334,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { readConfig, writeTrace, withStaleNote, resolveProjectRoot, CONFIG_REL, TRACE_REL, PLUGIN_ROOT };
+module.exports = { readConfig, writeTrace, resolveProjectRoot, CONFIG_REL, TRACE_REL, PLUGIN_ROOT };

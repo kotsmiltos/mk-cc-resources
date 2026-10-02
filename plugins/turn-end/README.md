@@ -138,11 +138,13 @@ consolidated message describe a turn that never happened.
 |---|---|---|---|
 | `session-digest` | `block` | the project curates memory (`.claude/kb/*` or `.steward/` hold real files) **and** the turn used Write/Edit/NotebookEdit/Bash | the turn wrote `.claude/kb/session-digest.md` |
 | `steward-sync` | `advise` | `.steward/inbox/` holds at least one staged `*.md` note | the inbox is empty, **or** the steward agent was dispatched, **or** it was already asked this **sitting** |
-| `quality-lens` | `advise` | `.claude/verifiability-lens.json` `{"enabled": true}` (project beats global; off by default) **and** the turn did substantive work | the lens was dispatched, **or** it was already asked this `prompt_id` |
-| `self-check` | `block` | the turn changed real files | a check ran AFTER the last change, or the final message names the check and its result |
-| `context-recall` | `advise` | the project keeps knowledge the answer may have needed | the judge (or the fallback ranker) found nothing material missed |
-| `request-closure` | `advise` | the span was woken by, or dispatched, agents | the answer closes the **user's** original request, not the last agent's return |
-| `fewer-clicks` | `advise` | the final message carries an outsourcing tell (and the owner did not ask for instructions) | no tell remains, **or** the message names why only the owner can do it, **or** it was already asked this `prompt_id` |
+| `quality-lens` | `advise` | `.claude/verifiability-lens.json` `{"enabled": true}` (project beats global; off by default) **and** this message of yours changed something (0.15.0: once per message, keyed on the last change; at most three reviews per message) | a review dispatched after the last change finished, **or** it was already asked since the last change |
+| `self-check` | `block` | the turn changed real files | for code, a check that finished AFTER the last change (0.15.0: order read inside one command; a review dispatch is not a check); for prose / docs / data, a re-read named with its result in a reply written after the last change |
+| `context-recall` | `advise` | the project keeps knowledge the answer may have needed | the judge (or the fallback ranker) found nothing material missed; a note counts as already given only while its full text is still in the conversation |
+| `request-closure` | `advise` | the latest review of this message refuted claims, or ended without a verdict (0.15.0: the "originally asked" nudge is gone) | asked once since that review ended |
+| `fewer-clicks` | `advise` | the final message carries an outsourcing tell (and the owner did not ask for instructions) | no tell remains, **or** the message names why only the owner can do it, **or** it was already asked this request |
+| `test-integrity` (0.15.0) | `advise` | tests changed during this message (files touched since it began, in the project and its worktrees) | the answer says, per shown change, whether Claude made it |
+| `locked-tests` (0.15.0) | `block` | a test listed under `duties["test-integrity"].locked` changed | it was put back, **or** Claude asked one plain question quoting the words it holds; his typed yes approves that exact version |
 | `page` (0.14.0; opt-in since 0.14.2) | `block` | `.claude/turn-end.json` sets `duties.page.enabled: true` (off by default) **and** the project has a `PROJECT.md` **and** the turn changed a real file (not the page, not `DECISIONS.md`, not `.claude/`/`.steward/`) | `PROJECT.md` was rewritten this request (its mtime, or a tool target naming it); `duties.page.path` renames the file |
 
 `steward-sync` closes the gap between capturing a thought and recomputing the model it changes.
@@ -155,6 +157,13 @@ and the `.gitkeep` placeholder stay out of the count without either being named 
 The owner set this duty's shape — `advise`, session span, silent on an empty inbox. Its
 priority, the wording of its ask, and that definition of an item were chosen by Claude and are
 revisable.
+
+Since 0.15.0 a **request is one message from the owner**: a helper's report or a task notice wakes
+the session as a new prompt, but it never re-arms a duty and is never read as the request.
+`quality-lens` hands the reviewer the owner's own words from the transcript — newest first, with
+pasted secrets redacted — plus the plan items, what changed, what ran after the last change and
+only this message's test changes. `test-integrity` shows each test change in plain lines (worst
+first) to the owner directly and asks Claude to say whether it made each one.
 
 `quality-lens` is `advise`, not `block`, on purpose: in the session that prompted this work,
 passes 1–3 found real defects and passes 4–8 were the reviewer repairing its own earlier
@@ -217,10 +226,30 @@ be called by this runner. Two blocking peers is the bug.
       "maxIndexEntries": null,
       "maxChosen": null,
       "maxContentChars": 2400
-    }
+    },
+    "test-integrity": {
+      "testGlobs": [],
+      "watchFiles": [{ "path": "…", "label": "…", "match": "…" }],
+      "locked": [{ "test": "…", "words": "…", "said": "…" }],
+      "maxLines": null,
+      "assertHeads": [{ "head": "expectOk", "condition": 0, "message": 1 }]
+    },
+    "locked-tests": { "enabled": true }
+  },
+  "evidence": {
+    "checkCommands": [],
+    "failurePatterns": [],
+    "scratchDirs": ["scratch"]
   }
 }
 ```
+
+`evidence` (0.15.0) tunes what `self-check` and the reviewer read as a run: `checkCommands` names a
+project's own check runners that are not named like tests (regex, matched against one command
+segment), `failurePatterns` adds failure lines (for example `exit=[1-9]` or a bare `N errors`, which
+the defaults no longer read as failures), `scratchDirs` lists folders whose writes are not work.
+`test-integrity.assertHeads` declares a project's own assertion helpers; `locked` lists tests that
+hold the owner's words (read even when `test-integrity` itself is switched off).
 
 **On the numbers here — provenance matters.** Every bound in this plugin was chosen by Claude,
 not requested by anyone, so they are split by what they cost you when they bite:
@@ -242,8 +271,11 @@ A malformed config is reported on stderr and ignored — throwing would wedge ev
 Every fire that emits anything appends to `.claude/turn-end/trace.jsonl`. The one surface that
 can hold a turn open is the one whose behaviour must be checkable from disk afterwards.
 
-Per-request state lives in `.claude/turn-end/ledger.json`, keyed by `prompt_id`; a new request
-resets it.
+Per-request state lives in `.claude/turn-end/ledger/<session_id>.json` — one file per window
+since 0.15.0 — keyed on the owner's message, so a helper's wake does not reset it; his next
+message does. `.claude/turn-end/running/<session_id>.json` records whether the window runs older
+code than is installed (statusline reads it); both are written only where turn-end already keeps
+state.
 
 ## Tests
 
@@ -251,7 +283,8 @@ resets it.
 node tests/turn-end.test.js
 ```
 
-170 checks, no framework, own temp fixtures — it never reads the repo it ships in, and it never spawns a real judge (E2E fixtures disable context-recall; the exe-resolution check SKIPS by name on a machine without the CLI). Three of them
+Every `tests/*.test.js` file is its own suite (the repo's `test-all` gate runs them all);
+`turn-end.test.js` is the oldest and largest — 246 checks, no framework, own temp fixtures — it never reads the repo it ships in, and it never spawns a real judge (E2E fixtures disable context-recall; the exe-resolution check SKIPS by name on a machine without the CLI). Three of them
 replay measured failures: *ten consecutive work turns do not oscillate* (the old guard returned
 block/allow/block/allow), *the lens is asked at most once per user request* (all eight observed
 passes were one request), and *`done/` and `.gitkeep` are not inbox items* (a naive count read 4

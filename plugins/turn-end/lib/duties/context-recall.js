@@ -32,6 +32,36 @@
  * So the choice was made on a bad number and deserves re-taking; it is not a standing decree.
  * The argument Claude gave for it (a gate deciding when recall matters is itself a thing that
  * can be wrong) is Claude's reasoning, not the owner's.
+ *
+ * QUIET (2026-10-02). Once per OWNER message — the ledger's `asked` is keyed by his message since
+ * 2026-10-01 (lib/ledger.js), so a helper wake never re-runs it. The judge stays and is never
+ * deferred: it caught ~10 real mistakes, some while helpers were still running. What changed is
+ * what it is shown and what reaches the session. Measured (project A, one owner message on 29 Sep
+ * across several helper wakes): three of four recall fires handed over ONLY notes the session
+ * already held, and each answer then spent a paragraph saying the note "still holds", path and
+ * all — the closing line asked for it ("Cite the path of anything you use"); the fourth served
+ * back a capture the session had WRITTEN 26 minutes earlier in the same span. Now:
+ *   - the judge's INDEX leaves out notes already handed over this sitting (sessionSupplied) and
+ *     notes this session wrote or edited during the CURRENT owner span (lib/file-touch.js
+ *     mutations over the span's calls — only this span: a note written days ago in a long session
+ *     is exactly what recall should bring back), and the prompt names both;
+ *   - an empty index means no judge call and no output (trace only, engine `skipped`);
+ *   - picks the session already holds produce no output (trace only); a pick of a note written
+ *     this span is never served back;
+ *   - the closing line asks for NOTHING when nothing in the answer changes, and never for a path.
+ *
+ * HELD MEANS STILL IN THE LIVE CONTEXT (review, 2026-10-02). The ledger's sessionSupplied resets
+ * only with the session id, and a compaction keeps the id — so the first quiet version kept a note
+ * handed over before a compaction out of the index for the rest of the session, and told the judge
+ * the session "holds their text" when it no longer did. Real case (project B, one session 5-13 Sep):
+ * three notes handed over, a compaction on 5 Sep 03:37, the judge re-picked one of them on 10 Sep.
+ * Now a supplied note counts as held only when a recall delivery ON RECORD in the transcript carried
+ * its full text (its "--- title (path) ---" heading) inside the live context: after the last
+ * compaction, or in the segment that compaction preserved (the platform keeps the last few records —
+ * 18 in the real one). The same reading releases a note delivered only as a pointer line (the brief
+ * form never carried the text) and a note this span wrote before a compaction. No transcript, or no
+ * recall delivery on record in any shape this reader knows: the ledger stands — a release is never
+ * guessed. See liveRecall below.
  */
 
 const sources = require('../sources');
@@ -63,6 +93,7 @@ const DEFAULT_MAX_TOTAL_CHARS = 7000;
 const ENGINE_JUDGE = 'judge';           // claude -p haiku picks — the default (owner ruling 2026-08-23)
 const ENGINE_RANKER = 'ranker';         // project opted into the deterministic term-overlap ranker
 const ENGINE_FALLBACK = 'fallback-ranker'; // the judge died; the ranker picked instead
+const ENGINE_SKIPPED = 'skipped';       // every note is held or was written this span: nothing to judge
 const DEFAULT_MAX_EXCERPT_OF_TURN = 4000;
 
 /** Resolve every bound from config; absent/invalid falls back to the declared default. */
@@ -128,10 +159,153 @@ function dropAlreadyRead(items, ctx) {
 }
 
 /**
+ * Paths this OWNER SPAN wrote or edited — Write/Edit targets and Bash/PowerShell writes
+ * (lib/file-touch.js), as written. ctx.turn.toolCalls is the current owner span only, so a note
+ * written in an earlier span of a long session stays recallable. `liveFrom` (ms, or null): a write
+ * timed before the live context began — a compaction since — no longer counts; an untimed call
+ * still does (fail toward held, the behaviour before any compaction rule).
+ */
+function writtenThisSpan(ctx, liveFrom = null) {
+  const calls = ctx && ctx.turn && Array.isArray(ctx.turn.toolCalls) ? ctx.turn.toolCalls : [];
+  const live = typeof liveFrom === 'number'
+    ? calls.filter((c) => !c || typeof c.at !== 'number' || c.at >= liveFrom)
+    : calls;
+  return [...new Set(fileTouch.touches(live).mutations.map((m) => m.target))];
+}
+
+const matchesAny = (paths, target, cwd) => paths.some((p) => p === target || fileTouch.sameFile(p, target, cwd));
+const strings = (v) => (Array.isArray(v) ? v.filter((s) => typeof s === 'string' && s) : []);
+
+/*
+ * THE LIVE CONTEXT, read from the transcript (shapes verified 2026-10-02 on the owner's
+ * transcripts: 132 recall deliveries across 24 sessions, every one an attachment of type
+ * hook_additional_context with hookEvent Stop; a block reason saved as an isMeta user record
+ * starting "Stop hook feedback:"; the one compaction on record a system record of subtype
+ * compact_boundary whose compactMetadata.preservedSegment.headUuid names the first record the
+ * platform kept). Only lines that can matter are parsed.
+ */
+const MATERIAL_HEAD = 'This project already wrote these down';
+const COMPACT_BOUNDARY = 'compact_boundary';
+const HOOK_CONTEXT_ATTACHMENT = 'hook_additional_context';
+const BLOCK_FEEDBACK_HEAD = 'Stop hook feedback:';
+
+function parseLine(line) {
+  try { return JSON.parse(line); } catch (_e) { return null; }
+}
+
+function timeOf(rec) {
+  const t = rec && typeof rec.timestamp === 'string' ? Date.parse(rec.timestamp) : NaN;
+  return Number.isFinite(t) ? t : null;
+}
+
+/** The texts one record handed the session as Stop-hook output: additional context or a block reason. */
+function deliveredTexts(rec) {
+  if (!rec || typeof rec !== 'object') return [];
+  const a = rec.attachment;
+  if (a && a.type === HOOK_CONTEXT_ATTACHMENT) {
+    return (Array.isArray(a.content) ? a.content : [a.content]).filter((t) => typeof t === 'string');
+  }
+  const m = rec.message;
+  if (rec.type === 'user' && rec.isMeta && m && typeof m.content === 'string' && m.content.startsWith(BLOCK_FEEDBACK_HEAD)) {
+    return [m.content];
+  }
+  return [];
+}
+
+/** When the live context begins after `boundary`: the head of the segment it kept, else itself. */
+function liveStartOf(boundary, lines) {
+  const at = timeOf(boundary);
+  const seg = boundary.compactMetadata && boundary.compactMetadata.preservedSegment;
+  const head = seg && typeof seg.headUuid === 'string' ? seg.headUuid : null;
+  if (!head) return at;
+  for (const line of lines) {
+    if (!line.includes(head)) continue;
+    const rec = parseLine(line);
+    const kept = rec && rec.uuid === head ? timeOf(rec) : null;
+    if (kept !== null) return at === null ? kept : Math.min(at, kept);
+  }
+  return at;
+}
+
+/**
+ * PURE: raw transcript in → { liveFrom, texts, onRecord }.
+ *   liveFrom — ms the live context begins (null: never compacted);
+ *   texts    — recall material delivered inside it;
+ *   onRecord — whether ANY recall delivery is on record (false: this transcript records them in a
+ *              shape this reader does not know, so nothing may be concluded from their absence).
+ */
+function liveRecall(raw) {
+  const lines = String(raw || '').split('\n');
+  let boundary = null;
+  for (const line of lines) {
+    if (!line.includes(COMPACT_BOUNDARY)) continue;
+    const rec = parseLine(line);
+    if (rec && rec.type === 'system' && rec.subtype === COMPACT_BOUNDARY) boundary = rec;
+  }
+  const liveFrom = boundary ? liveStartOf(boundary, lines) : null;
+  const texts = [];
+  let onRecord = false;
+  for (const line of lines) {
+    if (!line.includes(MATERIAL_HEAD)) continue;
+    const rec = parseLine(line);
+    const got = deliveredTexts(rec).filter((t) => t.includes(MATERIAL_HEAD));
+    if (!got.length) continue;
+    onRecord = true;
+    const at = timeOf(rec);
+    // An untimed delivery counts as live: fail toward held, the behaviour before this rule.
+    if (liveFrom === null || at === null || at >= liveFrom) texts.push(...got);
+  }
+  return { liveFrom, texts, onRecord };
+}
+
+/** A note handed over IN FULL carries its heading; a pointer line ("- title (path) — why") does not. */
+const deliveredInFull = (texts, notePath) => texts.some((t) => t.includes(`(${notePath}) ---`));
+
+/** liveRecall over this session's transcript, or null when there is none to read. */
+function liveContextOf(ctx) {
+  const raw = ctx && ctx.transcriptPath && ctx.disk && typeof ctx.disk.read === 'function'
+    ? ctx.disk.read(ctx.transcriptPath)
+    : null;
+  return typeof raw === 'string' ? liveRecall(raw) : null;
+}
+
+/**
+ * What the session still HOLDS, by note path: handed over in full inside its live context (the
+ * ledger's session-span `sessionSupplied`, checked against the transcript — see HELD MEANS STILL
+ * IN THE LIVE CONTEXT above) or written during this owner span since the live context began.
+ * PURE given ctx (its disk view is part of the snapshot).
+ */
+function holdings(ctx) {
+  const supplied = strings(ctx && ctx.ledger && ctx.ledger.sessionSupplied);
+  const live = liveContextOf(ctx);
+  return {
+    supplied: live && live.onRecord ? supplied.filter((p) => deliveredInFull(live.texts, p)) : supplied,
+    written: writtenThisSpan(ctx, live ? live.liveFrom : null),
+  };
+}
+
+/**
+ * Split index entries (or fetched notes — anything with a `path`) by what the session holds.
+ * `open` is what the judge may choose from; `held` were handed over this sitting; `written` were
+ * written this owner span. A note both handed over and rewritten counts as written. PURE.
+ */
+function splitByHoldings(entries, ctx, held) {
+  const h = held || holdings(ctx);
+  const cwd = ctx && ctx.cwd;
+  const out = { open: [], held: [], written: [] };
+  for (const e of entries) {
+    if (matchesAny(h.written, e.path, cwd)) out.written.push(e);
+    else if (matchesAny(h.supplied, e.path, cwd)) out.held.push(e);
+    else out.open.push(e);
+  }
+  return out;
+}
+
+/**
  * The prompt. The transcript is framed as DATA, explicitly: it is untrusted text that may
  * itself contain instructions, and a judge that follows them stops being a judge.
  */
-function buildPrompt(ctx, index, limits, truncated) {
+function buildPrompt(ctx, index, limits, truncated, holds) {
   const lines = [];
   lines.push(
     'You are a retrieval judge for a coding session. Below is a request, the answer that was ' +
@@ -158,6 +332,18 @@ function buildPrompt(ctx, index, limits, truncated) {
     lines.push('--- FILES THIS TURN OPENED (already used — never choose a note at one of these paths) ---');
     for (const p of opened.slice(0, MAX_OPENED_LISTED)) lines.push(p);
   }
+  // What the session already HOLDS is not in the list below; naming it lets the judge read the
+  // answer as built on it, instead of choosing a different note that only duplicates it.
+  const heldEntries = (holds && holds.held) || [];
+  const writtenEntries = (holds && holds.written) || [];
+  if (heldEntries.length) {
+    lines.push('--- ALREADY HANDED TO THIS SESSION EARLIER THIS SITTING (it holds their text; not in the list below) ---');
+    for (const e of heldEntries) lines.push(`${e.id} — ${e.title}`);
+  }
+  if (writtenEntries.length) {
+    lines.push('--- WRITTEN BY THIS SESSION DURING THIS REQUEST (it holds their text; not in the list below) ---');
+    for (const e of writtenEntries) lines.push(`${e.id} — ${e.title}`);
+  }
   lines.push('--- AVAILABLE NOTES (id — title) ---');
   for (const e of index) lines.push(`${e.id} — ${e.title}`);
   // A truncated list must never pose as the whole corpus: a judge that thinks it saw everything
@@ -178,10 +364,16 @@ function buildPrompt(ctx, index, limits, truncated) {
   return lines.join('\n');
 }
 
+/*
+ * The closing line. It used to end "Cite the path of anything you use", and the answers did: a
+ * paragraph per supply saying the note "still holds" with its path (project A, 29-30 Sep). The
+ * owner's law (2026-09-09): "this cannot be poitning me to files". A note that changes nothing
+ * changes nothing in what he reads.
+ */
 const RECONCILE_LINE =
-  '\nReconcile your answer with the above before yielding: if it contradicts or duplicates ' +
-  'any of it, say so and correct it; if the notes are stale, say that instead. Cite the path ' +
-  'of anything you use.';
+  '\nReconcile your answer with the above before yielding. If nothing in the answer changes, ' +
+  'add nothing — no line saying you checked. If something changes, say what changed in plain ' +
+  'words, naming the note by what it is, never by its path.';
 
 /** One line per note: title, path, why. The form used whenever the full text must not ride. */
 function pointerLine(it) {
@@ -195,7 +387,8 @@ function pointerLine(it) {
  */
 function renderMaterial(items, limits, clipped, alreadyHeld) {
   const out = [];
-  out.push('This project already wrote these down, and this turn did not use them:');
+  // MATERIAL_HEAD is also how liveRecall finds this text again in the transcript — one source.
+  out.push(`${MATERIAL_HEAD}, and this turn did not use them:`);
   if (clipped) {
     out.push(
       `[NOTE: the judge asked for ${clipped.wanted} notes; this project's maxChosen limit ` +
@@ -230,7 +423,7 @@ function renderMaterial(items, limits, clipped, alreadyHeld) {
  */
 function renderBrief(items, alreadyHeld) {
   const out = [];
-  out.push('This project already wrote these down, and this turn did not use them (pointers — open the paths):');
+  out.push(`${MATERIAL_HEAD}, and this turn did not use them (pointers — open the paths):`);
   for (const it of items) out.push(pointerLine(it));
   if (alreadyHeld && alreadyHeld.length) {
     out.push('Already handed to you earlier this sitting:');
@@ -255,8 +448,10 @@ module.exports = {
     return sources.availableIn(ctx).length > 0;
   },
 
-  // Once per user request. Injecting material starts a new turn, which would otherwise be
-  // judged again, and again — the recall itself must not be the thing that re-arms it.
+  // Once per OWNER message: `asked` is keyed by his message (lib/ledger.js, 2026-10-01), so a
+  // helper wake — a new prompt id in the same span — never re-runs the judge. Injecting material
+  // starts a new turn, which would otherwise be judged again, and again — the recall itself must
+  // not be the thing that re-arms it. No deferral: the judge earns its keep while helpers run.
   satisfied(ctx) {
     return (ctx.ledger.asked || []).includes(LEDGER_ID);
   },
@@ -270,13 +465,26 @@ module.exports = {
     const available = sources.availableIn(ctx);
     // Collect EVERYTHING first — the index is titles only, so this is cheap — then cap once,
     // where the size that was dropped is still known and can be reported.
-    const all = [];
+    const everything = [];
     for (const s of available) {
       try {
-        for (const e of s.index(ctx)) all.push(e);
+        for (const e of s.index(ctx)) everything.push(e);
       } catch (_e) { /* a broken source must not sink the turn */ }
     }
-    if (!all.length) return null;
+    if (!everything.length) return null;
+
+    // What the session already holds never enters the index; the prompt names it instead.
+    const held = holdings(ctx);
+    const { open: all, held: heldEntries, written: writtenEntries } = splitByHoldings(everything, ctx, held);
+    // On EVERY return (trace: held_ids / written_ids), so a skipped or silent fire is explainable.
+    const holdIds = { heldIds: heldEntries.map((e) => e.id), writtenIds: writtenEntries.map((e) => e.id) };
+    if (!all.length) {
+      // Nothing left to judge: no spawn, no output. The trace line still says so (engine skipped).
+      return {
+        material: null, chosen: [], error: null, engine: ENGINE_SKIPPED,
+        costUsd: 0, durationMs: 0, indexSize: 0, rankerTop: [], judgeChosen: null, ...holdIds,
+      };
+    }
 
     const capped = limits.maxIndexEntries && all.length > limits.maxIndexEntries;
     const index = capped ? all.slice(0, limits.maxIndexEntries) : all;
@@ -312,7 +520,7 @@ module.exports = {
     const engineChoice = options && options.engine === ENGINE_RANKER ? ENGINE_RANKER : ENGINE_JUDGE;
     const verdict = engineChoice === ENGINE_RANKER
       ? { ok: true, ranker: true, costUsd: 0, durationMs: 0, lean: 'n/a' }
-      : claudeP.judge(buildPrompt(ctx, index, limits, truncated), { model: 'haiku' });
+      : claudeP.judge(buildPrompt(ctx, index, limits, truncated, { held: heldEntries, written: writtenEntries }), { model: 'haiku' });
     // Telemetry that every return carries, so a fire is accountable from the trace alone.
     const cost = { costUsd: verdict.costUsd, durationMs: verdict.durationMs, lean: verdict.lean };
     /*
@@ -348,11 +556,11 @@ module.exports = {
       if (!needed.length) {
         return {
           ...cannotRun(`${judgeDeath}; the fallback ranker found no strongly-matching notes either`),
-          engine: 'none', ...cost, ...agreement,
+          engine: 'none', ...cost, ...agreement, ...holdIds,
         };
       }
     }
-    if (!needed.length) return { material: null, chosen: [], error: null, engine: engineChoice, ...cost, ...agreement }; // the strict, common, correct answer
+    if (!needed.length) return { material: null, chosen: [], error: null, engine: engineChoice, ...cost, ...agreement, ...holdIds }; // the strict, common, correct answer
 
     // Cap what the judge asked for only if the project set a limit — and say so if it bites,
     // so a dropped note is never mistaken for one the judge deemed irrelevant.
@@ -376,18 +584,23 @@ module.exports = {
       } catch (_e) { /* skip a source that cannot read its own files */ }
     }
     const engine = judgeDeath ? ENGINE_FALLBACK : engineChoice;
-    if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost, ...agreement };
+    if (!items.length) return { material: null, chosen: [], error: null, engine, ...cost, ...agreement, ...holdIds };
 
     // A note this turn already OPENED (Read, or `cat`/`head`/`sed -n`/`grep` through Bash)
     // was used, whatever the judge inferred from the text. Deterministic; the trace names it.
     const { kept: unread, alreadyRead } = dropAlreadyRead(items, ctx);
-    if (!unread.length) return { material: null, chosen: [], error: null, engine, alreadyRead, ...cost, ...agreement };
-    items = unread;
+    if (!unread.length) return { material: null, chosen: [], error: null, engine, alreadyRead, ...cost, ...agreement, ...holdIds };
 
-    // Split what the session already holds from what is new to it this sitting.
-    const held = new Set((ctx.ledger && ctx.ledger.sessionSupplied) || []);
-    const fresh = items.filter((i) => !held.has(i.path));
-    const alreadyHeld = items.filter((i) => held.has(i.path));
+    // Split what the session already holds from what is new to it. A note it WROTE this span is
+    // never served back; one handed over earlier rides only as a pointer beside new material.
+    const picked = splitByHoldings(unread, ctx, held);
+    const fresh = picked.open;
+    const alreadyHeld = picked.held;
+    // Every pick already held: nothing new for the session — no output; the trace keeps the picks.
+    if (!fresh.length) {
+      return { material: null, chosen: [], error: null, engine, ...(alreadyRead.length ? { alreadyRead } : {}), ...cost, ...agreement, ...holdIds };
+    }
+    items = fresh.concat(alreadyHeld);
 
     const banner = judgeDeath
       ? `[recall via FALLBACK RANKER — the judge could not run (${judgeDeath}); ` +
@@ -404,6 +617,7 @@ module.exports = {
       ...(alreadyRead.length ? { alreadyRead } : {}),
       ...cost,
       ...agreement,
+      ...holdIds,
     };
   },
 };
@@ -445,7 +659,15 @@ module.exports.fallbackPick = fallbackPick;
 module.exports.ENGINE_JUDGE = ENGINE_JUDGE;
 module.exports.ENGINE_RANKER = ENGINE_RANKER;
 module.exports.ENGINE_FALLBACK = ENGINE_FALLBACK;
+module.exports.ENGINE_SKIPPED = ENGINE_SKIPPED;
+module.exports.RECONCILE_LINE = RECONCILE_LINE;
 module.exports.dropAlreadyRead = dropAlreadyRead;
+module.exports.writtenThisSpan = writtenThisSpan;
+module.exports.holdings = holdings;
+module.exports.splitByHoldings = splitByHoldings;
+module.exports.liveRecall = liveRecall;
+module.exports.deliveredTexts = deliveredTexts;
+module.exports.MATERIAL_HEAD = MATERIAL_HEAD;
 module.exports.openedPaths = openedPaths;
 module.exports.parseVerdict = parseVerdict;
 module.exports.buildPrompt = buildPrompt;

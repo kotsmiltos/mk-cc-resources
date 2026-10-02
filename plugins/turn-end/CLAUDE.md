@@ -46,9 +46,14 @@ lib/context.js          # the ONE frozen snapshot. Disk reads MEMOIZED for the l
                         #   list(rel) is the generic tree primitive — typed, sorted, and
                         #   deliberately UNFILTERED, since duties disagree about which
                         #   entries count; hasFilesIn derives from it, one readdir for both
-lib/ledger.js           # per-`prompt_id` state — THE unit. The hooks this replaces keyed
+lib/ledger.js           # per-OWNER-MESSAGE state — THE unit. The hooks this replaces keyed
                         #   on a hash of the TURN's text, so every correction looked new
-                        #   and the guard never matched; prompt_id is the user-request span
+                        #   and the guard never matched. 0.15.0: `asked`/`askedAt`/`startedAt`
+                        #   key on ownerPromptId (the owner record that opened the span), so a
+                        #   helper wake (a new prompt_id, twice per helper since CC 2.1.271)
+                        #   never re-arms a duty; `fires` still resets per prompt_id. ONE FILE
+                        #   PER WINDOW: .claude/turn-end/ledger/<session_id>.json (the old
+                        #   single ledger.json is read only by the window that wrote it)
 lib/duties/             # extension surface: index.js registry + one module per duty.
                         #   TWO KINDS, because a turn ends badly two ways — work left
                         #   undone, or an answer built without knowledge the project
@@ -98,18 +103,16 @@ lib/duties/             # extension surface: index.js registry + one module per 
                         #   .claude/.steward/.pipeline + tmp writes — mandated bookkeeping is
                         #   not fresh work. Needs ctx.turn.toolCalls, the ORDERED snapshot;
                         #   absent -> silent, never a demand),
-                        #   request-closure (0.5.0, owner symptom "answer my first thing,
-                        #   not what the last agent did" — an agent wake arrives as a NEW
-                        #   prompt, so the model answers the task-notification instead of
-                        #   the user. Applies when the span was woken or dispatched agents;
-                        #   ask embeds the VERBATIM userRequest + span agent activity:
-                        #   answer THAT first, then who-did-what per agent, machinery last.
-                        #   PROMPT span deliberately — every wake resets the asked bucket,
-                        #   so every wake-yield gets its own nudge (each is a user-visible
-                        #   resting state); safe because the ask spawns nothing, so the
-                        #   session-span rule for agent-asking duties does not bind.
-                        #   Satisfied = asked-once-per-prompt from the ledger; advise,
-                        #   zero tokens, no judge).
+                        #   request-closure (0.5.0; CUT DOWN in 0.15.0. Its "The user
+                        #   originally asked: «…»" + who-did-what nudge at every woken or
+                        #   delegating span is DELETED — it compared nothing and the quote
+                        #   was a helper's report 12/29 times, measured 2026-10-01; his
+                        #   words now reach the reviewer as quality-lens OWNER WORDS. What
+                        #   stays: when the LATEST finished review of the owner span
+                        #   refuted claims, restate the corrected answer IN FULL (owner
+                        #   ruling 2026-09-11); a stopped/aborted/crashed review is said to
+                        #   be UNCHECKED. Once per refuting review via ledger askedAt;
+                        #   advise, zero tokens, no judge).
                         #   Add one = one require, no runner change
                         #   page (0.14.0, owner `subtract` ruling 2026-09-18: a turn that changed
                         #   real files may not yield until PROJECT.md is REWRITTEN WHOLE;
@@ -208,7 +211,7 @@ hooks/                  # the one Stop registration + (0.8.0) the exec-result RE
                         #   whole runner mid-fire and every duty's output is lost, not just
                         #   the verdict (measured: 30s killed 39/52 in-window fires; one real
                         #   fire with the judge measures ~40-46s)
-tests/turn-end.test.js  # 245 checks, own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
+tests/turn-end.test.js  # 246 checks (one suite of many — every tests/*.test.js is a suite), own temp fixtures, ~1 s, no real judge spawn. Three replay measured failures
                         #   (ten work turns do not oscillate; lens asked once per request;
                         #   done/ + .gitkeep are not inbox items); self-check's ladder is
                         #   replayed end-to-end (nudge -> comply -> allow; ignore -> block;
@@ -220,3 +223,62 @@ tests/turn-end.test.js  # 245 checks, own temp fixtures, ~1 s, no real judge spa
                         #   — a sync harness counted three async tests as passing before
                         #   their assertions ran
 ```
+
+## 0.15.0 (2026-10-02) — the owner span, what ran, test changes, a reviewer per message
+
+Landed from eleven parallel workstreams; the owner approved the plan on 2026-10-01. Where a module
+header says more, the header wins.
+
+- **lib/whose-words.js** — classifies each transcript record: OWNER / WAKE (helper hand-back,
+  task notification, another session) / MACHINE / OTHER, record first, text rule last. The
+  canonical MACHINE_TEXT_MARKERS (nine; plugin-toolkit's machine-guard-drift keeps every copy in
+  the repo identical). **lib/context.js** builds the OWNER SPAN on it: `turn.ownerPromptId`,
+  `ownerMessages` (opener + `mid_turn` words), `wakes` (one per helper), `helpers`, `promptIds`,
+  `assistantTexts [{text, callsBefore, endTurn, at}]` (each yield's place among the calls), plus
+  lazy non-enumerable getters `ctx.evidence` (lib/evidence.js) and `ctx.testIntegrity`.
+  Measured on real transcripts since 19 Sep (two projects, 498 yields): 0 of 98 spans read a
+  helper's report as the request; helper wakes re-armed a prompt-span duty 191 times under the
+  old key, 0 under the owner key.
+- **lib/deferral.js** — helpers launched in the span hold a duty up to PRESUMED_GONE_MS (60 min,
+  from 210 real helpers); IGNORED_TASK_TYPES = shell, monitor, MCP task, teammate, cloud session.
+- **lib/session-files.js** (safe per-window file names + retention prune), **lib/running-state.js**
+  (`running/<session_id>.json` = {running, installed, stale, at}, written only where
+  .claude/turn-end/ exists, AFTER the fire's own writes; statusline's stale-plugins segment reads
+  it — the old prepended stale note is gone), **lib/fire-facts.js** (owner span facts on the hook
+  trace line: FIRE_FACT_KEYS in lib/trace-line.js).
+- **lib/evidence.js** — ONE record of what ran: changes and runs carry `seg` (place inside a
+  compound command; `isAfter` compares call then segment); run output, .log/.out and files deleted
+  later are not changes; runs carry ran/refused/longLived/probe/waits; failure = a runner summary
+  line only; bounded redaction (redactedTail/redactedHead). **lib/file-touch.js** reads each
+  command in its tool's dialect (PowerShell lexing). **self-check** judges what RAN: for code only
+  a finished run after the last change satisfies (a lens dispatch is NOT a check — the core's
+  `lensAfterLastChange` was deliberately not carried over); prose/docs/data take a named check in
+  any yield written after the last change (`claimTexts`); anchors stay span-wide (a specificity
+  floor, replayed); requireGreen joins checks.jsonl by `turn.promptIds`; SITUATION run / no-shell /
+  refused shapes the ask; defer() holds only on runs after the unmet obligation.
+- **quality-lens** — span `prompt` (= the owner message) and `askedAt`: asks once per new last
+  change, at most MAX_REVIEWS_PER_REQUEST (3, Claude's choice) finished reviews per message. The
+  ask carries five sections under exact headings — OWNER WORDS (one 2,400-char pool, opener floor
+  600, newest mid-turn words first and whole, redacted), PLAN ITEMS, WHAT CHANGED, RUNS, TEST
+  CHANGES (old → new, this message's only) — and demands the rollup YAML, then FOR HIM:, the whole
+  report in the SubagentHandback message. A review ends by recorder line, else latest notice
+  (completed = done; killed/failed/stopped = lost), else a delivered report. `isLensSurfacing`
+  also accepts a FOR HIM: heading line (same rule as the lens recorder's `hasForHim`). A review
+  the session started itself gets one REMINDER_ASK to carry the FOR HIM list.
+- **test-integrity** (advise, priority 5) + **locked-tests** (block, priority 4) over
+  **lib/test-patterns/** (registry + common/diff/render/changeset/locks; readers for NUnit,
+  jest/vitest, pytest; kinds inverted | skipped | removed-assert | loosened | expected-changed |
+  retargeted). Freshness = files touched since his message (max(mtime, ctime)); lock references in
+  .claude/turn-end/test-integrity-locks.json, persisted by the adapter after each fire; the
+  runner passes a duty's `notice` as `systemMessage`. Trace: `testIntegrityLine` (read by
+  plugin-toolkit's test-integrity metric, DUTY_WRITER_SINCE 0.15.0).
+- **Quiet duties** — context-recall holds a note only while its full text is in the live context
+  (after the last compaction), trace `held_ids`/`written_ids`; session-digest's no-op marker is
+  `.claude/turn-end/nothing-to-keep.txt`; fewer-clicks gains AFTER_SUBORDINATE_RX, ship-only offer
+  exemption and the check-left-to-him tell; steward-sync reads ASYNC_LAUNCH_MARKER / AGENT_ID_RX /
+  toolResultText from lib/context.js (one copy).
+- Open, named: request-closure asks once per owner message, so reports arriving after its ask get
+  no second nudge (a per-batch re-arm would need a ledger field); file-touch still reads some Bash
+  commands as writes; this repo's `.claude/turn-end.json` turns every duty off by name, but
+  test-integrity and locked-tests are new names and default on — whether they stay on here is the
+  owner's call.

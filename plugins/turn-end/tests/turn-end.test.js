@@ -301,12 +301,15 @@ check('REGRESSION: an agent-dispatch duty is asked ONCE across many prompt_ids i
   // completion wakes the session as a NEW prompt_id. Prompt-span satisfaction reset the moment
   // the dispatch paid off, so the duty asked again — 7 prompt_ids in 24 minutes with the owner
   // typing nothing, 6 dispatches, each manufacturing the request that re-armed it.
+  // Since 2026-10-02 the duty is per OWNER message (the ledger keys `asked` on it, lib/ledger.js),
+  // not per sitting: the seven wakes are one owner message, so the ledger is read with its key.
   const dir = tmpdir('regression-agent-wake');
   const lensCfg = { ...fakeCtx().disk, read: (rel) => (rel === qualityLens.CONFIG_REL ? '{"enabled":true}' : null) };
   const promptIds = ['271fdc3c', '6dca19d8', 'dab5e557', '73a35ec3', 'b447d0f8', 'e39019fd', 'e30ced36'];
+  const OWNER_MESSAGE = 'owner-271fdc3c';
   let asks = 0;
   for (const pid of promptIds) {
-    const ledger = ledgerStore.readLedger(dir, pid, 'one-sitting');
+    const ledger = ledgerStore.readLedger(dir, pid, 'one-sitting', OWNER_MESSAGE);
     const ctx = fakeCtx({
       cwd: dir, disk: lensCfg, ledger,
       turn: { text: `wake ${pid}`, toolNames: ['Edit'], toolTargets: [] },
@@ -320,8 +323,10 @@ check('REGRESSION: an agent-dispatch duty is asked ONCE across many prompt_ids i
   assert.strictEqual(asks, 1, `lens asked ${asks} times across ${promptIds.length} prompt_ids in ONE session`);
 });
 
-check('quality-lens declares the session span (the fix, asserted at the contract)', () => {
-  assert.strictEqual(qualityLens.span, 'session');
+check('quality-lens declares the OWNER-MESSAGE span (2026-10-02: a review per message of his that changed something)', () => {
+  // Was 'session' (one ask per sitting). The owner approved a review of "every message of yours
+  // that changed something" (2026-10-01); the ledger's `prompt` bucket is his message since then.
+  assert.strictEqual(qualityLens.span, 'prompt');
 });
 
 check('session-digest stays PROMPT span — each request should distil itself', () => {
@@ -541,11 +546,11 @@ check('self-check: "should work" prose is NOT evidence', () => {
   assert.strictEqual(selfCheck.satisfied(ctx), false);
 });
 
-check('self-check: dispatching the verifiability lens satisfies (deep tier supersedes)', () => {
+check('self-check: dispatching the verifiability lens does NOT satisfy — a background review is not a run', () => {
   const ctx = selfCheckCtx([eCall('/src/app.js')], {
     turn: { toolTargets: ['agent:verifiability-lens'] },
   });
-  assert.strictEqual(selfCheck.satisfied(ctx), true);
+  assert.strictEqual(selfCheck.satisfied(ctx), false);
 });
 
 check("self-check: severity is block — enforcement was the owner's explicit ask", () => {
@@ -667,9 +672,13 @@ check('session-digest: an empty/garbage override falls back to the default, stil
   assert.ok(/Claude's default/.test(ask));
 });
 
-check('session-digest: its own instruction echoed back does not re-trigger it', () => {
-  const ctx = fakeCtx({ disk: memoryDisk(), lastAssistantMessage: '[turn-end] before yielding…', turn: { toolNames: ['Edit'], toolTargets: [], text: 'x' } });
-  assert.strictEqual(sessionDigest.applies(ctx), false);
+check('session-digest: its own instruction echoed back does not re-trigger it — the ledger stops it, not the words', () => {
+  // 2026-10-02: words in the answer no longer decide anything for this duty (tests/quiet-digest.test.js).
+  // The echo is just text: the duty applies on the tools, and is satisfied once it was asked in an
+  // earlier prompt of the same owner span — structural, whatever the answer says.
+  const echoed = { disk: memoryDisk(), lastAssistantMessage: '[turn-end] before yielding…', turn: { toolNames: ['Edit'], toolTargets: [], text: 'x' } };
+  assert.strictEqual(sessionDigest.applies(fakeCtx(echoed)), true);
+  assert.strictEqual(sessionDigest.satisfied(fakeCtx({ ...echoed, ledger: { promptId: 'wake-2', fires: 0, asked: ['session-digest'] } })), true);
 });
 
 // ---------- duty: quality-lens ----------
@@ -779,6 +788,17 @@ check('quality-lens: a bracketed tool marker alone IS surfacing', () => {
   assert.strictEqual(qualityLens.isLensSurfacing('[turn-end] before yielding, 1 duty unmet'), true);
 });
 
+check('quality-lens: a final answer that is ONLY the reviewer\'s FOR HIM: lists IS surfacing', () => {
+  // 2026-10-02 (verifiability-lens workstream): the main session may pass on just the plain lists,
+  // which carry none of the rollup's structural words. The heading is the lens's own; prose that
+  // merely mentions the section mid-line is not it.
+  const forHim = 'FOR HIM:\nDone:\n- the fix landed\nNot done:\n- the second screen\nWhat may confuse you:\n- none';
+  assert.strictEqual(qualityLens.isLensSurfacing(forHim), true);
+  assert.strictEqual(qualityLens.isLensSurfacing('Corrected answer first.\n\n## FOR HIM:\n- Done: the fix'), true);
+  assert.strictEqual(qualityLens.isLensSurfacing('**FOR HIM:** Done — the fix'), true);
+  assert.strictEqual(qualityLens.isLensSurfacing('The plain section FOR HIM: comes last in its report.'), false);
+});
+
 check('request-closure: a lens REFUTATION in the span demands the corrected answer IN FULL', () => {
   // Owner ruling 2026-09-11: async dispatch is right, but "at the end the correct version is
   // presented in full and nicely". The verdict lands on a WAKE turn, after the answer it judges,
@@ -799,8 +819,10 @@ check('request-closure: a lens REFUTATION in the span demands the corrected answ
   assert.strictEqual(requestClosure.applies(ctx), true);
   const text = requestClosure.ask(ctx);
   assert.match(text, /RESTATE THE ANSWER IN FULL/);
-  assert.match(text, /3 item\(s\)/, 'refuted + escalations are counted together');
-  assert.match(text, /«fix the parity bug»/, 'the verbatim request still leads');
+  // 2026-10-02: the count is the REFUTED claims; escalations are his decisions and ride in the
+  // reviewer's FOR HIM list. His words go to the reviewer (quality-lens OWNER WORDS), not here.
+  assert.match(text, /\b1 claim\(s\)/, 'refuted claims are counted');
+  assert.ok(!text.includes('fix the parity bug'), 'the nudge quotes no request');
 });
 
 check('request-closure: an ABORTED lens dispatch is called out as UNCHECKED, never silently passed', () => {
@@ -828,11 +850,13 @@ check('request-closure: a clean lens pass, or a span with no lens at all, adds n
   let text = requestClosure.ask(fakeCtx({ cwd: clean, disk: makeDisk(clean), turn: { toolTargets: ['agent:verifiability-lens:verifiability-lens'], userRequest: 'q', userRequestAt: at } }));
   assert.ok(!/RESTATE THE ANSWER IN FULL|UNCHECKED/.test(text), 'a clean pass must not manufacture a correction');
 
-  // No trace at all — the ask keeps its original shape.
+  // No trace at all — nothing to restate, so the duty is not due (2026-10-02: the who-did-what
+  // nudge it used to give every agent span is gone; it compared nothing).
   const bare = tmpdir('closure-no-lens');
-  text = requestClosure.ask(fakeCtx({ cwd: bare, disk: makeDisk(bare), turn: { toolTargets: ['agent:steward:steward'], userRequest: 'q', userRequestAt: at } }));
+  const bareCtx = fakeCtx({ cwd: bare, disk: makeDisk(bare), turn: { toolTargets: ['agent:steward:steward'], userRequest: 'q', userRequestAt: at } });
+  text = requestClosure.ask(bareCtx);
   assert.ok(!/RESTATE THE ANSWER IN FULL|UNCHECKED/.test(text));
-  assert.match(text, /who-did-what/);
+  assert.strictEqual(requestClosure.applies(bareCtx), false);
 });
 
 check('request-closure: a lens line from BEFORE this span is not attributed to it', () => {
@@ -841,8 +865,10 @@ check('request-closure: a lens line from BEFORE this span is not attributed to i
   const at = Date.now();
   fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens', 'trace.jsonl'),
     `${JSON.stringify({ t: new Date(at - 600000).toISOString(), plugin: 'verifiability-lens', decision: 'parsed', refuted: 9, escalations: 9 })}\n`);
-  const v = requestClosure.lensVerdicts(fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest: 'q', userRequestAt: at } }));
-  assert.deepStrictEqual(v, { refuted: 0, escalations: 0, aborted: 0, lines: 0 }, 'a stale verdict must not demand a rewrite');
+  // 2026-10-02: the span's verdict is its LATEST review (quality-lens latestReview), not a sum.
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest: 'q', userRequestAt: at } });
+  assert.strictEqual(qualityLens.latestReview(ctx), null, 'a stale verdict is no review of this span');
+  assert.strictEqual(requestClosure.applies(ctx), false, 'a stale verdict must not demand a rewrite');
 });
 
 // ---------- duty: steward-sync ----------
@@ -1641,6 +1667,10 @@ check('E2E: unchecked work is nudged; the same work WITH its check passes silent
   // named no check may not yield unnoticed; the identical turn whose transcript shows the
   // check running AFTER the change is not bothered at all.
   const dir = withoutRecall(tmpdir('e2e-self-check'));
+  // This is self-check's test. The reviewer (quality-lens) asks once per owner message that changed
+  // something since 2026-10-02, and its switch can be on in the machine's HOME (it is on the
+  // owner's), so the project says no explicitly — a project decision wins over home.
+  fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens.json'), JSON.stringify({ enabled: false }));
   const transcript = path.join(dir, 't.jsonl');
   const editMsg = JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } });
   fs.writeFileSync(transcript, [
@@ -1690,7 +1720,8 @@ check('E2E: a staged steward inbox is named in the tail, and recorded against th
   const tail = parsed.hookSpecificOutput.additionalContext;
   assert.ok(tail.includes('steward-sync'), 'the tail names the duty');
   assert.ok(tail.includes('20260727-0700-a-thought.md'), 'and names the staged item');
-  const ledger = JSON.parse(fs.readFileSync(path.join(dir, ledgerStore.LEDGER_REL), 'utf8'));
+  // 2026-10-01: one ledger file per window (session id) — lib/ledger.js.
+  const ledger = JSON.parse(fs.readFileSync(path.join(dir, ledgerStore.ledgerRelFor('e2e-sitting')), 'utf8'));
   assert.ok(ledger.sessionAsked.includes('steward-sync'), 'recorded against the sitting, not the prompt');
 });
 
@@ -1785,14 +1816,28 @@ check('extractTurn: a USER pasting a task-notification is the user, not a wake',
   assert.ok(turn.userRequest.startsWith('why does'), 'and it is the boundary');
 });
 
-check('request-closure applies on a wake turn with a recovered request', () => {
+/*
+ * 2026-10-02: request-closure is due only when the span's LATEST review refuted claims (or was
+ * lost). The "The user originally asked: «…»" nudge it gave every woken or delegating span is
+ * gone: it compared nothing, and its quote was a helper's report 12 times out of 29. His words now
+ * reach the reviewer (quality-lens OWNER WORDS). These fixtures write that review.
+ */
+function refutingReview(name, at) {
+  const dir = tmpdir(name);
+  fs.mkdirSync(path.join(dir, '.claude', 'verifiability-lens'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens', 'trace.jsonl'),
+    `${JSON.stringify({ t: new Date(at + 1000).toISOString(), plugin: 'verifiability-lens', decision: 'parsed', refuted: 1, escalations: 0 })}\n`);
+  return dir;
+}
+
+check('request-closure is NOT due on a wake turn without a refuting review (the nag is gone)', () => {
   const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 } });
-  assert.strictEqual(requestClosure.applies(ctx), true);
+  assert.strictEqual(requestClosure.applies(ctx), false);
 });
 
-check('request-closure applies when the turn dispatched agents, even without a wake', () => {
+check('request-closure is NOT due just because the turn dispatched agents', () => {
   const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 0, toolTargets: ['agent:verifiability-lens'] } });
-  assert.strictEqual(requestClosure.applies(ctx), true);
+  assert.strictEqual(requestClosure.applies(ctx), false);
 });
 
 check('request-closure is silent on a plain turn — no wakes, no agents', () => {
@@ -1805,45 +1850,54 @@ check('request-closure is silent when no genuine request was recovered', () => {
   assert.strictEqual(requestClosure.applies(ctx), false);
 });
 
-check('request-closure ask carries the VERBATIM request and the span activity', () => {
-  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1, toolTargets: ['agent:steward'] } });
+check('request-closure ask quotes no request and lists no agents — only the restatement it demands', () => {
+  const at = Date.now();
+  const dir = refutingReview('closure-no-quote', at);
+  const ctx = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest: 'audit the parser', userRequestAt: at, wakeCount: 1, toolTargets: ['agent:steward'] } });
   const ask = requestClosure.ask(ctx);
-  assert.ok(ask.includes('audit the parser'), 'verbatim request embedded');
-  assert.ok(ask.includes('agent:steward'), 'who-did-what raw material named');
-  assert.ok(ask.includes('1 background completion'), 'wake count stated');
+  assert.match(ask, /RESTATE THE ANSWER IN FULL/);
+  assert.ok(!ask.includes('audit the parser'), 'no request embedded');
+  assert.ok(!ask.includes('agent:steward'), 'no who-did-what list');
+  assert.ok(!/background completion/.test(ask), 'no wake count');
 });
 
-check('request-closure clips a wall-of-text request instead of burying its own instruction', () => {
-  const long = 'x'.repeat(requestClosure.MAX_REQUEST_EXCERPT + 50);
-  const ask = requestClosure.ask(fakeCtx({ turn: { userRequest: long, wakeCount: 1 } }));
-  assert.ok(!ask.includes(long), 'full wall not embedded');
-  assert.ok(ask.includes('x'.repeat(requestClosure.MAX_REQUEST_EXCERPT) + '…'), 'clipped with ellipsis');
+check('request-closure never embeds a wall-of-text request (nothing of it reaches the nudge)', () => {
+  const at = Date.now();
+  const dir = refutingReview('closure-wall', at);
+  const ask = (userRequest) => requestClosure.ask(fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest, userRequestAt: at, wakeCount: 1 } }));
+  assert.strictEqual(ask('x'.repeat(5000)).length, ask('q').length, 'the request does not change the nudge at all');
 });
 
 check('request-closure terminates: asked once this prompt -> satisfied, decide allows', () => {
-  const unasked = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 } });
+  const at = Date.now();
+  const dir = refutingReview('closure-terminates', at);
+  const unasked = fakeCtx({ cwd: dir, disk: makeDisk(dir), turn: { userRequest: 'audit the parser', userRequestAt: at, wakeCount: 1 } });
   const r1 = decide(unasked, [requestClosure]);
   assert.strictEqual(r1.action, 'advise', 'fire 1 nudges');
-  assert.ok(r1.emission.hookSpecificOutput.additionalContext.includes('audit the parser'));
+  assert.ok(r1.emission.hookSpecificOutput.additionalContext.includes('RESTATE THE ANSWER IN FULL'));
   const asked = fakeCtx({
+    cwd: dir,
+    disk: makeDisk(dir),
     stopHookActive: true,
-    turn: { userRequest: 'audit the parser', wakeCount: 1 },
+    turn: { userRequest: 'audit the parser', userRequestAt: at, wakeCount: 1 },
     ledger: { promptId: 'prompt-1', fires: 1, asked: ['request-closure'] },
   });
   const r2 = decide(asked, [requestClosure]);
   assert.strictEqual(r2.action, 'allow', 'fire 2 reads the ledger and releases');
 });
 
-check('request-closure re-arms on the NEXT wake because a wake is a new prompt_id', () => {
-  // The cadence claim from the design: each wake resets the prompt bucket, so every
-  // wake-yield gets its own nudge. Ledger behavior + duty satisfaction, chained.
-  const before = { promptId: 'wake-1', sessionId: 's', fires: 1, asked: ['request-closure'], sessionAsked: [], startedAt: 1 };
+check('request-closure: a helper wake inside the same OWNER span does not re-arm; the owner speaking again does', () => {
+  // 2026-10-01: the span is the owner message (lib/ledger.js) — every helper arrival used to
+  // be a new prompt_id that re-armed the duty over an already-closed answer.
+  const before = { promptId: 'wake-1', ownerPromptId: 'owner-1', sessionId: 's', fires: 1, asked: ['request-closure'], sessionAsked: [], startedAt: 1 };
   const dir = tmpdir('ledger-wake');
   ledgerStore.writeLedger(dir, before);
-  const after = ledgerStore.readLedger(dir, 'wake-2', 's');
-  assert.deepStrictEqual(after.asked, [], 'new prompt id drops the prompt bucket');
-  const ctx = fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 }, ledger: after });
-  assert.strictEqual(requestClosure.satisfied(ctx), false, 'so the duty asks again at the next yield');
+  const wake = ledgerStore.readLedger(dir, 'wake-2', 's', 'owner-1');
+  assert.deepStrictEqual(wake.asked, ['request-closure'], 'same owner span keeps the bucket');
+  assert.strictEqual(requestClosure.satisfied(fakeCtx({ turn: { userRequest: 'audit the parser', wakeCount: 1 }, ledger: wake })), true);
+  const next = ledgerStore.readLedger(dir, 'owner-2', 's', 'owner-2');
+  assert.deepStrictEqual(next.asked, [], 'a new owner message drops it');
+  assert.strictEqual(requestClosure.satisfied(fakeCtx({ turn: { userRequest: 'next ask', wakeCount: 1 }, ledger: next })), false);
 });
 
 // ---------- 0.7.0: the wrong-check class, the inline bound, the accountable trace ----------
@@ -2093,9 +2147,13 @@ check('E2E: the trace carries engine, ms, deferred, satisfied_by, payload_keys (
   const dir = withoutRecall(tmpdir('e2e-trace-fields'));
   fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  // The duty that waits for the helper is quality-lens since 2026-10-02 (request-closure no longer
+  // speaks on every agent span): switched on here, with one edit for it to review.
+  fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens.json'), JSON.stringify({ enabled: true }));
   const transcript = path.join(dir, 't.jsonl');
   fs.writeFileSync(transcript, [
     JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } }),
     JSON.stringify({ message: { role: 'assistant', content: [
       { type: 'tool_use', id: 'toolu_Z', name: 'Agent', input: { subagent_type: 'general-purpose', prompt: 'x' } },
     ] } }),
@@ -2110,7 +2168,7 @@ check('E2E: the trace carries engine, ms, deferred, satisfied_by, payload_keys (
   const trace = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'trace.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   const last = trace[trace.length - 1];
   assert.strictEqual(last.agents_in_flight, 1);
-  assert.ok(last.deferred.some((d) => d.id === 'request-closure' && /in flight/.test(d.reason)), JSON.stringify(last.deferred));
+  assert.ok(last.deferred.some((d) => d.id === 'quality-lens' && /in flight/.test(d.reason)), JSON.stringify(last.deferred));
   assert.ok(Array.isArray(last.payload_keys) && last.payload_keys.includes('permission_mode'));
   assert.strictEqual(last.permission_mode, 'default');
   assert.ok(typeof last.emitted_chars === 'number');
@@ -2175,29 +2233,22 @@ check('installed: the user-scope entry wins over another scope; among several, t
   assert.strictEqual(r.stale, true);
 });
 
-check('withStaleNote prepends the note to a block reason and to additionalContext; fresh or empty → untouched', () => {
-  const live = { stale: true, note: 'running demo 1.0.0 ≠ installed 1.1.0 — restart Claude Code to load it' };
-  const block = hookModule.withStaleNote({ decision: 'block', reason: 'do X' }, live);
-  assert.ok(block.reason.startsWith('[turn-end] running demo 1.0.0'), block.reason);
-  assert.ok(block.reason.endsWith('\ndo X'));
-  const advise = hookModule.withStaleNote({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: 'ctx' } }, live);
-  assert.ok(advise.hookSpecificOutput.additionalContext.startsWith('[turn-end] running demo'));
-  assert.strictEqual(advise.hookSpecificOutput.hookEventName, 'Stop');
-  const fresh = { decision: 'block', reason: 'do X' };
-  assert.strictEqual(hookModule.withStaleNote(fresh, { stale: false, note: '' }), fresh);
-  assert.strictEqual(hookModule.withStaleNote(null, live), null);
-  assert.strictEqual(hookModule.withStaleNote(fresh, null), fresh);
+check('running ≠ installed never reaches Claude: withStaleNote is gone (2026-10-01 — the note moved to the trace and running/<session>.json; tests/ledger-running-state.test.js)', () => {
+  assert.strictEqual(hookModule.withStaleNote, undefined);
 });
 
 check('E2E: every trace line carries the RUNNING version from the manifest beside the script', () => {
   const dir = withoutRecall(tmpdir('e2e-trace-version'));
   fs.mkdirSync(path.join(dir, '.steward'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.steward', 'state.md'), 'curated');
+  fs.writeFileSync(path.join(dir, '.claude', 'verifiability-lens.json'), JSON.stringify({ enabled: true }));
   const transcript = path.join(dir, 't.jsonl');
   // An idle turn allows silently and writes no trace line; an agent in flight defers a duty,
-  // which is recorded — so the fixture carries one dispatch, exactly like the trace-fields test.
+  // which is recorded — so the fixture carries one edit and one dispatch, exactly like the
+  // trace-fields test (the deferring duty is quality-lens since 2026-10-02).
   fs.writeFileSync(transcript, [
     JSON.stringify({ message: { role: 'user', content: 'do the thing' } }),
+    JSON.stringify({ message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Edit', input: { file_path: '/work/app.js' } }] } }),
     JSON.stringify({ message: { role: 'assistant', content: [
       { type: 'tool_use', id: 'toolu_V', name: 'Agent', input: { subagent_type: 'general-purpose', prompt: 'x' } },
     ] } }),
@@ -2359,7 +2410,9 @@ check('recall: a note at a path this turn OPENED (Read or Bash) is dropped befor
 
 check('tool-record: lineFor classifies the command, extracts files, parses the exit code from every shape the docs describe', () => {
   const ok = toolRecord.lineFor({ hook_event_name: 'PostToolUse', session_id: 's', prompt_id: 'p', tool_name: 'Bash', tool_input: { command: 'node --test tests/' }, tool_response: { stdout: 'ok', stderr: '' } });
-  assert.deepStrictEqual([ok.kind, ok.exit, ok.ok, ok.event], ['check', null, true, 'PostToolUse']);
+  // A finished foreground success is exit 0 (2026-10-02): PostToolUse fires only after the tool
+  // succeeded, and requireGreen needs the 0 written down.
+  assert.deepStrictEqual([ok.kind, ok.exit, ok.ok, ok.event], ['check', 0, true, 'PostToolUse']);
   assert.ok(ok.response_keys.includes('stdout') && ok.payload_keys.includes('tool_response'));
   const fail = toolRecord.lineFor({ hook_event_name: 'PostToolUseFailure', session_id: 's', prompt_id: 'p', tool_name: 'Bash', tool_input: { command: 'node --test tests/' }, error: 'Exit code 1\nFAIL x' });
   assert.deepStrictEqual([fail.kind, fail.exit, fail.ok], ['check', 1, false]);
@@ -2380,7 +2433,7 @@ check('tool-record E2E: writes one ledger line + one sample per event where turn
   execFileSync(process.execPath, [script], { input: payload('PostToolUse', { tool_response: { stdout: 'y' } }), encoding: 'utf8' });
   const lines = fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'checks.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.strictEqual(lines.length, 3);
-  assert.deepStrictEqual(lines.map((l) => [l.event, l.exit, l.ok]), [['PostToolUse', null, true], ['PostToolUseFailure', 2, false], ['PostToolUse', null, true]]);
+  assert.deepStrictEqual(lines.map((l) => [l.event, l.exit, l.ok]), [['PostToolUse', 0, true], ['PostToolUseFailure', 2, false], ['PostToolUse', 0, true]]);
   const samples = fs.readdirSync(path.join(dir, '.claude', 'turn-end', 'samples')).sort();
   assert.deepStrictEqual(samples, ['PostToolUse.json', 'PostToolUseFailure.json'], 'one sample per event, first fire only');
   const sample = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'samples', 'PostToolUse.json'), 'utf8'));
@@ -2634,7 +2687,8 @@ check('E2E: v1 hook line (plugin/version/session_id/ms/decision/bytes) + ONE act
   assert.strictEqual(h.decision, h.action);
   assert.ok(Number.isInteger(h.bytes) && h.bytes > 0 && Number.isInteger(h.ms), 'bytes counts the emitted tail; ms is the fire wall-clock');
   assert.deepStrictEqual(hooks.map((l) => l.decision), ['advise', 'block'], 'the ladder, as decisions: nudge, then block once ignored');
-  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'turn-end', 'ledger.json'), 'utf8')).actedOnUpTo, Date.parse('2026-09-09T10:00:00.000Z'));
+  // 2026-10-01: one ledger file per window (session id) — lib/ledger.js.
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, ledgerStore.ledgerRelFor('sess-e2e')), 'utf8')).actedOnUpTo, Date.parse('2026-09-09T10:00:00.000Z'));
 });
 
 // ---- fewer-clicks: the owner-law duty. Its false-POSITIVE guards matter more than its
@@ -2720,26 +2774,35 @@ check('fewer-clicks never hardens the tail', () => {
 });
 
 // ---- session-digest: every branch the ask OFFERS must be observable by its own check ----
+// 2026-10-02: branch 3 (nothing worth keeping) is a MARKER for this owner span written into
+// turn-end's own state file — no longer a sentence in the answer the owner reads, and never a line
+// in the digest kb reads (tests/quiet-digest.test.js).
 
-check('a stated no-op satisfies the digest duty (branch 3 of its own ask)', () => {
+check('a stated no-op in the answer no longer satisfies the digest duty; the marker in turn-end\'s file does (branch 3 of its own ask)', () => {
   const ctx = fakeCtx({ lastAssistantMessage: 'Answered a question about the schema; this turn produced nothing worth keeping.' });
-  assert.strictEqual(sessionDigest.satisfied(ctx), true);
+  assert.strictEqual(sessionDigest.satisfied(ctx), false, 'words in the answer count for nothing');
+  const marked = fakeCtx({
+    lastAssistantMessage: 'Answered a question about the schema.',
+    disk: { exists: () => true, read: (rel) => (String(rel) === sessionDigest.NO_OP_POSIX ? `${sessionDigest.noOpMarker('prompt-1')}\n` : null), mtimeMs: () => null, list: () => [], hasFilesIn: () => true },
+  });
+  assert.strictEqual(sessionDigest.satisfied(marked), true, 'the marker for this owner span is a disk fact');
 });
 
-check('the no-op wording is an open set, not one magic phrase', () => {
+check('the no-op is ONE marker per owner span, not an open set of phrases', () => {
   for (const msg of [
     'Nothing worth keeping from this turn.',
     'No digest-worthy outcome here.',
     'Nothing new to capture — it was a read-only pass.',
     'This turn produced nothing that changes the model.',
   ]) {
-    assert.strictEqual(sessionDigest.statedNoOp(fakeCtx({ lastAssistantMessage: msg })), true, msg);
+    assert.strictEqual(sessionDigest.satisfied(fakeCtx({ lastAssistantMessage: msg })), false, msg);
   }
+  const marker = sessionDigest.noOpMarker('span-key');
+  assert.ok(marker.includes('span-key') && !marker.includes('\n'), marker);
 });
 
-check('an ordinary work answer does NOT read as a no-op', () => {
+check('an ordinary work answer does NOT satisfy the digest duty', () => {
   const ctx = fakeCtx({ lastAssistantMessage: 'Fixed the truncation and added four tests; suite is 222/222.' });
-  assert.strictEqual(sessionDigest.statedNoOp(ctx), false);
   assert.strictEqual(sessionDigest.satisfied(ctx), false, 'real work still owes a digest line');
 });
 

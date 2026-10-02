@@ -36,7 +36,9 @@
  *   PROMPT, so a prompt-span duty goes unsatisfied again the instant its own dispatch pays
  *   off. Seven prompt_ids in 24 minutes, owner typing nothing, six dispatches, each one
  *   manufacturing the request that re-armed it. `prompt_id` is the PROMPT span — NOT the
- *   user-request span, which is what it was mistaken for.
+ *   user-request span, which is what it was mistaken for. Since 2026-10-01 the ledger keys the
+ *   `prompt` bucket on the OWNER's message (lib/ledger.js), so a helper wake no longer resets it;
+ *   `session` still outlives the owner speaking again.
  *
  * Adding one = one require below. The runner never changes.
  *
@@ -57,10 +59,17 @@ const selfCheck = require('./self-check');
 const requestClosure = require('./request-closure');
 const fewerClicks = require('./fewer-clicks');
 const page = require('./page');
+const testIntegrity = require('./test-integrity');
+const lockedTests = require('./locked-tests');
 
 // `page` (0.14.0, owner's `subtract` ruling 2026-09-18; opt-in since 0.14.2): runs only when the
 // project's .claude/turn-end.json sets duties.page.enabled: true.
-const DUTIES = [contextRecall, sessionDigest, stewardSync, qualityLens, selfCheck, requestClosure, fewerClicks, page];
+// `test-integrity` (2026-10-01, the owner: "tests were bent to pass. This is unacceptable.") sits
+// BEFORE quality-lens on purpose: its analysis is memoized on the fire's context, so the reviewer
+// duty reading it (test-integrity.of(ctx)) gets the same one instead of reading git again.
+// `locked-tests` (2026-10-02, split from test-integrity after review: only a test holding his words
+// may block) reads that same analysis, so it sits right after test-integrity.
+const DUTIES = [contextRecall, sessionDigest, stewardSync, testIntegrity, lockedTests, qualityLens, selfCheck, requestClosure, fewerClicks, page];
 
 function all() {
   return DUTIES.slice();

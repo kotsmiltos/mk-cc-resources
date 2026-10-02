@@ -33,7 +33,23 @@
  * ends in `.md` and does not begin with a dot: a note the owner staged. That excludes the
  * archive (a directory, and not descended into) and the placeholder (not `.md`, and a dotfile)
  * without either being named here — the next placeholder some tool drops in is excluded too.
+ *
+ * NEVER WHILE A PASS RUNS (2026-10-02). Measured over three of the owner's projects, every ask
+ * since 19 Sep: 15 asks; 4 came while a helper of the session was still running, 2 of them while a
+ * STEWARD pass of the same session was still running — one launched in an EARLIER owner message
+ * (project A, 28 Sep: launched 22:33, the owner spoke at 22:38, the ask came at 22:39), which the
+ * span-scoped helper list cannot see. An ask then means a second integration pass racing the first
+ * over one model whose only writer is meant to be the steward agent. So the duty defers:
+ *   - while helpers of this owner span run (lib/deferral.js, bounded), like every closure duty;
+ *   - while a background steward pass launched anywhere in this SESSION has not reported back
+ *     (hand-back or task-notification), read from the transcript itself — the same bound applies,
+ *     so a pass that died silently stops holding the ask after PRESUMED_GONE_MS.
+ * A duty already satisfied is never deferred (it would only add a trace line per wake).
  */
+
+const whose = require('../whose-words');
+const { whileAgentsRun, firstReason, PRESUMED_GONE_MS } = require('../deferral');
+const { ASYNC_LAUNCH_MARKER, AGENT_ID_RX, toolResultText } = require('../context');
 
 const ID = 'steward-sync';
 
@@ -110,6 +126,85 @@ function briefingBehind(ctx) {
   }
 }
 
+/*
+ * A BACKGROUND STEWARD PASS, read from the raw transcript (the only place its launch is recorded),
+ * across the whole SESSION — ctx.turn's helper list covers only the current owner span, and the
+ * measured race came from a pass launched one owner message earlier. Same shapes lib/context.js
+ * reads (verified there on 2.1.283): the Agent tool_use carries an `id`; its tool_result text
+ * begins "Async agent launched" and names the helper's `agentId`; the report arrives as a peer
+ * hand-back (origin.senderTaskId = agentId) and/or a task-notification (<task-id> = agentId,
+ * <tool-use-id> = launch id) — lib/whose-words.js classifies both. A synchronous call, whose
+ * result IS the report, never counts. Only lines that can matter are parsed. The launch marker,
+ * the agent-id pattern and the result-text reader are lib/context.js's own (one copy, no drift).
+ */
+const AGENT_TOOLS = new Set(['Agent', 'Task']);
+const STEWARD_HINT = 'steward';
+const LINE_HINTS = [STEWARD_HINT, ASYNC_LAUNCH_MARKER, 'task-notification', '"peer"', '<agent-message', 'Another Claude session'];
+
+/** Ids (agent id and launch id) of every delivered report in one record, into `reported`. */
+function collectReports(rec, reported) {
+  let said;
+  try { said = whose.classifyRecord(rec); } catch (_e) { return; }
+  if (said.who !== whose.WAKE || !said.wake) return;
+  if (said.wake.id) reported.add(said.wake.id);
+  if (said.wake.toolUseId) reported.add(said.wake.toolUseId);
+}
+
+/**
+ * Background steward passes of this session not yet reported back and not past the waiting bound.
+ * PURE: the raw transcript and the fire's clock in, [{ toolUseId, agentId, launchedAt }] out.
+ */
+function runningStewardPasses(raw, now) {
+  if (typeof raw !== 'string' || !raw.includes(STEWARD_HINT)) return [];
+  const stewardCalls = new Map(); // launch tool_use id -> when it was called
+  const launches = new Map();     // launch tool_use id -> { toolUseId, agentId, launchedAt }
+  const reported = new Set();
+  for (const line of raw.split('\n')) {
+    if (!line || !LINE_HINTS.some((h) => line.includes(h))) continue;
+    let rec;
+    try { rec = JSON.parse(line); } catch (_e) { continue; }
+    if (!rec || typeof rec !== 'object') continue;
+    const atRaw = typeof rec.timestamp === 'string' ? Date.parse(rec.timestamp) : NaN;
+    const at = Number.isFinite(atRaw) ? atRaw : null;
+    const m = rec.message && typeof rec.message === 'object' ? rec.message : rec;
+    for (const c of Array.isArray(m.content) ? m.content : []) {
+      if (!c || typeof c !== 'object') continue;
+      if (c.type === 'tool_use' && AGENT_TOOLS.has(c.name) && typeof c.id === 'string' && c.input
+          && typeof c.input.subagent_type === 'string' && STEWARD_AGENT_RX.test(`agent:${c.input.subagent_type}`)) {
+        stewardCalls.set(c.id, at);
+      } else if (c.type === 'tool_result' && stewardCalls.has(c.tool_use_id)) {
+        const body = toolResultText(c);
+        if (!body.includes(ASYNC_LAUNCH_MARKER)) continue; // synchronous: the result IS the report
+        const fromBody = AGENT_ID_RX.exec(body);
+        const fromRecord = rec.toolUseResult && typeof rec.toolUseResult.agentId === 'string' ? rec.toolUseResult.agentId : null;
+        const calledAt = stewardCalls.get(c.tool_use_id);
+        launches.set(c.tool_use_id, { toolUseId: c.tool_use_id, agentId: fromBody ? fromBody[1] : fromRecord, launchedAt: calledAt !== null ? calledAt : at });
+      }
+    }
+    collectReports(rec, reported);
+  }
+  const out = [];
+  for (const l of launches.values()) {
+    if (reported.has(l.toolUseId) || (l.agentId && reported.has(l.agentId))) continue;
+    // The same bound every closure duty waits under: a pass silent this long is presumed gone.
+    if (typeof l.launchedAt === 'number' && typeof now === 'number' && now - l.launchedAt > PRESUMED_GONE_MS) continue;
+    out.push(l);
+  }
+  return out;
+}
+
+/** Reason string while a background steward pass of this session is still out, else null. */
+function whileStewardPassRuns(ctx) {
+  const raw = ctx && ctx.transcriptPath && ctx.disk && typeof ctx.disk.read === 'function'
+    ? ctx.disk.read(ctx.transcriptPath)
+    : null;
+  const now = ctx && typeof ctx.now === 'number' ? ctx.now : Date.now();
+  const running = runningStewardPasses(raw, now);
+  return running.length
+    ? `deferred: ${running.length} steward pass(es) of this session still running — a second would race it over the same model`
+    : null;
+}
+
 function ask(ctx) {
   const items = pendingItems(ctx);
   const named = items.length ? ` — ${items.join(', ')}` : '';
@@ -151,23 +246,44 @@ module.exports = {
     return pendingItems(ctx).length > 0 || briefingBehind(ctx);
   },
 
+  /*
+   * Not while the span's helpers run (bounded), and never while a steward pass of this session is
+   * still out — see NEVER WHILE A PASS RUNS above. A duty already satisfied is not deferred.
+   */
+  defer(ctx) {
+    if (satisfiedArm(ctx)) return null;
+    return firstReason(ctx, [whileAgentsRun, whileStewardPassRuns]);
+  },
+
   satisfied(ctx) {
-    // The REAL termination and the only arm that means the work actually happened: the inbox is
-    // empty because the steward archived each item. Unreachable through the runner while
-    // `applies` gates on the same count — kept because a duty has to be answerable on its own
-    // terms, and this is the arm that survives if `applies` ever widens.
-    if (pendingItems(ctx).length === 0 && !briefingBehind(ctx)) return true;
-    // Dispatched during this turn; the steward has not written `done/` yet.
-    if ((ctx.turn.toolTargets || []).some((t) => STEWARD_AGENT_RX.test(t))) return true;
-    // Session bucket first — the one that survives the agent-completion wake-up.
-    if ((ctx.ledger.sessionAsked || []).includes(ID)) return true;
-    return (ctx.ledger.asked || []).includes(ID);
+    return satisfiedArm(ctx) !== null;
+  },
+
+  satisfiedBy(ctx) {
+    return satisfiedArm(ctx);
   },
 
   ask,
 };
 
+/** Which arm satisfies the duty right now, or null — named for the trace. */
+function satisfiedArm(ctx) {
+  // The REAL termination and the only arm that means the work actually happened: the inbox is
+  // empty because the steward archived each item. Unreachable through the runner while
+  // `applies` gates on the same count — kept because a duty has to be answerable on its own
+  // terms, and this is the arm that survives if `applies` ever widens.
+  if (pendingItems(ctx).length === 0 && !briefingBehind(ctx)) return 'inbox-integrated';
+  // Dispatched during this owner span; the steward has not recorded the items yet.
+  if ((ctx.turn.toolTargets || []).some((t) => STEWARD_AGENT_RX.test(t))) return 'steward-dispatched';
+  // Session bucket first — the one that survives the agent-completion wake-up.
+  if (((ctx.ledger && ctx.ledger.sessionAsked) || []).includes(ID)) return 'asked-this-sitting';
+  if (((ctx.ledger && ctx.ledger.asked) || []).includes(ID)) return 'asked-this-request';
+  return null;
+}
+
 module.exports.pendingItems = pendingItems;
+module.exports.runningStewardPasses = runningStewardPasses;
+module.exports.whileStewardPassRuns = whileStewardPassRuns;
 module.exports.briefingBehind = briefingBehind;
 module.exports.recordedIds = recordedIds;
 module.exports.INBOX_REL = INBOX_REL;
