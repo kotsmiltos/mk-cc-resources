@@ -4,6 +4,19 @@ All notable changes to **thorough-mode** are recorded here, newest first, in the
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-10-02
+
+### Added
+- **The kickoff save-check.** When this sitting saves a kickoff in a project's `.claude/prompts/` without its `OWNER ASKED` / `THIS PROMPT ADDS` / `COST` lines, the session gets the same rules `@prompt` gives and rewrites that file before it stops — whether or not `@prompt` was typed. The steward version is used where the project's repo has one, rooted the way `@prompt` roots it. A kickoff that already has the lines gets nothing. Kickoffs from earlier sittings are left alone: a quick check before each save tells which is which, so a later fix to an old kickoff (the steward's claim fixes, say) is never told to reshape it; when the check cannot tell, the rules still go out, with a note to leave an earlier sitting's kickoff as it is. Full rules once per file per agent per session, then a short reminder, and the full rules again after the conversation is compacted. `INDEX.md` and files in subfolders are skipped; it reads the saved file, never what you typed. Why: you asked for next-session kickoffs in plain words 6–7 times since 19 Sep, but the rules applied only the two times `@prompt` was typed (Claude's proposal, which you approved on 1 Oct). Cost: two short Node processes per Write/Edit (~74 ms each).
+- One trace line per kickoff decision in that project's `.claude/thorough-mode/trace.jsonl` (rules given in full or short, an earlier kickoff left alone, saved compliant afterwards; the file name only), so the scorecard can tell whether the check does anything.
+
+### Removed
+- **The "[hint] Tip: add `@x`" lines.** They went only to Claude, never to you: relayed 0 of 62 times since 19 Sep (0 of 87 ever), and 50 of the 62 fired on helper reports. Your words, 2026-10-01: "thorough mode, I don't even know what the tips are and where they appear". The @ words are unchanged.
+
+### Fixed
+- A finished helper's report, or a message from another Claude session, no longer fires the @ words inside it (a report saying "@ship before pushing" injected the whole pre-ship checklist). The guard uses the repo's canonical nine-marker list.
+- If the plugin's `lib/` folder were missing or broken, the prompt hook would have failed on every prompt; now the other @ words keep working and `@prompt` stands down with one line on stderr.
+
 ## [1.16.0] - 2026-09-28
 
 ### Added

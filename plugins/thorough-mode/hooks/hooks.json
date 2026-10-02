@@ -1,5 +1,5 @@
 {
-  "description": "Detects prompt-modifier keywords (@ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc) and injects the matching behavioural protocol; hints the modifier when the intent is typed without the keyword. Stands down on machine-authored prompts.",
+  "description": "Detects prompt-modifier keywords (@ship, @present, @debug, @verify, @fresh, @prompt, @build, @fc) and injects the matching behavioural protocol; a prompt without one gets nothing. Stands down on machine-authored prompts, helper reports included. Kickoff check: a kickoff this sitting saves in .claude/prompts/ without its OWNER ASKED / THIS PROMPT ADDS / COST lines gets the @prompt rules back so it is rewritten; earlier sittings' kickoffs are left as they are (a probe before each save tells which is which).",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,6 +7,36 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/thorough-mode.js\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/kickoff-check.js"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/kickoff-check.js"
+            ],
+            "timeout": 10
           }
         ]
       }

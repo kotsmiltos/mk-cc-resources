@@ -25,14 +25,24 @@ Hooks only — install it standalone, not through the bundle.
 | `@build` | Reuse before building; check what already exists first |
 | `@fc` | Fewer clicks — everything doable gets done here, the result lands in the terminal instead of a path to open, and what is left is one keystroke |
 
-Put the keyword anywhere in the message. They stack — `@debug @verify` fires both. Describe the
-intent without the keyword ("prove it", "root cause", "re-read the file") and you get a one-line
-hint naming the shorthand.
+Put the keyword anywhere in the message. They stack — `@debug @verify` fires both. Without a
+keyword nothing is added: the old "Tip: add @x" hints are gone (1.17.0) — they reached only Claude,
+never you.
+
+## The kickoff check (1.17.0)
+
+Kickoffs saved in a project's `.claude/prompts/` are checked when this sitting saves them. A kickoff
+written in this sitting without its `OWNER ASKED` / `THIS PROMPT ADDS` / `COST` lines gets the same
+rules `@prompt` gives, so the session fixes the file before it stops — whether or not you typed
+`@prompt`. A kickoff from an earlier sitting is left alone (a later fix to an old kickoff is never
+told to reshape it). Nothing to turn on; each decision leaves one line in
+`.claude/thorough-mode/trace.jsonl`.
 
 ## Two things it deliberately does not do
 
 - **It never fires on machine-generated text.** A keyword quoted inside a task notification, hook
-  output or a command transcript is ignored; a genuine message that merely mentions one still fires.
+  output, a command transcript, a finished helper's report or another Claude session's message is
+  ignored; a genuine message that merely mentions one still fires.
 - **It never blocks.** Every modifier is injected context — the turn continues either way.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed between versions.
