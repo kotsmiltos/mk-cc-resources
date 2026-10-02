@@ -14,8 +14,14 @@ Segment-based statusline: `model │ current task │ directory │ ⚓ │ █�
 - **Steward anchor** — `⚓` in projects carrying a `.steward/` model; `⚓N` when N inbox thoughts
   await integration.
 - **Current task** — the in-progress todo, when the harness tracks one.
+- **Plugins-updated hint** (0.3.0) — at the start of the line, `plugins updated — reopen this window
+  or type /reload-plugins`, only while THIS window runs older plugin code than is installed (setup
+  changes reach a window only after a restart or `/reload-plugins`; `/clear` does not reload). It
+  reads the record turn-end writes at each turn end, so it needs turn-end installed and shows
+  only where turn-end keeps state. When nothing is stale the line is exactly as before.
 - **Open design** — each segment is one fail-soft function in `SEGMENTS`; add yours by dropping a
-  function in. A broken segment disappears; it never breaks the line.
+  function in. A broken segment disappears; it never breaks the line. A per-session notice from
+  another plugin is one more `SESSION_NOTICES` entry (`dir` / `active` / `text`).
 
 ## Wiring (statusline is a settings-level surface — one line, once)
 
@@ -23,5 +29,9 @@ Segment-based statusline: `model │ current task │ directory │ ⚓ │ █�
 "statusLine": { "type": "command", "command": "node \"<repo>/plugins/statusline/bin/mk-statusline.js\"" }
 ```
 
-Tests: `node tests/mk-statusline.test.js` (12 checks, no framework — includes the normalization
-math: remaining 58.25% → used 50%).
+The hint reaches a machine only if its `statusLine` command points at a copy that updates (a repo
+clone you pull, or the marketplace clone); a version-pinned plugin cache folder stays at the
+version it was cut from.
+
+Tests: `node tests/mk-statusline.test.js` (20 checks, no framework — includes the normalization
+math: remaining 58.25% → used 50%) and `node tests/stale-plugins.test.js` (22 checks).

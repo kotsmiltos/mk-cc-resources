@@ -1,0 +1,30 @@
+{
+  "provenance": "Shape of the JSON Claude Code 2.1.287 pipes to a statusLine command, read from the shipped binary's builder on 2026-10-01: the base hook input (session_id, transcript_path, cwd, permission_mode, agent_type) spread first, then model / workspace {current_dir, project_dir, added_dirs} / version / output_style / cost / context_window. cwd and workspace.current_dir are the SAME value (the session's current directory, which follows cd); project_dir is the directory the window was opened in. Path fields are blank here and filled per test with temp dirs; the session id is a made-up UUID.",
+  "session_id": "0b7e4a52-3f1c-4d7e-9a61-5c2f8e1d9b30",
+  "transcript_path": "",
+  "cwd": "",
+  "permission_mode": "default",
+  "agent_type": "",
+  "model": { "id": "claude-opus-5-5", "display_name": "Opus 5.5" },
+  "workspace": { "current_dir": "", "project_dir": "", "added_dirs": [] },
+  "version": "2.1.287",
+  "output_style": { "name": "default" },
+  "cost": {
+    "total_cost_usd": 1.23,
+    "total_duration_ms": 456000,
+    "total_api_duration_ms": 120000,
+    "total_lines_added": 12,
+    "total_lines_removed": 3
+  },
+  "context_window": {
+    "total_input_tokens": 40000,
+    "total_output_tokens": 2000,
+    "context_window_size": 200000,
+    "current_usage": null,
+    "used_percentage": 21,
+    "remaining_percentage": 79
+  },
+  "exceeds_200k_tokens": false,
+  "fast_mode": false,
+  "thinking": { "enabled": true }
+}
