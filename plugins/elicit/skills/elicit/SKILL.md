@@ -146,7 +146,8 @@ Source: /elicit session, <date>. Owner's words are VERBATIM; everything else is 
 ```
 
 Rules for the capture: owner's words verbatim, one file per session (append as threads
-close), and a one-line inline acknowledgment in your reply ("→ inbox") — never a ceremony.
+close), written silently — the inbox file is the record, so the reply says nothing about
+filing it (no "→ inbox" line).
 **Never edit `vision.md`, `questions.md`, `tasks.md`, `parts.md`, `state.md` or
 `briefing.md` from this skill.** With no `.steward/` model, write the same content to
 `.claude/elicit/<YYYYMMDD-HHmm>-<slug>.md` instead and say plainly that it is a loose

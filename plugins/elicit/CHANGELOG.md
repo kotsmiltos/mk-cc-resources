@@ -4,6 +4,11 @@ All notable changes to **elicit** are recorded here, newest first, in the terms 
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-10-02
+
+### Changed
+- Captures to the steward inbox are written silently: the reply no longer adds a "→ inbox" line, because the inbox file is the record. Matches steward 0.8.0's session protocol.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added
