@@ -4,6 +4,11 @@ All notable changes to **session-lifecycle** are recorded here, newest first, in
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-02
+
+### Fixed
+- `/meta-review` no longer points to thorough-mode's hint table as the precedent for fixing an underused plugin: a hook's hint reaches only Claude, never you (thorough-mode's tips were relayed 0 of 87 times and were removed on 2026-10-01). It now says to rewrite the plugin's description instead.
+
 ## [1.3.1] - 2026-08
 
 ### Fixed

@@ -106,7 +106,7 @@ A coverage gap = a workflow chain done manually with no skill match.
 ### Where fixes live
 - Skill friction → the skill's SKILL.md (description or body) in the plugin's source repository (for marketplace authors)
 - Coverage gaps → new plugin, or new skill under an existing plugin, in the plugin's source repository
-- Underused plugins → description rewriting in the plugin's source repository (for hint-phrasing precedent, see the HINTS table in `plugins/thorough-mode/hooks/thorough-mode.js`)
+- Underused plugins → description rewriting in the plugin's source repository (not a hook hint: a hook's plain-stdout hint reaches only Claude, never the user — thorough-mode's tips were relayed 0 of 87 times and were removed 2026-10-01)
 ```
 
 ## Constraints
