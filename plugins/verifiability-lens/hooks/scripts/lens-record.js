@@ -14,8 +14,18 @@
  * lens agent is read/research-only by design and cannot write its own record; the platform's
  * SubagentStop event can. Its documented input (hooks reference, verified 2026-09-09) carries
  * `agent_type`, `agent_id`, `agent_transcript_path`, `prompt_id`, `session_id` and
- * `last_assistant_message` — the rollup itself — so no transcript parse is needed for the
- * counts; the transcript supplies duration and tokens.
+ * `last_assistant_message`; the transcript supplies duration and tokens.
+ *
+ * THE REPORT IS IN THE TRANSCRIPT, NOT THE PAYLOAD (corrected 2026-10-01). This header used to
+ * say `last_assistant_message` IS the rollup. It stopped being true with Claude Code 2.1.274
+ * (first seen 2026-09-17): background helpers deliver their report through a SubagentHandback
+ * tool call, and their last plain text is an undelivered afterword ("I've sent the report…").
+ * The payload kept the same 15 keys, so nothing signalled the change, and 22 of 22 dispatches
+ * since were recorded `unparsed`. transcriptStats now also returns every hand-back's `message`
+ * (oldest first) and the last one; lib/trace-line.js parses them newest first, then the final
+ * text. TIMING: the hand-back record is on disk 3.5-16 s before this hook runs (22 dispatches,
+ * measured 2026-10-01; e.g. hand-back 22:04:59.685, trace line 22:05:12.848), and in every one
+ * it precedes the final text in the transcript, so reading it here is not a race.
  *
  * THIS IS NOT THE RETIRED STOP HOOK. 0.5.0 removed the lens's blocking Stop hook (it fired 8×
  * over one request); automatic firing stays turn-end's `quality-lens` duty. This hook never
@@ -26,7 +36,13 @@
  * (`verifiability-lens:verifiability-lens` — measured in 81 real transcripts); the matcher
  * regex `verifiability-lens$` covers both spellings. ONE real payload is saved under
  * `.claude/verifiability-lens/samples/` the first time it is seen (the 0.8.0 recorder
- * precedent) — the fixture the parser is then measured against.
+ * precedent) — the fixture the parser is then measured against. ONE MORE is saved the first
+ * time each `rollup_source` (handback | final_text | none) appears in a project, carrying the
+ * rollup block the parser read (or, with no rollup, the report's tail): a sample frozen at the
+ * first payload is how the platform change went unseen — 6 of 7 projects' samples predated it
+ * (measured 2026-10-01). That per-source sample has every absolute machine path replaced by
+ * `<path>`, because at least one project tracks its samples in git (measured 2026-10-01). The
+ * first sample keeps the payload as it always has (the 0.6.0 behaviour, unchanged here).
  *
  * Footprint: writes into the project root's `.claude/verifiability-lens/` only — the lens
  * was deliberately dispatched there. Stands down in judge children.
@@ -45,6 +61,19 @@ const PLUGIN_ROOT = path.join(__dirname, '..', '..');
 const CHILD_SESSION_VAR = 'MK_TURN_END_DEPTH';
 const AGENT_TYPE_RX = /verifiability-lens$/;
 const MAX_SAMPLE_TEXT_CHARS = 500;
+// The per-source sample keeps the rollup block the parser read. Real blocks ran 702-2,248 chars
+// over 22 hand-backs (measured 2026-10-01), so this cap keeps every one whole.
+const SAMPLE_EXCERPT_CHARS = 3000;
+// The platform's tool for a background helper's report (Claude Code >= 2.1.274).
+const HANDBACK_TOOL = 'SubagentHandback';
+const NO_SOURCE = 'none';
+// Absolute machine paths, for the per-source sample: a drive-letter path, or a POSIX path of two
+// or more segments that does not continue a word, a URL or a relative path (so `a/b/u`,
+// `/verifiability` and `https://host/x` stay as they are). A path containing spaces is cut at the
+// first space — the part that names the machine is the part that goes.
+const DRIVE_PATH_RX = /(?<![\w])[A-Za-z]:[\\/][^\s"'`<>|]*/g;
+const POSIX_PATH_RX = /(?<![\w.~:/-])\/(?:[\w.-]+\/)+[\w.-]*/g;
+const PATH_PLACEHOLDER = '<path>';
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -83,9 +112,26 @@ function resolveProjectRoot(start, home = os.homedir()) {
   return fallback;
 }
 
-/** Duration start, model and token totals from the agent's own transcript. Best-effort. */
+/** The `message` of every SubagentHandback tool_use in one assistant content array, in order. */
+function handbacksIn(content) {
+  if (!Array.isArray(content)) return [];
+  const found = [];
+  for (const block of content) {
+    if (!block || block.type !== 'tool_use' || block.name !== HANDBACK_TOOL) continue;
+    const message = block.input && block.input.message;
+    if (typeof message === 'string') found.push(message);
+  }
+  return found;
+}
+
+/**
+ * Duration start, model, token totals and every hand-back message (`handbacks`, oldest first;
+ * `handback` = the last one) from the agent's own transcript. Every hand-back is kept because
+ * each one is delivered: a follow-up sent after the full report must not hide the report.
+ * Best-effort: an unreadable file or a malformed line yields nulls, never a throw.
+ */
 function transcriptStats(file) {
-  const out = { startedAt: null, model: null, tokens: null };
+  const out = { startedAt: null, model: null, tokens: null, handbacks: [], handback: null };
   if (typeof file !== 'string' || !file) return out;
   let raw;
   try { raw = fs.readFileSync(file, 'utf8'); } catch (_e) { return out; }
@@ -100,6 +146,7 @@ function transcriptStats(file) {
     const m = o.message;
     if (!m || m.role !== 'assistant') continue;
     if (typeof m.model === 'string') out.model = m.model;
+    out.handbacks.push(...handbacksIn(m.content));
     const u = m.usage;
     if (u && typeof u === 'object') {
       sawUsage = true;
@@ -110,6 +157,7 @@ function transcriptStats(file) {
     }
   }
   if (sawUsage) out.tokens = tokens;
+  if (out.handbacks.length) out.handback = out.handbacks[out.handbacks.length - 1];
   return out;
 }
 
@@ -124,18 +172,53 @@ function truncateSample(value) {
   return value;
 }
 
-/** One real payload per event, kept as the fixture the parser is measured against. */
-function saveSampleOnce(root, event, payload) {
+/** One real sample per NAME, kept as the fixture the parser is measured against. */
+function saveSampleOnce(root, name, sample) {
   try {
     const dir = path.join(root, SAMPLES_REL);
-    const file = path.join(dir, `${event}.json`);
+    const file = path.join(dir, `${name}.json`);
     if (fs.existsSync(file)) return false;
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(truncateSample(payload), null, 2));
+    fs.writeFileSync(file, JSON.stringify(sample, null, 2));
     return true;
   } catch (_e) {
     return false;
   }
+}
+
+/** The sample name for a delivery shape: one file per event per rollup_source. */
+const sourceSampleName = (event, source) => `${event}.rollup-${source || NO_SOURCE}`;
+
+/** Every string in a sample with its absolute machine paths replaced by `<path>`. */
+function redactPaths(value) {
+  if (typeof value === 'string') return value.replace(DRIVE_PATH_RX, PATH_PLACEHOLDER).replace(POSIX_PATH_RX, PATH_PLACEHOLDER);
+  if (Array.isArray(value)) return value.map(redactPaths);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = redactPaths(v);
+    return out;
+  }
+  return value;
+}
+
+/**
+ * The per-source sample: the payload as usual, plus what the line was built from — the payload
+ * alone no longer holds the report, so a payload-only sample cannot show the parser's input. The
+ * excerpt is the rollup block from the text the rollup was read from (with no rollup: the tail of
+ * the delivered text). The first version kept a blind 2,000-char tail; over the 22 real
+ * hand-backs that missed the rollup head in 8 and held a machine path in 6, and with FOR HIM:
+ * written after the rollup it would mostly hold those plain lists (review finding, 2026-10-01).
+ */
+function sourceSample(payload, line, stats) {
+  const excerpt = traceLine.rollupExcerpt(traceLine.reportOf(payload, stats).text, SAMPLE_EXCERPT_CHARS);
+  return redactPaths({
+    ...truncateSample(payload),
+    _rollup_source: line.rollup_source,
+    _decision: line.decision,
+    _handback_bytes: line.handback_bytes,
+    _excerpt_from: excerpt.from,
+    _report_excerpt: excerpt.text,
+  });
 }
 
 function record(root, line) {
@@ -160,9 +243,12 @@ async function main() {
   try { payload = JSON.parse(await readStdin()); } catch (_e) { return process.exit(0); }
   if (!payload || typeof payload !== 'object' || !isLensPayload(payload)) return process.exit(0);
   const root = resolveProjectRoot(payload.cwd || process.cwd());
-  saveSampleOnce(root, String(payload.hook_event_name || 'SubagentStop'), payload);
+  const event = String(payload.hook_event_name || 'SubagentStop');
+  saveSampleOnce(root, event, truncateSample(payload));
   const stats = transcriptStats(payload.agent_transcript_path);
-  record(root, traceLine.lineFor(payload, { now: new Date(), version: runningVersion(), stats }));
+  const line = traceLine.lineFor(payload, { now: new Date(), version: runningVersion(), stats });
+  record(root, line);
+  saveSampleOnce(root, sourceSampleName(event, line.rollup_source), sourceSample(payload, line, stats));
   process.exit(0);
 }
 
@@ -170,4 +256,7 @@ if (require.main === module) {
   main().catch(() => process.exit(0));
 }
 
-module.exports = { transcriptStats, resolveProjectRoot, isLensPayload, runningVersion, TRACE_REL, SAMPLES_REL, STATE_REL, AGENT_TYPE_RX };
+module.exports = {
+  transcriptStats, handbacksIn, resolveProjectRoot, isLensPayload, runningVersion, sourceSampleName, redactPaths,
+  TRACE_REL, SAMPLES_REL, STATE_REL, AGENT_TYPE_RX, HANDBACK_TOOL,
+};

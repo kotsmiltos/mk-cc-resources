@@ -21,6 +21,11 @@ focus: []                        # OPTIONAL, per-project: what "best achievable"
                                  #   Empty = generic bar. Project override location: .claude/verifiability-lens/profile.yaml
                                  #   (full copy of this file with tuned dials). Copyable presets: defaults/presets/.
 
+# NOT DIALS: the rubric's hard rules (references/rubric.md Part 2) apply whatever this file says,
+# and a project copy of this file cannot turn them off — a weakened test (inverted, skipped,
+# removed or loosened) is always escalated with the default "restore it unless he says otherwise",
+# and done / not done is judged against the owner's own words, not Claude's design.
+
 # Operational rules derived from the dials (the lens/triage reads these):
 rules:
   # With escalation_floor: important, minor items never reach the user — suppress + log only.

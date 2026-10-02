@@ -18,7 +18,7 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.7.0)
+.claude-plugin/plugin.json       # metadata (v0.8.0)
 agents/verifiability-lens.md     # the read-only classifier + triager; its `rollup:` block is
                                  #   MACHINE-READ (0.6.0: + `verification: {verified, refuted}`)
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
@@ -30,11 +30,19 @@ hooks/hooks.json                 # ONE informational recorder, never a Stop hook
 hooks/scripts/lens-record.js     #   SubagentStop, matcher `verifiability-lens$` (dispatches carry
                                  #   the plugin-scoped type `verifiability-lens:verifiability-lens`
                                  #   — measured in 81 transcripts). One trace-schema-v1 line per
-                                 #   dispatch -> .claude/verifiability-lens/trace.jsonl, from the
-                                 #   payload's `last_assistant_message` (the rollup) + the agent
-                                 #   transcript (duration, model, tokens); one real payload saved
-                                 #   under samples/ (0.8.0 recorder precedent). Zero output, stands
-                                 #   down in judge children, writes only under the project root
+                                 #   dispatch -> .claude/verifiability-lens/trace.jsonl. 0.8.0: the
+                                 #   REPORT is read from the agent transcript's SubagentHandback
+                                 #   calls (since CC 2.1.274, first seen 2026-09-17, the payload's
+                                 #   last_assistant_message is an undelivered afterword — 22 of 22
+                                 #   reviews were logged `unparsed`). transcriptStats returns
+                                 #   `handbacks` (all, in order) + `handback` (the last); the hand-back
+                                 #   is on disk 3.5-16 s before the hook (22 dispatches, measured
+                                 #   2026-10-01). One real payload saved under samples/ (unchanged)
+                                 #   plus one SubagentStop.rollup-<source>.json per new rollup source,
+                                 #   holding `_report_excerpt` (the rollup block, else the tail; ≤3000
+                                 #   chars), `_excerpt_from`, every machine path replaced by <path>.
+                                 #   Zero output, stands down in judge children, writes only under
+                                 #   the project root
 lib/trace-line.js                # the PURE writer. `decision` is FOUR-way: parsed | unparsed (the lens
                                  #   answered, the parser could not read it) | aborted (it never did the
                                  #   work - a LOST GATE, decided on substrate: no rollup AND <400 chars
@@ -43,12 +51,25 @@ lib/trace-line.js                # the PURE writer. `decision` is FOUR-way: pars
                                  #   gate was indistinguishable from a clean one.
                                  #   parseRollup (a count not stated is null, never
                                  #   0), lineFor, examples() — plugin-toolkit's trace-schema drift
-                                 #   suite discovers it by shape (references/trace-schema-v1.md)
+                                 #   suite discovers it by shape (references/trace-schema-v1.md).
+                                 #   0.8.0: pickRollup parses hand-backs NEWEST first, then the final
+                                 #   text; `rollup_source` / `handback_bytes` (all hand-backs summed —
+                                 #   each is delivered) / `for_him`; `bytes` = what was delivered. The
+                                 #   block ends at its CLOSING fence (an opening fence after the head
+                                 #   is skipped) or a line starting with FOR HIM: — the same heading
+                                 #   rule (/^[ \t#*]*FOR HIM:/) drives for_him and turn-end's
+                                 #   isLensSurfacing (each plugin keeps its own copy). Quote-aware
+                                 #   inline lists; rollupExcerpt / reportOf exported; 5 examples
 tests/verifiability-lens.test.js # contract tests over the shipped files (agent/rubric/profile/
                                  #   presets/metadata/hook registration) + the writer (parser over
                                  #   the REAL 2026-08-23 rollup shape, E2E over the REAL payload
                                  #   shape captured live 2026-09-09) — replaces the retired hook's 39
+tests/handback.test.js           # 48 checks — hand-back reading, several hand-backs, block ends,
+                                 #   for_him, the per-source sample (0.8.0)
+tests/reviewer-brief.test.js     # 37 checks — the reviewer's brief: five headings, every weakened
+                                 #   test an escalation, `none` vs never handed, FOR HIM template
 tests/fixtures/SubagentStop.sample.json  # the real SubagentStop payload, paths sanitized
+tests/fixtures/lens-handback.agent.jsonl, SubagentStop.handback.sample.json  # sanitised real (CC 2.1.283)
 README.md / CHANGELOG.md
 ```
 

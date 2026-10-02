@@ -4,6 +4,25 @@ All notable changes to **verifiability-lens** are recorded here, newest first, i
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-10-02
+
+### Fixed
+- **Reviews are counted again.** Since Claude Code 2.1.274 (first seen 2026-09-17) a background helper delivers its report in a SubagentHandback tool call, and its last plain text is an undelivered afterword. The recorder read only the afterword, so every review since was logged `unparsed` with no counts (22 of 22). It now reads every hand-back from the agent's transcript, newest first, then the final text, and keeps the first that carries the rollup. Replaying the 22 real reviews gives 22/22 parsed.
+- A short follow-up hand-back no longer hides the report.
+- A comma inside a quoted list item no longer counts as two items; lists after the rollup's closing fence are no longer counted; a `rollup:` label followed by a fenced block parses.
+- `/verifiability` addresses the agent by the id that works (`verifiability-lens:verifiability-lens`).
+- The agent-file checks work on a Windows (CRLF) checkout.
+
+### Added
+- Trace fields `rollup_source` (handback / final_text / none), `handback_bytes` (all hand-backs summed) and `for_him`.
+- One extra sample per new rollup source per project, holding the rollup block the parser read, with every machine path replaced by `<path>`.
+
+### Changed
+- **The reviewer judges the work against your words**, handed to it as OWNER WORDS together with the plan items, what changed, what ran and the test changes (turn-end 0.15.0 sends these). Claude's own design documents are not the reference, and Claude-written text you pasted counts as Claude's design.
+- **Every test that was flipped, switched off, removed or loosened is ALWAYS flagged to you**, with the default "restore it unless you say otherwise"; where your words seem to ask for the change, they are quoted beside it so you can confirm in one word.
+- **Its report ends with a plain FOR HIM: section** of five short lists — Done / Not done / Claimed without a check / Tests changed / What may confuse you — after the machine-readable rollup, and the whole report goes in the hand-back. A section the dispatcher marked `none` is not mentioned; one it never sent costs one plain line about what could not be checked.
+- What you will notice with turn-end: lens lines carry real counts again, so turn-end's "restate the answer in full" ask comes back after a review that refuted claims, and the acted-on lens numbers reappear in harness-stats.
+
 ## [0.7.0] - 2026-09-11
 
 ### Fixed

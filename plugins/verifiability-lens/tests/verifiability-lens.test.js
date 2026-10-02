@@ -108,7 +108,12 @@ const sample = JSON.parse(read(path.join('tests', 'fixtures', 'SubagentStop.samp
     && traceLine.looksAborted('x'.repeat(traceLine.ABORTED_TEXT_FLOOR), { tokens: { out: 0 } }) === false
     && traceLine.looksAborted('short', {}) === true);
 
-  check('examples() cover parsed / unparsed / crashed / aborted', traceLine.examples().map((e) => e.decision).join(',') === 'parsed,unparsed,crashed,aborted');
+  // EXPECTATION CHANGED 2026-10-01 (was 'parsed,unparsed,crashed,aborted'): a fifth example, the
+  // hand-back shape of Claude Code >= 2.1.274, is `parsed` too. examples() are the drift suite's
+  // subject, so the shape the platform now produces must be among them.
+  check('examples() cover parsed / unparsed / crashed / aborted, plus parsed-from-the-hand-back',
+    traceLine.examples().map((e) => e.decision).join(',') === 'parsed,unparsed,crashed,aborted,parsed'
+    && traceLine.examples()[4].rollup_source === 'handback');
   check('recorder: only lens payloads (matcher belt)', recorder.isLensPayload(sample) && !recorder.isLensPayload({ ...sample, agent_type: 'Explore' }) && !recorder.isLensPayload({}));
   check('recorder: runningVersion reads the manifest beside the code', recorder.runningVersion() === JSON.parse(read('.claude-plugin/plugin.json')).version);
 }
@@ -146,7 +151,9 @@ const sample = JSON.parse(read(path.join('tests', 'fixtures', 'SubagentStop.samp
 
 // ---------- the agent the duty dispatches ----------
 const agent = read('agents/verifiability-lens.md');
-const fm = /^---\n([\s\S]*?)\n---/.exec(agent);
+// `\r?`: a Windows checkout with core.autocrlf=true writes this file with CRLF, and the LF-only
+// pattern then found no frontmatter at all (review finding, 2026-10-01).
+const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(agent);
 check('agent has YAML frontmatter', Boolean(fm));
 const front = fm ? fm[1] : '';
 check('agent frontmatter names the agent', /^name:\s*verifiability-lens\s*$/m.test(front));

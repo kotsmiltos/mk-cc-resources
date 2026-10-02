@@ -1,8 +1,8 @@
 # The verifiability rubric — three checks + surfacing triage
 
 > **type:** reference (canon — cite, do not copy)
-> **consumed_by:** the `verifiability-lens` agent; the Stop hook's injected instruction;
-> the `/verifiability` command. One source of truth.
+> **consumed_by:** the `verifiability-lens` agent; turn-end's `quality-lens` duty (which
+> dispatches it); the `/verifiability` command. One source of truth.
 
 The lens is a strict, opinionated guardian of work quality. It runs THREE checks over the work that
 was just done, ACTIVELY verifying (read code, search web, check docs) rather than just labelling —
@@ -31,7 +31,13 @@ class is **capability-relative** (A if the doer can run the check, B if not); **
 
 ### Check 2 — Completeness (was it all done; did we stop for a real reason?)
 
-Measure what was DONE against what was MEANT to be done (the request / plan / stated scope):
+Measure what was DONE against what was MEANT to be done — and what was meant is the owner's own
+words: `OWNER WORDS` first, then the `PLAN ITEMS` he agreed to, then any other stated scope.
+Claude's own design documents, plans, proposals, decision logs and "rulings" are not the reference
+for what he wants; they are claims to check against his words, and where they disagree his words
+win (the newer of his own words, when those disagree). Measured 2026-09-29: a pass accepted two
+switched-off tests because a ruling Claude had written itself said so — judged against Claude's
+design, not his words.
 
 - Everything intended is done and verified → **complete**.
 - Something is unfinished/deferred **with a real stated reason** (a true blocker, a user gate,
@@ -75,6 +81,16 @@ the noise floor. Demanding judge, clean signal.
 auto-resolve is never silent (every default logged, auditable); escalate sparingly, batched,
 recommended-default-first.
 
+**Hard rule — weakened tests (no profile dial turns this off).** A test change that **inverts** an
+assertion, **skips** / ignores / disables a test, **removes** an assertion, or **loosens** a bound,
+tolerance or threshold is ALWAYS escalated, never auto-resolved, never suppressed, never defaulted
+to keep. Its recommended default is **"restore it unless he says otherwise"** (Claude's design,
+2026-10-01). Even when his own words seem to ask for the change it is still escalated, with his
+words quoted beside it: whether they meant it is his call, and every weakening stays in the
+escalation count. A locked test (one that carries his words) that changed is `critical`. The
+reviewer quotes old → new from the `TEST CHANGES` list it is handed — it has no shell, so the
+dispatcher supplies the diff.
+
 ---
 
 ## Part 3 — Recipient profile (who-it-serves)
@@ -93,3 +109,9 @@ A short, plain, self-contained list of only what genuinely needs them — verifi
 completeness gaps (especially arbitrary stops), and quality shortfalls that matter — each with a
 recommended action they can accept. Everything settleable is absorbed and logged. The product is
 the absorption **plus the few forceful pushes** that keep the work at its best — not a raw dump.
+
+The report ends with the machine-read `rollup:` block (for the record) and then, last, a plain
+section headed exactly `FOR HIM:` with five short lists — Done / Not done / Claimed without a
+check / Tests changed / What may confuse you — in words he would use, with no file paths and no
+ids. The whole report travels in the hand-back when the platform delivers helpers' reports that
+way (Claude Code 2.1.274 and later).

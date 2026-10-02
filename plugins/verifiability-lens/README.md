@@ -29,6 +29,11 @@ Then it decides what's worth your time. It does **not** dump the classes on you.
 The goal: pick up your slack. Catch the mistakes, fix or default the small stuff, and tap you only
 for the handful of real decisions, pre-chewed.
 
+Since 0.8.0 the reviewer checks the work against **what you said**, not against Claude's own plans.
+It always tells you when a test was changed to check something weaker, and suggests putting it
+back. Its report ends with a short list for you: what is done, what is not, what was claimed
+without a check, which tests changed, and what may confuse you.
+
 ## Why
 
 Hard-to-verify work (class B/U) is where iterative agents stall — they can't tell if a loop got
