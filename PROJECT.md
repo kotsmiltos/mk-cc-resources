@@ -66,6 +66,20 @@ and have my vision made and progress captured." Public repo; built first for his
   score recorder reads the wrong field since 17 Sep. Thorough-mode tips never reach him (0 of 62).
   Knowledge-base notes are never corrected.
 
+- **2 Oct, built (his "good let's do it"), committed, NOT pushed:** turn-end 0.15.0, kb 0.17.0,
+  steward 0.8.0, thorough-mode 1.17.0, plain 0.2.0, verifiability-lens 0.8.0, statusline 0.3.0,
+  plugin-toolkit 1.24.0 and small bumps to patterns, essense-flow, elicit, session-lifecycle. Checks:
+  112 of 112 test suites (3,953 checks), registry check and repo-guard clean. On his real sessions
+  since 19 Sep: 0 of 98 requests now read as a helper's report (helper wakes that re-armed a check:
+  191 before, 0 now); the four message hooks print nothing on three real helper reports (the kb
+  session digest still rides them, Claude's choice). "Check my setup" now has 14 checks; on this
+  machine it fixed his rules hook (silent on helper reports, still speaks on his messages) and added
+  his tests-before-code words to his personal CLAUDE.md (backed up). twin-game: its Unity test
+  script now fails when a test fails, and turn-end knows its test scripts (uncommitted there, waiting
+  on the history move). Not yet seen live: whether he sees turn-end's test-change lines on screen,
+  and whether the reviewer writes its FOR HIM list. Claude's choices: the reviewer may run up to 3
+  times per message; a helper with no report after 60 minutes counts as gone.
+
 ## Next (whose each is)
 
 1. **twin-game push** (his, one command, given to him in the chat): push the cleaned copy's two
@@ -73,22 +87,16 @@ and have my vision made and progress captured." Public repo; built first for his
    walked through with him). Check: `git rev-list --count origin/spinoff-toy..spinoff-toy` is 0.
 2. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
    at each provider.
-3. **Plugin fixes, in this order** (Claude's proposal, told to him 1 Oct): one shared "is this
-   him?" test built from a real helper report; test protection (tests tied to his typed words,
-   newest first, locked at commit time; every flipped/switched-off test shown to him in one line by
-   the hook) plus twin-game's test script reporting failure; his tests-first sentence loaded
-   everywhere; the reviewer's recorder reading the hand-back, and the reviewer run once per request
-   fed his words; self-check judging what ran; bookkeeping out of his answers; tips removed;
-   knowledge-base notes corrected by the steward pass. Check: each fix tested first, then a replay
-   over his real sessions shows the number dropping.
-4. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
+3. **Push this repo's 13 commits** (his yes needed). Check: `git rev-list --count origin/main..main`
+   is 0; then in a newly opened window (not /clear) the statusline shows no "reopen" hint.
+4. **twin-game's next session** (Claude, with one question to him): which of his own typed words
+   each riding test holds (newest first) → the locked list; put the wheelie/stoppie tests back to
+   what his latest words say. Check: the locked list quotes only words he typed, with dates.
+5. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
    machines at least"). Check: every line fine, or the ones left are the ones he chose to keep.
-5. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
+6. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
    charge). His certificate settled 24% VAT on 29 Sep.
 
 ## Open decisions
 
-- Whether the reviewer runs on every request where Claude changed something (a few minutes' wait
-  each time, roughly 7 times today's reviews by Claude's estimate; the plan limit was hit on
-  26–27 Sep and during the 30 Sep review). Asked 1 Oct.
 - Claude's remaining proposed removal: the Serena "too many reads" guard. Needs his yes.
