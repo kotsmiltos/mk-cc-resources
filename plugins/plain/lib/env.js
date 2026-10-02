@@ -13,7 +13,9 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { readRegistryKey } = require('./windows');
 
 const CLAUDE_DIR = '.claude';
 const USER_SETTINGS_REL = path.join(CLAUDE_DIR, 'settings.json');
@@ -22,6 +24,10 @@ const INSTALLED_REL = path.join(CLAUDE_DIR, 'plugins', 'installed_plugins.json')
 const KNOWN_MARKETPLACES_REL = path.join(CLAUDE_DIR, 'plugins', 'known_marketplaces.json');
 const MARKETPLACE_MANIFEST_REL = path.join('.claude-plugin', 'marketplace.json');
 const PLUGIN_MANIFEST_REL = path.join('.claude-plugin', 'plugin.json');
+// The second-opinion reviewer's switch (read by turn-end's quality-lens duty: project file first,
+// then the one in the home folder) and turn-end's own per-project settings.
+const LENS_CONFIG_REL = path.join(CLAUDE_DIR, 'verifiability-lens.json');
+const TURN_END_CONFIG_REL = path.join(CLAUDE_DIR, 'turn-end.json');
 
 /** Read a JSON file: { exists, value, error }. A parse error is reported, never swallowed. */
 function readJson(file) {
@@ -93,8 +99,43 @@ function findOwnMarketplace(home, pluginName, pluginRoot) {
   return { name: null, location: null, listsPlugin: false, error: unreadable.length ? unreadable.join('; ') : null };
 }
 
+const HOME_MARK = '~';
+const isInside = (file, dir) => {
+  const rel = path.relative(dir, file);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+};
+const forward = (p) => p.split(path.sep).join('/');
+
 /**
- * @param {object} opts { home, cwd, pluginRoot }
+ * A file as a step may name it: from the home folder ("~/.claude/CLAUDE.md") or inside the
+ * project (".claude/settings.local.json"), else its own name only — never a full path, which
+ * carries his user name. His rule, 2026-09-08: "this cannot be poitning me to files"; a step he
+ * does by hand still has to say which file, so only `guidance` uses this, never `found`/`fix`.
+ */
+function shownPath(file, env) {
+  const abs = path.resolve(file);
+  // The deeper of the two folders wins: a project started above the home folder must never show
+  // a home file by its full path.
+  const roots = [{ dir: env.projectRoot, mark: null }, { dir: env.home, mark: HOME_MARK }]
+    .filter((r) => r.dir && isInside(abs, r.dir))
+    .sort((a, b) => b.dir.length - a.dir.length);
+  if (!roots.length) return path.basename(abs);
+  const rel = forward(path.relative(roots[0].dir, abs));
+  return roots[0].mark ? `${roots[0].mark}/${rel}` : rel;
+}
+
+/** Text with the home folder (either slash style) written as "~", for a command a step quotes. */
+function withoutHome(text, env) {
+  if (!env.home) return String(text);
+  const forms = [env.home, forward(env.home), env.home.replace(/\\/g, '/')];
+  return [...new Set(forms)].reduce((t, form) => t.split(form).join(HOME_MARK), String(text));
+}
+
+/**
+ * @param {object} opts { home, cwd, pluginRoot, platform?, vars?, now?, osRelease?, readRegistry? }
+ *   platform / vars / now / osRelease / readRegistry default to this machine's (process.platform,
+ *   process.env, the clock, os.release(), `reg query`); they are options so a check that reads
+ *   them can be tested on any machine.
  */
 function gather(opts) {
   const home = path.resolve(opts.home);
@@ -112,6 +153,11 @@ function gather(opts) {
     pluginRoot,
     pluginName,
     marketplace,
+    platform: opts.platform || process.platform,
+    vars: { ...(opts.vars || process.env) },
+    now: opts.now || new Date(),
+    osRelease: opts.osRelease || os.release(),
+    readRegistry: opts.readRegistry || readRegistryKey,
     paths: {
       userSettings: path.join(home, USER_SETTINGS_REL),
       installed: path.join(home, INSTALLED_REL),
@@ -119,11 +165,14 @@ function gather(opts) {
       globalClaudeMd: path.join(home, CLAUDE_DIR, 'CLAUDE.md'),
       projectsDir: path.join(home, CLAUDE_DIR, 'projects'),
       projectSettings: PROJECT_SETTINGS_FILES.map((f) => path.join(projectRoot, CLAUDE_DIR, f)),
+      lensConfig: path.join(home, LENS_CONFIG_REL),
+      projectLensConfig: path.join(projectRoot, LENS_CONFIG_REL),
+      projectTurnEndConfig: path.join(projectRoot, TURN_END_CONFIG_REL),
     },
   };
 }
 
 module.exports = {
-  gather, readJson, readText, requireMarketplaceList, projectRootOf, findOwnMarketplace,
+  gather, readJson, readText, requireMarketplaceList, projectRootOf, findOwnMarketplace, shownPath, withoutHome,
   MARKETPLACE_MANIFEST_REL, PLUGIN_MANIFEST_REL, CLAUDE_DIR,
 };

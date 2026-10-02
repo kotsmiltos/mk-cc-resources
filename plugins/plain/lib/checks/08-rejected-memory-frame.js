@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readText } = require('../env');
+const { readText, shownPath } = require('../env');
 
 const MEMORY_DIR = 'memory';
 const INDEX_FILE = 'MEMORY.md';
@@ -48,13 +48,15 @@ module.exports = {
   run(env) {
     const { indexes, notes } = inspect(env);
     const ok = indexes.length === 0 && notes.length === 0;
-    const where = [...new Set([...indexes, ...notes].map((f) => path.basename(path.dirname(path.dirname(f)))))];
+    // A session folder's name is built from its project's path (user name included): counted in
+    // what he reads first, named only in the step he would do by hand.
+    const projects = new Set([...indexes, ...notes].map((f) => path.dirname(path.dirname(f)))).size;
     return {
       ok,
-      found: ok ? 'none found' : `${indexes.length} memory index line(s) and ${notes.length} note file(s), in: ${where.join(', ')}`,
+      found: ok ? 'none found' : `${indexes.length} memory index line(s) and ${notes.length} note file(s), in the memory of ${projects} project(s)`,
       canFix: !ok,
       fix: ok ? null : `delete the "six classes" line from ${indexes.length} memory index(es) and delete ${notes.length} ${NOTE_FILE} note(s)`,
-      guidance: ok ? null : `Delete ${NOTE_FILE} and its line in MEMORY.md in each of: ${[...indexes, ...notes].map((f) => path.dirname(f)).filter((v, i, a) => a.indexOf(v) === i).join(', ')}`,
+      guidance: ok ? null : `Delete ${NOTE_FILE} and its line in MEMORY.md in each of: ${[...indexes, ...notes].map((f) => shownPath(path.dirname(f), env)).filter((v, i, a) => a.indexOf(v) === i).join(', ')}`,
     };
   },
 

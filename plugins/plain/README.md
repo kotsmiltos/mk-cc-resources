@@ -31,12 +31,20 @@ runs on and tells you, here, what is fine and what is not:
 3. caveman is off;
 4. commits get no Co-Authored-By line;
 5. no "generalize-first" hook runs on your messages;
-6. the verification-rules hook, if you have one, ignores the retired `++` and stays quiet when a
-   helper agent hands work back;
+6. the verification-rules hook, if you have one, ignores the retired `++`, prints nothing on a
+   helper's report or a message from another Claude session (tested with the shapes it really
+   receives), and still prints its rules on your own messages;
 7. your personal CLAUDE.md does not offer `++`, and its Generalize-First part is limited to code;
-8. no memory still carries the "six classes" frame you rejected.
+8. no memory still carries the "six classes" frame you rejected;
+9. your personal CLAUDE.md carries your tests-before-code rule in your words;
+10. patterns and reuse-gate are off;
+11. the second-opinion reviewer is on for you, and how often it runs (read from the turn-end you
+    have installed);
+12. this project doesn't switch the reviewer off;
+13. how many recent helper reports got text from your hooks (a count; nothing to fix here);
+14. on Windows, Claude Code's window opens in Windows Terminal.
 
-It changes nothing until you say yes, backs up every file before changing it (under
+The helper-report and terminal lines never change anything. It changes nothing until you say yes, backs up every file before changing it (under
 `~/.claude/backups/plain-check-setup/`), and for what it cannot change gives you the exact step.
 Claude Code may refuse changes to your own settings files; then you get the step instead. It
 runs only when you ask: no hook, nothing added to your messages.

@@ -21,6 +21,11 @@ const PLUGIN = path.join(__dirname, '..');
 const CLI = path.join(PLUGIN, 'bin', 'check-setup.js');
 const { loadChecks, runOne } = require('../lib/runner');
 const globalMd = require('../lib/checks/07-global-claude-md');
+// 2026-10-01: the checks added that day (tests-first, patterns/reuse-gate, reviewer, helper
+// reports, terminal) read FINE on both machines below, so this suite keeps testing what it
+// always tested; their own good/bad cases live in replicate-setup.test.js and
+// helper-reports.test.js.
+const { baselineForNewChecks, hookWithSpecMarkers, MARKERS_NAME } = require('./helpers/machine');
 
 const MK = 'mk-test';
 const CAVEMAN = 'caveman@caveman';
@@ -46,6 +51,10 @@ const writeJson = (file, v) => write(file, `${JSON.stringify(v, null, 2)}\n`);
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 // ---------------------------------------------------------------- fixtures
+// The bad hook is shaped like his real one before 2026-10-01: ++ still armed, and a marker list
+// that knows only the SAVED form of a helper report (what the 24 Sep fix added), so it still
+// speaks on the '<agent-message' form a hook really receives. The list's constant name is
+// spelled through MARKERS_NAME so repo-guard's drift detector does not read this file as a copy.
 const HOOK_BAD = `'use strict';
 const ALWAYS_ON = '[verification-rules] rules';
 const THOROUGH_AUGMENT = '[verification-rules:thorough] more';
@@ -53,23 +62,22 @@ const THOROUGH_TRIGGERS = [
   /(?:^|\\s)\\+\\+(?:\\s|$)/,
   /(?:^|\\s)@thorough(?:\\s|$)/i,
 ];
-const FIXTURE_MARKERS = [
+const ${MARKERS_NAME} = [
   '[SYSTEM NOTIFICATION',
   '<system-reminder>',
+  'Another Claude session sent a message',
 ];
 let data = '';
 process.stdin.on('data', (c) => { data += c; });
 process.stdin.on('end', () => {
   const prompt = String(JSON.parse(data).prompt || '');
-  if (FIXTURE_MARKERS.some((m) => prompt.startsWith(m))) return;
+  if (${MARKERS_NAME}.some((m) => prompt.startsWith(m))) return;
   const out = [ALWAYS_ON];
   if (THOROUGH_TRIGGERS.some((rx) => rx.test(prompt))) out.push(THOROUGH_AUGMENT);
   process.stdout.write(out.join('\\n'));
 });
 `;
-const HOOK_GOOD = HOOK_BAD
-  .replace(/const THOROUGH_TRIGGERS = \[[\s\S]*?\];/, 'const THOROUGH_TRIGGERS = [];')
-  .replace("  '<system-reminder>',", "  '<system-reminder>',\n  'Another Claude session sent a message',");
+const HOOK_GOOD = hookWithSpecMarkers(HOOK_BAD.replace(/const THOROUGH_TRIGGERS = \[[\s\S]*?\];/, 'const THOROUGH_TRIGGERS = [];'));
 
 const CLAUDE_MD_BAD = [
   '# Global Instructions',
@@ -138,13 +146,17 @@ function makeMachine(name, kind) {
   if (bad) write(path.join(mem, 'owner-expectation-gaps.md'), '# six classes\n');
   fs.mkdirSync(path.join(project, '.git'), { recursive: true });
   if (bad) writeJson(path.join(project, '.claude', 'settings.local.json'), { enabledPlugins: { [`plain@${MK}`]: false } });
+  baselineForNewChecks({ home, project, mk: MK });
   return { home, project, hookFile, genFirst, mem };
 }
 
 function cli(machine, extra = []) {
+  // Pinned "inside Windows Terminal" so the terminal check does not depend on where the suite runs.
+  const env = { ...process.env, HOME: SENTINEL, USERPROFILE: SENTINEL, WT_SESSION: 'fixture-session' };
+  delete env.TERM_PROGRAM;
   const r = spawnSync(process.execPath, [CLI, '--home', machine.home, '--cwd', machine.project, ...extra], {
     encoding: 'utf8',
-    env: { ...process.env, HOME: SENTINEL, USERPROFILE: SENTINEL },
+    env,
   });
   const lines = String(r.stdout || '').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
   return { status: r.status, lines, stderr: r.stderr };
@@ -153,8 +165,11 @@ const byId = (lines) => Object.fromEntries(lines.filter((l) => l.id).map((l) => 
 
 // ---------------------------------------------------------------- the registry
 const checks = loadChecks();
-check('eight checks load from lib/checks/, in file order', checks.length === 8 && checks[0].id === 'style-plugin' && checks[7].id === 'rejected-memory-frame', checks.map((c) => c.id).join(','));
-check('every check that can fix has an apply()', checks.every((c) => c.id === 'marketplace-current' || typeof c.apply === 'function'));
+check('fourteen checks load from lib/checks/, in file order', checks.length === 14 && checks[0].id === 'style-plugin' && checks[7].id === 'rejected-memory-frame' && checks[13].id === 'windows-terminal', checks.map((c) => c.id).join(','));
+// The three measurement/guidance-only checks never fix anything (2026-10-01: helper reports and
+// the terminal joined marketplace-current).
+const NEVER_FIXES = ['marketplace-current', 'helper-reports-unmarked', 'windows-terminal'];
+check('every check that can fix has an apply()', checks.every((c) => NEVER_FIXES.includes(c.id) || typeof c.apply === 'function'));
 {
   const dir = path.join(TMP, 'broken-registry');
   write(path.join(dir, '01-no-run.js'), "module.exports = { id: 'x', title: 'x' };\n");
@@ -170,7 +185,7 @@ const good = makeMachine('good', 'good');
 {
   const r = cli(good);
   check('good machine: exit 0', r.status === 0, r.stderr);
-  check('good machine: one line per check, each with the seven keys', r.lines.length === 8 && r.lines.every((l) => RESULT_KEYS.every((k) => k in l)));
+  check('good machine: one line per check, each with the seven keys', r.lines.length === checks.length && r.lines.every((l) => RESULT_KEYS.every((k) => k in l)));
   const bad = r.lines.filter((l) => l.ok !== true);
   check('good machine: every check is fine', bad.length === 0, JSON.stringify(bad));
 }
@@ -232,7 +247,13 @@ check('bad: a check run changed nothing on disk', readJson(path.join(badM.home, 
 {
   const odd = makeMachine('odd', 'bad');
   write(path.join(odd.home, '.claude', 'CLAUDE.md'), '# Mine\n\nI like `++` for hard tasks.\n');
-  const hook = fs.readFileSync(odd.hookFile, 'utf8').replace("  '<system-reminder>',\n", '');
+  // The fix anchors on the marker list's declaration, or else on the one line that reads the
+  // prompt (2026-10-01 review). This hook has neither: the list goes under another name and the
+  // prompt is read into a differently named variable.
+  const hook = fs.readFileSync(odd.hookFile, 'utf8').split(MARKERS_NAME).join('MY_OWN_LIST')
+    .replace("const prompt = String(JSON.parse(data).prompt || '');", "const said = String(JSON.parse(data).prompt || '');")
+    .replace('MY_OWN_LIST.some((m) => prompt.startsWith(m))', 'MY_OWN_LIST.some((m) => said.startsWith(m))')
+    .replace('rx.test(prompt)', 'rx.test(said)');
   write(odd.hookFile, hook);
   const r = byId(cli(odd).lines);
   check('CLAUDE.md worded differently: not fixable, exact manual step given',

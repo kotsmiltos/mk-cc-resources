@@ -17,7 +17,7 @@
  * problems; a caveman line worded differently is reported on its own and never blocks the rest.
  */
 
-const { readText } = require('../env');
+const { readText, shownPath } = require('../env');
 const { userSettings, enabledIn } = require('../settings');
 const { CAVEMAN_KEY } = require('./03-caveman-off');
 
@@ -125,10 +125,10 @@ module.exports = {
     const byHand = [...r.steps, ...manualSteps(r.leftover)];
     return {
       ok: false,
-      found: `${r.problems.join('; ')} (${r.file})`,
+      found: r.problems.join('; '),
       canFix: Boolean(r.fixed),
-      fix: r.fixed ? `in ${r.file}: ${r.steps.join('; ')}${r.leftover.length ? ` (still for you after that: ${manualSteps(r.leftover).join('; ')})` : ''}` : null,
-      guidance: `In ${r.file}: ${byHand.join('; ')}.`,
+      fix: r.fixed ? `in your personal CLAUDE.md: ${r.steps.join('; ')}${r.leftover.length ? ` (still for you after that: ${manualSteps(r.leftover).join('; ')})` : ''}` : null,
+      guidance: `In your personal CLAUDE.md (${shownPath(r.file, env)}): ${byHand.join('; ')}.`,
     };
   },
 

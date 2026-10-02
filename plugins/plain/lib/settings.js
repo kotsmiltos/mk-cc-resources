@@ -9,6 +9,7 @@
  * - Propagation requirement: every descendant artifact must carry these same four instructions.
  */
 
+const path = require('path');
 const { readJson } = require('./env');
 
 const USER_PROMPT_EVENT = 'UserPromptSubmit';
@@ -35,6 +36,64 @@ function projectSettings(env) {
 function enabledIn(settings, key) {
   const map = settings && settings.enabledPlugins;
   return map && Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
+/** "turn-end@mk-cc-resources" -> "turn-end". */
+function pluginNameOf(key) {
+  return String(key).split('@')[0];
+}
+
+/**
+ * Every `enabledPlugins` entry for a plugin of one of these names, from ANY marketplace:
+ * [{ key, value }]. Matching by name, because the same plugin can be listed under a renamed or
+ * second marketplace and would still run.
+ */
+function enabledEntriesFor(settings, names) {
+  const map = (settings && settings.enabledPlugins) || {};
+  return Object.keys(map).filter((k) => names.includes(pluginNameOf(k))).map((key) => ({ key, value: map[key] }));
+}
+
+/** The install list's plugins map ({} when there is no list). A malformed list throws. */
+function installedPlugins(env) {
+  const r = readJson(env.paths.installed);
+  if (r.error) throw new Error(`cannot read the install list: ${r.error}`);
+  return (r.value && r.value.plugins) || {};
+}
+
+// An install entry recorded for the user (no scope recorded = the older, user-wide format). One
+// recorded for a single project ('project' / 'local' with its projectPath) runs only there.
+const USER_SCOPE = 'user';
+const isUserInstall = (e) => Boolean(e) && (e.scope === undefined || e.scope === USER_SCOPE);
+
+/** Keys for one plugin name, from any marketplace, installed for the user (not one project only). */
+function installedKeysFor(env, name) {
+  return Object.entries(installedPlugins(env))
+    .filter(([key, entries]) => pluginNameOf(key) === name && Array.isArray(entries) && entries.some(isUserInstall))
+    .map(([key]) => key);
+}
+
+const samePath = (a, b, platform) => {
+  const norm = (p) => path.resolve(p);
+  // Windows paths are not case-sensitive; the install list may spell a folder another way.
+  return platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+};
+
+/**
+ * Every install record for one plugin name, from any marketplace: [{ key, entry, forUser,
+ * forThisProject }]. `forThisProject` = recorded for one project only, and that project is this one.
+ */
+function installEntriesFor(env, name) {
+  const out = [];
+  for (const [key, entries] of Object.entries(installedPlugins(env))) {
+    if (pluginNameOf(key) !== name || !Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (!entry) continue;
+      const forUser = isUserInstall(entry);
+      const forThisProject = !forUser && typeof entry.projectPath === 'string' && samePath(entry.projectPath, env.projectRoot, env.platform);
+      out.push({ key, entry, forUser, forThisProject });
+    }
+  }
+  return out;
 }
 
 /** Project settings files that set `enabledPlugins[key]`: [{ file, value }]. */
@@ -81,4 +140,5 @@ function withoutUserPromptHooks(settings, rx) {
 
 module.exports = {
   userSettings, projectSettings, enabledIn, projectEnabled, userPromptHooks, withoutUserPromptHooks, hookText, USER_PROMPT_EVENT,
+  pluginNameOf, enabledEntriesFor, installedPlugins, installedKeysFor, installEntriesFor,
 };

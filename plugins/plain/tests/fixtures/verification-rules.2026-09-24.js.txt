@@ -1,0 +1,94 @@
+"use strict";
+
+/**
+ * UserPromptSubmit hook: verification discipline rule injection.
+ *
+ * Always emits a tight set of always-on verification rules.
+ * When user prompt contains `++` or `@thorough`, also emits the thorough-mode
+ * augment with execution discipline rules.
+ *
+ * Designed to complement (not replace) the thorough-mode plugin which handles
+ * its own modifier injection. This hook is local — survives plugin updates.
+ *
+ * Source of truth for the rule content: ~/.claude/CLAUDE.md "Verification Discipline".
+ * Keep CLAUDE.md and this hook in sync.
+ */
+
+const ALWAYS_ON = `[verification-rules] Apply to every task:
+- Verify by reading code, not by checking that a file exists. Existence ≠ implementation.
+- State the verifiable check that proves work done. "Done" is a vibe; "tests pass + parseX returns Y for input Z" is a check.
+- Run the test suite after each substantive change, not at the end of a batch.
+- On retrospective questions, enumerate gaps before strengths. Specifics, not vibes.`;
+
+const THOROUGH_AUGMENT = `[verification-rules:thorough] Execution discipline:
+- Small batches: one item at a time, verify between. Never merge multiple items into one "done" claim.
+- End-to-end test new mechanisms before declaring wired. Function exports ≠ function runs.
+- Update the plan / handoff / notes after each item, not at the end. Future sessions inherit only what's written.`;
+
+const THOROUGH_TRIGGERS = []; // ++ / @thorough retired 2026-09-20 (thorough-mode 1.13.0): nothing arms the augment
+
+// CANONICAL machine-text guard (same list as the mk-cc-resources hooks: thorough-mode,
+// pattern-menu, kb-pull, turn-end). A prompt that OPENS with one of these is not the owner
+// typing — it is a background-agent wake, a Stop-hook continuation, a slash-command record
+// or a system reminder. Measured 2026-09-06: this hook fired 378 times across 212 human
+// prompts and armed the thorough augment on an agent report that merely contained `++`.
+const MACHINE_TEXT_MARKERS = [
+  '[SYSTEM NOTIFICATION',
+  '<task-notification>',
+  'Stop hook feedback:',
+  '<local-command',
+  '<command-name>',
+  '<system-reminder>',
+  'Another Claude session sent a message',
+];
+const MACHINE_HEAD_CHARS = 200;
+
+function isMachineText(prompt) {
+  const head = String(prompt || '').replace(/^\s+/, '').slice(0, MACHINE_HEAD_CHARS);
+  return MACHINE_TEXT_MARKERS.some((m) => head.startsWith(m));
+}
+
+function readPrompt() {
+  return new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { data += chunk; });
+    process.stdin.on("end", () => {
+      if (data.trim()) {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed.prompt || "");
+          return;
+        } catch (_e) { /* not JSON, treat as raw */ }
+        resolve(data.trim());
+        return;
+      }
+      resolve(process.env.CLAUDE_USER_PROMPT || "");
+    });
+    if (process.stdin.isTTY) {
+      resolve(process.env.CLAUDE_USER_PROMPT || "");
+    }
+  });
+}
+
+async function main() {
+  const prompt = await readPrompt();
+
+  // Machine-authored prompts get nothing: the rules are already in the conversation from the
+  // human prompt that opened the span, and re-injecting them on every wake is pure tax.
+  if (isMachineText(prompt)) return;
+
+  const out = [ALWAYS_ON];
+
+  const thoroughActive = THOROUGH_TRIGGERS.some((rx) => rx.test(prompt));
+  if (thoroughActive) {
+    out.push(THOROUGH_AUGMENT);
+  }
+
+  process.stdout.write(out.join("\n\n"));
+}
+
+main().catch((err) => {
+  process.stderr.write(`[verification-rules hook error] ${err.message}\n`);
+  process.exit(0);
+});

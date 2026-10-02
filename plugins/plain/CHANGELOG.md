@@ -4,6 +4,22 @@ All notable changes to **plain** are recorded here, newest first, in the terms t
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-02
+
+### Added
+- **"check my setup" now sets up the rest of a machine**, as you asked on 1 Oct ("i wanna be able to replicate this setup in my other machines"). Six new lines:
+  - **Tests before code:** your personal instructions, which every project on the machine loads, carry your 10 Sep sentence and your 1 Oct "tests were bent to pass. This is unacceptable.", then Claude's reading of them. Added after your yes, inside your Rules part. It is found even when quoted or wrapped over lines.
+  - **patterns and reuse-gate stay off** (your 1 Oct "feel free to turn them off"), for you and in the current project.
+  - **The second-opinion reviewer is on for you**, and the line says how often it really runs, read from the turn-end you have installed: with turn-end 0.15.0 that is after each of your messages that changed something — what you said yes to on 1 Oct; an older turn-end checks once per sitting, and the line says that instead.
+  - **The reviewer in this project:** a separate line, so you can say yes for the machine and no for a project. If the project's settings record that it was switched off on purpose, the change says so, and applying it adds a dated line to that record.
+  - **Helper reports reach Claude without your hooks adding text:** a count from this project's sessions of the last week, naming the hooks that still do it. Nothing to type; with no reports yet it says so and never calls that fine.
+  - **Windows Terminal** (Windows only): reads Windows' "Default terminal application" setting, so a window Windows hands to Windows Terminal counts. It names a program like herdr when Claude Code runs inside one. Exact steps are given; nothing is changed from here. It is not offered as the fix for pasted text arriving in pieces — that cause is still unknown.
+
+### Fixed
+- The verification-rules hook check now tests your hook with the message shapes it really receives (`<agent-message…` from a helper, `<cross-session-message…` from another session). The 24 Sep version tested the saved shape and said "fine" while the hook spoke on 133 of 133 helper reports. The fix writes the full shared list into your hook; on an older hook with no list, it inserts the list right after the line that reads your message. It is offered only when the edited copy passes.
+- What the check shows you no longer contains file paths; only a step you would do by hand names its file, from your home folder or the project.
+- A plugin installed for this project only is reported as that, not as "not installed".
+
 ## [0.1.0] - 2026-09-23
 
 ### Added
