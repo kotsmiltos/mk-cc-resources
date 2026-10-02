@@ -18,37 +18,11 @@ const fs = require('fs');
 const path = require('path');
 
 /*
- * Root anchoring (2026-08-23, owner "go" on stack-a-blueprint strike 1): the capture
- * protocol resolves .steward/ against the shell's cwd, and a session sitting in a subdir
- * spawned a SECOND .steward/ the real model never saw (measured: aithseis
- * build-and-sell/.steward, 2026-08-13). Same class turn-end fixed in its 0.4.1 —
- * this is this plugin's own copy of the walk (duplication ACROSS plugins is deliberate:
- * a shared module would couple independently-installed plugins).
+ * Root anchoring (2026-08-23, strike 1) and the one path comparator live in lib/project-root.js
+ * since 2026-10-01 — the claim finder became their second caller. Why the walk exists, and why
+ * the comparator is case-insensitive on Windows, is written there. Required inside main(), whose
+ * caller catches everything: a broken require must cost the briefing, never the session.
  */
-// Windows paths are case-insensitive but string compare is not: a payload cwd arriving
-// as c:\users\… against a C:\Users\… home would sail PAST the boundary and adopt a
-// dotfiles .git — the exact hazard the guard exists for. Measured again 2026-09-06: the
-// fleet registry's dedupe compared raw strings and a lowercase-cwd open registered the same
-// ship twice. ONE comparator, used everywhere a path is compared.
-const samePath = (a, b) =>
-  process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
-
-function resolveProjectRoot(start, home) {
-  const os = require('os');
-  const fallback = path.resolve(start);
-  const homeDir = path.resolve(home || os.homedir());
-  const same = samePath;
-  let dir = fallback;
-  while (!same(dir, homeDir)) {
-    try {
-      if (fs.existsSync(path.join(dir, '.git'))) return dir;
-    } catch (_e) { return fallback; }
-    const parent = path.dirname(dir);
-    if (same(parent, dir)) return fallback;
-    dir = parent;
-  }
-  return fallback;
-}
 
 /*
  * Briefing freshness, computed at injection (2026-08-23 strike 1). The audit measured the
@@ -308,16 +282,23 @@ function capBriefing(text) {
  * chars into EVERY session open, and the owner called the loop "unbearable" the same night.
  * Standing injections are a per-session tax; the full protocol lives in the steward skill
  * and loads on demand. Every line here must earn its place.
+ *
+ * Captures are acknowledged SILENTLY (2026-10-01, Claude's call from the 1 Oct investigation):
+ * the line used to say 'ack inline in your reply ("-> inbox")', which put the machine's filing
+ * into the owner's answers — bookkeeping in a reply that should be about his question. The
+ * inbox write is itself the record: the briefing's [instr] line counts it and the steward pass
+ * integrates it, so nothing is lost by not announcing it.
  */
 const PROTOCOL = [
   '<steward-protocol>',
-  'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to <PROJECT GIT ROOT>/.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md (always the repo root — never resolve against a subdir cwd), ack inline in your reply ("-> inbox"); "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
+  'Steward project: .steward/ is the model; the steward skill holds the full protocol. Owner ideas/wishes/complaints -> capture verbatim to <PROJECT GIT ROOT>/.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md (always the repo root — never resolve against a subdir cwd), silently: the inbox file is the record, so your reply says nothing about filing it; "where are we"/"what\'s next" -> answer from the model, never re-derive; work -> small step + named check, outcome appended to .steward/log.md.',
   'Integration runs WHENEVER anything is unintegrated (owner ruling 2026-09-11: quality over cost — the one-pass-per-sitting cap let a backlog survive 88 sessions and a briefing go 5 days stale). Dispatch in the BACKGROUND (never make the owner wait); a stale briefing or a staged inbox item is reason enough; an explicit owner "sync" always dispatches.',
   'The steward agent is the only writer of the model files; the session writes only inbox/ + log.md. No work absent the owner.',
   '</steward-protocol>'
 ].join('\n');
 
 function main() {
+  const { resolveProjectRoot, samePath } = require('../../lib/project-root');
   let cwd = process.cwd();
   try {
     const stdin = fs.readFileSync(0, 'utf8');

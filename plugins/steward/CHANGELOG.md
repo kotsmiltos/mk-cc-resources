@@ -4,6 +4,20 @@ All notable changes to **steward** are recorded here, newest first, in the terms
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-10-02
+
+Numbered 0.8.0, not 0.7.0: 0.7.0 and 0.7.1 shipped the nightly garden and were withdrawn by 0.6.2, so this release sits above both (Claude's choice).
+
+### Added
+- **The claim finder** (`bin/steward-find-claim.js`, `lib/claim-finder.js`). Given the phrases of a withdrawn or corrected claim, it lists every line that still states it, in every store the knowledge base serves, with what to do by store: kb notes and saved prompts — fix or delete; the model — recompute; `log.md`, the inbox (finished items included) and `.claude/handoffs/` — history, annotated with a dated "Withdrawn YYYY-MM-DD: what is true now" line and never rewritten; the project's `CLAUDE.md` — reported. Matching ignores case, emphasis, arrow style, a `%` before an arrow and line wraps; a line with the same numbers in other words is listed as a candidate to read. A hit with a dated note beside it counts as resolved, so the check is "0 open hits". `--item` leaves the withdrawal item itself out (and says so); a missing root exits 2, reading 0 notes exits 3 and says it is NOT a check; `--delete` removes only a committed, unmodified kb or prompts note. Why: a claim withdrawn on 23 Sep was served again on 25–27 Sep from copies nobody had touched; fed the withdrawal's own words, the finder now finds all of them.
+- The integrate job runs the finder on every withdrawal or correction and acts on each hit by its store. If the finder cannot run, the steward searches the same stores with Grep, says so in one diff line, and records the check as NOT CHECKED.
+
+### Changed
+- **The steward's diff names the notes it changed in plain words, never as file paths** — what kind of note, its subject, what it now says. Your rule, 2026-09-08: "this cannot be poitning me to files". `path:line` stays in `status.json`'s `check` field, which is not shown to you.
+- **Captures are silent**: a stray thought filed to the inbox gets no "→ inbox" line in the reply; the inbox file is the record.
+- The steward agent may run Bash, limited by its instructions to this plugin's own scripts.
+- Internal: the git-root walk moved to `lib/project-root.js`.
+
 ## [0.6.2] - 2026-09-23
 
 ### Changed

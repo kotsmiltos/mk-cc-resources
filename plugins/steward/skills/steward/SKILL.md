@@ -52,14 +52,16 @@ briefing / inbox). Writer rule: the `steward` agent is the ONLY writer of the mo
   a reason to leave the model stale into the next sitting.
 - The agent carries its own run budget (see its Economy section): routine pass in minutes,
   verification scoped to what it writes, diff ≤10 lines unless a pivot cascaded.
-- Capture acknowledgments fold INTO the reply ("→ inbox"), never a separate ceremony; relayed
-  diffs and steward status stay terse — the owner reads outcomes, not process narration.
+- Captures are silent: the inbox file is the record, so the reply says nothing about filing
+  one. Relayed diffs and steward status stay terse — the owner reads outcomes, not process
+  narration.
 
 ## While the owner talks (capture — the inbox)
 - Owner messages that are **ideas, wishes, doubts, complaints, or direction** — not an immediate
   work instruction — get captured: write the message text verbatim to
-  `.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md`. One line of acknowledgment max ("noted — in the
-  inbox"); do not derail the conversation to process it.
+  `.steward/inbox/<YYYYMMDD-HHmm>-<slug>.md`, silently — no acknowledgment in the reply (the
+  inbox file is the record: the briefing counts it, the steward pass integrates it); do not
+  derail the conversation to process it.
 - Ambiguous? Capture it anyway. Capture is cheap; loss is the failure state (audit precedent:
   ideas died with sessions).
 

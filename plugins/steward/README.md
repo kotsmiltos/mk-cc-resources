@@ -16,8 +16,12 @@ Design source of truth: `design/continuous-transformation.md` (v3) in this repo.
 
 - **Open a steward project** → a ≤6-line briefing appears by itself: where things stand, what
   changed, next 3 tasks, decisions waiting on you.
-- **Talk normally** → ideas/wishes/doubts get captured to the inbox automatically; nothing dies
-  with a session.
+- **Talk normally** → ideas/wishes/doubts get captured to the inbox automatically and silently
+  (the reply never announces it); nothing dies with a session.
+- **Withdraw or correct something** → the steward finds every old note that still says it, even
+  worded differently: it fixes or removes the notes the knowledge base serves, adds a dated
+  "withdrawn" line beside the history it keeps, and names those notes in its diff in words, never
+  as file paths (0.8.0).
 - **Say "do it" / "work on X"** → built now, while you watch, with tests + named checks.
 - **Say "sync" / "wrap up"** (or just leave — leftovers integrate at next open, with you present)
   → the steward folds your inputs into the model and shows you the diff: what changed, why.
@@ -41,7 +45,7 @@ opener) · `inbox/` (your raw thoughts; consider gitignoring it — the rest SHO
 
 ## Hard rules
 
-- The `steward` agent is the ONLY writer of the model files (vision/state/parts/questions/tasks/briefing); it NEVER touches product code. Your session may drop `inbox/` captures and append `log.md` outcomes — the steward reconciles them at integration.
+- The `steward` agent is the ONLY writer of the model files (vision/state/parts/questions/tasks/briefing); it NEVER touches product code. Beyond `.steward/` it edits only the notes its claim finder lists for a withdrawal (kb notes and saved prompts; a dated note under old lines in history). Your session may drop `inbox/` captures and append `log.md` outcomes — the steward reconciles them at integration.
 - No work — code or model — happens in your absence. Absent-owner activity = inbox staging only,
   permanently.
 - Every integration produces a visible diff. If you can't tell where the ship is after reading it,

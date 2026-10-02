@@ -31,7 +31,7 @@ adopts via `bin/steward-backfill.js`, never by hand.
 LIGHTER since 0.3.1 (owner, the night 0.3.0 went live: "make the steward lighter — unbearable"):
 the standing per-session injection halved — protocol block 9 bullets → 4 dense lines (~0.75k
 chars; full protocol stays in the skill, on demand), briefing spec ≤6 lines, one-line inbox note,
-capture acks fold into the reply. The ≤6-line SPEC stands — a dense briefing is a better briefing.
+captures are silent (0.8.0: no "→ inbox" ack in the reply — the inbox file is the record). The ≤6-line SPEC stands — a dense briefing is a better briefing.
 What 0.6.0 retired is the hook's 900-char HARD CAP: it was cutting real briefings (measured
 2026-09-11, "dropped 1 line(s) / 138 chars" in a live ship — and the tail of a briefing is
 NEXT/WAITING, the asks the owner opens the session to read). The cap now sits at a runaway-file
@@ -42,7 +42,11 @@ file is pathological rather than merely long.
 
 ```
 .claude-plugin/plugin.json
-agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/;
+agents/steward.md       # the model keeper: integrate/brief/seed jobs; writes ONLY .steward/ +
+                        #   (0.8.0) the notes the claim finder lists: fix or delete kb/prompts
+                        #   notes, add a dated withdrawal note under old lines in history
+                        #   (log.md, inbox/, .claude/handoffs/); its diff names notes in words,
+                        #   never paths (path:line lives in status.json `check`);
                         #   0.5.0: ONLY writer of status.json (the lifecycle ledger — record
                         #   integrated items with log+check refs, advance view cursors, files
                         #   NEVER move, briefing regenerated LAST, volatile facts never authored)
@@ -71,6 +75,20 @@ hooks/
                         #   as the only capture path (aithseis build-and-sell orphan class).
                         #   0.5.2: [instr] running≠installed — own version (manifest beside the
                         #   code) vs the install ledger; silent when equal/absent/unreadable
-tests/steward-brief.test.js  # 50 checks, isolated fake home, no framework (0.5.2: running≠installed instrument ×5)
+lib/project-root.js     # 0.8.0: the nearest-.git-ancestor walk, shared by the hook and the finder
+lib/claim-finder.js     # 0.8.0: ACTIONS (fix / recompute / annotate / report), SCOPES (kb, prompts,
+                        #   model, log, inbox, handoffs, instructions — a drift test fails when kb
+                        #   serves a store this misses) and MATCHERS (text: normalised substring
+                        #   with the %-before-arrow bridge; numbers: same numbers in order, a run
+                        #   of ≥2 holding ≥4 digits, ISO dates ignored — Claude's thresholds);
+                        #   the resolution marker = a dated Withdrawn/Corrected note within 2
+                        #   lines (kb's lib/withdrawal.js holds the same rule; NFKC here only)
+bin/steward-find-claim.js # CLI over it: --root, --item, --json, --delete; exit 2 missing root,
+                        #   exit 3 read 0 notes ("NOT a check")
+tests/steward-brief.test.js  # 54 checks, isolated fake home, no framework (0.5.2: running≠installed instrument ×5)
 tests/status.test.js         # 13 checks — contract reader (derive/cursor/corrupt/tolerant)
+tests/find-claim.test.js     # 43 checks — scopes, actions, resolution, CLI exits
+tests/find-claim-variants.test.js # 52 checks — spelling variants, numbers matcher, --item
+tests/steward-protocol.test.js    # 13 checks — the session protocol and agent text say what ships
+tests/fixtures/claim-ship.js # neutral fixture shared by both finder suites (not a suite)
 ```
