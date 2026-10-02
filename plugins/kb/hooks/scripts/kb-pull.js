@@ -25,8 +25,9 @@
  *    it (capped, truncation LOUD); writing it is the session's discipline.
  *
  * Fail-open everywhere: no corpus, no config, broken disk — silence + exit 0.
- * Machine text (notifications, Stop-hook feedback, command transcripts) never
- * fires either payload.
+ * WHO IS SPEAKING decides per channel (2026-10-01): the owner gets both payloads; a helper's
+ * hand-back or another Claude session's message gets the digest only; every other machine
+ * text (notifications, Stop-hook feedback, command transcripts) gets neither. See ORIGINS.
  */
 
 const fs = require('fs');
@@ -88,6 +89,14 @@ const CUE_TERMS = 3;
 // diverges. Prompts opening with one of these are not the owner talking. Audit 2 (2026-09-06)
 // measured this copy one marker short (`<system-reminder>`) and firing 2–12× per
 // background-agent wake.
+//
+// The last three (added 2026-10-01): since Claude Code 2.1.271+ (first seen 2026-09-17) a
+// finished background helper's report reaches a UserPromptSubmit hook as text starting
+// '<agent-message from=…>' (the queued value), while the transcript saves it starting
+// 'Another Claude session sent a message:'; '<cross-session-message' is the queued form of a
+// message from another Claude session (seen in 13 transcripts). The 24 Sep fix keyed only on
+// the saved form and never matched what hooks receive (the owner's rules hook still fired on
+// 133 of 133 helper reports).
 const MACHINE_TEXT_MARKERS = [
   '[SYSTEM NOTIFICATION',
   '<task-notification>',
@@ -95,8 +104,44 @@ const MACHINE_TEXT_MARKERS = [
   '<local-command',
   '<command-name>',
   '<system-reminder>',
+  '<agent-message',
+  '<cross-session-message',
+  'Another Claude session sent a message',
 ];
 const MACHINE_PREFIXES = MACHINE_TEXT_MARKERS; // prior name, kept for callers
+
+/*
+ * The subset of machine text that is ANOTHER CLAUDE talking to this session — a helper's
+ * hand-back or a peer session's message — as opposed to the platform reporting an event.
+ * Every entry must also be in MACHINE_TEXT_MARKERS (one list decides "not the owner"; this one
+ * only decides which non-owner prompts still deserve the digest). Tested in kb-pull-origin.
+ */
+const PEER_MESSAGE_MARKERS = [
+  '<agent-message',
+  '<cross-session-message',
+  'Another Claude session sent a message',
+];
+
+const ORIGINS = Object.freeze({ OWNER: 'owner', PEER: 'peer', MACHINE: 'machine' });
+
+/*
+ * WHICH PAYLOAD EACH SPEAKER GETS — the per-channel guard (Claude's decision, 1 Oct 2026
+ * investigation; not an owner ruling).
+ *  - HINTS are a pointer offered to the OWNER's question. A helper's report is not his
+ *    question; hinting it is the 24 Sep miss in another form. Owner only.
+ *  - The DIGEST is the session's own memory. In an unattended run (helpers working, the owner
+ *    away) hand-backs and peer messages are the ONLY prompts the session sees, and after a
+ *    compaction the digest is the only copy of what the sitting decided — so it keeps riding
+ *    them, exactly as it did before the guard learned to recognise them (measured in two
+ *    projects' transcripts: 13 and 26 full-digest fires landed on helper reports). Platform
+ *    event text still gets nothing.
+ * A registry, not a switch: a new speaker or payload is one row.
+ */
+const CHANNEL_ADMITS = Object.freeze({
+  [ORIGINS.OWNER]: Object.freeze({ hints: true, digest: true }),
+  [ORIGINS.PEER]: Object.freeze({ hints: false, digest: true }),
+  [ORIGINS.MACHINE]: Object.freeze({ hints: false, digest: false }),
+});
 
 /*
  * turn-end spawns `claude -p` judge children with this variable set. A child is a full
@@ -115,9 +160,39 @@ function readStdin() {
   });
 }
 
+// Only the opening of a prompt is read: an envelope is written at the very start, so the owner
+// pasting a helper's report mid-message is still the owner speaking.
+const HEAD_CHARS = 200;
+const headOf = (prompt) => String(prompt || '').replace(/^\s+/, '').slice(0, HEAD_CHARS);
+
 function isMachineText(prompt) {
-  const head = String(prompt || '').replace(/^\s+/, '').slice(0, 200);
+  const head = headOf(prompt);
   return MACHINE_TEXT_MARKERS.some((p) => head.startsWith(p));
+}
+
+/** Another Claude talking to this session (helper hand-back or peer session message). */
+function isPeerMessage(prompt) {
+  const head = headOf(prompt);
+  return PEER_MESSAGE_MARKERS.some((p) => head.startsWith(p));
+}
+
+/** Who is speaking: ORIGINS.OWNER / PEER / MACHINE. */
+function promptOrigin(prompt) {
+  if (!isMachineText(prompt)) return ORIGINS.OWNER;
+  return isPeerMessage(prompt) ? ORIGINS.PEER : ORIGINS.MACHINE;
+}
+
+/**
+ * What this process may emit for this speaker: { hints, digest }. `channel` null = the combined
+ * (single-registration) output, which carries whatever the speaker is admitted to; a named
+ * channel never carries the other channel's payload.
+ */
+function channelAdmits(channel, origin) {
+  const allowed = CHANNEL_ADMITS[origin] || CHANNEL_ADMITS[ORIGINS.MACHINE];
+  return {
+    hints: allowed.hints && channel !== pullState.DIGEST_CHANNEL,
+    digest: allowed.digest && channel !== pullState.HINTS_CHANNEL,
+  };
 }
 
 /** True inside a spawned child session — this hook must do nothing at all there. */
@@ -297,7 +372,25 @@ async function main() {
   } catch (_e) {
     process.exit(0); // not hook JSON — nothing to do
   }
-  if (!prompt || prompt.length < MIN_PROMPT_CHARS || isMachineText(prompt)) process.exit(0);
+  if (!prompt || prompt.length < MIN_PROMPT_CHARS) process.exit(0);
+
+  /*
+   * CHANNEL — which payload this process emits. `--channel=hints` / `--channel=digest` run as
+   * SEPARATE hook outputs so they stop competing for one bounded injection; no flag keeps the
+   * original combined behaviour, so an old single registration is unaffected.
+   *
+   * WHY (measured 2026-09-14): the digest's budget used to be `bound − whatever the hints
+   * emitted`, so a busy hints turn silently starved the session's own memory — a 7,585-byte
+   * digest was still cut. PROBED the same day: two hooks on one event delivered ~7 KB each,
+   * 14 KB combined, neither stubbed. The bound is per OUTPUT, so splitting BUYS budget rather
+   * than trading one payload against the other. 89 stub events were measured in this project's
+   * transcripts (kb-hints 40, turn-end 25) — the content being thrown away was the retrieval.
+   */
+  const channel = channelArg(process.argv);
+  // Who is speaking decides what each channel may carry (see CHANNEL_ADMITS).
+  const origin = promptOrigin(prompt);
+  const admitted = channelAdmits(channel, origin);
+  if (!admitted.hints && !admitted.digest) process.exit(0);
 
   // Anchor to the project root: the shell's cwd follows `cd`, and a subdir session
   // previously read/wrote the wrong project's kb state (see lib/project-root.js).
@@ -317,33 +410,22 @@ async function main() {
   const cfg = pullConfig(kb ? kb.config : {});
   if (!cfg.enabled) process.exit(0);
 
-  /*
-   * CHANNEL — which payload this process emits. `--channel=hints` / `--channel=digest` run as
-   * SEPARATE hook outputs so they stop competing for one bounded injection; no flag keeps the
-   * original combined behaviour, so an old single registration is unaffected.
-   *
-   * WHY (measured 2026-09-14): the digest's budget used to be `bound − whatever the hints
-   * emitted`, so a busy hints turn silently starved the session's own memory — a 7,585-byte
-   * digest was still cut. PROBED the same day: two hooks on one event delivered ~7 KB each,
-   * 14 KB combined, neither stubbed. The bound is per OUTPUT, so splitting BUYS budget rather
-   * than trading one payload against the other. 89 stub events were measured in this project's
-   * transcripts (kb-hints 40, turn-end 25) — the content being thrown away was the retrieval.
-   */
-  const channel = channelArg(process.argv);
-  // Hints need BOTH the channel and the project's opt-in. A malformed kb.json cannot say
-  // whether the project opted in, so that case still gets the one visible line below
+  // Hints need the speaker, the channel AND the project's opt-in. A malformed kb.json cannot
+  // say whether the project opted in, so that case still gets the one visible line below
   // (the config is broken either way and the owner should know); otherwise hints-off is
   // total silence on the hints channel — no output, no state, no trace, exactly like a
   // prompt with no strong hit.
-  const wantHints = channel !== pullState.DIGEST_CHANNEL && (cfg.hints || Boolean(configError));
-  const wantDigest = channel !== pullState.HINTS_CHANNEL;
+  const wantHints = admitted.hints && (cfg.hints || Boolean(configError));
+  const wantDigest = admitted.digest;
 
   // This sitting's memory of what it was shown (home-side, session-scoped; absent session_id
   // = stateless, never suppress on a missing signal). Presence-gated like every other side
   // effect: a project keeping no curated memory leaves no state anywhere, home included.
-  // One state file PER CHANNEL: writeState writes the whole object, so two channels sharing a
-  // file would erase each other's field, and this repo has no locking anywhere to lean on.
-  const stateFile = sessionId && hasMemory(root) ? pullState.statePathFor(root, undefined, channel) : null;
+  // One state file PER CHANNEL PER SESSION: writeState writes the whole object, so two writers
+  // sharing a file would erase each other's fields (two channels), or read each other's file as
+  // "nothing shown yet" (two windows) — this repo has no locking anywhere to lean on.
+  const stateFile = sessionId && hasMemory(root) ? pullState.statePathFor(root, undefined, channel, sessionId) : null;
+  const firstWriteOfSession = Boolean(stateFile) && !fs.existsSync(stateFile);
   const state = stateFile ? pullState.readState(stateFile, sessionId) : pullState.emptyState(null);
 
   const out = [];
@@ -404,10 +486,14 @@ async function main() {
         hinted: state.hinted.concat(shown.map((h) => h.entry.id).filter((id) => !state.hinted.includes(id))),
         digestHash: raw ? digestHash : state.digestHash,
       });
+      // Housekeeping rides the one moment a NEW file appears (once per session per channel),
+      // so the dir stays bounded without a scan on every prompt.
+      if (firstWriteOfSession) pullState.pruneStale({});
     }
     trace(root, {
       sessionId,
       promptId,
+      origin,
       ms: Date.now() - startedMs,
       hints: shown.map((h) => h.entry.id),
       held,
@@ -426,10 +512,12 @@ main().catch((err) => {
 });
 
 module.exports = {
-  pullConfig, isMachineText, isChildSession, hintLines, digestBlock, digestBlockWithin,
+  pullConfig, isMachineText, isPeerMessage, promptOrigin, channelAdmits, isChildSession,
+  hintLines, digestBlock, digestBlockWithin,
   digestPointer, selectHints, cueLine, cueTerms,
   DEFAULT_MIN_SCORE, DEFAULT_MAX_HINTS, DEFAULT_HINTS_ENABLED, MIN_PROMPT_CHARS,
   DEFAULT_DIGEST_MAX_CHARS, DEFAULT_DIGEST_MAX_LINES, DIGEST_REL,
   PLATFORM_INLINE_BOUND_BYTES, CUT_NOTE_RESERVE_BYTES, SCAN_LIMIT_MULTIPLIER, CUE_TERMS,
-  MACHINE_TEXT_MARKERS, MACHINE_PREFIXES, CHILD_SESSION_VAR,
+  MACHINE_TEXT_MARKERS, MACHINE_PREFIXES, PEER_MESSAGE_MARKERS, ORIGINS, CHANNEL_ADMITS,
+  CHILD_SESSION_VAR,
 };

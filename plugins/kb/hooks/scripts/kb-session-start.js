@@ -284,8 +284,10 @@ async function main() {
 
   // Every SessionStart (startup / clear / resume / compact / fork) may have thrown away the
   // transcript copy kb-pull's "digest unchanged" pointer relies on — a compaction certainly
-  // did. Forget the remembered hash so the next prompt re-injects the digest in full.
-  try { require('../../lib/pull-state').clearDigestHash(root); } catch (_e) { /* fail-soft */ }
+  // did. Forget the remembered hash so the next prompt re-injects the digest in full. Pull
+  // state is per session since 2026-10-01, so only THIS session's hash is forgotten (another window
+  // on the project kept its transcript); without a session id, every session's is.
+  try { require('../../lib/pull-state').clearDigestHash(root, undefined, undefined, sessionId || undefined); } catch (_e) { /* fail-soft */ }
 
   // ONE presence pass, used for both answers. Two calls would re-walk the markers and
   // log the same obstruction twice. A hook's stderr goes to the debug log, so an

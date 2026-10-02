@@ -6,7 +6,8 @@ description: >
   ends into .claude/kb/extracted/ (one dated, sourced markdown file per finding, each
   declaring its own kind via frontmatter). Use when a project has no .steward/ model or thin
   KB coverage and the owner wants "kb on this project", "seed the knowledge base", "extract
-  what this project knows". Run once per project; re-runs top up, never overwrite.
+  what this project knows". Run once per project; re-runs top up, and correct an entry that newer
+  history contradicts rather than adding a second one beside it.
 ---
 
 # kb-seed — extract what an existing project already knows
@@ -48,7 +49,9 @@ project has not been seeded"; a re-run hands you the exact list to skip.
 
 **Re-runs are therefore normal and safe**: target what the map does NOT list — commits after
 the last covered date, documents no entry cites, ledgers and addenda the first pass thinned
-out. Never re-extract a substrate that already appears there, and never overwrite a file.
+out. Never re-extract a substrate that already appears there. When newer substrate
+CONTRADICTS an existing entry, rewrite that entry (step 4b) — never add a second entry that
+disagrees with it.
 
 **1. Inventory the substrate — ALL of it, not just the top layer.**
 
@@ -107,19 +110,34 @@ Extracted-from: docs/adr/0007-auth.md; commit a1b2c3d
 - `Extracted-from:` is mandatory. An extraction the owner cannot trace to a source is a
   rumour with a filename.
 
+**4b. A finding that contradicts an existing entry replaces it.** Before writing, query the
+topic (step 2 already does). If an existing extracted entry or capture says something the newer
+substrate shows is no longer true, rewrite that entry — the corrected finding, its why, and
+BOTH citations in `Extracted-from:` — or delete it when the wrong claim was its whole point.
+The latest input wins; the owner's rule (his words, 2026-09-17):
+
+> "keeping everything still sounds wrong. I think if we have contradictions we keep the latest input on them."
+
+Git is the archive: a committed entry's old text stays in the history. List every rewritten or
+deleted entry in the step-3 report, so the owner sees what changed and not only what was added.
+
 **5. Verify.** `node "${CLAUDE_PLUGIN_ROOT}/bin/kb.js" stat` — entry count rose by the number
 written, `kb-extracted` source shows them. Then one probe query on a seeded topic; the new
 entry should rank. Report both results to the owner.
 
-**Re-runs top up:** never overwrite an existing extracted file; step 0's coverage map is the
-authority on what to skip, so running this skill again in an already-seeded project is always
-safe — it extends the store, never rewrites it.
+**Re-runs top up:** step 0's coverage map is the authority on what to skip, so running this
+skill again in an already-seeded project is always safe — it extends the store, and rewrites
+an entry only where newer history contradicts it (step 4b). An entry nothing contradicts is
+left exactly as it is.
 
-**After the first successful run the project maintains itself:** the presence of
-`.claude/kb/extracted/` switches the kb-scribe Stop hook on, so every producing turn from
-then on distills itself into the session digest and graduates durable items to
-`.claude/kb/captures/` (or `.steward/inbox/` for model changes). The owner does not have to
-run anything per session — only re-run this skill when a big new stretch of history deserves
-mining.
+**After the first successful run the project maintains itself:** a non-empty
+`.claude/kb/extracted/` marks the project as keeping memory. The write side is turn-end's
+`session-digest` duty — where turn-end is installed and that duty is on (its default), it asks
+each producing turn to distill itself into `.claude/kb/session-digest.md` and to graduate
+durable items to `.claude/kb/captures/` (or `.steward/inbox/` for model changes). kb's own
+hooks keep that digest current: kb-pull injects it every prompt, kb-session-start archives the
+previous sitting's copy. The duty replaced kb's kb-scribe Stop hook, which was retired in kb
+0.9.0 and deleted in 0.12.0. The owner does not have to run anything per session — only re-run
+this skill when a big new stretch of history deserves mining.
 
 </instructions>

@@ -4,6 +4,22 @@ All notable changes to **kb** are recorded here, newest first, in the terms that
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-10-02
+
+### Added
+- **A `kb_query` hit whose entry holds a dated "Withdrawn YYYY-MM-DD: …" or "Corrected YYYY-MM-DD: …" note carries a `withdrawn` field**, telling the reader to `kb_read` the entry before relying on it; the snippet itself is unchanged. `kb query` on the command line prints a `!` line for such a hit. Why: a claim withdrawn on 23 Sep was served again on 25–27 Sep from history the steward keeps; steward 0.8.0 now writes that dated note beside the old line, and kb reads it (`lib/withdrawal.js`, the same marker rule as steward's claim finder).
+
+### Changed
+- **Who is speaking decides each channel.** The hints channel stays silent on every prompt that is not you — a finished helper's report, another Claude session's message, a task notice. The session digest still rides a helper's report or another session's message: in an unattended run those are the only prompts a session sees, and after a compaction the digest is the session's only copy of what the sitting decided (Claude's decision, 1 Oct 2026 — not your ruling). Nothing rides other machine text.
+- **Pull state is per session.** Two windows on one project no longer reset each other's memory of what was already shown. State files unused for 7 days are cleaned up (Claude's choice).
+- Trace lines carry `origin` (who the prompt came from).
+- **`/kb-capture` searches the subject first and rewrites or deletes an older note the new one contradicts**, instead of adding a second. Your rule, 2026-09-17: "keeping everything still sounds wrong. I think if we have contradictions we keep the latest input on them."
+- **`/kb-seed` re-runs correct entries that newer history contradicts**, and names turn-end's `session-digest` duty as the write side of the digest.
+
+### Fixed
+- A finished helper's report is no longer treated as you speaking: the machine-text guard carries the repo's canonical nine markers (`<agent-message`, `<cross-session-message` and "Another Claude session sent a message" among them).
+- Two hooks of one new session pruning the same state folder no longer report a file the other already removed as "left in place".
+
 ## [0.16.1] - 2026-09-18
 
 ### Changed

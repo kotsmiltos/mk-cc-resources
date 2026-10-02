@@ -65,6 +65,10 @@ function pullLine(a) {
     held: count(a.held),
     scores: Array.isArray(a.scores) ? a.scores : [],
     digest: a.digest === undefined ? false : a.digest,
+    // Who the prompt came from (2026-10-01): owner | peer (a helper's hand-back or another Claude
+    // session's message — the digest still rides those) — so "how often does the digest land
+    // on a hand-back" is a count over the trace, not a transcript replay.
+    ...(typeof a.origin === 'string' && a.origin ? { origin: a.origin } : {}),
     ...(a.configError ? { config_error: true } : {}),
   };
 }
@@ -123,7 +127,7 @@ function toolLine(a) {
 function examples() {
   const now = new Date('2026-09-09T00:00:00.000Z');
   return [
-    pullLine({ now, version: EXAMPLE_VERSION, sessionId: 'sess-1', promptId: 'prompt-1', ms: 41, hints: ['kb-captures::.claude/kb/captures/a.md'], held: 2, scores: [{ id: 'kb-captures::.claude/kb/captures/a.md', score: 9.5 }], digest: 'cut', bytes: 8100 }),
+    pullLine({ now, version: EXAMPLE_VERSION, sessionId: 'sess-1', promptId: 'prompt-1', origin: 'owner', ms: 41, hints: ['kb-captures::.claude/kb/captures/a.md'], held: 2, scores: [{ id: 'kb-captures::.claude/kb/captures/a.md', score: 9.5 }], digest: 'cut', bytes: 8100 }),
     pullLine({ now, version: EXAMPLE_VERSION, sessionId: null, promptId: 'prompt-2', ms: 12, hints: [], held: 0, scores: [], digest: 'pointer', bytes: 190, configError: true }),
     sessionLine({ now, version: EXAMPLE_VERSION, sessionId: 'sess-1', ms: 7, source: 'startup', rotated: true, bytes: 120 }),
     toolLine({ now, version: EXAMPLE_VERSION, ms: 30, tool: 'kb_query', args: { text: 'porter ferry', kind: 'semantic' }, payload: { matched: 3, hits: [{ id: 'kb::a' }, { id: 'kb::b' }] }, bytes: 1400 }),

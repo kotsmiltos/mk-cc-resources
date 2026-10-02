@@ -19,6 +19,8 @@
 
 const path = require('path');
 const { openKb } = require('../lib/kb');
+// Pure presentation helper (no retrieval logic) — not a reach past the facade.
+const { withdrawalNotes } = require('../lib/withdrawal');
 
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;
@@ -140,6 +142,11 @@ function renderQuery(payload) {
     lines.push(`[${i + 1}] ${hit.score.toFixed(SCORE_DECIMALS)}  ${e.kind}/${e.caste}  ${e.path}`);
     lines.push(`    ${datePrefix(e)}${e.title}`);
     if (e.body) lines.push(`    ${snippet(e.body)}`);
+    const notes = withdrawalNotes(e.body);
+    if (notes.length) {
+      // The snippet may show the old claim without the dated note beside it (lib/withdrawal.js).
+      lines.push(`    ! ${notes.map((n) => `${n.word} ${n.date}`).join(', ')}: this entry holds a claim later withdrawn or corrected — read the whole entry (kb_read "${e.id}") before relying on it`);
+    }
     lines.push('');
   });
 

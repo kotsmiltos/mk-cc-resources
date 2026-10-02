@@ -1,0 +1,4 @@
+{
+  "provenance": "shape of a real queued message from another Claude session (queue-operation enqueue, Claude Code 2.1.283, 2026-09-29): the opening tag name and attribute names kept, every attribute value and the body replaced",
+  "hookPrompt": "<cross-session-message from=\"uds:example-pipe\" hop-chain=\"000000000000000000000000\" from-name=\"side-session\" from-mode=\"prompting\">\nNo overlap: this side session edits nothing under web/ and will not commit. Build the new guess component and refactor the chat module next.\n</cross-session-message>"
+}

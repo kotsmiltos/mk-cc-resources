@@ -13,7 +13,7 @@ needs it.
 ## Layout
 
 ```
-.claude-plugin/plugin.json   # metadata (v0.14.0)
+.claude-plugin/plugin.json   # metadata (v0.17.0)
 .mcp.json                    # wires mcp/kb-mcp-server.js, alwaysLoad:true (schemas never defer)
 defaults/config.json         # shipped axes + the source set for this ecosystem
 lib/
@@ -25,10 +25,17 @@ lib/
   coverage.js                # what has ALREADY been mined (Extracted-from citations ->
                              #   the top-up map a re-seed reads first)
   pull-state.js              # 0.13.0: what THIS sitting was already shown — home-side
-                             #   ~/.claude/kb/pull-state/<root-hash>.json, session-scoped,
-                             #   presence-gated; kb-pull dedupes hints + detects an unchanged
-                             #   digest against it, kb-session-start clears the digest hash on
-                             #   every fire (a compaction throws the transcript copy away)
+                             #   ~/.claude/kb/pull-state/, presence-gated; kb-pull dedupes hints
+                             #   + detects an unchanged digest against it, kb-session-start clears
+                             #   the digest hash on every fire (a compaction throws the transcript
+                             #   copy away). 0.17.0: one file per project + channel + SESSION;
+                             #   pruneStale drops files unused for PULL_STATE_MAX_AGE_MS (7 days,
+                             #   Claude's choice), an ENOENT from a sibling hook's prune = removed
+  withdrawal.js              # 0.17.0: PURE reader of the dated "Withdrawn/Corrected YYYY-MM-DD:"
+                             #   note — a CONTRACT with steward's lib/claim-finder.js; each plugin
+                             #   keeps its own copy (standalone installs) and steward's tests check
+                             #   they agree. kb_query hits carry `withdrawn`; the CLI prints `!`.
+                             #   Both adapters require it directly, like trace-line
   presence.js                # the self-activation rule: does this project keep curated
                              #   memory? (empty dirs and ambient files do NOT count)
   cap-block.js               # bound injected text so the READER learns what went missing:
@@ -113,21 +120,29 @@ hooks/scripts/kb-session-start.js # keeps "now" honest (0.10.2: spawned sessions
 commands/kb.md               # reach-surface: /kb <terms> — owner-triggered
 commands/kb-seed.md          # /kb-seed — alias into the seed skill
 commands/kb-capture.md       # /kb-capture — alias into the capture skill
-tests/kb.test.js             # 276 checks, no framework, own temp fixtures
-tests/kb-pull.test.js        # 88 checks — guards, floor, digest + platform bound, dedupe + cue,
+tests/kb.test.js             # 282 checks, no framework, own temp fixtures
+tests/kb-pull.test.js        # 108 checks — guards, floor, digest + platform bound, dedupe + cue,
                              #   change-aware digest, malformed kb.json, traces, precision fixture,
                              #   subdir root-anchoring + orphan-dir silence (0.10.3)
-tests/kb-session.test.js     # 78 checks — presence rule, rotation + loss-safety, cue
+tests/kb-pull-origin.test.js # 28 checks — CHANNEL_ADMITS: hints silent on every non-owner prompt,
+                             #   digest on hand-backs / peer messages, real envelope fixtures
+tests/kb-pull-session-state.test.js # 29 checks — per-session pull state, stale prune
+tests/kb-prune-race.test.js  # 10 checks — two hooks pruning one folder (ENOENT is not a failure)
+tests/kb-withdrawn.test.js   # 16 checks — the withdrawal marker, kb_query `withdrawn`, CLI `!`
+tests/kb-skills-truth.test.js # 14 checks — kb-capture / kb-seed say what the code does
+tests/kb-session.test.js     # 79 checks — presence rule, rotation + loss-safety, cue
 tests/kb-status-join.test.js # 9 checks — join facets, themes filter, absent/corrupt ledger
-tests/kb-mcp.test.js         # 44 checks — handler layer + stdio e2e + gated traces
-tests/kb-footprint.test.js   # 31 checks — THE footprint invariant: fs-import + write-site
+tests/kb-mcp.test.js         # 45 checks — handler layer + stdio e2e + gated traces
+tests/kb-footprint.test.js   # 32 checks — THE footprint invariant: fs-import + write-site
                              #   audit (negative-controlled) +
                              #   all four entry points silent in an unseeded project
 ```
 
 **Write model (0.3.0):** the ENGINE stays read-only permanently. Skills write markdown files
 into two session-written stores the engine indexes — `extracted/` (bulk, regenerable, cited)
-and `captures/` (one-at-a-time, append-only, timestamped). Per-file frontmatter
+and `captures/` (one-at-a-time, timestamped; since 0.17.0 one subject = one current note: a
+correction replaces what it corrects — the owner's 2026-09-17 rule, "if we have contradictions we
+keep the latest input on them" — and git is the archive). Per-file frontmatter
 (kind/caste/title/when/themes) overrides the source spec, so one dir holds mixed kinds; file
 themes EXTEND spec themes. Semantic knowledge that changes a steward project's model NEVER
 lands in these stores — it stages to `.steward/inbox/` for recompute.
@@ -165,8 +180,11 @@ re-armed each other (scribe's PRODUCE_TOOLS included `Agent`, so the lens's mand
 turn read as fresh work); script + 42 tests were meant to stay one release and stayed three —
 DELETED in 0.12.0 (audit 2: a green suite over dead code is a false clean). kb-pull stands
 down inside `MK_TURN_END_DEPTH` children since 0.12.0 (measured: 40 of 78 judge fires paid a
-hint block) and carries the CANONICAL six-marker machine-text guard, drift-tested by
-plugin-toolkit's repo-guard.
+hint block) and carries the CANONICAL machine-text guard (nine markers since 0.17.0, the
+helper-report and peer-message openers included), drift-tested by plugin-toolkit's repo-guard.
+0.17.0 CHANNEL_ADMITS: hints speak only for the owner; the digest also rides a helper's
+hand-back or another session's message (Claude's decision, 1 Oct 2026 — an unattended run sees
+no other prompts, and the digest is its memory after a compaction); other machine text: neither.
 Both live hooks are PRESENCE-gated: a project keeping no curated memory is never blocked and
 never written into. A standalone install is required for the hooks + MCP server; the bundle
 ships only the skills. **Hooks register at install time**, so an older install keeps its old

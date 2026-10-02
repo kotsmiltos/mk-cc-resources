@@ -54,10 +54,12 @@ const AUDITED = {
     why: 'rotation needs a live session-digest.md (itself a memory marker); the cue registry is HOME-side',
   },
   'lib/pull-state.js': {
-    writes: 2, // writeState: mkdirSync + writeFileSync — HOME-side (~/.claude/kb/pull-state/<root-hash>.json),
+    writes: 3, // writeState: mkdirSync + writeFileSync — HOME-side (~/.claude/kb/pull-state/<root-hash>…json),
                // session-scoped; kb-pull calls it only after an injection fired AND hasMemory(root)
-               // (0.13.0, task #27); the dir is env-overridable so suites never touch the real home
-    why: 'per-session hint dedupe + digest change-awareness live in the home, never in the project, and only for a project that keeps memory',
+               // (0.13.0, task #27); the dir is env-overridable so suites never touch the real home.
+               // pruneStale: unlinkSync (2026-10-01) — deletes only aged files whose NAME matches what
+               // this module writes, inside the same home-side dir; never a path in a project
+    why: 'per-session hint dedupe + digest change-awareness live in the home, never in the project, and only for a project that keeps memory; the prune deletes only its own aged home-side files',
   },
 };
 

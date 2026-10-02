@@ -85,7 +85,8 @@ the property that turns kb from "answers when asked" into "consulted whenever Cl
 needs it."
 
 - `kb_query` — search; the narrowing hint rides inside the tool result, so the model re-queries
-  narrower on its own
+  narrower on its own. A hit whose entry carries a dated "Withdrawn …" / "Corrected …" note has a
+  `withdrawn` field (0.17.0): read the entry before relying on it
 - `kb_read` — one entry **in full** by id, when a snippet isn't enough
 - `kb_overview` — what the KB holds, by axis and source
 
@@ -257,7 +258,8 @@ The engine stays read-only; two skills write markdown stores it indexes:
   history, pipeline artifacts, code structure; distills decisions-with-their-why, rejected
   approaches, constraints, conventions; **you confirm the list before anything is written**.
   One dated file per finding → `.claude/kb/extracted/`, each with a mandatory
-  `Extracted-from:` citation. Re-runs top up, never overwrite.
+  `Extracted-from:` citation. Re-runs top up what is not yet covered, and rewrite or delete an
+  entry that newer history contradicts (latest input wins; git is the archive).
 - **`/kb-capture`** — file one memory mid-conversation ("remember this") →
   `.claude/kb/captures/<timestamp>-<slug>.md`, queryable immediately (the MCP server
   re-collects per call). Routing rule: an item that changes a steward project's *model* goes

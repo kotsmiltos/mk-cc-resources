@@ -33,6 +33,8 @@ const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const { openKb } = require('../lib/kb');
+// Pure presentation helper (no retrieval logic), like trace-line below — not a reach past the facade.
+const { withdrawalNotes, describeNotes } = require('../lib/withdrawal');
 
 // ---------- Call traces ----------
 //
@@ -113,7 +115,9 @@ const TOOLS = [
       'title, snippet) plus a narrowing hint: how many matches were held back and which facet ' +
       '(kind/caste/source) separates them. If truncated and the answer is not visible, re-query ' +
       'with the suggested facet. A zero-match result lists what IS available under the filters. ' +
-      'Use content words as the query; stopwords are dropped; covering all terms beats repeating one.',
+      'Use content words as the query; stopwords are dropped; covering all terms beats repeating one. ' +
+      'A hit carrying `withdrawn` holds a claim later withdrawn or corrected: the snippet may show ' +
+      'the old claim without the dated note beside it, so kb_read it before relying on it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -175,6 +179,16 @@ function toSnippet(body) {
   return flat.length > SNIPPET_CHARS ? `${flat.slice(0, SNIPPET_CHARS)}…` : flat;
 }
 
+/*
+ * A hit whose entry carries a dated "Withdrawn/Corrected YYYY-MM-DD" note says so in its own key
+ * (lib/withdrawal.js says why). Added only when present, so every other hit keeps its shape; the
+ * snippet is never touched — it stays the first SNIPPET_CHARS of the body.
+ */
+function withWithdrawal(hit, body) {
+  const said = describeNotes(withdrawalNotes(body));
+  return said ? { ...hit, withdrawn: said } : hit;
+}
+
 function handleQuery(kb, args) {
   const { result, errors } = kb.query({
     text: args.text,
@@ -190,7 +204,7 @@ function handleQuery(kb, args) {
     scanned: result.scanned,
     matched: result.matched,
     truncated: result.truncated,
-    hits: result.returned.map((h) => ({
+    hits: result.returned.map((h) => withWithdrawal({
       id: h.entry.id,
       score: h.score,
       kind: h.entry.kind,
@@ -199,7 +213,7 @@ function handleQuery(kb, args) {
       when: h.entry.when,
       title: h.entry.title,
       snippet: toSnippet(h.entry.body),
-    })),
+    }, h.entry.body)),
     hint: result.hints,
     source_errors: errors,
   };
