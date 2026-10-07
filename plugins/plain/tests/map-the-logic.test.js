@@ -118,7 +118,9 @@ check('the how-to points at the form it ships', skill.includes('references/map-f
 
 // ---------------------------------------------------------------- nothing personal shipped
 for (const [name, text] of [['the how-to', skill], ['the form', form]]) {
-  check(`${name} carries no absolute path or user folder`, !/[A-Za-z]:\\|\/Users\/|\/home\/|C:\/|D:\//.test(text));
+  // Any drive letter, either slash; written as a class so the repo's leak guard does not read
+  // the pattern itself as a path.
+  check(`${name} carries no absolute path or user folder`, !/[A-Za-z]:[\\/]|\/Users\/|\/home\//.test(text));
 }
 
 h.finish();
