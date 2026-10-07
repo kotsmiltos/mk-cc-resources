@@ -25,11 +25,24 @@ output-styles/plain.md   # THE MEASURED TEXT, unchanged except `force-for-plugin
                          #   use that line as the check.
 skills/check-setup/      # runs bin/check-setup.js, shows the result in plain words, ONE yes, then
                          #   --apply; permission-guard refusals become the manual step
+skills/map-the-logic/    # (0.3.0) his 7 Oct twin-game method as a how-to: wants in his words, the
+                         #   logic by component FOR CLAUDE before any test or code (C0 hierarchy:
+                         #   controllers → actuators → parts that answer → readers + central places),
+                         #   one card per part with SEVEN fixed sections, results never coded, tests
+                         #   first, never handed to him to review, next window's starting note.
+                         #   references/map-form.md = the form. Every quote marked (his, date) must be
+                         #   word for word in check 15's section (tests/map-the-logic.test.js).
+                         #   Why a form and not a line: in twin-game his 26 Sep "emergent, not rules"
+                         #   memory line was there and the 7 Oct session still split by outcomes;
+                         #   the map's layout by component is what held.
 bin/check-setup.js       # CLI: one JSON line per check; --apply <ids>; --home/--cwd for tests
 lib/runner.js            # loads lib/checks/*.js in file order — THE extension surface; contract
                          #   at the top; a throwing check becomes "could not check", never a pass
-lib/checks/NN-*.js       # one check each (14); a fix is offered only when the fixed state passes the
-                         #   same check (06 runs the edited hook from a temp copy; 07 and 09 re-run
+lib/his-words-section.js # (0.3.0) one of his rules in his words in his personal CLAUDE.md, built
+                         #   from a spec (heading, sentence, quotes, plain labels): 09 tests-first
+                         #   and 15 logic-first are its two users; a third rule = a third spec file
+lib/checks/NN-*.js       # one check each (15); a fix is offered only when the fixed state passes the
+                         #   same check (06 runs the edited hook from a temp copy; 07, 09 and 15 re-run
                          #   their predicate on the edited text; 11/12 only when every problem found
                          #   is fixable) — otherwise exact manual steps. 13 and 14 never fix.
                          #   06 judges BEHAVIOUR on REAL prompt shapes (lib/samples/), holds the shared
@@ -54,6 +67,8 @@ tests/reviewer.test.js                 # checks 11 + 12: timing, force-on, proje
 tests/helper-reports.test.js           # check 13 over real record shapes
 tests/windows-terminal.test.js         # check 14 on every default-terminal setting
 tests/shown-text.test.js               # no path in what he reads; wrapped tests-first sentence
+tests/logic-first.test.js              # check 15 on his file's real shape, wrapped, edited, CRLF, one yes
+tests/map-the-logic.test.js            # the how-to + its form: his rules, the seven sections, his quotes
 tests/helpers/machine.js # shared fixture homes (not a suite); HOME/USERPROFILE sentinel stays empty
 ```
 
@@ -73,4 +88,10 @@ tests/helpers/machine.js # shared fixture homes (not a suite); HOME/USERPROFILE 
   another plugin's internals, so it reports behaviour, not switches; an unreadable duty is null
   ("could not tell"), never fine. With turn-end 0.15.0 installed it reports a review after each of
   his messages that changed something.
+- 0.3.0 (2026-10-08) carries his twin-game method to every project, from his 8 Oct asks, verbatim:
+  "let's pull that, see what it is and how we can utilize it here, like the check my setup thing"
+  and "assume that this is just going to be me replicating my setup for this machine or the
+  specific proejct to other projects or machines". Check 15's quotes were each checked word for
+  word against that day's twin-game session records; never reword them. Putting the how-to in
+  plain (not a new plugin) is Claude's choice: nothing new to install or remember.
 - Not in the mk-cc-all bundle: the bundle carries skills only and would drop the output style.

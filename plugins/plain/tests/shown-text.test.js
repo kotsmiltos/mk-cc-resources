@@ -40,7 +40,7 @@ const { check } = h;
   T.writeJson(path.join(m.project, '.claude', 'settings.local.json'), { enabledPlugins: { [`patterns@${T.MK}`]: true, [`verifiability-lens@${T.MK}`]: false } });
   T.writeJson(path.join(m.claude, 'verifiability-lens.json'), { enabled: false });
   const lines = T.cli(h, m).lines;
-  const ids = ['verification-rules-hook', 'global-claude-md', 'rejected-memory-frame', 'tests-before-code', 'patterns-reuse-gate-off', 'reviewer-on', 'reviewer-here'];
+  const ids = ['verification-rules-hook', 'global-claude-md', 'rejected-memory-frame', 'tests-before-code', 'patterns-reuse-gate-off', 'reviewer-on', 'reviewer-here', 'logic-before-code'];
   const byId = T.byId(lines);
   check('fixture: every check under test is not fine', ids.every((id) => byId[id] && byId[id].ok === false), JSON.stringify(ids.map((id) => [id, byId[id] && byId[id].ok])));
   const roots = [h.tmp, m.home, m.project].flatMap((p) => [p, p.replace(/\\/g, '/')]);

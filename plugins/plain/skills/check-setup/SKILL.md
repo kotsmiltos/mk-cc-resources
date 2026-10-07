@@ -1,6 +1,6 @@
 ---
 name: check-setup
-description: Check whether this machine has the owner's plain setup (the plain reply style on, plugins up to date, caveman/patterns/reuse-gate off, no commit trailer, no generalize-first hook, the verification hook quiet on ++, helper reports and other sessions, personal CLAUDE.md clean and carrying his tests-before-code rule, the second-opinion reviewer on for him and in this project, helper reports reaching Claude without hook text, Windows Terminal), fix what it can after one yes, and give the exact steps for the rest. Use only when he asks — "check my setup", "is my setup right", "set this machine up".
+description: Check whether this machine has the owner's plain setup (the plain reply style on, plugins up to date, caveman/patterns/reuse-gate off, no commit trailer, no generalize-first hook, the verification hook quiet on ++, helper reports and other sessions, personal CLAUDE.md clean and carrying his tests-before-code and logic-before-code rules, the second-opinion reviewer on for him and in this project, helper reports reaching Claude without hook text, Windows Terminal), fix what it can after one yes, and give the exact steps for the rest. Use only when he asks — "check my setup", "is my setup right", "set this machine up".
 ---
 
 > Read this before doing anything:
@@ -40,6 +40,10 @@ every machine the same setup.
    What the newer checks mean for him, in words he can use:
    - **tests before code** — his own 10 Sep sentence, and his 1 Oct "tests were bent to pass",
      go into the personal instructions every project on this machine loads.
+   - **logic before code** — his five 7 Oct twin-game messages (the whole ask, the logic first,
+     by component, one job per part, swappable, the map for Claude and not for him to review)
+     go into the same personal instructions, right after tests-first, pointing at the
+     map-the-logic how-to that comes with this plugin.
    - **patterns and reuse-gate** — the two hooks he said to turn off on 1 Oct stay off.
    - **the second-opinion reviewer, for him** — a second Claude checks work that changed files.
      Say how often exactly as `found` says it: it is read from the turn-end he has installed

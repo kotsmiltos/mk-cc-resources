@@ -100,7 +100,10 @@ plugins/
   reuse-gate/               # Reuse-first reminder on first SOURCE write (PreToolUse hook,
                             #   once per user message; never blocks, opt-in OFF, fail-open)
 
-  plain/                    # (0.2.0: 14 checks — tests-first, patterns/reuse-gate off, reviewer for
+  plain/                    # (0.3.0: /plain:map-the-logic — his 7 Oct twin-game method, logic first
+                            #   by component for Claude, one job per part, results never coded; check
+                            #   15 carries his logic-first words into his personal CLAUDE.md.)
+                            #   (0.2.0: 14 checks — tests-first, patterns/reuse-gate off, reviewer for
                             #   him and in this project, helper-report count, Windows Terminal;
                             #   check 06 on the real prompt shapes.)
                             #   (0.1.0, 2026-09-23) The owner's reply style for every machine: an

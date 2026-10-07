@@ -55,6 +55,19 @@ const SPEC_TESTS_FIRST_SECTION = [
   "- Claude's reading: write the test from the ask, run it and see it fail, then write the code. Never change what a test expects in order to make it pass; when a test must change, tell him in one plain line what it checked before and what it checks now.",
 ].join('\n');
 
+// The logic-before-code section exactly as specified 2026-10-08: his five 7 Oct messages in
+// twin-game, each checked word for word against the session records that day, then Claude's
+// reading, marked as Claude's.
+const SPEC_LOGIC_FIRST_SECTION = [
+  '### Logic before code (his words)',
+  '- 2026-10-07: "My proper fix meant don\'t do patches on patches to fix what I\'m asking. It\'s to take the whole idea of what I\'m asking and create a solution for the whole of it. Just extract what I have said that I want."',
+  '- 2026-10-07: "decoupled things, proper, generic, generalized code. Things should be able to plug in. We should be able to swap something, some logic, some value, without affecting the whole game or having to edit the magic number." and "like my message above is something that should be abided to just like we do with the tests we write tests before we write the code after the way we design our code is modular and decoupled"',
+  '- 2026-10-07: "make sure to clearly depict and write down the logic you\'re trying to follow. We don\'t do patches on patches. We discussed this, right? Clean. Write the, the, the logic that you understand that you need and then you implement it. First thing always is to clear the logic. What it is that we need"',
+  '- 2026-10-07: "this is very hard for me to review. This is meant for you, to help you understand what I\'m asking. So you can map it out in simple steps and then put all of it together in one complete logic, which has parts that are decoupled that can be switched out."',
+  '- 2026-10-07: "there isn\'t a logic corners thing. There is a logic traction thing. There is a logic momentum thing. There is... Please do a proper breakdown of this in components that make sense. There is a logic control thing or lean thing. We don\'t code the terms. They are emergent behavior. Any part that ends up doing two things needs to be broken down and decoupled. And we should have a top-down hierarchy where we have controllers up top that control and give values to the things below. And uh, some central places for some parts. But we shouldn\'t have parts that do more than one thing."',
+  "- Claude's reading: before building or changing a feature or a behaviour he asked for, follow the map-the-logic skill (/plain:map-the-logic): his wants in his words, then the logic written by component for Claude (never handed to him to review), then tests, then code.",
+].join('\n');
+
 /** A REAL helper hand-back (Claude Code 2.1.283, 2026-09-29; report body and ids replaced). */
 const HANDBACK = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'handback-fixture.json'), 'utf8'));
 
@@ -270,7 +283,7 @@ function baselineForNewChecks({ home, project, mk = MK }) {
   writeJson(path.join(claude, 'verifiability-lens.json'), { enabled: true });
   const md = path.join(claude, 'CLAUDE.md');
   const before = fs.existsSync(md) ? fs.readFileSync(md, 'utf8') : '';
-  write(md, `${before.replace(/\n*$/, '\n')}\n${SPEC_TESTS_FIRST_SECTION}\n`);
+  write(md, `${before.replace(/\n*$/, '\n')}\n${SPEC_TESTS_FIRST_SECTION}\n\n${SPEC_LOGIC_FIRST_SECTION}\n`);
   writeTranscript(home, project, cleanTranscript(Date.now()));
 }
 
@@ -327,7 +340,7 @@ function cli(h, machine, extra = [], vars = {}) {
 const byId = (lines) => Object.fromEntries(lines.filter((l) => l.id).map((l) => [l.id, l]));
 
 module.exports = {
-  PLUGIN, CLI, FIXTURES, MK, MARKERS_NAME, SPEC_MARKER_LIST, SPEC_TESTS_FIRST_SECTION, HANDBACK, REAL_HOOK_0924, GOOD_HOOK,
+  PLUGIN, CLI, FIXTURES, MK, MARKERS_NAME, SPEC_MARKER_LIST, SPEC_TESTS_FIRST_SECTION, SPEC_LOGIC_FIRST_SECTION, HANDBACK, REAL_HOOK_0924, GOOD_HOOK,
   OLD_DAYS, HOUR_MS, RULES_TEXT,
   hookWithSpecMarkers, projectSlug, makeHarness, write, writeJson, readJson, patchJson,
   hookSuccess, handbackRecord, queuedHandback, ownerRecord, assistantRecord, sampleTranscript, cleanTranscript, toJsonl, writeTranscript,

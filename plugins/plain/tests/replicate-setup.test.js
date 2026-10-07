@@ -43,8 +43,9 @@ const applyOne = (m, id) => T.cli(h, m, ['--apply', id]).lines.find((l) => l.id 
   const ids = loadChecks().map((c) => c.id);
   const expected = ['style-plugin', 'marketplace-current', 'caveman-off', 'commit-trailer-off', 'no-generalize-first-hook',
     'verification-rules-hook', 'global-claude-md', 'rejected-memory-frame',
-    'tests-before-code', 'patterns-reuse-gate-off', 'reviewer-on', 'reviewer-here', 'helper-reports-unmarked', 'windows-terminal'];
-  check('fourteen checks load in file order, the six new ones last', JSON.stringify(ids) === JSON.stringify(expected), ids.join(','));
+    'tests-before-code', 'patterns-reuse-gate-off', 'reviewer-on', 'reviewer-here', 'helper-reports-unmarked', 'windows-terminal',
+    'logic-before-code'];
+  check('fifteen checks load in file order, logic-before-code (8 Oct) last', JSON.stringify(ids) === JSON.stringify(expected), ids.join(','));
   const good = T.makeMachine(h, 'all-good');
   const r = T.cli(h, good);
   const notFine = r.lines.filter((l) => l.ok !== true);

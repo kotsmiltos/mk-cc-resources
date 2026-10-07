@@ -4,6 +4,22 @@ All notable changes to **plain** are recorded here, newest first, in the terms t
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-08
+
+### Added
+- **`/plain:map-the-logic`: logic first, by component, then tests, then code.** It is the method your twin-game words set on 7 Oct, carried to every project, as you asked on 8 Oct ("let's pull that, see what it is and how we can utilize it here, like the check my setup thing"). Claude uses it by itself whenever you ask for a feature, a change in how something behaves, or a "proper fix":
+  - it pulls out your wants in your words and shows them back to you in plain words;
+  - it writes the whole logic for itself before any test or code: controllers on top handing values down, one job per part, every part swappable with its numbers in one central place, and results like wheelies or corners left to come out of the parts instead of being coded;
+  - it tests first from your words, then builds;
+  - it never asks you to review the map;
+  - each window ends with the next one's starting note.
+  
+  The map has a fixed form (`references/map-form.md`) with the same seven sections on every part. In twin-game, the map's layout is what held the rules; a written line alone did not.
+- **Check 15, logic before code:** your personal instructions, which every project on the machine loads, carry your five 7 Oct messages word for word and then Claude's reading, which points at the how-to. It is added after your yes, right after your tests-first section. It is found even when quoted or wrapped over lines, and a section you edited yourself is never overwritten.
+
+### Changed
+- Check 9 (tests before code) and check 15 now share one piece of code (`lib/his-words-section.js`), so another rule of yours carried this way is a few lines, not a copy. Check 9 says and does exactly what it did before.
+
 ## [0.2.0] - 2026-10-02
 
 ### Added

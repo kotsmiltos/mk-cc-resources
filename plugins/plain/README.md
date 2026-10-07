@@ -42,12 +42,28 @@ runs on and tells you, here, what is fine and what is not:
     have installed);
 12. this project doesn't switch the reviewer off;
 13. how many recent helper reports got text from your hooks (a count; nothing to fix here);
-14. on Windows, Claude Code's window opens in Windows Terminal.
+14. on Windows, Claude Code's window opens in Windows Terminal;
+15. your personal CLAUDE.md carries your logic-before-code rule in your words (your 7 Oct
+    twin-game messages), pointing at the how-to below.
 
 The helper-report and terminal lines never change anything. It changes nothing until you say yes, backs up every file before changing it (under
 `~/.claude/backups/plain-check-setup/`), and for what it cannot change gives you the exact step.
 Claude Code may refuse changes to your own settings files; then you get the step instead. It
 runs only when you ask: no hook, nothing added to your messages.
+
+**Logic first (`/plain:map-the-logic`).** When you ask for a feature, a change in how something
+behaves, or a "proper fix", Claude uses this by itself; you never need to type it. It is the way
+twin-game was built on 7 Oct, from your words that day:
+- Claude pulls out your wants in your words and shows them back to you in plain words.
+- It writes the whole logic for itself before any test or code: controllers on top handing values
+  down, one job per part, parts that can be swapped with their numbers in one central place, and
+  results you see (a wheelie, a corner) left to come out of the parts, never coded.
+- Then it writes tests first from your words, and builds.
+- It never asks you to read the map; you judge by using the build.
+- When a window ends, it writes the next one's starting note.
+
+The map has a fixed form, the same seven sections on every part, because in twin-game it was the
+map's layout that held the rules.
 
 ## Why this style
 

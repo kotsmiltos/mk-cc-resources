@@ -165,7 +165,7 @@ const byId = (lines) => Object.fromEntries(lines.filter((l) => l.id).map((l) => 
 
 // ---------------------------------------------------------------- the registry
 const checks = loadChecks();
-check('fourteen checks load from lib/checks/, in file order', checks.length === 14 && checks[0].id === 'style-plugin' && checks[7].id === 'rejected-memory-frame' && checks[13].id === 'windows-terminal', checks.map((c) => c.id).join(','));
+check('fifteen checks load from lib/checks/, in file order', checks.length === 15 && checks[0].id === 'style-plugin' && checks[7].id === 'rejected-memory-frame' && checks[13].id === 'windows-terminal' && checks[14].id === 'logic-before-code', checks.map((c) => c.id).join(','));
 // The three measurement/guidance-only checks never fix anything (2026-10-01: helper reports and
 // the terminal joined marketplace-current).
 const NEVER_FIXES = ['marketplace-current', 'helper-reports-unmarked', 'windows-terminal'];
