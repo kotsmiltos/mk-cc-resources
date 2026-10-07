@@ -34,7 +34,9 @@ and have my vision made and progress captured." Public repo; built first for his
   He had to step in five times that day before every rule was written down. A 26 Sep note ("model
   the cause, never the outcome") was already there and did not stop the session from splitting the
   logic by results; the map's layout by parts did.
-- **8 Oct, built and committed, NOT pushed: plain 0.3.0.**
+- **8 Oct, built, pushed (his "sounds good") and installed on this machine: plain 0.3.0.** His
+  logic-first words are now in his personal instructions here, right after tests-first (backed up
+  first); "check my setup" reads that line as fine. It takes effect in a newly opened window.
   - The how-to "map the logic": wants in his words → the logic by component, written for Claude
     before any test or code → tests first → build. He is never asked to review the map, and each
     window ends with the next one's starting note.
@@ -43,10 +45,8 @@ and have my vision made and progress captured." Public repo; built first for his
   - Checks: all 10 plain suites pass. Across the repo, 113 of 114 suites pass (4,038 checks); the
     one red, essense-flow, timed out on a file lock and passed alone. Registry check and repo-guard
     are clean.
-  - On this machine the new line reports "not there yet" and offers the fix. Nothing has been
-    changed yet.
-- **Still true:** the 2 Oct release is pushed (only today's commit is waiting). Setup changes take
-  effect in a newly opened window or after `/reload-plugins`, not after `/clear`.
+- **Still true:** everything is pushed. Setup changes take effect in a newly opened window or after
+  `/reload-plugins`, not after `/clear`.
 - **Earlier (30 Sep – 2 Oct, Claude's summary):** the thorough review found that twin-game round 1
   flipped the wheelie/stoppie tests to pass, and that his hooks read helper reports as if he had
   typed them. The 2 Oct release fixed the hook side, and his tests-first words reached his personal
@@ -54,21 +54,20 @@ and have my vision made and progress captured." Public repo; built first for his
 
 ## Next (whose each is)
 
-1. **Push plain 0.3.0** (his yes needed). Check: `git rev-list --count origin/main..main` is 0;
-   then, in a newly opened window, "check my setup" lists fifteen lines.
-2. **Add his logic-first words on this machine** (his yes, through "check my setup"; after the
-   push, so the how-to it names is installed). Check: its logic-before-code line reads fine.
-3. **twin-game push** (his, one command, given to him in the chat on 1 Oct). Checked 8 Oct: his
+1. **See logic-first live** (Claude, in his next feature ask in any project, in a newly opened
+   window). Check: his wants shown back in plain words, then a logic map by component, before any
+   test or code; he is never asked to review the map.
+2. **twin-game push** (his, one command, given to him in the chat on 1 Oct). Checked 8 Oct: his
    folder still knows no pushed copy of its branch. Check:
    `git rev-list --count origin/spinoff-toy..spinoff-toy` is 0.
-4. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
+3. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
    at each provider.
-5. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
+4. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
    machines at least"). Check: every line fine, or the ones left are the ones he chose to keep.
-6. **twin-game's locked tests** (Claude, with one question to him): not rechecked 8 Oct. The
+5. **twin-game's locked tests** (Claude, with one question to him): not rechecked 8 Oct. The
    7 Oct rebuild redid wheelies and stoppies by component. Check: the locked list quotes only words
    he typed, with dates.
-7. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
+6. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
    charge). His certificate settled 24% VAT on 29 Sep.
 
 ## Open decisions
