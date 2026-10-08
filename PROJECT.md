@@ -45,6 +45,13 @@ and have my vision made and progress captured." Public repo; built first for his
   - Checks: all 10 plain suites pass. Across the repo, 113 of 114 suites pass (4,038 checks); the
     one red, essense-flow, timed out on a file lock and passed alone. Registry check and repo-guard
     are clean.
+- **8 Oct, his question:** do the reviewer and the other checkers carry his rules? Checked: the
+  reviewer judges against his words in the current request and the plan; tests-first reaches it
+  only as one yes/no fact; nothing checks logic-first. Found while checking: twin-game has run
+  none of the 2 Oct release. Every window there since 2 Oct began with /clear in a Claude opened
+  before that install, so all 69 end-of-turn checks ran the old version. On 7 Oct the reviewer ran
+  0 times there: it was put off 47 times while helpers were still working. His personal
+  instructions do reload on /clear; plugins do not.
 - **Still true:** everything is pushed. Setup changes take effect in a newly opened window or after
   `/reload-plugins`, not after `/clear`.
 - **Earlier (30 Sep – 2 Oct, Claude's summary):** the thorough review found that twin-game round 1
@@ -54,20 +61,22 @@ and have my vision made and progress captured." Public repo; built first for his
 
 ## Next (whose each is)
 
-1. **See logic-first live** (Claude, in his next feature ask in any project, in a newly opened
+1. **twin-game: one new window, or /reload-plugins there** (his; one command). Check: that
+   project's end-of-turn record shows the installed version, not an older one.
+2. **See logic-first live** (Claude, in his next feature ask in any project, in a newly opened
    window). Check: his wants shown back in plain words, then a logic map by component, before any
    test or code; he is never asked to review the map.
-2. **twin-game push** (his, one command, given to him in the chat on 1 Oct). Checked 8 Oct: his
+3. **twin-game push** (his, one command, given to him in the chat on 1 Oct). Checked 8 Oct: his
    folder still knows no pushed copy of its branch. Check:
    `git rev-list --count origin/spinoff-toy..spinoff-toy` is 0.
-3. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
+4. **Rotate the three keys pasted on 28 Sep** (his; only he can). Check: the old keys are revoked
    at each provider.
-4. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
+5. **Run "check my setup" on each of his other machines** (his: "i wanna add it to my other
    machines at least"). Check: every line fine, or the ones left are the ones he chose to keep.
-5. **twin-game's locked tests** (Claude, with one question to him): not rechecked 8 Oct. The
+6. **twin-game's locked tests** (Claude, with one question to him): not rechecked 8 Oct. The
    7 Oct rebuild redid wheelies and stoppies by component. Check: the locked list quotes only words
    he typed, with dates.
-6. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
+7. **Whobe's payment code still says VAT-exempt** (Claude, in the Whobe project, before any real
    charge). His certificate settled 24% VAT on 29 Sep.
 
 ## Open decisions
