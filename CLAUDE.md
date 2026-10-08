@@ -84,7 +84,10 @@ plugins/
                             #   segSteward v2 — ⚓N✱ ▲M from the status contract, root-anchored.
                             #   See plugins/statusline/CLAUDE.md.
 
-  verifiability-lens/       # (0.8.0: the recorder reads the report from SubagentHandback calls —
+  verifiability-lens/       # (0.9.0: judges HIS STANDING RULES — every "(his words)" section of his
+                            #   personal instructions — kept / broken / cannot tell; broken = an
+                            #   escalation, not done.)
+                            #   (0.8.0: the recorder reads the report from SubagentHandback calls —
                             #   22/22 reviews parse again; reviewer judges against OWNER WORDS, every
                             #   weakened test escalated, report ends rollup then FOR HIM:.)
                             #   (0.6.0: a SubagentStop RECORDER — one trace-schema-v1 line per
@@ -135,7 +138,10 @@ plugins/
                             #   Standalone, not in mk-cc-all.
                             #   See plugins/steward/CLAUDE.md.
 
-  turn-end/                 # (0.15.0: request = the OWNER's message — helper wakes never re-arm or
+  turn-end/                 # (0.16.0: the reviewer's brief gains HIS STANDING RULES after OWNER WORDS
+                            #   — lib/standing-rules.js reads them, RULE_FACTS adds facts, lib/logic-
+                            #   first.js = "logic map before the first code change"; never blocks.)
+                            #   (0.15.0: request = the OWNER's message — helper wakes never re-arm or
                             #   stand in for it; per-window ledger; self-check judges what RAN (lib/
                             #   evidence.js); reviewer per message that changed something, handed
                             #   OWNER WORDS…TEST CHANGES; request-closure nag deleted; test-integrity

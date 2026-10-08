@@ -18,7 +18,7 @@ A strict, opinionated work-quality guardian. Two pillars:
 ## Layout
 
 ```
-.claude-plugin/plugin.json       # metadata (v0.8.0)
+.claude-plugin/plugin.json       # metadata (v0.9.0)
 agents/verifiability-lens.md     # the read-only classifier + triager; its `rollup:` block is
                                  #   MACHINE-READ (0.6.0: + `verification: {verified, refuted}`)
 references/rubric.md             # CANON — A/B/U + surfacing triage + recipient profile (cite, don't copy)
@@ -66,6 +66,10 @@ tests/verifiability-lens.test.js # contract tests over the shipped files (agent/
                                  #   shape captured live 2026-09-09) — replaces the retired hook's 39
 tests/handback.test.js           # 48 checks — hand-back reading, several hand-backs, block ends,
                                  #   for_him, the per-source sample (0.8.0)
+tests/standing-rules.test.js     # (0.9.0) 12 checks — HIS STANDING RULES: named in the handed list,
+                                 #   kept / broken / cannot tell with what shows it, broken = an
+                                 #   escalation and not done, the no-section fallback, FOR HIM line.
+                                 #   Owner ask 2026-10-08 verbatim in the file header
 tests/reviewer-brief.test.js     # 37 checks — the reviewer's brief: five headings, every weakened
                                  #   test an escalation, `none` vs never handed, FOR HIM template
 tests/fixtures/SubagentStop.sample.json  # the real SubagentStop payload, paths sanitized

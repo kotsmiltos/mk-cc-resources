@@ -4,6 +4,13 @@ All notable changes to **turn-end** are recorded here, newest first, in the term
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-10-08
+
+### Added
+- **The reviewer is handed your standing rules.** Asked on 8 Oct ("do these instructions of mine exist in the reviewers … would it help to add there?", then "ok, let's do that."). Its brief gains a part, right after your words for the request: every section of your personal instructions whose heading ends "(his words)" (today tests before code and logic before code), each named with where its words are and with the facts the record has. The reviewer is told to judge each one kept, broken or cannot tell, and a broken rule means that point is not done. The rules are read from your file, so a rule you add later in that shape is handed over with no change here. Without such sections the brief is exactly what it was.
+- **A new fact: was the logic written before the code?** It records whether a logic map was written or updated before the first code change of the request: yes, or no (it changed only after the code), or no (no logic map changed). A logic map is a file named like one, a Markdown file holding a "C0" heading (the map-the-logic form), or a path the project lists under `duties["quality-lens"].logicMaps` in `.claude/turn-end.json`. What counts as code is self-check's own answer.
+- Nothing new blocks: the reviewer stays a second opinion, per your "trying to gate this is a lost cause".
+
 ## [0.15.0] - 2026-10-02
 
 ### Added

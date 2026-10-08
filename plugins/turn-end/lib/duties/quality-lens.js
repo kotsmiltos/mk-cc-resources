@@ -59,6 +59,8 @@ const fileTouch = require('../file-touch');
 const record = require('../record-files');
 const evidence = require('../evidence');
 const { agentsInFlight, whileAgentsRun } = require('../deferral');
+const standingRules = require('../standing-rules');
+const logicFirst = require('../logic-first');
 
 const DUTY_ID = 'quality-lens';
 const CONFIG_REL = path.join('.claude', 'verifiability-lens.json');
@@ -668,7 +670,7 @@ const OWNER_WORDS_CHARS = 2400;
 const OPENER_FLOOR_CHARS = 600;
 // An older message gets shown only with at least this much room; below it, it is counted instead.
 const MIN_SHOWN_CHARS = 160;
-const BUDGET = Object.freeze({ plan: 550, changed: 350, runs: 450, tests: 700 });
+const BUDGET = Object.freeze({ rules: 450, plan: 550, changed: 350, runs: 450, tests: 700 });
 const BUDGET_TOTAL = Object.values(BUDGET).reduce((a, b) => a + b, 0);
 // How many times the sections are rebuilt smaller before the last-resort cut (each pass shrinks by
 // the overshoot plus FIT_MARGIN of the budgets, so two passes settle every case measured).
@@ -684,7 +686,8 @@ const MAX_TEST_LINE_CHARS = 260;
 const MAX_LOCKED_WORDS_CHARS = 120;
 const MAX_LOCKED_LINE_CHARS = 300;
 
-const SECTION_NAMES = Object.freeze(['OWNER WORDS', 'PLAN ITEMS', 'WHAT CHANGED', 'RUNS', 'TEST CHANGES']);
+const SECTION_NAMES = Object.freeze(['OWNER WORDS', 'HIS STANDING RULES', 'PLAN ITEMS', 'WHAT CHANGED', 'RUNS', 'TEST CHANGES']);
+const MAX_RULE_LINE_CHARS = 300;
 const BRIEF_BEGIN = 'BEGIN REVIEWER SECTIONS — copy everything down to the END line into its prompt';
 const BRIEF_END = 'END REVIEWER SECTIONS';
 const MESSAGE_CUT = 'copy the rest of this message verbatim from the conversation';
@@ -987,11 +990,71 @@ function lockedLine(x) {
   return `${name}${words}${x.unlocked === true ? ' — he unlocked it' : ''}`;
 }
 
-function yesNoLine(label, v) {
-  if (v === true) return `- ${label}: yes`;
-  if (v === false) return `- ${label}: no`;
+/** "label: yes" / "label: no" / "label: <the record's own words>", or null when the record has none. */
+function factOf(label, v) {
+  if (v === true) return `${label}: yes`;
+  if (v === false) return `${label}: no`;
   const text = typeof v === 'string' ? v : (v && typeof v === 'object' ? [v.line, v.summary, v.text].find((s) => typeof s === 'string') : null);
-  return text && text.trim() ? `- ${label}: ${clip(oneLine(text), MAX_TEST_LINE_CHARS)}` : null;
+  return text && text.trim() ? `${label}: ${clip(oneLine(text), MAX_TEST_LINE_CHARS)}` : null;
+}
+
+function yesNoLine(label, v) {
+  const fact = factOf(label, v);
+  return fact ? `- ${fact}` : null;
+}
+
+// ---------------------------------------------------------------- his standing rules
+
+/*
+ * HIS STANDING RULES (2026-10-08, his "ok, let's do that." to: the reviewer judges his rules too).
+ * The rules are READ from his personal instructions (lib/standing-rules.js: every "(his words)"
+ * section), never listed here, so a rule he adds later is handed over with no change. The section
+ * names each rule and where its words are — the reviewer has his personal instructions in its own
+ * context (measured that day: 39 of 39 reviews in his website project) — plus the facts the record
+ * has for it. RULE_FACTS is the extension surface: a rule with no entry is still named, and the
+ * reviewer judges it from the work; a new entry is one line. The logic: docs/logic-map.md, C0-C3.
+ */
+const LOGIC_FIRST_LABEL = 'a logic map written or updated before the first code change';
+const LOGIC_FIRST_TEXT = Object.freeze({
+  before: true,
+  after: 'no — a logic map changed only after the code did',
+  none: 'no — no logic map changed in this request',
+});
+const RULE_FACTS = Object.freeze({
+  'tests before code': (ctx) => {
+    const t = testRecordOf(ctx);
+    return t ? [factOf('tests first (written before the code)', t.testsFirst), factOf('a test failed before the code was written', t.redBeforeCode)] : [];
+  },
+  'logic before code': (ctx) => {
+    const ch = spanChanges(ctx);
+    if (!ch.ordered) return [];
+    const r = logicFirst.logicFirstOf(ctx, ch.muts);
+    return r.map ? [factOf(LOGIC_FIRST_LABEL, LOGIC_FIRST_TEXT[r.map])] : [];
+  },
+});
+const RULES_HEAD = 'HIS STANDING RULES (his rules for every request; his own words for each are in your instructions under the ' +
+  'heading named — judge each one kept / broken / cannot tell and say what shows it; a broken rule means that point is not done):';
+
+/** The facts the record has for one rule; a failing fact source is named, never a silent gap. */
+function factsFor(ctx, rule) {
+  const source = RULE_FACTS[rule.name.toLowerCase()];
+  if (!source) return [];
+  try {
+    return source(ctx).filter(Boolean);
+  } catch (err) {
+    note(`the facts for his rule "${rule.name}"`, err);
+    return [];
+  }
+}
+
+function rulesSection(ctx, budget = BUDGET.rules) {
+  const found = standingRules.rulesOf(ctx);
+  if (!found.length) return null; // no personal instructions with "(his words)" sections: left out
+  const lines = found.map((rule) => {
+    const facts = factsFor(ctx, rule);
+    return { text: clip(`- ${rule.name} — under "${rule.heading}"${facts.length ? `; ${facts.join('; ')}` : ''}`, MAX_RULE_LINE_CHARS), item: true };
+  });
+  return [RULES_HEAD, ...fitLines(lines, budget, (left) => `- … and ${left} more rule(s) under "(his words)" headings in your instructions`)].join('\n');
 }
 
 function testsSection(tests, budget = BUDGET.tests) {
@@ -1017,9 +1080,10 @@ function testsSection(tests, budget = BUDGET.tests) {
   ].filter(Boolean).join('\n');
 }
 
-/** Sections two to five, in the reviewer's order, at these budgets; a section with no record is left out. */
+/** Every section after OWNER WORDS, in the reviewer's order, at these budgets; a section with no record is left out. */
 function recordSections(ctx, ch, kickoff, budgets) {
   return [
+    rulesSection(ctx, budgets.rules),
     planSection(kickoff, budgets.plan),
     changedSection(ctx, ch, budgets.changed),
     runsSection(ch, evidenceOf(ctx), budgets.runs),

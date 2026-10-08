@@ -77,14 +77,18 @@ function ctxFor(span, { dir = project(), ledger = null, plumbing = true, evidenc
 const ledgerOf = (asked, askedAt) => ({ promptId: J.P_OWNER, ownerPromptId: J.P_OWNER, sessionId: J.SESSION_ID, fires: 1, asked, sessionAsked: [], askedAt });
 
 /** The text of one section of the ask: from its heading line to the next section heading. */
+// The five sections every ask carries; HIS STANDING RULES (2026-10-08) appears only on a machine
+// whose personal instructions hold "(his words)" sections (tests/judge-standing-rules.test.js).
 const SECTION_NAMES = ['OWNER WORDS', 'PLAN ITEMS', 'WHAT CHANGED', 'RUNS', 'TEST CHANGES'];
+// A section ends at the next heading the ask can carry — the duty's own list, so a section added
+// later is never read as part of the one before it.
 function section(ask, name) {
   const lines = ask.split('\n');
   const start = lines.findIndex((l) => l.startsWith(name));
   if (start < 0) return null;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
-    if (SECTION_NAMES.some((s) => lines[i].startsWith(s)) || /^END /.test(lines[i])) { end = i; break; }
+    if (ql.SECTION_NAMES.some((s) => lines[i].startsWith(s)) || /^END /.test(lines[i])) { end = i; break; }
   }
   return lines.slice(start, end).join('\n');
 }

@@ -4,6 +4,11 @@ All notable changes to **verifiability-lens** are recorded here, newest first, i
 someone who installs it. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-10-08
+
+### Added
+- **Your standing rules are judged, not just seen.** The reviewer already had your personal instructions in front of it; on 8 Oct, 39 of 39 reviews in one of your projects did. Nothing told it to check them. It now judges each "(his words)" rule (tests before code, logic before code, any you add) as kept, broken or cannot tell, and says what shows it. A broken rule is an escalation and that point of the request is not done; its default is to put the rule's step back in front of the work. "Cannot tell" is never reported as kept, and in FOR HIM each broken rule is one plain line under Not done. turn-end 0.16.0 hands it the rules by name with the facts the record has; without that part of the brief, it judges whichever such sections it finds in its instructions and says the part was not handed.
+
 ## [0.8.0] - 2026-10-02
 
 ### Fixed

@@ -76,7 +76,9 @@ function ctxFor(span, { dir = project(), ledger = null, lens = null, inject = {}
 }
 const ledgerOf = (asked, askedAt) => ({ promptId: J.P_OWNER, ownerPromptId: J.P_OWNER, sessionId: J.SESSION_ID, fires: 1, asked, sessionAsked: [], askedAt });
 
-const SECTION_NAMES = ['OWNER WORDS', 'PLAN ITEMS', 'WHAT CHANGED', 'RUNS', 'TEST CHANGES'];
+// A section ends at the next heading the ask can carry — the duty's own list, so a section added
+// later (HIS STANDING RULES, 2026-10-08) is never read as part of the one before it.
+const SECTION_NAMES = ql.SECTION_NAMES;
 function section(ask, name) {
   const lines = ask.split('\n');
   const start = lines.findIndex((l) => l.startsWith(name));

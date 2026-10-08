@@ -82,8 +82,8 @@ user terms). **B** marks what the `mk-cc-all` bundle carries; everything else in
 
 | Plugin | | Version | What it is for |
 |---|---|---|---|
-| [turn-end](plugins/turn-end/README.md) | | 0.15.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
-| [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.8.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
+| [turn-end](plugins/turn-end/README.md) | | 0.16.0 | The single blocking end-of-turn hook, so no other plugin needs one. Plugins ship *duties*; one runner checks them against real state and emits ONE message per request |
+| [verifiability-lens](plugins/verifiability-lens/README.md) | | 0.9.0 | Sorts every claim into verified / unverifiable / cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue |
 | [thorough-mode](plugins/thorough-mode/README.md) | | 1.17.0 | Keyword modifiers — `@verify`, `@debug`, `@ship`, `@fresh`, `@prompt`, `@present`, `@build`, `@fc` (fewer clicks) — and a check that kickoffs saved this sitting carry the `@prompt` header lines |
 | [reuse-gate](plugins/reuse-gate/README.md) | | 0.2.0 | One reuse-first reminder per message, at the moment code is first written |
 

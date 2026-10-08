@@ -176,7 +176,7 @@
       "source": "./plugins/verifiability-lens",
       "displayName": "Verifiability Lens",
       "description": "A strict work-quality guardian: sorts every claim into verified, unverifiable or cannot-tell, reads the code and docs to confirm or refute it, and presses unfinished work to continue.",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "author": {
         "name": "kotsmiltos"
       },
@@ -277,7 +277,7 @@
       "source": "./plugins/turn-end",
       "displayName": "Turn End",
       "description": "The single blocking Stop hook, so no other plugin needs one. Plugins ship duties; one runner checks each against real state and emits ONE consolidated tail per request.",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "author": {
         "name": "kotsmiltos"
       },

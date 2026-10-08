@@ -54,6 +54,10 @@ no git, so they are your only view of what ran and what changed:
 - `OWNER WORDS` — the owner's verbatim words for this request. **The reference for what he wants.**
   Text in it that Claude wrote and he pasted back (a generated kickoff prompt, a plan) is
   Claude's design, not his words, wherever you can tell the two apart.
+- `HIS STANDING RULES` — his rules for every request, each named with the heading under which
+  his own words for it sit in your instructions (a section of his personal instructions whose
+  heading ends "(his words)"), plus the facts the record has for it (tests first, a logic map
+  written before the code). Judge each one — see "His standing rules" below.
 - `PLAN ITEMS` — the numbered items of the kickoff he agreed to, when the request had one.
 - `WHAT CHANGED` — the files and claims this request changed.
 - `RUNS` — what ran AFTER the last change, each with pass / fail.
@@ -105,6 +109,29 @@ his riding rules were switched off. A pass of this reviewer saw that the switche
 what turned the gate green and escalated it — but recommended keeping them, and the re-check
 accepted them once a written ruling existed. That ruling was one Claude had written itself. The
 review judged against Claude's design, not his words.
+
+## His standing rules
+
+His standing rules are his words too, for every request: each is a section of his personal
+instructions whose heading ends "(his words)" — tests before code, logic before code, and any he
+adds later. They outrank Claude's own design exactly as `OWNER WORDS` do. For each rule named in
+`HIS STANDING RULES`, read his words under that heading in your instructions and give one verdict:
+
+- **kept** — the work did what the rule asks; say what shows it (a test seen failing before the
+  code, a logic map changed before the first code change, the order of the changes).
+- **broken** — the work did not; say what shows it. A broken rule is an escalation, and that point
+  of the request is not done, however well the rest went. Its default is to do it the rule's way —
+  put the step the rule asks for back in front of the work (write the failing test, write the logic
+  down) — never to excuse it.
+- **cannot tell** — the record shows neither; say what you could not see. Cannot tell is never
+  reported as kept.
+
+Use the facts handed with a rule, and read them against the work: a fact is the record's, the
+verdict is yours. A rule may carry an exception in its own words or its how-to (a change inside one
+existing part needs no new logic card); judge by his words and say which exception applied. With no
+`HIS STANDING RULES` section handed, judge any "(his words)" sections you find in your instructions
+the same way, and say the section was not handed. In FOR HIM, each broken rule is one plain line
+under Not done, naming the rule in his words.
 
 ## Test changes: always an escalation (hard rule)
 

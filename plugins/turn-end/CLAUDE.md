@@ -224,6 +224,29 @@ tests/turn-end.test.js  # 246 checks (one suite of many — every tests/*.test.j
                         #   their assertions ran
 ```
 
+## 0.16.0 (2026-10-08) — the reviewer is handed his standing rules
+
+Owner, verbatim: "do these instructions of mine exist in the reviewers and verifiability and other
+things that check the implementations a important parts to check if they were followed and abided
+to? would it help to add there?" — then "ok, let's do that." The logic was written first, in the
+repo's docs/logic-map.md (C0–C3).
+
+- **lib/standing-rules.js** — rulesFrom(text) / rulesOf(ctx): every heading ending "(his words)"
+  in his personal instructions (ctx.home, `.claude/CLAUDE.md`), fences skipped, a rule ends at the
+  next heading of its level or higher. Pure; no file = no rules.
+- **lib/logic-first.js** — logicFirstOf(ctx, muts) → {logicFirst, map: before|after|none|null}
+  over the span's ordered deliverable changes. Map = LOGIC_MAP.NAME_RX on the basename, a `C0`
+  heading in a .md, or a project prefix in duties["quality-lens"].logicMaps; code = self-check's
+  modalityFor(...).id === 'code' (required lazily, as deliverableMutations does).
+- **quality-lens** — SECTION_NAMES gains HIS STANDING RULES after OWNER WORDS; rulesSection names
+  each rule with its heading plus RULE_FACTS (the extension surface, keyed by lower-cased rule
+  name: tests before code → the test record's two facts, logic before code → logicFirstOf). The
+  section is LEFT OUT when there are no rules, like any record that does not exist; it is
+  budgeted (BUDGET.rules) and shrinks with the others before his words do. The reviewer has the
+  rules' words in its own context (measured 39/39 in his website project), so the brief names
+  them and does not copy them. Suites that read sections by heading use ql.SECTION_NAMES as the
+  boundary list, so a new section cannot be read as part of the one before it.
+
 ## 0.15.0 (2026-10-02) — the owner span, what ran, test changes, a reviewer per message
 
 Landed from eleven parallel workstreams; the owner approved the plan on 2026-10-01. Where a module
