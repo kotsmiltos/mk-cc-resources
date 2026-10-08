@@ -52,8 +52,8 @@ and have my vision made and progress captured." Public repo; built first for his
   before that install, so all 69 end-of-turn checks ran the old version. On 7 Oct the reviewer ran
   0 times there: it was put off 47 times while helpers were still working. His personal
   instructions do reload on /clear; plugins do not.
-- **8 Oct, built (his "ok, let's do that."), committed, NOT pushed: turn-end 0.16.0 and
-  verifiability-lens 0.9.0.** The reviewer's brief now names his standing rules (every "(his
+- **8 Oct, built (his "ok, let's do that."), pushed (his "yes") and installed on this machine:
+  turn-end 0.16.0 and verifiability-lens 0.9.0.** Takes effect in newly opened windows. The reviewer's brief now names his standing rules (every "(his
   words)" section of his personal instructions) with the facts the record has, including a new one:
   was a logic map written before the first code change. The reviewer judges each one kept, broken
   or cannot tell, and a broken rule counts as not done. Nothing new blocks. The logic was written
@@ -67,7 +67,8 @@ and have my vision made and progress captured." Public repo; built first for his
   left: the kb session summary (Claude's 2 Oct choice to keep it; it is labelled as a session
   summary), plus old patterns and thorough-mode text in windows opened before the fix and continued
   with /clear (twin-game 40 of 40). His website project ran the 2 Oct versions and only the summary
-  rode there (55 of 59).
+  rode there (55 of 59). He asked "why would you do that?" about taking the summary off; Claude's
+  only reason was tidiness, so it stays (his "yes" to pushing just the reviewer change).
 - **Still true:** everything else is pushed. Setup changes take effect in a newly opened window or after
   `/reload-plugins`, not after `/clear`.
 - **Earlier (30 Sep – 2 Oct, Claude's summary):** the thorough review found that twin-game round 1
@@ -77,9 +78,8 @@ and have my vision made and progress captured." Public repo; built first for his
 
 ## Next (whose each is)
 
-0. **Push turn-end 0.16.0 + verifiability-lens 0.9.0** (his yes needed). Check:
-   `git rev-list --count origin/main..main` is 0; then the first review in a newly opened window
-   gives each of his rules a verdict.
+0. **See the reviewer judge his rules** (Claude, in the first review in a newly opened window).
+   Check: its report gives each of his rules kept / broken / cannot tell.
 1. **twin-game: one new window, or /reload-plugins there** (his; one command). Check: that
    project's end-of-turn record shows the installed version, not an older one.
 2. **See logic-first live** (Claude, in his next feature ask in any project, in a newly opened
